@@ -53,6 +53,7 @@ public:
     void acceptPcm16(const QByteArray &audioData, int sampleRate,
                      int channelCount, SpeechRecognizer *owner);
     void finish(SpeechRecognizer *owner);
+    void resetStream();
 
 private:
     void decodePending(SpeechRecognizer *owner);
@@ -104,6 +105,11 @@ void SpeechRecognizer::acceptPcm16(const QByteArray &audioData, int sampleRate,
 void SpeechRecognizer::finish()
 {
     m_impl->finish(this);
+}
+
+void SpeechRecognizer::resetStream()
+{
+    m_impl->resetStream();
 }
 
 bool SpeechRecognizer::Impl::start(const Config &config, QString *errorMessage)
@@ -255,6 +261,15 @@ void SpeechRecognizer::Impl::finish(SpeechRecognizer *owner)
     SherpaOnnxOnlineStreamInputFinished(m_stream);
     decodePending(owner);
     publishResult(true, owner);
+}
+
+void SpeechRecognizer::Impl::resetStream()
+{
+    if (m_recognizer && m_stream) {
+        SherpaOnnxDestroyOnlineStream(m_stream);
+        m_stream = SherpaOnnxCreateOnlineStream(m_recognizer);
+        m_lastText.clear();
+    }
 }
 
 void SpeechRecognizer::Impl::decodePending(SpeechRecognizer *owner)

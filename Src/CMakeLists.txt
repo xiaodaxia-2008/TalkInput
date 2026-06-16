@@ -6,6 +6,10 @@ add_executable(TalkInput WIN32
     main_window.cpp
     main_window.h
     main_window.ui
+    voice_input_controller.cpp
+    voice_input_controller.h
+    asr_service.cpp
+    asr_service.h
     setting_widget.cpp
     setting_widget.h
     recognition_history.cpp

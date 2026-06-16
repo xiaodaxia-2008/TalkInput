@@ -37,6 +37,7 @@ public:
     void acceptPcm16(const QByteArray &audioData, int sampleRate,
                      int channelCount);
     void finish();
+    void resetStream();
 
 signals:
     void logMessage(const QString &message);
