@@ -1,119 +1,38 @@
-# TalkInput
+# TalkInput 语音输入法
 
-TalkInput is a Qt desktop application scaffold for a voice input method.
+TalkInput 是一款基于 sherpa-onnx 的桌面语音输入工具，支持实时语音转文字。
 
-The current version contains a Qt welcome window, microphone capture, and
-streaming speech recognition through sherpa-onnx. Recognition results are
-printed to the in-app log and Qt debug output. The GUI can also pass optional
-hotwords to the streaming transducer recognizer.
+## 功能
 
-The main window is defined in `Src/main_window.ui`; C++ code handles only the
-recognition and model-download behavior.
+- 麦克风实时录音并转写为文字
+- 支持多种 ASR 模型（Zipformer、SenseVoice、FunASR Nano、Paraformer 等）
+- 内置模型下载与自动解压
+- 识别历史记录（本地 SQLite 存储）
+- 热词功能，可自定义短语提升识别准确率
+- 复制的文本自动存入剪贴板
 
-## Requirements
+## 下载
 
-- CMake 3.21 or newer
-- C++23 compiler
-- Qt 6 with `Widgets`, `Core`, and `Gui`
-- Ninja or another CMake generator
-- sherpa-onnx release archives under `ThirdParties/sherpa-onnx`
+从 [Releases](https://github.com/xiaodaxia-2008/TalkInput/releases) 页面下载最新安装包，运行安装即可。
 
-Configure and build with the provided presets:
+## 使用
 
-```powershell
-cmake --preset release --fresh
-cmake --build --preset release
-```
+1. **启动应用** — 打开 TalkInput，界面分为「识别」和「模型」两个标签页
+2. **选择模型** — 切换到「模型」标签页，点击下载按钮选择一个模型（如 Zipformer 中文模型），或点击「使用压缩包」选择本地已下载的模型压缩包
+3. **开始识别** — 回到「识别」标签页，点击麦克风按钮开始录音，说话内容将实时显示在列表中
+4. **复制文字** — 点击每条识别结果右侧的复制按钮，文字自动存入剪贴板
 
-If Qt is installed somewhere else, adjust `CMAKE_PREFIX_PATH` or set `Qt6_DIR`
-to the Qt CMake package before configuring.
+## 支持的语言
 
-This project links sherpa-onnx from the local static release archives in
-`ThirdParties/sherpa-onnx`. CMake extracts the matching Debug or Release archive
-into the build directory and links the bundled `sherpa-onnx-c-api.lib`,
-`sherpa-onnx-core.lib`, and `onnxruntime.lib`.
+- 中文（普通话）
+- 中英文混合
+- 部分模型支持日语、韩语、粤语等
 
-## Model
+## 系统要求
 
-Download a sherpa-onnx streaming transducer model and select its directory in
-the app.
+- Windows 10/11 64位
+- 麦克风设备
 
-The current defaults use:
+## 从源码构建
 
-```text
-Models/sherpa-onnx-streaming-zipformer-zh-xlarge-int8-2025-06-30
-```
-
-Expected files in the selected model directory:
-
-- `encoder.int8.onnx`
-- `decoder.onnx`
-- `joiner.int8.onnx`
-- `tokens.txt`
-
-The app also provides a `Models` tab with several preset sherpa-onnx download
-links. Direct downloads are saved under the Qt cache location, in a `models`
-subdirectory, unless another directory is selected. After download, the app
-uses libarchive to extract `.tar.bz2` archives and selects the extracted model
-directory automatically.
-
-## Project Layout
-
-```text
-.
-├── CMakeLists.txt
-├── Src
-│   ├── CMakeLists.txt
-│   ├── main.cpp
-│   ├── main_window.cpp
-│   ├── main_window.h
-│   ├── speech_recognizer.cpp
-│   └── speech_recognizer.h
-└── README.md
-```
-
-## Run
-
-After building with the release preset, the executable is generated under
-`build/bin/TalkInput.exe` on Windows.
-
-## ASR Test
-
-The console test program decodes an audio/video file through `ffmpeg` and prints
-the transcript:
-
-```powershell
-.\build\bin\TalkInputAsrTest.exe
-```
-
-Defaults:
-
-- Model: `Models/sherpa-onnx-streaming-zipformer-zh-xlarge-int8-2025-06-30`
-- Audio: `C:/Users/xiaoz/Music/meetily-recordings/audio.mp4`
-
-You can override both paths:
-
-```powershell
-.\build-release\bin\TalkInputAsrTest.exe <model-dir> <audio-file>
-```
-
-## SenseVoice Test
-
-The offline SenseVoice test program also decodes the input file through
-`ffmpeg`, so the default MP4 test file does not need to be converted to WAV
-first:
-
-```powershell
-.\build\bin\TalkInputSenseVoiceTest.exe
-```
-
-Defaults:
-
-- Model: `Models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17`
-- Audio: `C:/Users/xiaoz/Music/meetily-recordings/audio.mp4`
-
-You can override both paths:
-
-```powershell
-.\build\bin\TalkInputSenseVoiceTest.exe <model-dir> <audio-file>
-```
+如需自行编译，请参考项目中的 `AGENTS.md` 和 `CMakePresets.json`。
