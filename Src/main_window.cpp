@@ -206,7 +206,7 @@ void MainWindow::setupUi() {
     QMessageBox::about(
         this, tr("About TalkInput"),
         tr("<h3>TalkInput %1</h3>"
-           "<p>Voice input method based on sherpa-onnx.</p>"
+           "<p>Local voice input method.</p>"
            "<table>"
            "<tr><td>Commit</td><td>%2</td></tr>"
            "<tr><td>Date</td><td>%3</td></tr>"

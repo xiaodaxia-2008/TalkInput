@@ -69,3 +69,10 @@ Src/
 ## SVG Icons
 
 All button icons are Feather-style SVGs stored in `resources/` and accessed as `:/resources/xxx.svg`. Qt6::Svg must be linked. `windeployqt` deploys the `qsvg.dll` image format plugin. `QIcon(":/resources/xxx.svg")` works only when Qt6::Svg is linked.
+
+## Dependencies
+
+`QT` is installed in an external folder.
+`sherpa-onnx` prebuilt binaries are downloaded from github release.
+other dependencies are installed with vcpkg.
+by default in `CMakeUserPresets.json`  option  `VCPKG_MANIFEST_INSTALL` is "OFF" to boost config step, if vcpkg.json is modified set it to `ON` to remove or install dependencies.
