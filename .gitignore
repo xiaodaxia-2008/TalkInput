@@ -1,0 +1,48 @@
+# Build output
+build/
+build-release/
+vcpkg_installed/
+data/
+*.bz2
+*.tar
+*.lib
+out/
+cmake-build-*/
+.cache/
+temp/
+Models/
+CMakeUserPresets.json
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+install_manifest.txt
+
+# Qt generated files
+*.qrc.depends
+*.qmlc
+*.jsc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# IDE and editor files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+Thumbs.db
+Desktop.ini
