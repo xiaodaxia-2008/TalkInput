@@ -270,71 +270,57 @@ void VoiceInputController::onResult(const QString &text, bool isFinal) {
   }
 }
 
-// ── Console text injection via WriteConsoleInput ────────────────
-static bool tryWriteConsoleInput(const QString &text) {
-  DWORD pid = 0;
-  GetWindowThreadProcessId(GetForegroundWindow(), &pid);
-  if (!pid) return false;
+// ── Clipboard text injection (works universally, incl. Windows Terminal) ─
+static bool tryClipboardText(const QString &text) {
+  HWND hwnd = GetForegroundWindow();
+  if (!hwnd) return false;
 
-  FreeConsole();                     // GUI app typically has none
-  if (!AttachConsole(pid)) return false;
+  if (!OpenClipboard(nullptr))
+    return false;
 
-  HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
-  if (!hInput || hInput == INVALID_HANDLE_VALUE) {
-    FreeConsole();
+  EmptyClipboard();
+
+  const int len = text.length();
+  HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(wchar_t));
+  if (!hGlobal) {
+    CloseClipboard();
     return false;
   }
 
-  std::vector<INPUT_RECORD> records;
-  records.reserve(static_cast<size_t>(text.size()) * 2);
+  auto *dst = static_cast<wchar_t *>(GlobalLock(hGlobal));
+  text.toWCharArray(dst);
+  dst[len] = L'\0';
+  GlobalUnlock(hGlobal);
 
-  for (const QChar ch : text) {
-    const ushort code = ch.unicode();
-    if (code == 0 || code == '\r') continue;
+  SetClipboardData(CF_UNICODETEXT, hGlobal);
+  CloseClipboard();
 
-    // Normalise newline → VK_RETURN for console
-    if (code == '\n') {
-      INPUT_RECORD down = {};
-      down.EventType = KEY_EVENT;
-      down.Event.KeyEvent.bKeyDown = TRUE;
-      down.Event.KeyEvent.wRepeatCount = 1;
-      down.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
-      down.Event.KeyEvent.wVirtualScanCode =
-          static_cast<WORD>(MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC));
-      down.Event.KeyEvent.uChar.UnicodeChar = L'\r';
-      records.push_back(down);
+  // Brief pause for clipboard to propagate
+  Sleep(10);
 
-      INPUT_RECORD up = down;
-      up.Event.KeyEvent.bKeyDown = FALSE;
-      records.push_back(up);
-      continue;
-    }
+  // Ctrl+V via batch SendInput
+  INPUT ctrlV[4] = {};
+  ctrlV[0].type = INPUT_KEYBOARD;
+  ctrlV[0].ki.wVk = VK_CONTROL;
+  ctrlV[1].type = INPUT_KEYBOARD;
+  ctrlV[1].ki.wVk = 'V';
+  ctrlV[2].type = INPUT_KEYBOARD;
+  ctrlV[2].ki.wVk = 'V';
+  ctrlV[2].ki.dwFlags = KEYEVENTF_KEYUP;
+  ctrlV[3].type = INPUT_KEYBOARD;
+  ctrlV[3].ki.wVk = VK_CONTROL;
+  ctrlV[3].ki.dwFlags = KEYEVENTF_KEYUP;
+  SendInput(4, ctrlV, sizeof(INPUT));
 
-    INPUT_RECORD down = {};
-    down.EventType = KEY_EVENT;
-    down.Event.KeyEvent.bKeyDown = TRUE;
-    down.Event.KeyEvent.wRepeatCount = 1;
-    down.Event.KeyEvent.wVirtualKeyCode = 0;
-    down.Event.KeyEvent.wVirtualScanCode = 0;
-    down.Event.KeyEvent.uChar.UnicodeChar = code;
-    down.Event.KeyEvent.dwControlKeyState = 0;
-    records.push_back(down);
-
-    INPUT_RECORD up = down;
-    up.Event.KeyEvent.bKeyDown = FALSE;
-    records.push_back(up);
-  }
-
-  DWORD written = 0;
-  const BOOL ok = WriteConsoleInputW(hInput, records.data(),
-                                     static_cast<DWORD>(records.size()),
-                                     &written);
-  FreeConsole();
-  return ok && written == records.size();
+  // Clipboard keeps our text — NOT cleared, NOT restored (per user request)
+  return true;
 }
 
 // ── SendInput (batch, KEYEVENTF_UNICODE) fallback ─────────────
-static void sendViaSendInput(const QString &text, HWND hwnd) {
+static bool trySendInput(const QString &text) {
+  HWND hwnd = GetForegroundWindow();
+  if (!hwnd) return false;
+
   DWORD tid = GetWindowThreadProcessId(hwnd, nullptr);
   DWORD ourTid = GetCurrentThreadId();
   const BOOL attached =
@@ -344,7 +330,6 @@ static void sendViaSendInput(const QString &text, HWND hwnd) {
   const BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
   if (himc) ImmSetOpenStatus(himc, FALSE);
 
-  // Single batch – all characters sent atomically
   std::vector<INPUT> inputs;
   inputs.reserve(static_cast<size_t>(text.size()) * 2);
 
@@ -377,6 +362,7 @@ static void sendViaSendInput(const QString &text, HWND hwnd) {
   }
 
   if (attached) AttachThreadInput(ourTid, tid, FALSE);
+  return true;
 }
 
 void VoiceInputController::sendText(const QString &text) {
@@ -384,17 +370,16 @@ void VoiceInputController::sendText(const QString &text) {
 
   spdlog::info("Sending text to foreground app: {}", text);
 
-  HWND hwnd = GetForegroundWindow();
-  if (!hwnd) return;
-
-  // Console windows → write directly to input buffer (no VK_PACKET issues)
-  if (tryWriteConsoleInput(text)) {
-    spdlog::debug("Console input path succeeded");
+  // Clipboard injection works universally (incl. Windows Terminal, UWP, etc.)
+  // and leaves the text on the clipboard afterward.
+  if (tryClipboardText(text)) {
+    spdlog::debug("Clipboard injection succeeded");
     return;
   }
 
-  // Non-console windows → batch SendInput with KEYEVENTF_UNICODE
-  sendViaSendInput(text, hwnd);
+  // Fallback: batch SendInput with KEYEVENTF_UNICODE
+  spdlog::warn("Clipboard unavailable, falling back to SendInput");
+  trySendInput(text);
 }
 
 void VoiceInputController::showOverlay() {
