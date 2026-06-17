@@ -174,6 +174,18 @@ void MainWindow::setupUi() {
                  QStringLiteral(GIT_COMMIT_DATE)));
   });
 
+  // ── Realtime result label (below toolbar, hidden by default) ─
+  m_realtimeLabel = new QLabel(this);
+  m_realtimeLabel->setWordWrap(true);
+  m_realtimeLabel->setStyleSheet(
+      QStringLiteral("QLabel { background: #f5f5f5; border: 1px solid #ddd; "
+                     "border-radius: 6px; padding: 8px 12px; "
+                     "color: #333; font-size: 13px; }"));
+  m_realtimeLabel->setTextFormat(Qt::PlainText);
+  m_realtimeLabel->setMinimumHeight(36);
+  m_realtimeLabel->hide();
+  m_ui->recognitionLayout->insertWidget(1, m_realtimeLabel);
+
   // ── History table setup ──────────────────────────────────────
   m_ui->historyTable->horizontalHeader()->setStretchLastSection(false);
   m_ui->historyTable->horizontalHeader()->setSectionResizeMode(
@@ -254,6 +266,8 @@ void MainWindow::updateControls(bool listening) {
         m_currentModelName.isEmpty()
             ? tr("Listening...")
             : tr("Listening — %1").arg(m_currentModelName));
+    m_realtimeLabel->setText(QString());
+    m_realtimeLabel->show();
   } else {
     applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
     m_ui->startButton->setToolTip(tr("Start recognition"));
@@ -261,6 +275,7 @@ void MainWindow::updateControls(bool listening) {
       statusBar()->showMessage(tr("No model selected"));
     else
       statusBar()->showMessage(tr("Model: %1").arg(m_currentModelName));
+    m_realtimeLabel->hide();
   }
 }
 
@@ -299,7 +314,12 @@ void MainWindow::onResult(const QString &text, bool isFinal) {
       spdlog::default_logger_raw(), spdlog::level::info,
       "{} {}", isFinal ? "[final]" : "[partial]", text);
 
+  if (!isFinal && !text.trimmed().isEmpty()) {
+    m_realtimeLabel->setText(text.trimmed());
+  }
+
   if (isFinal && !text.trimmed().isEmpty()) {
+    m_realtimeLabel->setText(text.trimmed());
     QTimer::singleShot(0, this, &MainWindow::refreshHistory);
   }
 

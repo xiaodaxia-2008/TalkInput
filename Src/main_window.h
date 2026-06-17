@@ -8,6 +8,7 @@
 #include <QMainWindow>
 #include <memory>
 
+class QLabel;
 class QSystemTrayIcon;
 class QThread;
 
@@ -54,6 +55,7 @@ private:
   QString m_currentModelName;
 
   QSystemTrayIcon *m_trayIcon = nullptr;
+  QLabel *m_realtimeLabel = nullptr;
 };
 
 } // namespace talkinput
