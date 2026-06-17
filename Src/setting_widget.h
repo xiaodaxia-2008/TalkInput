@@ -34,7 +34,7 @@ private:
     qint64 modelSize = 0;
     int paramCount = 0;
     bool streamingSupport = false;
-    bool isDefault = false;
+
   };
 
   void populateTable();

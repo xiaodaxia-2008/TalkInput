@@ -17,6 +17,7 @@
 #include <QNetworkRequest>
 #include <QPainter>
 #include <QPushButton>
+#include <QSettings>
 #include <QStandardPaths>
 
 #include <QTableWidget>
@@ -175,13 +176,13 @@ SettingWidget::SettingWidget(QWidget *parent)
 
   // ── Model definitions ──────────────────────────────────────
   m_models = {
-      {tr("SenseVoice multilingual int8"),
+       {tr("SenseVoice multilingual int8"),
        tr("Offline"),
        QStringLiteral("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"),
        QUrl(QStringLiteral(
            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2")),
-       230 * 1024 * 1024, 40, false, true},
+       230 * 1024 * 1024, 40, false},
 
       {tr("FunASR Nano int8"),
        tr("Offline (LLM)"),
@@ -334,19 +335,24 @@ void SettingWidget::populateTable() {
 }
 
 void SettingWidget::refreshStatus() {
+  QSettings s;
+  const QString activeDir = s.value(QStringLiteral("model/directory")).toString();
+
   for (int i = 0; i < m_models.size(); ++i) {
     const auto &m = m_models.at(i);
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
     const bool installed = QFileInfo(path).isDir();
+    const bool isActive = !activeDir.isEmpty() &&
+                          QDir(activeDir) == QDir(path);
 
     QString statusText;
     QColor statusColor;
-    if (installed) {
+    if (isActive) {
+      statusText = tr("Active");
+      statusColor = QColor(0x15, 0x65, 0xc0);
+    } else if (installed) {
       statusText = tr("Installed");
       statusColor = QColor(0x2e, 0x7d, 0x32);
-    } else if (m.isDefault) {
-      statusText = tr("Default");
-      statusColor = QColor(0x15, 0x65, 0xc0);
     } else {
       statusText = tr("Not installed");
       statusColor = QColor(0xc6, 0x28, 0x28);
