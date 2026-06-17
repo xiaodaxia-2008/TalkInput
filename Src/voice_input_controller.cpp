@@ -126,26 +126,20 @@ public:
 
 private:
   void positionOnActiveScreen() {
-    QScreen *screen = QGuiApplication::primaryScreen();
-    if (auto *fg = GetForegroundWindow()) {
-      HMONITOR mon = MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST);
-      MONITORINFO mi = {};
-      mi.cbSize = sizeof(mi);
-      if (GetMonitorInfo(mon, &mi)) {
-        int w = mi.rcWork.right - mi.rcWork.left;
-        int h = mi.rcWork.bottom - mi.rcWork.top;
-        int x = (mi.rcWork.left + w / 2) - width() / 2;
-        if (x < mi.rcWork.left) x = mi.rcWork.left + 8;
-        move(x, mi.rcWork.top + h - height() - 20);
-        return;
-      }
-    }
-    if (screen) {
-      QRect wr = screen->availableGeometry();
-      int x = wr.left() + wr.width() / 2 - width() / 2;
-      if (x < wr.left()) x = wr.left() + 8;
-      move(x, wr.top() + wr.height() - height() - 20);
-    }
+    QPoint cursorPos = QCursor::pos();
+    QScreen *screen = QGuiApplication::screenAt(cursorPos);
+    if (!screen)
+      screen = QGuiApplication::primaryScreen();
+    if (!screen)
+      return;
+    QRect wr = screen->availableGeometry();
+    int ow = std::max(width(), minimumWidth());
+    int x = wr.left() + (wr.width() - ow) / 2;
+    if (x < wr.left()) x = wr.left() + 8;
+    int y = wr.bottom() - height() - 30;
+    move(x, y);
+    spdlog::info("Overlay at ({}, {}) on screen {} (dpr={})", x, y,
+                 screen->name().toStdString(), screen->devicePixelRatio());
   }
 
   QLabel *m_statusLabel = nullptr;
