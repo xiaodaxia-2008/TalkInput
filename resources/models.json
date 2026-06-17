@@ -1,0 +1,92 @@
+{
+  "presets": [
+    {
+      "name": "SenseVoice multilingual int8",
+      "type": "SenseVoice",
+      "modelDirName": "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2",
+      "size": 241172480,
+      "paramCount": 40,
+      "streamingSupport": false,
+      "files": {
+        "senseVoiceModelFile": ["model.int8.onnx", "model.onnx"],
+        "tokensFile": ["tokens.txt"]
+      }
+    },
+    {
+      "name": "FunASR Nano int8",
+      "type": "FunASRNano",
+      "modelDirName": "sherpa-onnx-funasr-nano-int8-2025-12-30",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-funasr-nano-int8-2025-12-30.tar.bz2",
+      "size": 996147200,
+      "paramCount": 600,
+      "streamingSupport": false,
+      "files": {
+        "funasrEncoderAdaptorFile": ["*encoder_adaptor*"],
+        "funasrLlmFile": ["*llm*"],
+        "funasrEmbeddingFile": ["*embedding*"],
+        "funasrTokenizerFile>dir": ["*Qwen3*", "*tokenizer*"]
+      }
+    },
+    {
+      "name": "Qwen3-ASR 0.6B int8",
+      "type": "Qwen3ASR",
+      "modelDirName": "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2",
+      "size": 987758592,
+      "paramCount": 600,
+      "streamingSupport": false,
+      "files": {
+        "qwen3ConvFrontendFile": ["*conv*frontend*"],
+        "qwen3EncoderFile": ["*encoder*"],
+        "qwen3DecoderFile": ["*decoder*"],
+        "qwen3TokenizerDir>dir": ["tokenizer"],
+        "tokensFile": ["tokens.txt"]
+      }
+    },
+    {
+      "name": "Streaming Paraformer bilingual zh-en",
+      "type": "StreamingParaformer",
+      "modelDirName": "sherpa-onnx-streaming-paraformer-bilingual-zh-en",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2",
+      "size": 62914560,
+      "paramCount": 0,
+      "streamingSupport": true,
+      "files": {
+        "encoderFile": ["*encoder*"],
+        "decoderFile": ["*decoder*"],
+        "tokensFile": ["tokens.txt"]
+      }
+    },
+    {
+      "name": "Streaming Zipformer bilingual zh-en int8",
+      "type": "StreamingTransducer",
+      "modelDirName": "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2",
+      "size": 209715200,
+      "paramCount": 90,
+      "streamingSupport": true,
+      "files": {
+        "encoderFile": ["*encoder*"],
+        "decoderFile": ["*decoder*"],
+        "joinerFile": ["*joiner*"],
+        "tokensFile": ["tokens.txt"]
+      }
+    },
+    {
+      "name": "Streaming Zipformer EN 20M",
+      "type": "StreamingTransducer",
+      "modelDirName": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2",
+      "size": 41943040,
+      "paramCount": 20,
+      "streamingSupport": true,
+      "files": {
+        "encoderFile": ["*encoder*"],
+        "decoderFile": ["*decoder*"],
+        "joinerFile": ["*joiner*"],
+        "tokensFile": ["tokens.txt"]
+      }
+    }
+  ]
+}

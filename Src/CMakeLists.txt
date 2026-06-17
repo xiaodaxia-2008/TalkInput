@@ -15,6 +15,8 @@ add_executable(TalkInput
     recognition_history.cpp
     recognition_history.h
     qt_fmt.h
+    model_registry.h
+    model_registry.cpp
     speech_recognizer.cpp
     speech_recognizer.h
     paste_text.h
@@ -38,6 +40,7 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/copy.svg"
     "${PROJECT_SOURCE_DIR}/resources/edit.svg"
+    "${PROJECT_SOURCE_DIR}/resources/models.json"
 )
 
 qt_add_translations(TalkInput)
