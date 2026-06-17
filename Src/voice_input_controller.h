@@ -16,6 +16,7 @@ namespace talkinput
 {
 
 class AsrService;
+class LlmPostProcessor;
 
 class VoiceInputController final : public QObject,
                                    public QAbstractNativeEventFilter
@@ -48,6 +49,7 @@ private:
     void registerHotKey();
     void unregisterHotKey();
     void onResult(const QString &text, bool isFinal);
+    void injectFinalText(const QString &text);
     void sendText(const QString &text);
     void showOverlay();
     void hideOverlay();
@@ -56,6 +58,7 @@ private:
 
     AsrService *m_asrService;
     RecognitionHistory *m_history;
+    LlmPostProcessor *m_llmPostProcessor = nullptr;
 
     std::unique_ptr<QAudioSource> m_audioSource;
     QIODevice *m_audioDevice = nullptr;

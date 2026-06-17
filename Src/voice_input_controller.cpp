@@ -1,5 +1,6 @@
 #include "voice_input_controller.h"
 #include "asr_service.h"
+#include "llm_post_processor.h"
 #include "logging.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
@@ -180,6 +181,9 @@ VoiceInputController::VoiceInputController(AsrService *asrService,
     : QObject(parent), m_asrService(asrService), m_history(history)
 {
     m_overlay = std::make_unique<OverlayWindow>();
+    m_llmPostProcessor = new LlmPostProcessor(this);
+    connect(m_llmPostProcessor, &LlmPostProcessor::statusMessage, this,
+            &VoiceInputController::statusMessage);
     registerHotKey();
 
     connect(m_asrService, &AsrService::resultChanged, this,
@@ -313,9 +317,14 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
         const bool shouldSend = m_pendingResult || !m_isListening;
         m_pendingResult = false;
         if (shouldSend && !text.trimmed().isEmpty()) {
-            sendText(text.trimmed());
-            m_history->addEntry(text.trimmed());
-            spdlog::info("VoiceInputController injected and saved: {}", text);
+            const QString finalText = text.trimmed();
+            if (m_llmPostProcessor->isEnabled()) {
+                emit statusMessage(tr("Post-processing recognition result..."));
+            }
+            m_llmPostProcessor->postProcess(
+                finalText, this, [this](const QString &processedText) {
+                    injectFinalText(processedText.trimmed());
+                });
         }
     }
     else if (m_isListening && text != m_lastResult) {
@@ -324,6 +333,19 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
             static_cast<OverlayWindow *>(m_overlay.get())->setPreviewText(text);
         }
     }
+}
+
+void VoiceInputController::injectFinalText(const QString &text)
+{
+    if (text.isEmpty()) {
+        return;
+    }
+
+    sendText(text);
+    if (m_history) {
+        m_history->addEntry(text);
+    }
+    spdlog::info("VoiceInputController injected and saved: {}", text);
 }
 
 // ── Clipboard paste helper ────────────────────────────────────

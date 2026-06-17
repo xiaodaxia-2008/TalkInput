@@ -14,6 +14,8 @@ add_executable(TalkInput
     asr_setting_widget.h
     history_widget.cpp
     history_widget.h
+    llm_post_processor.cpp
+    llm_post_processor.h
     logging.h
     recognition_history.cpp
     recognition_history.h

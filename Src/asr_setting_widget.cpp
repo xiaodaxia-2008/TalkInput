@@ -6,6 +6,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include <QCheckBox>
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDialog>
@@ -225,9 +226,26 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(hotwordsBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
 
+    auto *llmPostProcessCheck = new QCheckBox(tr("LLM post-processing"), this);
+    llmPostProcessCheck->setToolTip(
+        tr("Use a local Qwen model to polish final recognition text"));
+    {
+        QSettings settings;
+        llmPostProcessCheck->setChecked(
+            settings.value("llm/postProcessingEnabled", false).toBool());
+    }
+    connect(
+        llmPostProcessCheck, &QCheckBox::toggled, this, [this](bool checked) {
+            QSettings settings;
+            settings.setValue("llm/postProcessingEnabled", checked);
+            emit statusMessage(checked ? tr("LLM post-processing enabled.")
+                                       : tr("LLM post-processing disabled."));
+        });
+
     bottomRow->addWidget(archiveBtn);
     bottomRow->addWidget(openBtn);
     bottomRow->addWidget(hotwordsBtn);
+    bottomRow->addWidget(llmPostProcessCheck);
     bottomRow->addStretch();
     root->addLayout(bottomRow);
 
