@@ -6,8 +6,12 @@
 #include <QSettings>
 #include <QTranslator>
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 int main(int argc, char *argv[])
 {
+    SetConsoleOutputCP(CP_UTF8);
     QApplication app(argc, argv);
     QApplication::setApplicationName("TalkInput");
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
