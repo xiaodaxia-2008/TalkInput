@@ -1,5 +1,6 @@
 #include "voice_input_controller.h"
 #include "asr_service.h"
+#include "paste_text.h"
 
 #include <QAudioDevice>
 #include <QAudioSource>
@@ -272,30 +273,11 @@ void VoiceInputController::sendText(const QString &text) {
 
   spdlog::info("Sending text to foreground app: {}", text);
 
-  QVector<INPUT> inputs;
-  inputs.reserve(text.size() * 2);
-
-  for (const QChar ch : text) {
-    if (ch.unicode() == 0)
-      continue;
-
-    INPUT keyDown = {};
-    keyDown.type = INPUT_KEYBOARD;
-    keyDown.ki.wVk = 0;
-    keyDown.ki.wScan = ch.unicode();
-    keyDown.ki.dwFlags = KEYEVENTF_UNICODE;
-
-    INPUT keyUp = {};
-    keyUp.type = INPUT_KEYBOARD;
-    keyUp.ki.wVk = 0;
-    keyUp.ki.wScan = ch.unicode();
-    keyUp.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-
-    inputs.append(keyDown);
-    inputs.append(keyUp);
-  }
-
-  SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+  // Use clipboard-based injection to bypass IME issues with mixed
+  // Chinese/English text (direct Unicode SendInput drops English words
+  // when going through a Chinese IME)
+  pasteTextToActiveWindow(text, /*useClipboard=*/true,
+                          /*restoreClipboard=*/true);
 }
 
 void VoiceInputController::showOverlay() {
