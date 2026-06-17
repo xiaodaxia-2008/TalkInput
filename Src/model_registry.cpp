@@ -1,5 +1,6 @@
 #include "model_registry.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -15,13 +16,39 @@ namespace talkinput {
 static QVector<ModelPreset> s_presets;
 static bool s_loaded = false;
 
+static QString findModelsFile() {
+    // Look relative to the executable first
+    QString path = QCoreApplication::applicationDirPath();
+    QString candidate = QDir(path).filePath(QStringLiteral("models.json"));
+    if (QFileInfo::exists(candidate))
+        return candidate;
+
+    candidate = QDir(path).filePath(
+        QStringLiteral("../Models/models.json"));
+    if (QFileInfo::exists(candidate))
+        return candidate;
+
+    // Fall back to current working directory
+    candidate = QDir::current().filePath(QStringLiteral("Models/models.json"));
+    if (QFileInfo::exists(candidate))
+        return candidate;
+
+    return {};
+}
+
 static void ensureLoaded() {
     if (s_loaded) return;
     s_loaded = true;
 
-    QFile f(QStringLiteral(":/resources/models.json"));
+    const QString modelsPath = findModelsFile();
+    if (modelsPath.isEmpty()) {
+        spdlog::warn("model_registry: models.json not found");
+        return;
+    }
+
+    QFile f(modelsPath);
     if (!f.open(QIODevice::ReadOnly)) {
-        spdlog::warn("model_registry: cannot open models.json resource");
+        spdlog::warn("model_registry: cannot open {}", modelsPath);
         return;
     }
     const QByteArray data = f.readAll();
@@ -75,21 +102,15 @@ QVector<ModelPreset> loadModelPresets() {
     return s_presets;
 }
 
-static QStringList findFiles(const QDir &dir, const QStringList &patterns, bool isDir) {
-    const auto flags = isDir ? QDir::Dirs : QDir::Files;
-    for (const QString &pattern : patterns) {
-        const auto entries = dir.entryInfoList({pattern}, flags, QDir::Name);
-        if (!entries.isEmpty()) {
-            QStringList result;
-            for (const auto &fi : entries) {
-                // prefer int8 variants
-                if (fi.fileName().contains(QStringLiteral("int8"))) {
-                    result.prepend(fi.absoluteFilePath());
-                    continue;
-                }
-                result.append(fi.absoluteFilePath());
-            }
-            return result;
+static QStringList findFiles(const QDir &dir, const QStringList &names, bool isDir) {
+    for (const QString &name : names) {
+        const QString full = dir.absoluteFilePath(name);
+        if (isDir) {
+            if (QFileInfo(full).isDir())
+                return {full};
+        } else {
+            if (QFileInfo::exists(full) && QFileInfo(full).isFile())
+                return {full};
         }
     }
     return {};
