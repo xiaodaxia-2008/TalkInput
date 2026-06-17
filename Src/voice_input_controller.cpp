@@ -17,6 +17,8 @@
 
 #define NOMINMAX
 #include <windows.h>
+#include <imm.h>
+#pragma comment(lib, "imm32")
 
 namespace {
 
@@ -273,11 +275,50 @@ void VoiceInputController::sendText(const QString &text) {
 
   spdlog::info("Sending text to foreground app: {}", text);
 
-  // Use clipboard-based injection to bypass IME issues with mixed
-  // Chinese/English text (direct Unicode SendInput drops English words
-  // when going through a Chinese IME)
-  pasteTextToActiveWindow(text, /*useClipboard=*/true,
-                          /*restoreClipboard=*/true);
+  HWND hwnd = GetForegroundWindow();
+  HIMC himc = ImmGetContext(hwnd);
+  BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
+
+  // Disable IME temporarily so English chars aren't consumed by the
+  // Chinese IME composition buffer
+  if (himc) ImmSetOpenStatus(himc, FALSE);
+
+  QVector<INPUT> inputs;
+  inputs.reserve(text.size() * 2);
+
+  for (const QChar ch : text) {
+    if (ch.unicode() == 0)
+      continue;
+
+    INPUT keyDown = {};
+    keyDown.type = INPUT_KEYBOARD;
+    keyDown.ki.wVk = 0;
+    keyDown.ki.wScan = ch.unicode();
+    keyDown.ki.dwFlags = KEYEVENTF_UNICODE;
+
+    INPUT keyUp = {};
+    keyUp.type = INPUT_KEYBOARD;
+    keyUp.ki.wVk = 0;
+    keyUp.ki.wScan = ch.unicode();
+    keyUp.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+
+    inputs.append(keyDown);
+    inputs.append(keyUp);
+  }
+
+  UINT sent = SendInput(static_cast<UINT>(inputs.size()), inputs.data(),
+                         sizeof(INPUT));
+
+  // Restore IME state
+  if (himc) {
+    ImmSetOpenStatus(himc, wasOpen);
+    ImmReleaseContext(hwnd, himc);
+  }
+
+  if (static_cast<int>(sent) != inputs.size()) {
+    spdlog::warn("SendInput: only {}/{} events processed", sent,
+                 inputs.size());
+  }
 }
 
 void VoiceInputController::showOverlay() {
