@@ -1,39 +1,31 @@
 #include "main_window.h"
+#include "asr_setting_widget.h"
+#include "history_widget.h"
 #include "logging.h"
-#include "model_widget.h"
 #include "ui_main_window.h"
 
 #include <QAction>
 #include <QApplication>
 #include <QAudioDecoder>
-#include <QClipboard>
 #include <QDesktopServices>
-#include <QDialog>
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QHBoxLayout>
-#include <QHeaderView>
+#include <QIcon>
 #include <QKeySequence>
-#include <QLabel>
 #include <QLibraryInfo>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QPushButton>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
-#include <QTableWidget>
-#include <QTextEdit>
 #include <QThread>
 #include <QTimer>
 #include <QToolBar>
 #include <QTranslator>
-#include <QVBoxLayout>
 #include <QtEndian>
 
 #include <algorithm>
@@ -114,34 +106,44 @@ void MainWindow::setupUi()
                 }
             });
 
-    // ── ModelWidget (Models tab) ────────────────────────────
-    m_modelWidget = new ModelWidget(m_ui->modelsTab);
-    m_ui->modelsLayout->addWidget(m_modelWidget);
-    connect(m_modelWidget, &ModelWidget::modelSelected, this,
+    // ── History tab ────────────────────────────────────────────
+    m_historyWidget = new HistoryWidget(&m_history, m_ui->historyTab);
+    m_ui->historyLayout->addWidget(m_historyWidget);
+    connect(
+        m_historyWidget, &HistoryWidget::statusMessage, this,
+        [this](const QString &msg) { statusBar()->showMessage(msg, 2000); });
+
+    // ── ASR settings tab ────────────────────────────────────────
+    m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
+    m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
+    connect(m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
             [this](const QString &dir, const QString &name) {
                 setRecognitionModel(dir, name);
-                m_ui->tabWidget->setCurrentWidget(m_ui->recognitionTab);
+                m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
             });
-    connect(m_modelWidget, &ModelWidget::statusMessage, this,
+    connect(m_asrSettingWidget, &AsrSettingWidget::statusMessage, this,
             [this](const QString &msg) { statusBar()->showMessage(msg); });
-    connect(m_modelWidget, &ModelWidget::punctuationModelReady, this, [this]() {
-        if (m_currentModelDirectory.isEmpty()) {
-            return;
-        }
-        spdlog::info("Punctuation model ready, reloading ASR model...");
-        statusBar()->showMessage(tr("Punctuation ready, reloading model..."));
-        QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                  Qt::QueuedConnection);
-    });
-    connect(m_modelWidget, &ModelWidget::hotwordsChanged, this, [this]() {
-        if (m_currentModelDirectory.isEmpty()) {
-            return;
-        }
-        spdlog::info("Hot words changed, reloading ASR model...");
-        statusBar()->showMessage(tr("Hot words saved, reloading model..."));
-        QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                  Qt::QueuedConnection);
-    });
+    connect(m_asrSettingWidget, &AsrSettingWidget::punctuationModelReady, this,
+            [this]() {
+                if (m_currentModelDirectory.isEmpty()) {
+                    return;
+                }
+                spdlog::info("Punctuation model ready, reloading ASR model...");
+                statusBar()->showMessage(
+                    tr("Punctuation ready, reloading model..."));
+                QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                          Qt::QueuedConnection);
+            });
+    connect(
+        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
+            if (m_currentModelDirectory.isEmpty()) {
+                return;
+            }
+            spdlog::info("Hot words changed, reloading ASR model...");
+            statusBar()->showMessage(tr("Hot words saved, reloading model..."));
+            QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                      Qt::QueuedConnection);
+        });
 
     // ── Toolbar ────────────────────────────────────────────────
     m_recognitionToolBar = addToolBar(tr("Recognition"));
@@ -257,62 +259,6 @@ void MainWindow::setupUi()
     connect(m_exitAction, &QAction::triggered, this,
             &MainWindow::quitApplication);
 
-    // ── Realtime result label (below toolbar, hidden by default) ─
-    m_realtimeLabel = new QLabel(this);
-    m_realtimeLabel->setWordWrap(true);
-    m_realtimeLabel->setStyleSheet(
-        QStringLiteral("QLabel { background: #f5f5f5; border: 1px solid #ddd; "
-                       "border-radius: 6px; padding: 8px 12px; "
-                       "color: #333; font-size: 13px; }"));
-    m_realtimeLabel->setTextFormat(Qt::PlainText);
-    m_realtimeLabel->setMinimumHeight(36);
-    m_realtimeLabel->hide();
-    m_ui->recognitionLayout->insertWidget(0, m_realtimeLabel);
-
-    // ── History header row ───────────────────────────────────────
-    auto *historyHeader = new QHBoxLayout();
-    historyHeader->setContentsMargins(0, 4, 0, 0);
-
-    auto *historyTitle = new QLabel(tr("Recognition History"), this);
-    historyTitle->setStyleSheet(
-        QStringLiteral("font-size: 13px; font-weight: bold; color: #444;"));
-    historyHeader->addWidget(historyTitle);
-
-    historyHeader->addStretch();
-
-    auto *clearBtn = new QPushButton(tr("Clear"), this);
-    clearBtn->setFlat(true);
-    clearBtn->setStyleSheet(
-        QStringLiteral("QPushButton { color: #c0392b; font-size: 12px; }"
-                       "QPushButton:hover { text-decoration: underline; }"));
-    connect(clearBtn, &QPushButton::clicked, this, [this]() {
-        auto reply = QMessageBox::question(
-            this, tr("Clear History"),
-            tr("Are you sure you want to clear all recognition history?"),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
-            m_history.clearAll();
-            refreshHistory();
-            statusBar()->showMessage(tr("History cleared."), 2000);
-        }
-    });
-    historyHeader->addWidget(clearBtn);
-
-    auto *headerWidget = new QWidget(this);
-    headerWidget->setLayout(historyHeader);
-    m_ui->recognitionLayout->insertWidget(1, headerWidget);
-
-    // ── History table setup ──────────────────────────────────────
-    m_ui->historyTable->horizontalHeader()->hide();
-    m_ui->historyTable->horizontalHeader()->setSectionResizeMode(
-        0, QHeaderView::Stretch);
-    m_ui->historyTable->setColumnCount(4);
-    m_ui->historyTable->setColumnWidth(1, 32);
-    m_ui->historyTable->setColumnWidth(2, 32);
-    m_ui->historyTable->setColumnWidth(3, 32);
-    m_ui->historyTable->verticalHeader()->hide();
-    m_ui->historyTable->verticalHeader()->setDefaultSectionSize(30);
-
     // ── Restore persisted state & load model ────────────────────
     QSettings s;
     const QString savedDir =
@@ -322,9 +268,6 @@ void MainWindow::setupUi()
         setRecognitionModel(savedDir, savedName);
         spdlog::info("Restored model: {} ({})", savedName, savedDir);
     }
-
-    // ── Load history ────────────────────────────────────────────
-    refreshHistory();
 }
 
 void MainWindow::setupTrayIcon()
@@ -391,8 +334,9 @@ void MainWindow::updateControls(bool listening)
             m_currentModelName.isEmpty()
                 ? tr("Listening...")
                 : tr("Listening — %1").arg(m_currentModelName));
-        m_realtimeLabel->setText(QString());
-        m_realtimeLabel->show();
+        if (m_historyWidget) {
+            m_historyWidget->setListening(true);
+        }
     }
     else {
         if (m_startAction) {
@@ -406,7 +350,9 @@ void MainWindow::updateControls(bool listening)
         else {
             statusBar()->showMessage(tr("Model: %1").arg(m_currentModelName));
         }
-        m_realtimeLabel->hide();
+        if (m_historyWidget) {
+            m_historyWidget->setListening(false);
+        }
     }
 }
 
@@ -449,12 +395,12 @@ void MainWindow::onResult(const QString &text, bool isFinal)
     spdlog::info("{} {}", isFinal ? "[final]" : "[partial]", text);
 
     if (!isFinal && !text.trimmed().isEmpty()) {
-        m_realtimeLabel->setText(text.trimmed());
+        m_historyWidget->setRealtimeText(text);
     }
 
     if (isFinal && !text.trimmed().isEmpty()) {
-        m_realtimeLabel->setText(text.trimmed());
-        QTimer::singleShot(0, this, &MainWindow::refreshHistory);
+        m_historyWidget->setRealtimeText(text);
+        QTimer::singleShot(0, m_historyWidget, &HistoryWidget::refreshHistory);
     }
 
     if (auto *sb = statusBar()) {
@@ -566,131 +512,6 @@ void MainWindow::onRecognizeFile()
     statusBar()->showMessage(tr("Recognition sent to ASR engine."), 3000);
 }
 
-void MainWindow::refreshHistory()
-{
-    const auto entries = m_history.allEntries();
-
-    m_ui->historyTable->setUpdatesEnabled(false);
-    m_ui->historyTable->setRowCount(entries.size());
-
-    for (int i = 0; i < entries.size(); ++i) {
-        const auto &e = entries.at(i);
-
-        QString display = e.text;
-        if (display.length() > 55) {
-            display = display.left(55) + QStringLiteral("...");
-        }
-        auto *textItem = new QTableWidgetItem(display);
-        textItem->setData(Qt::UserRole, e.id);
-        textItem->setToolTip(e.text);
-        textItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        m_ui->historyTable->setItem(i, 0, textItem);
-
-        auto *editBtn = new QPushButton();
-        editBtn->setIcon(QIcon(QStringLiteral(":/resources/edit.svg")));
-        editBtn->setIconSize(QSize(18, 18));
-        editBtn->setToolTip(tr("Edit text"));
-        editBtn->setFlat(true);
-        connect(editBtn, &QPushButton::clicked, this,
-                [this, i]() { editEntry(i); });
-
-        auto *copyBtn = new QPushButton();
-        copyBtn->setIcon(QIcon(QStringLiteral(":/resources/copy.svg")));
-        copyBtn->setIconSize(QSize(18, 18));
-        copyBtn->setToolTip(tr("Copy text"));
-        copyBtn->setFlat(true);
-        connect(copyBtn, &QPushButton::clicked, this,
-                [this, i]() { copyEntry(i); });
-
-        auto *delBtn = new QPushButton();
-        delBtn->setIcon(QIcon(QStringLiteral(":/resources/delete.svg")));
-        delBtn->setIconSize(QSize(18, 18));
-        delBtn->setToolTip(tr("Delete entry"));
-        delBtn->setFlat(true);
-        connect(delBtn, &QPushButton::clicked, this,
-                [this, i]() { deleteEntry(i); });
-
-        m_ui->historyTable->setCellWidget(i, 1, editBtn);
-        m_ui->historyTable->setCellWidget(i, 2, copyBtn);
-        m_ui->historyTable->setCellWidget(i, 3, delBtn);
-    }
-
-    m_ui->historyTable->setUpdatesEnabled(true);
-}
-
-void MainWindow::editEntry(int row)
-{
-    auto *item = m_ui->historyTable->item(row, 0);
-    if (!item) {
-        return;
-    }
-
-    const auto entries = m_history.allEntries();
-    if (row < 0 || row >= entries.size()) {
-        return;
-    }
-
-    const auto &e = entries.at(row);
-
-    QDialog dlg(this);
-    dlg.setWindowTitle(tr("Edit Recognition Text"));
-    dlg.setMinimumSize(480, 260);
-
-    auto *lay = new QVBoxLayout(&dlg);
-
-    auto *editor = new QTextEdit(&dlg);
-    editor->setPlainText(e.text);
-    editor->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-    editor->selectAll();
-    lay->addWidget(editor);
-
-    auto *btns = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    connect(btns, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    connect(btns, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    lay->addWidget(btns);
-
-    if (dlg.exec() != QDialog::Accepted) {
-        return;
-    }
-
-    const QString newText = editor->toPlainText().trimmed();
-    if (newText.isEmpty() || newText == e.text) {
-        return;
-    }
-
-    m_history.updateEntry(e.id, newText);
-    refreshHistory();
-    statusBar()->showMessage(tr("Updated."), 2000);
-}
-
-void MainWindow::copyEntry(int row)
-{
-    auto *item = m_ui->historyTable->item(row, 0);
-    if (!item) {
-        return;
-    }
-
-    const auto entries = m_history.allEntries();
-    if (row >= 0 && row < entries.size()) {
-        QApplication::clipboard()->setText(entries.at(row).text);
-        statusBar()->showMessage(tr("Copied."), 2000);
-    }
-}
-
-void MainWindow::deleteEntry(int row)
-{
-    auto *item = m_ui->historyTable->item(row, 0);
-    if (!item) {
-        return;
-    }
-
-    const int id = item->data(Qt::UserRole).toInt();
-    m_history.deleteEntry(id);
-    refreshHistory();
-    statusBar()->showMessage(tr("Deleted."), 2000);
-}
-
 void MainWindow::quitApplication()
 {
     m_forceQuit = true;
@@ -700,6 +521,9 @@ void MainWindow::quitApplication()
 void MainWindow::retranslateUi()
 {
     m_ui->retranslateUi(this);
+    if (m_historyWidget) {
+        m_historyWidget->retranslateUi();
+    }
 
     m_recognitionToolBar->setWindowTitle(tr("Recognition"));
     if (m_fileAction) {

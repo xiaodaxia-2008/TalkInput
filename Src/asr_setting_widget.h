@@ -15,13 +15,13 @@ class QTimer;
 namespace talkinput
 {
 
-class ModelWidget final : public QWidget
+class AsrSettingWidget final : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ModelWidget(QWidget *parent = nullptr);
-    ~ModelWidget() override;
+    explicit AsrSettingWidget(QWidget *parent = nullptr);
+    ~AsrSettingWidget() override;
 
 signals:
     void modelSelected(const QString &modelDirectory, const QString &modelName);

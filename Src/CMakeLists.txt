@@ -10,8 +10,10 @@ add_executable(TalkInput
     voice_input_controller.h
     asr_service.cpp
     asr_service.h
-    model_widget.cpp
-    model_widget.h
+    asr_setting_widget.cpp
+    asr_setting_widget.h
+    history_widget.cpp
+    history_widget.h
     logging.h
     recognition_history.cpp
     recognition_history.h
