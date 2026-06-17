@@ -154,6 +154,10 @@ QString cacheDir()
 
 QString displayTypeForPreset(const talkinput::ModelPreset &preset)
 {
+    if (preset.typeStr == "Tool") {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "Tool");
+    }
     if (preset.streamingSupport) {
         return QCoreApplication::translate("talkinput::AsrSettingWidget",
                                            "Online");
@@ -164,6 +168,12 @@ QString displayTypeForPreset(const talkinput::ModelPreset &preset)
     }
     return QCoreApplication::translate("talkinput::AsrSettingWidget",
                                        "Offline");
+}
+
+QString displayNameForPreset(const talkinput::ModelPreset &preset)
+{
+    return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                       preset.name.toUtf8().constData());
 }
 
 } // namespace
@@ -223,21 +233,20 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // ── Model definitions ──────────────────────────────────────
     for (const auto &preset : loadModelPresets()) {
-        m_models.append({preset.name, displayTypeForPreset(preset),
-                         preset.languages, preset.modelDirName,
-                         QUrl(preset.url), preset.size, preset.paramCount,
-                         preset.streamingSupport});
+        m_models.append({displayNameForPreset(preset),
+                         displayTypeForPreset(preset), preset.languages,
+                         preset.modelDirName, QUrl(preset.url), preset.size,
+                         preset.paramCount, preset.streamingSupport,
+                         preset.isPunctuationModel});
     }
 
-    m_models.append({tr("Punctuation"), tr("Tool"), "zh,en",
-                     QStringLiteral("sherpa-onnx-punct-ct-transformer-zh-en-"
-                                    "vocab272727-2024-04-12-int8"),
-                     QUrl(QStringLiteral(
-                         "https://github.com/k2-fsa/sherpa-onnx/releases/"
-                         "download/punctuation-models/"
-                         "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-"
-                         "2024-04-12-int8.tar.bz2")),
-                     62 * 1024 * 1024, 0, false, true});
+    for (const auto &preset : loadToolPresets()) {
+        m_models.append({displayNameForPreset(preset),
+                         displayTypeForPreset(preset), preset.languages,
+                         preset.modelDirName, QUrl(preset.url), preset.size,
+                         preset.paramCount, preset.streamingSupport,
+                         preset.isPunctuationModel});
+    }
 
     // Auto-download punctuation model after UI is ready
     m_startupTimer = new QTimer(this);

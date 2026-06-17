@@ -77,5 +77,18 @@
         "tokensFile": "tokens.txt"
       }
     }
+  ],
+  "toolPresets": [
+    {
+      "name": "Punctuation",
+      "type": "Tool",
+      "languages": "zh,en",
+      "modelDirName": "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2",
+      "size": 65011712,
+      "paramCount": 0,
+      "streamingSupport": false,
+      "isPunctuationModel": true
+    }
   ]
 }

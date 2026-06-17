@@ -39,6 +39,7 @@ struct ModelFileSet
 };
 
 QVector<ModelPreset> loadModelPresets();
+QVector<ModelPreset> loadToolPresets();
 ModelFileSet resolveModelFiles(const QString &modelDir);
 
 } // namespace talkinput
