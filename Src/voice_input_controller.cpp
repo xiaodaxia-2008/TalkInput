@@ -304,10 +304,10 @@ void VoiceInputController::hideOverlay() {
 
 void VoiceInputController::registerHotKey() {
   m_hotKeyId = 1;
-  if (!RegisterHotKey(nullptr, m_hotKeyId, MOD_NOREPEAT, VK_RMENU)) {
-    spdlog::warn("Failed to register global hotkey (Right Alt)");
+  if (!RegisterHotKey(nullptr, m_hotKeyId, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'L')) {
+    spdlog::warn("Failed to register global hotkey (Ctrl+Alt+L)");
   } else {
-    spdlog::info("Global hotkey registered: Right Alt");
+    spdlog::info("Global hotkey registered: Ctrl+Alt+L");
   }
 }
 

@@ -19,6 +19,16 @@ find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network 
 find_package(LibArchive REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
+include(FetchContent)
+FetchContent_Declare(QHotkey
+    URL https://github.com/Skycoder42/QHotkey/archive/refs/tags/1.5.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+set(QT_DEFAULT_MAJOR_VERSION 6 CACHE STRING "Qt version to use (6)" FORCE)
+set(QHOTKEY_INSTALL OFF CACHE BOOL "Disable install" FORCE)
+set(QHOTKEY_EXAMPLES OFF CACHE BOOL "Disable examples" FORCE)
+FetchContent_MakeAvailable(QHotkey)
+
 include(cmake/QtDeploy.cmake)
 include(cmake/SherpaOnnxRelease.cmake)
 include(cmake/GitInfo.cmake)

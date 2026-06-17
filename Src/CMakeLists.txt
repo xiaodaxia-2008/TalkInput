@@ -1,6 +1,6 @@
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh)
 
-add_executable(TalkInput WIN32
+add_executable(TalkInput
     ${PROJECT_SOURCE_DIR}/resources/app.rc
     main.cpp
     main_window.cpp
@@ -17,6 +17,8 @@ add_executable(TalkInput WIN32
     qt_fmt.h
     speech_recognizer.cpp
     speech_recognizer.h
+    paste_text.h
+    paste_text.cpp
 )
 
 qt_add_resources(TalkInput resources
@@ -32,6 +34,7 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/folder-plus.svg"
     "${PROJECT_SOURCE_DIR}/resources/check.svg"
     "${PROJECT_SOURCE_DIR}/resources/download.svg"
+    "${PROJECT_SOURCE_DIR}/resources/globe.svg"
     "${PROJECT_SOURCE_DIR}/resources/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/copy.svg"
 )
@@ -50,6 +53,7 @@ target_link_libraries(TalkInput
     LibArchive::LibArchive
     sherpa-onnx-c-api
     spdlog::spdlog
+    QHotkey::QHotkey
 )
 
 add_executable(TalkInputAsrTest

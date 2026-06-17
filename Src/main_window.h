@@ -41,6 +41,7 @@ private:
   void refreshHistory();
   void copyEntry(int row);
   void deleteEntry(int row);
+  void onRecognizeFile();
 
   std::unique_ptr<Ui::MainWindow> m_ui;
   SettingWidget *m_settingWidget = nullptr;
