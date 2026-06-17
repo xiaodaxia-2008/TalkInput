@@ -14,7 +14,6 @@ add_executable(TalkInput
     setting_widget.h
     recognition_history.cpp
     recognition_history.h
-    qt_fmt.h
     model_registry.h
     model_registry.cpp
     speech_recognizer.cpp
@@ -58,7 +57,6 @@ target_link_libraries(TalkInput
     Qt6::Sql
     LibArchive::LibArchive
     sherpa-onnx-c-api
-    spdlog::spdlog
     QHotkey::QHotkey
 )
 

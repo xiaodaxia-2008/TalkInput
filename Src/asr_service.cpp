@@ -7,8 +7,7 @@
 #include <QStandardPaths>
 #include <QThread>
 
-#include <spdlog/spdlog.h>
-#include "qt_fmt.h"
+
 
 namespace {
 
@@ -68,8 +67,8 @@ talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir) {
   if (hasModelInt8 && hasTokens)
     return talkinput::SpeechRecognizer::Type::SenseVoice;
 
-  spdlog::warn("AsrService: unknown model arch in {}, falling back to streaming transducer",
-               modelDir);
+  qWarning().noquote() << "AsrService: unknown model arch in" << modelDir
+                       << "falling back to streaming transducer";
   return talkinput::SpeechRecognizer::Type::StreamingTransducer;
 }
 
@@ -159,7 +158,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
     }
     config.senseVoiceUseItn = true;
 
-    spdlog::info("AsrService: configured from preset '{}'", resolved.typeStr);
+    qInfo().noquote() << "AsrService: configured from preset" << resolved.typeStr;
   } else {
     // Fall back to file-probing detection
     const auto arch = detectModelArch(modelDir);
@@ -240,7 +239,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
 
 void AsrService::loadModel() {
   if (m_modelDir.isEmpty()) {
-    spdlog::warn("AsrService: cannot load model, directory not set");
+    qWarning().noquote() << "AsrService: cannot load model, directory not set";
     emit modelLoadResult(false, tr("Model directory not set."));
     return;
   }
@@ -251,7 +250,7 @@ void AsrService::loadModel() {
 
   QString error;
   if (!m_recognizer->start(config, &error)) {
-    spdlog::error("AsrService: model load failed: {}", error);
+    qCritical().noquote() << "AsrService: model load failed:" << error;
     m_modelLoaded = false;
     emit modelLoadResult(false, error);
     return;
@@ -259,7 +258,7 @@ void AsrService::loadModel() {
 
   m_modelLoaded = true;
   const char *mode = m_streamingMode ? "streaming" : "offline";
-  spdlog::info("AsrService: {} model loaded from {}", mode, m_modelDir);
+  qInfo().noquote() << "AsrService:" << mode << "model loaded from" << m_modelDir;
   emit modelLoadResult(true, {});
 }
 
@@ -267,12 +266,12 @@ void AsrService::unloadModel() {
   if (m_recognizer->isRunning())
     m_recognizer->stop();
   m_modelLoaded = false;
-  spdlog::info("AsrService: model unloaded");
+  qInfo().noquote() << "AsrService: model unloaded";
 }
 
 void AsrService::startSession() {
   if (!m_modelLoaded) {
-    spdlog::warn("AsrService: startSession called but model not loaded");
+    qWarning().noquote() << "AsrService: startSession called but model not loaded";
     return;
   }
 

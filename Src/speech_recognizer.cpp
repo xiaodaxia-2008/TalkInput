@@ -6,8 +6,7 @@
 #include <QFileInfo>
 #include <QtEndian>
 
-#include <spdlog/spdlog.h>
-#include "qt_fmt.h"
+
 
 #include <algorithm>
 #include <cstdint>
@@ -79,11 +78,11 @@ bool SpeechRecognizer::start(const Config &config, QString *errorMessage)
             punctConfig.model.provider = "cpu";
             m_punct = SherpaOnnxCreateOfflinePunctuation(&punctConfig);
             if (!m_punct)
-                spdlog::warn("Failed to create punctuation processor");
+                qWarning().noquote() << "Failed to create punctuation processor";
             else
-                spdlog::info("Punctuation model loaded: {}", punctPath);
+                qInfo().noquote() << "Punctuation model loaded:" << punctPath;
         } else {
-            spdlog::warn("Punctuation model not found: {}", punctPath);
+            qWarning().noquote() << "Punctuation model not found:" << punctPath;
         }
     }
 

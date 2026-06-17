@@ -7,8 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-#include <spdlog/spdlog.h>
-#include "qt_fmt.h"
+
 
 namespace talkinput {
 
@@ -21,7 +20,7 @@ static void ensureLoaded() {
 
     QFile f(QStringLiteral(":/resources/models.json"));
     if (!f.open(QIODevice::ReadOnly)) {
-        spdlog::warn("model_registry: cannot open models.json resource");
+        qWarning().noquote() << "model_registry: cannot open models.json resource";
         return;
     }
     const QByteArray data = f.readAll();
@@ -30,7 +29,7 @@ static void ensureLoaded() {
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
     if (err.error != QJsonParseError::NoError) {
-        spdlog::warn("model_registry: JSON parse error: {}", err.errorString());
+        qWarning().noquote() << "model_registry: JSON parse error:" << err.errorString();
         return;
     }
 
@@ -65,7 +64,7 @@ static void ensureLoaded() {
         s_presets.append(preset);
     }
 
-    spdlog::info("model_registry: loaded {} presets", s_presets.size());
+    qInfo().noquote() << "model_registry: loaded" << s_presets.size() << "presets";
 }
 
 QVector<ModelPreset> loadModelPresets() {
@@ -104,7 +103,7 @@ ModelFileSet resolveModelFiles(const QString &modelDir) {
 
     ModelFileSet result;
     if (!preset) {
-        spdlog::debug("model_registry: no preset for '{}', caller should fall back to probing", dirName);
+        qDebug().noquote() << "model_registry: no preset for" << dirName << "caller should fall back to probing";
         result.modelDirName = dirName;
         return result;
     }
@@ -116,7 +115,7 @@ ModelFileSet resolveModelFiles(const QString &modelDir) {
     for (const auto &rule : preset->files) {
         const QStringList found = findFiles(dir, rule.globPatterns, rule.isDir);
         if (found.isEmpty()) {
-            spdlog::warn("model_registry: no match for '{}' in {}", rule.configField, dirName);
+            qWarning().noquote() << "model_registry: no match for" << rule.configField << "in" << dirName;
             continue;
         }
         // Use the first match (preferring int8)

@@ -17,7 +17,6 @@ project(TalkInput VERSION 0.1.0 DESCRIPTION "Voice input method")
 
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql LinguistTools)
 find_package(LibArchive REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
 
 include(FetchContent)
 FetchContent_Declare(QHotkey

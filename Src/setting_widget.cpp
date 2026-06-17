@@ -25,8 +25,7 @@
 #include <QVBoxLayout>
 #include <QSvgRenderer>
 
-#include <spdlog/spdlog.h>
-#include "qt_fmt.h"
+
 
 namespace {
 
@@ -435,7 +434,7 @@ void SettingWidget::ensurePunctuationModel() {
   if (isInstalled(m_punctuationRow)) return;
   if (m_activeDownloadReply) return;
 
-  spdlog::info("Punctuation model not found, starting auto-download...");
+  qInfo().noquote() << "Punctuation model not found, starting auto-download...";
   emit statusMessage(tr("Punctuation model not found, downloading..."));
   onDownload(m_punctuationRow);
 }
@@ -459,7 +458,7 @@ void SettingWidget::onUse(int row) {
         this, tr("Offline model"),
         tr("This model does not support real-time recognition."));
 
-  spdlog::info("Selected model: {} ({})", m.name, dir);
+  qInfo().noquote() << "Selected model:" << m.name << "(" << dir << ")";
   emit modelSelected(dir, m.name);
 }
 
@@ -518,7 +517,7 @@ void SettingWidget::onDelete(int row) {
     return;
 
   QDir(dir).removeRecursively();
-  spdlog::info("Deleted model: {} ({})", m.name, dir);
+  qInfo().noquote() << "Deleted model:" << m.name << "(" << dir << ")";
   emit statusMessage(tr("Deleted: %1").arg(m.name));
   refreshStatus();
 }
@@ -561,7 +560,7 @@ void SettingWidget::onUseArchive() {
 
   const QString modelDir = dest.filePath(base);
   if (QFileInfo(modelDir).isDir()) {
-    spdlog::info("Extracted model: {}", modelDir);
+    qInfo().noquote() << "Extracted model:" << modelDir;
     emit modelSelected(modelDir, base);
     emit statusMessage(
         tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));

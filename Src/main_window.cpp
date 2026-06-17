@@ -32,11 +32,7 @@
 #include <QTranslator>
 #include <QVBoxLayout>
 
-#include <spdlog/common.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/spdlog.h>
-#include "qt_fmt.h"
+
 
 namespace {
 
@@ -72,24 +68,6 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 void MainWindow::setupUi() {
   m_ui->setupUi(this);
 
-  // ── spdlog ─────────────────────────────────────────────────
-  auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  consoleSink->set_level(spdlog::level::trace);
-
-  const QString logDir = QStandardPaths::writableLocation(
-      QStandardPaths::AppDataLocation);
-  QDir().mkpath(logDir);
-  auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-      QDir(logDir).filePath("talkinput.log").toStdString(), true);
-  fileSink->set_level(spdlog::level::trace);
-
-  auto logger = std::make_shared<spdlog::logger>(
-      "talkinput", spdlog::sinks_init_list{consoleSink, fileSink});
-  logger->set_level(spdlog::level::trace);
-  logger->set_pattern("[%H:%M:%S %L] %v");
-  spdlog::set_default_logger(logger);
-  spdlog::set_level(spdlog::level::trace);
-
   // ── ASR Service (persistent worker thread) ────────────────
   m_asrService = new AsrService();
   m_asrThread = new QThread(this);
@@ -102,10 +80,10 @@ void MainWindow::setupUi() {
   connect(m_asrService, &AsrService::modelLoadResult, this,
           [this](bool success, const QString &error) {
             if (!success) {
-              spdlog::error("ASR model load failed: {}", error);
+              qCritical().noquote() << "ASR model load failed:" << error;
               statusBar()->showMessage(tr("Model load failed: %1").arg(error));
             } else {
-              spdlog::info("ASR model loaded successfully");
+              qInfo().noquote() << "ASR model loaded successfully";
               statusBar()->showMessage(tr("Model ready."));
             }
           });
@@ -125,7 +103,7 @@ void MainWindow::setupUi() {
   connect(m_settingWidget, &SettingWidget::punctuationModelReady,
           this, [this]() {
             if (m_currentModelDirectory.isEmpty()) return;
-            spdlog::info("Punctuation model ready, reloading ASR model...");
+            qInfo().noquote() << "Punctuation model ready, reloading ASR model...";
             statusBar()->showMessage(
                 tr("Punctuation ready, reloading model..."));
             QMetaObject::invokeMethod(m_asrService, "loadModel",
@@ -154,7 +132,7 @@ void MainWindow::setupUi() {
       "QPushButton:pressed { background: #e0e0e0; }");
 
   statusBar()->showMessage(tr("Loading model..."));
-  spdlog::info("Starting ASR service");
+  qInfo().noquote() << "Starting ASR service";
 
   // ── VoiceInputController (global hotkey, overlay, text injection) ─
   m_voiceInput = new VoiceInputController(m_asrService, &m_history, this);
@@ -303,7 +281,7 @@ void MainWindow::setupUi() {
       s.value(QStringLiteral("model/name")).toString();
   if (!savedDir.isEmpty()) {
     setRecognitionModel(savedDir, savedName);
-    spdlog::info("Restored model: {} ({})", savedName, savedDir);
+    qInfo().noquote() << "Restored model:" << savedName << "(" << savedDir << ")";
   }
 
   // ── Load history ────────────────────────────────────────────
@@ -395,8 +373,8 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     statusBar()->showMessage(tr("No model selected"));
   else
     statusBar()->showMessage(tr("Loading model..."));
-  spdlog::info("Recognition model set: {} ({})",
-               m_currentModelName, m_currentModelDirectory);
+  qInfo().noquote() << "Recognition model set:" << m_currentModelName
+                     << "(" << m_currentModelDirectory << ")";
 
   QSettings s;
   s.setValue(QStringLiteral("model/directory"), m_currentModelDirectory);
@@ -410,9 +388,7 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
 }
 
 void MainWindow::onResult(const QString &text, bool isFinal) {
-  SPDLOG_LOGGER_CALL(
-      spdlog::default_logger_raw(), spdlog::level::info,
-      "{} {}", isFinal ? "[final]" : "[partial]", text);
+  qInfo().noquote() << (isFinal ? "[final]" : "[partial]") << text;
 
   if (!isFinal && !text.trimmed().isEmpty()) {
     m_realtimeLabel->setText(text.trimmed());
@@ -440,7 +416,7 @@ void MainWindow::onRecognizeFile() {
     return;
 
   statusBar()->showMessage(tr("Decoding audio..."));
-  spdlog::info("Recognizing file: {}", path);
+  qInfo().noquote() << "Recognizing file:" << path;
 
   auto *decoder = new QAudioDecoder(this);
   QEventLoop loop;
@@ -467,7 +443,7 @@ void MainWindow::onRecognizeFile() {
   });
 
   connect(decoder, static_cast<void (QAudioDecoder::*)(QAudioDecoder::Error)>(&QAudioDecoder::error), this, [&](QAudioDecoder::Error) {
-    spdlog::error("Audio decoder error: {}", decoder->errorString());
+    qCritical().noquote() << "Audio decoder error:" << decoder->errorString();
     loop.quit();
   });
 
@@ -491,11 +467,11 @@ void MainWindow::onRecognizeFile() {
 
   const int sampleRate = 16000;
   if (decoder->audioFormat().sampleRate() != sampleRate) {
-    spdlog::warn("Sample rate mismatch: got {}, need 16000",
-                 decoder->audioFormat().sampleRate());
+    qWarning().noquote() << "Sample rate mismatch: got"
+                         << decoder->audioFormat().sampleRate() << "need 16000";
   }
 
-  spdlog::info("Decoded {} bytes of PCM16 from {}", allPcm.size(), path);
+  qInfo().noquote() << "Decoded" << allPcm.size() << "bytes of PCM16 from" << path;
 
   QMetaObject::invokeMethod(
       m_asrService,
