@@ -34,6 +34,7 @@ private:
     {
         QString name;
         QString type;
+        QString languages;
         QString modelDirName;
         QUrl archiveUrl;
         qint64 modelSize = 0;

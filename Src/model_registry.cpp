@@ -37,12 +37,13 @@ static void ensureLoaded()
     }
 
     const QJsonArray arr =
-        doc.object().value(QStringLiteral("presets")).toArray();
+        doc.object().value(QStringLiteral("asrPresets")).toArray();
     for (const auto &val : arr) {
         const QJsonObject obj = val.toObject();
         ModelPreset preset;
         preset.name = obj.value(QStringLiteral("name")).toString();
         preset.typeStr = obj.value(QStringLiteral("type")).toString();
+        preset.languages = obj.value(QStringLiteral("languages")).toString();
         preset.modelDirName =
             obj.value(QStringLiteral("modelDirName")).toString();
         preset.url = obj.value(QStringLiteral("url")).toString();

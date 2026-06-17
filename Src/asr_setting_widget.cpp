@@ -1,5 +1,6 @@
 #include "asr_setting_widget.h"
 #include "logging.h"
+#include "model_registry.h"
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -151,6 +152,20 @@ QString cacheDir()
     return QDir(base).filePath(QStringLiteral("models"));
 }
 
+QString displayTypeForPreset(const talkinput::ModelPreset &preset)
+{
+    if (preset.streamingSupport) {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "Online");
+    }
+    if (preset.typeStr == "FunASRNano" || preset.typeStr == "Qwen3ASR") {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "Offline (LLM)");
+    }
+    return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                       "Offline");
+}
+
 } // namespace
 
 namespace talkinput
@@ -171,15 +186,17 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     m_table->setSelectionMode(QAbstractItemView::NoSelection);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->setAlternatingRowColors(true);
-    m_table->setColumnCount(5);
-    m_table->setHorizontalHeaderLabels(
-        {tr("Model"), tr("Type"), tr("Size"), tr("Status"), QString()});
+    m_table->setColumnCount(6);
+    m_table->setHorizontalHeaderLabels({tr("Model"), tr("Type"),
+                                        tr("Languages"), tr("Size"),
+                                        tr("Status"), QString()});
     m_table->horizontalHeader()->setStretchLastSection(false);
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     m_table->setColumnWidth(1, 120);
     m_table->setColumnWidth(2, 100);
     m_table->setColumnWidth(3, 100);
-    m_table->setColumnWidth(4, 110);
+    m_table->setColumnWidth(4, 100);
+    m_table->setColumnWidth(5, 110);
     m_table->verticalHeader()->hide();
     root->addWidget(m_table);
 
@@ -205,67 +222,22 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     root->addLayout(bottomRow);
 
     // ── Model definitions ──────────────────────────────────────
-    m_models = {
-        {tr("SenseVoice multilingual int8"), tr("Offline"),
-         QStringLiteral(
-             "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"),
-         QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/releases/"
-                             "download/asr-models/"
-                             "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-"
-                             "2024-07-17.tar.bz2")),
-         230 * 1024 * 1024, 40, false},
+    for (const auto &preset : loadModelPresets()) {
+        m_models.append({preset.name, displayTypeForPreset(preset),
+                         preset.languages, preset.modelDirName,
+                         QUrl(preset.url), preset.size, preset.paramCount,
+                         preset.streamingSupport});
+    }
 
-        {tr("FunASR Nano int8"), tr("Offline (LLM)"),
-         QStringLiteral("sherpa-onnx-funasr-nano-int8-2025-12-30"),
-         QUrl(
-             QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/releases/"
-                            "download/asr-models/"
-                            "sherpa-onnx-funasr-nano-int8-2025-12-30.tar.bz2")),
-         950 * 1024 * 1024, 600, false},
-
-        {tr("Qwen3-ASR 0.6B int8"), tr("Offline (LLM)"),
-         QStringLiteral("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25"),
-         QUrl(QStringLiteral(
-             "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-             "asr-models/"
-             "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2")),
-         937 * 1024 * 1024, 600, false},
-
-        {tr("Streaming Paraformer bilingual zh-en"), tr("Online"),
-         QStringLiteral("sherpa-onnx-streaming-paraformer-bilingual-zh-en"),
-         QUrl(QStringLiteral(
-             "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-             "asr-models/"
-             "sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2")),
-         60 * 1024 * 1024, 0, true},
-
-        {tr("Streaming Zipformer bilingual zh-en int8"), tr("Online"),
-         QStringLiteral(
-             "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20"),
-         QUrl(QStringLiteral(
-             "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-             "asr-models/"
-             "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20"
-             ".tar.bz2")),
-         200 * 1024 * 1024, 90, true},
-
-        {tr("Streaming Zipformer EN 20M"), tr("Online"),
-         QStringLiteral("sherpa-onnx-streaming-zipformer-en-20M-2023-02-17"),
-         QUrl(QStringLiteral(
-             "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-             "asr-models/"
-             "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2")),
-         40 * 1024 * 1024, 20, true},
-
-        {tr("Punctuation (zh-en int8)"), tr("Tool"),
-         QStringLiteral("sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-"
-                        "2024-04-12-int8"),
-         QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/releases/"
-                             "download/punctuation-models/"
-                             "sherpa-onnx-punct-ct-transformer-zh-en-"
-                             "vocab272727-2024-04-12-int8.tar.bz2")),
-         62 * 1024 * 1024, 0, false, true},
-    };
+    m_models.append({tr("Punctuation"), tr("Tool"), "zh,en",
+                     QStringLiteral("sherpa-onnx-punct-ct-transformer-zh-en-"
+                                    "vocab272727-2024-04-12-int8"),
+                     QUrl(QStringLiteral(
+                         "https://github.com/k2-fsa/sherpa-onnx/releases/"
+                         "download/punctuation-models/"
+                         "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-"
+                         "2024-04-12-int8.tar.bz2")),
+                     62 * 1024 * 1024, 0, false, true});
 
     // Auto-download punctuation model after UI is ready
     m_startupTimer = new QTimer(this);
@@ -328,6 +300,7 @@ void AsrSettingWidget::populateTable()
         nameItem->setData(Qt::UserRole, i);
         m_table->setItem(i, 0, nameItem);
         m_table->setItem(i, 1, new QTableWidgetItem(m.type));
+        m_table->setItem(i, 2, new QTableWidgetItem(m.languages));
 
         QString szStr;
         if (m.modelSize >= 1073741824) {
@@ -338,7 +311,7 @@ void AsrSettingWidget::populateTable()
             szStr = QStringLiteral("%1 MB").arg(
                 static_cast<double>(m.modelSize) / 1048576.0, 0, 'f', 0);
         }
-        m_table->setItem(i, 2, new QTableWidgetItem(szStr));
+        m_table->setItem(i, 3, new QTableWidgetItem(szStr));
 
         // Action buttons container
         auto *container = new QWidget();
@@ -386,7 +359,7 @@ void AsrSettingWidget::populateTable()
         lay->addWidget(useBtn);
         lay->addWidget(dlBtn);
         lay->addWidget(delBtn);
-        m_table->setCellWidget(i, 4, container);
+        m_table->setCellWidget(i, 5, container);
     }
 
     m_punctuationRow = -1;
@@ -430,9 +403,9 @@ void AsrSettingWidget::refreshStatus()
 
         auto *st = new QTableWidgetItem(statusText);
         st->setForeground(statusColor);
-        m_table->setItem(i, 3, st);
+        m_table->setItem(i, 4, st);
 
-        auto *w = m_table->cellWidget(i, 4);
+        auto *w = m_table->cellWidget(i, 5);
         if (!w) {
             continue;
         }
@@ -553,7 +526,7 @@ void AsrSettingWidget::onDownload(int row)
     // Show download progress text in status column
     auto *progressItem = new QTableWidgetItem(tr("Downloading..."));
     progressItem->setForeground(QColor(0x15, 0x65, 0xc0));
-    m_table->setItem(row, 3, progressItem);
+    m_table->setItem(row, 4, progressItem);
 
     emit statusMessage(tr("Downloading %1...").arg(m.name));
     QNetworkRequest req(m.archiveUrl);
@@ -572,7 +545,7 @@ void AsrSettingWidget::onDownload(int row)
                 auto *item =
                     new QTableWidgetItem(tr("Downloading %1%").arg(pct));
                 item->setForeground(QColor(0x15, 0x65, 0xc0));
-                m_table->setItem(row, 3, item);
+                m_table->setItem(row, 4, item);
             });
 }
 
@@ -740,7 +713,7 @@ void AsrSettingWidget::onDownloadFinished()
         }
         auto *item = new QTableWidgetItem(text);
         item->setForeground(color);
-        m_table->setItem(r, 3, item);
+        m_table->setItem(r, 4, item);
     };
 
     if (failed) {

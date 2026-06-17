@@ -12,6 +12,7 @@ struct ModelPreset
 {
     QString name;
     QString typeStr;
+    QString languages;
     QString modelDirName;
     QString url;
     qint64 size = 0;

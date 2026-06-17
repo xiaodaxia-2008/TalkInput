@@ -167,6 +167,11 @@
         <translation type="unfinished">类型</translation>
     </message>
     <message>
+        <location filename="asr_setting_widget.cpp" line="188"/>
+        <source>Languages</source>
+        <translation>语言</translation>
+    </message>
+    <message>
         <location filename="asr_setting_widget.cpp" line="176"/>
         <source>Size</source>
         <translation type="unfinished">大小</translation>
@@ -259,6 +264,11 @@
         <location filename="asr_setting_widget.cpp" line="260"/>
         <source>Punctuation (zh-en int8)</source>
         <translation type="unfinished">标点 (中英 int8)</translation>
+    </message>
+    <message>
+        <location filename="asr_setting_widget.cpp" line="233"/>
+        <source>Punctuation</source>
+        <translation>标点</translation>
     </message>
     <message>
         <location filename="asr_setting_widget.cpp" line="260"/>
