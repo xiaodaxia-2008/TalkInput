@@ -270,64 +270,12 @@ void VoiceInputController::onResult(const QString &text, bool isFinal) {
   }
 }
 
-// ── Helpers: add one character to the INPUT batch ──────────────
-static void addUnicodeInputs(std::vector<INPUT> &inputs, ushort code) {
-  INPUT down = {};
-  down.type = INPUT_KEYBOARD;
-  down.ki.wVk = 0;
-  down.ki.wScan = code;
-  down.ki.dwFlags = KEYEVENTF_UNICODE;
-  inputs.push_back(down);
-
-  INPUT up = {};
-  up.type = INPUT_KEYBOARD;
-  up.ki.wVk = 0;
-  up.ki.wScan = code;
-  up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-  inputs.push_back(up);
-}
-
-static void addAsciiInputs(std::vector<INPUT> &inputs, ushort code,
-                            HKL kbl) {
-  SHORT vkResult = VkKeyScanExW(static_cast<wchar_t>(code), kbl);
-  if (vkResult == -1) {
-    // Layout doesn't have this char → VK_PACKET fallback
-    addUnicodeInputs(inputs, code);
-    return;
-  }
-
-  const BYTE vk = LOBYTE(vkResult);
-  const BYTE mod = HIBYTE(vkResult);
-
-  auto addMod = [&](BYTE vkMod, bool down) {
-    INPUT in = {};
-    in.type = INPUT_KEYBOARD;
-    in.ki.wVk = vkMod;
-    if (!down) in.ki.dwFlags = KEYEVENTF_KEYUP;
-    inputs.push_back(in);
-  };
-
-  if (mod & 1) addMod(VK_SHIFT, true);
-  if (mod & 2) addMod(VK_CONTROL, true);
-  if (mod & 4) addMod(VK_MENU, true);
-
-  INPUT keyDown = {};
-  keyDown.type = INPUT_KEYBOARD;
-  keyDown.ki.wVk = vk;
-  inputs.push_back(keyDown);
-
-  INPUT keyUp = {};
-  keyUp.type = INPUT_KEYBOARD;
-  keyUp.ki.wVk = vk;
-  keyUp.ki.dwFlags = KEYEVENTF_KEYUP;
-  inputs.push_back(keyUp);
-
-  if (mod & 1) addMod(VK_SHIFT, false);
-  if (mod & 2) addMod(VK_CONTROL, false);
-  if (mod & 4) addMod(VK_MENU, false);
-}
-
 // ── VoiceInputController::sendText ────────────────────────────
+//
+// 核心修复: ASCII 字符(< 0x80)单独发送 + 15 ms 延时。
+// 高速批量塞入英文会使输入法拦截为拼音或终端缓冲区溢出丢包，
+// 中文走 VK_PACKET 路径不受影响，无需延时。
+//
 void VoiceInputController::sendText(const QString &text) {
   if (text.isEmpty()) return;
 
@@ -341,33 +289,35 @@ void VoiceInputController::sendText(const QString &text) {
   const BOOL attached =
       (tid != ourTid) ? AttachThreadInput(ourTid, tid, TRUE) : FALSE;
 
-  const HKL kbl = GetKeyboardLayout(tid);
-
-  // Disable IME so it doesn't intercept VK events
+  // 尽量关闭 IME，减少对 ASCII 的拦截
   HIMC himc = ImmGetContext(hwnd);
   const BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
   if (himc) ImmSetOpenStatus(himc, FALSE);
-
-  // Build a single atomic batch:
-  //   ASCII characters  → virtual-key codes (works in Windows Terminal)
-  //   Non-ASCII         → KEYEVENTF_UNICODE  (already works everywhere)
-  std::vector<INPUT> inputs;
-  inputs.reserve(static_cast<size_t>(text.size()) * 4);
 
   for (const QChar ch : text) {
     const ushort code = ch.unicode();
     if (code == 0) continue;
 
+    // 每个字符作为一组 key-down + key-up 发送
+    INPUT pair[2] = {};
+    pair[0].type = INPUT_KEYBOARD;
+    pair[0].ki.wVk = 0;
+    pair[0].ki.wScan = code;
+    pair[0].ki.dwFlags = KEYEVENTF_UNICODE;
+
+    pair[1].type = INPUT_KEYBOARD;
+    pair[1].ki.wVk = 0;
+    pair[1].ki.wScan = code;
+    pair[1].ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+
+    SendInput(2, pair, sizeof(INPUT));
+
+    // ASCII 字符加延时，给输入法和终端留出处理时间
     if (code < 0x80)
-      addAsciiInputs(inputs, code, kbl);
-    else
-      addUnicodeInputs(inputs, code);
+      Sleep(15);
   }
 
-  if (!inputs.empty())
-    SendInput(static_cast<UINT>(inputs.size()), inputs.data(),
-              sizeof(INPUT));
-
+  // 恢复 IME 状态
   if (himc) {
     ImmSetOpenStatus(himc, wasOpen);
     ImmReleaseContext(hwnd, himc);
