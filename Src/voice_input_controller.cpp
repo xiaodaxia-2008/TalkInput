@@ -345,6 +345,7 @@ void VoiceInputController::injectFinalText(const QString &text)
     if (m_history) {
         m_history->addEntry(text);
     }
+    emit finalTextCommitted(text);
     spdlog::info("VoiceInputController injected and saved: {}", text);
 }
 

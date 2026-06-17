@@ -40,6 +40,7 @@ public:
 signals:
     void listeningChanged(bool listening);
     void statusMessage(const QString &msg);
+    void finalTextCommitted(const QString &text);
 
 public slots:
     bool startListening();

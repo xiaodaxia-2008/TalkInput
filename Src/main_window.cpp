@@ -193,6 +193,13 @@ void MainWindow::setupUi()
             [this](bool listening) { updateControls(listening); });
     connect(m_voiceInput, &VoiceInputController::statusMessage, this,
             [this](const QString &msg) { statusBar()->showMessage(msg); });
+    connect(m_voiceInput, &VoiceInputController::finalTextCommitted, this,
+            [this](const QString &text) {
+                if (m_historyWidget) {
+                    m_historyWidget->setRealtimeText(text);
+                    m_historyWidget->refreshHistory();
+                }
+            });
 
     // ── System tray ────────────────────────────────────────────
     spdlog::debug("MainWindow::setupUi: setting up tray icon");
