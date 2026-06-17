@@ -11,6 +11,8 @@
 #include <QMediaDevices>
 #include <QPropertyAnimation>
 #include <QScreen>
+#include <QScrollBar>
+#include <QTextEdit>
 #include <QTimer>
 #include <QtEndian>
 
@@ -94,7 +96,7 @@ public:
         setStyleSheet(
             QStringLiteral("OverlayWindow { background: rgba(16,16,18,180); "
                            "border: 1px solid rgba(255,255,255,36); "
-                           "border-radius: 10px; }"));
+                           "border-radius: 14px; }"));
 
         auto *lay = new QHBoxLayout(this);
         lay->setContentsMargins(18, 8, 18, 8);
@@ -114,14 +116,16 @@ public:
         m_blinkAnim->setLoopCount(-1);
         m_blinkAnim->setEasingCurve(QEasingCurve::InOutSine);
 
-        m_previewLabel = new QLabel(this);
-        m_previewLabel->setStyleSheet(
-            QStringLiteral("color: #e0e0e0; font-size: 15px; "
-                           "background: transparent;"));
-        m_previewLabel->setText(QStringLiteral("Listening..."));
-        m_previewLabel->setContentsMargins(0, 0, 0, 0);
-        m_previewLabel->setWordWrap(true);
-        lay->addWidget(m_previewLabel, 1);
+        m_previewEdit = new QTextEdit(this);
+        m_previewEdit->setReadOnly(true);
+        m_previewEdit->setFrameShape(QFrame::NoFrame);
+        m_previewEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_previewEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_previewEdit->setStyleSheet(
+            QStringLiteral("QTextEdit { color: #e0e0e0; font-size: 15px; "
+                           "background: transparent; border: none; }"));
+        m_previewEdit->setPlainText(QStringLiteral("Listening..."));
+        lay->addWidget(m_previewEdit, 1);
 
         setMinimumWidth(320);
     }
@@ -129,7 +133,7 @@ public:
     void startAnimation()
     {
         m_blinkAnim->start();
-        m_previewLabel->setText(QStringLiteral("Listening..."));
+        m_previewEdit->setPlainText(QStringLiteral("Listening..."));
         show();
         raise();
         positionOnActiveScreen();
@@ -151,9 +155,10 @@ public:
 
     void setPreviewText(const QString &text)
     {
-        m_previewLabel->setText(text.isEmpty()
-                                    ? QStringLiteral("Listening...")
-                                    : text);
+        m_previewEdit->setPlainText(
+            text.isEmpty() ? QStringLiteral("Listening...") : text);
+        auto *sb = m_previewEdit->verticalScrollBar();
+        sb->setValue(sb->maximum());
     }
 
 private:
@@ -176,7 +181,7 @@ private:
     }
 
     QPropertyAnimation *m_blinkAnim = nullptr;
-    QLabel *m_previewLabel = nullptr;
+    QTextEdit *m_previewEdit = nullptr;
 };
 
 } // namespace
