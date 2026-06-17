@@ -53,7 +53,6 @@ private:
     void onEditHotwords();
     void onDownloadFinished();
 
-    void applyIcon(QPushButton *btn, const QString &svgPath, int size);
     void ensurePunctuationModel();
     bool isInstalled(int row) const;
     static QString punctuationModelName();

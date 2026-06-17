@@ -39,6 +39,8 @@ add_executable(TalkInput
     paste_text.cpp
     scroll_text_display.h
     scroll_text_display.cpp
+    utils.h
+    utils.cpp
 )
 
 qt_add_resources(TalkInput resources

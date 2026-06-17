@@ -1,6 +1,7 @@
 #include "history_widget.h"
 #include "logging.h"
 #include "recognition_history.h"
+#include "utils.h"
 
 #include <QAbstractItemView>
 #include <QApplication>
@@ -9,7 +10,6 @@
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
-#include <QIcon>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
@@ -113,24 +113,21 @@ void HistoryWidget::refreshHistory()
         m_table->setItem(i, 0, textItem);
 
         auto *editButton = new QPushButton();
-        editButton->setIcon(QIcon(":/resources/edit.svg"));
-        editButton->setIconSize(QSize(18, 18));
+        setButtonIcon(editButton, ":/resources/edit.svg", 18);
         editButton->setToolTip(tr("Edit text"));
         editButton->setFlat(true);
         connect(editButton, &QPushButton::clicked, this,
                 [this, i]() { editEntry(i); });
 
         auto *copyButton = new QPushButton();
-        copyButton->setIcon(QIcon(":/resources/copy.svg"));
-        copyButton->setIconSize(QSize(18, 18));
+        setButtonIcon(copyButton, ":/resources/copy.svg", 18);
         copyButton->setToolTip(tr("Copy text"));
         copyButton->setFlat(true);
         connect(copyButton, &QPushButton::clicked, this,
                 [this, i]() { copyEntry(i); });
 
         auto *deleteButton = new QPushButton();
-        deleteButton->setIcon(QIcon(":/resources/delete.svg"));
-        deleteButton->setIconSize(QSize(18, 18));
+        setButtonIcon(deleteButton, ":/resources/delete.svg", 18);
         deleteButton->setToolTip(tr("Delete entry"));
         deleteButton->setFlat(true);
         connect(deleteButton, &QPushButton::clicked, this,

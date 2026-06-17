@@ -1,6 +1,7 @@
 #include "asr_setting_widget.h"
 #include "logging.h"
 #include "model_registry.h"
+#include "utils.h"
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -20,12 +21,10 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QPainter>
 #include <QPushButton>
 #include <QSettings>
 #include <QStandardPaths>
 
-#include <QSvgRenderer>
 #include <QTableWidget>
 #include <QTextEdit>
 #include <QTimer>
@@ -262,20 +261,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             &AsrSettingWidget::ensurePunctuationModel);
     m_startupTimer->start(1500);
 
-    // ── Icon helper ──────────────────────────────────────────────
-    // Use QSvgRenderer for reliable SVG rendering
-    auto applySvg = [](QPushButton *btn, const QString &path, int sz) {
-        QSvgRenderer svg(path);
-        QPixmap pm(sz, sz);
-        pm.fill(Qt::transparent);
-        QPainter p(&pm);
-        svg.render(&p);
-        p.end();
-        btn->setIcon(QIcon(pm));
-        btn->setIconSize(QSize(sz, sz));
-        btn->setText({});
-    };
-
     const QString btnStyle =
         "QPushButton { background: transparent; border: 1px solid #aaa; "
         "border-radius: 3px; padding: 4px; }"
@@ -289,9 +274,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     spdlog::debug("AsrSettingWidget: table populated");
 
     // Apply icons to bottom buttons
-    applySvg(archiveBtn, QStringLiteral(":/resources/folder-plus.svg"), 22);
-    applySvg(openBtn, QStringLiteral(":/resources/folder.svg"), 22);
-    applySvg(hotwordsBtn, ":/resources/hotwords.svg", 22);
+    setButtonIcon(archiveBtn, ":/resources/folder-plus.svg", 22);
+    setButtonIcon(openBtn, ":/resources/folder.svg", 22);
+    setButtonIcon(hotwordsBtn, ":/resources/hotwords.svg", 22);
     archiveBtn->setStyleSheet(btnStyle);
     openBtn->setStyleSheet(btnStyle);
     hotwordsBtn->setStyleSheet(btnStyle);
@@ -365,15 +350,15 @@ void AsrSettingWidget::populateTable()
             "border-radius: 3px; padding: 4px; }"
             "QPushButton:disabled { border-color: #ddd; }";
 
-        applyIcon(useBtn, ":/resources/check.svg", 18);
+        setButtonIcon(useBtn, ":/resources/check.svg", 18);
         useBtn->setStyleSheet(iconStyle + "QPushButton:hover { background: "
                                           "#e8f5e9; border-color: #2e7d32; }");
 
-        applyIcon(dlBtn, ":/resources/download.svg", 18);
+        setButtonIcon(dlBtn, ":/resources/download.svg", 18);
         dlBtn->setStyleSheet(iconStyle + "QPushButton:hover { background: "
                                          "#e3f2fd; border-color: #1565c0; }");
 
-        applyIcon(delBtn, ":/resources/delete.svg", 18);
+        setButtonIcon(delBtn, ":/resources/delete.svg", 18);
         delBtn->setStyleSheet(iconStyle + "QPushButton:hover { background: "
                                           "#ffebee; border-color: #c62828; }");
 
@@ -440,22 +425,6 @@ void AsrSettingWidget::refreshStatus()
         }
     }
     spdlog::debug("AsrSettingWidget::refreshStatus: end");
-}
-
-// ── Icon helper ───────────────────────────────────────────────
-
-void AsrSettingWidget::applyIcon(QPushButton *btn, const QString &svgPath,
-                                 int size)
-{
-    QSvgRenderer svg(svgPath);
-    QPixmap pm(size, size);
-    pm.fill(Qt::transparent);
-    QPainter p(&pm);
-    svg.render(&p);
-    p.end();
-    btn->setIcon(QIcon(pm));
-    btn->setIconSize(QSize(size, size));
-    btn->setText({});
 }
 
 // ── Punctuation model helpers ─────────────────────────────────
