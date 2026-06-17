@@ -16,22 +16,22 @@ add_executable(TalkInput
     recognition_history.h
     model_registry.h
     model_registry.cpp
-    speech_recognizer.cpp
-    speech_recognizer.h
-    online_speech_recognizer.cpp
-    online_speech_recognizer.h
-    offline_speech_recognizer.cpp
-    offline_speech_recognizer.h
-    streaming_transducer_recognizer.cpp
-    streaming_transducer_recognizer.h
-    streaming_paraformer_recognizer.cpp
-    streaming_paraformer_recognizer.h
-    sense_voice_recognizer.cpp
-    sense_voice_recognizer.h
-    funasr_nano_recognizer.cpp
-    funasr_nano_recognizer.h
-    qwen3_asr_recognizer.cpp
-    qwen3_asr_recognizer.h
+    recognizers/speech_recognizer.cpp
+    recognizers/speech_recognizer.h
+    recognizers/online_speech_recognizer.cpp
+    recognizers/online_speech_recognizer.h
+    recognizers/offline_speech_recognizer.cpp
+    recognizers/offline_speech_recognizer.h
+    recognizers/streaming_transducer_recognizer.cpp
+    recognizers/streaming_transducer_recognizer.h
+    recognizers/streaming_paraformer_recognizer.cpp
+    recognizers/streaming_paraformer_recognizer.h
+    recognizers/sense_voice_recognizer.cpp
+    recognizers/sense_voice_recognizer.h
+    recognizers/funasr_nano_recognizer.cpp
+    recognizers/funasr_nano_recognizer.h
+    recognizers/qwen3_asr_recognizer.cpp
+    recognizers/qwen3_asr_recognizer.h
     paste_text.h
     paste_text.cpp
     scroll_text_display.h
