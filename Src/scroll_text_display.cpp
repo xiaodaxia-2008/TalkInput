@@ -12,19 +12,17 @@ ScrollTextDisplay::ScrollTextDisplay(QWidget *parent) : QWidget(parent)
     outer->setContentsMargins(0, 0, 0, 0);
 
     m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setObjectName("scrollTextArea");
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setFrameShape(QFrame::NoFrame);
     m_scrollArea->setAlignment(Qt::AlignCenter);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_scrollArea->setStyleSheet(QStringLiteral(
-        "QScrollArea { background: transparent; border: none; }"));
 
     m_label = new QLabel;
+    m_label->setObjectName("scrollTextLabel");
     m_label->setWordWrap(true);
     m_label->setAlignment(Qt::AlignCenter);
-    m_label->setStyleSheet(QStringLiteral("color: #e0e0e0; font-size: 15px; "
-                                          "background: transparent;"));
     m_label->setText(m_placeholder);
 
     m_scrollArea->setWidget(m_label);

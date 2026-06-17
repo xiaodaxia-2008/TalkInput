@@ -261,12 +261,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             &AsrSettingWidget::ensurePunctuationModel);
     m_startupTimer->start(1500);
 
-    const QString btnStyle =
-        "QPushButton { background: transparent; border: 1px solid #aaa; "
-        "border-radius: 3px; padding: 4px; }"
-        "QPushButton:hover { background: #f0f0f0; border-color: #555; }"
-        "QPushButton:disabled { border-color: #ddd; }";
-
     // ── Table rows ──────────────────────────────────────────────
     spdlog::debug("AsrSettingWidget: populating table with {} rows",
                   m_models.size());
@@ -277,9 +271,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     setButtonIcon(archiveBtn, ":/resources/folder-plus.svg", 22);
     setButtonIcon(openBtn, ":/resources/folder.svg", 22);
     setButtonIcon(hotwordsBtn, ":/resources/hotwords.svg", 22);
-    archiveBtn->setStyleSheet(btnStyle);
-    openBtn->setStyleSheet(btnStyle);
-    hotwordsBtn->setStyleSheet(btnStyle);
+    archiveBtn->setProperty("buttonRole", "icon");
+    openBtn->setProperty("buttonRole", "icon");
+    hotwordsBtn->setProperty("buttonRole", "icon");
     spdlog::debug("AsrSettingWidget: constructor end");
 }
 
@@ -345,22 +339,17 @@ void AsrSettingWidget::populateTable()
         connect(delBtn, &QPushButton::clicked, this,
                 [this, i]() { onDelete(i); });
 
-        const QString iconStyle =
-            "QPushButton { background: transparent; border: 1px solid #aaa; "
-            "border-radius: 3px; padding: 4px; }"
-            "QPushButton:disabled { border-color: #ddd; }";
-
         setButtonIcon(useBtn, ":/resources/check.svg", 18);
-        useBtn->setStyleSheet(iconStyle + "QPushButton:hover { background: "
-                                          "#e8f5e9; border-color: #2e7d32; }");
+        useBtn->setProperty("buttonRole", "icon");
+        useBtn->setProperty("actionRole", "use");
 
         setButtonIcon(dlBtn, ":/resources/download.svg", 18);
-        dlBtn->setStyleSheet(iconStyle + "QPushButton:hover { background: "
-                                         "#e3f2fd; border-color: #1565c0; }");
+        dlBtn->setProperty("buttonRole", "icon");
+        dlBtn->setProperty("actionRole", "download");
 
         setButtonIcon(delBtn, ":/resources/delete.svg", 18);
-        delBtn->setStyleSheet(iconStyle + "QPushButton:hover { background: "
-                                          "#ffebee; border-color: #c62828; }");
+        delBtn->setProperty("buttonRole", "icon");
+        delBtn->setProperty("actionRole", "delete");
 
         lay->addWidget(useBtn);
         lay->addWidget(dlBtn);
@@ -644,13 +633,13 @@ void AsrSettingWidget::onEditHotwords()
     hintRow->setSpacing(8);
 
     auto *iconLabel = new QLabel("💡", &dialog);
+    iconLabel->setObjectName("hotwordsHintIcon");
     iconLabel->setAlignment(Qt::AlignCenter);
-    iconLabel->setStyleSheet("font-size: 18px;");
     iconLabel->setFixedSize(20, 20);
 
     auto *hintLabel = new QLabel(tr("One hot word per line."), &dialog);
+    hintLabel->setObjectName("hotwordsHintLabel");
     hintLabel->setWordWrap(true);
-    hintLabel->setStyleSheet("color: #555;");
 
     hintRow->addWidget(iconLabel);
     hintRow->addWidget(hintLabel, 1);

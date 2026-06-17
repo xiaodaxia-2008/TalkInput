@@ -32,13 +32,10 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     spdlog::debug("HistoryWidget: root layout created");
 
     m_realtimeLabel = new QLabel(this);
+    m_realtimeLabel->setObjectName("historyRealtimeLabel");
     m_realtimeLabel->setWordWrap(true);
     m_realtimeLabel->setTextFormat(Qt::PlainText);
     m_realtimeLabel->setMinimumHeight(36);
-    m_realtimeLabel->setStyleSheet(
-        "QLabel { background: #f5f5f5; border: 1px solid #ddd; "
-        "border-radius: 6px; padding: 8px 12px; "
-        "color: #333; font-size: 13px; }");
     m_realtimeLabel->hide();
     root->addWidget(m_realtimeLabel);
     spdlog::debug("HistoryWidget: realtime label created");
@@ -47,16 +44,13 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     headerLayout->setContentsMargins(0, 4, 0, 0);
 
     m_titleLabel = new QLabel(this);
-    m_titleLabel->setStyleSheet(
-        "font-size: 13px; font-weight: bold; color: #444;");
+    m_titleLabel->setObjectName("historyTitleLabel");
     headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
 
     m_clearButton = new QPushButton(this);
+    m_clearButton->setObjectName("historyClearButton");
     m_clearButton->setFlat(true);
-    m_clearButton->setStyleSheet(
-        "QPushButton { color: #c0392b; font-size: 12px; }"
-        "QPushButton:hover { text-decoration: underline; }");
     connect(m_clearButton, &QPushButton::clicked, this,
             &HistoryWidget::clearHistory);
     headerLayout->addWidget(m_clearButton);

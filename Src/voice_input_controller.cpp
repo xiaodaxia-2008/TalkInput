@@ -85,6 +85,7 @@ class OverlayWindow : public QWidget
 public:
     OverlayWindow() : QWidget(nullptr)
     {
+        setObjectName("voiceOverlay");
         setWindowTitle(QStringLiteral("TalkInput"));
         setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                        Qt::WindowStaysOnTopHint);
@@ -93,18 +94,12 @@ public:
         setAttribute(Qt::WA_TransparentForMouseEvents);
         setFixedHeight(72);
 
-        setStyleSheet(
-            QStringLiteral("OverlayWindow { background: rgba(16,16,18,180); "
-                           "border: 1px solid rgba(255,255,255,36); "
-                           "border-radius: 14px; }"));
-
         auto *lay = new QHBoxLayout(this);
         lay->setContentsMargins(14, 6, 14, 6);
         lay->setSpacing(8);
 
         auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
-        micLabel->setStyleSheet(
-            QStringLiteral("font-size: 24px; background: transparent;"));
+        micLabel->setObjectName("voiceOverlayMicLabel");
         lay->addWidget(micLabel);
 
         auto *effect = new QGraphicsOpacityEffect(micLabel);

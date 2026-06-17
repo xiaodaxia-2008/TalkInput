@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QFile>
 #include <QIcon>
 #include <QLibraryInfo>
 #include <QSettings>
@@ -22,6 +23,14 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
     QApplication::setOrganizationName("TalkInput");
     QApplication::setWindowIcon(QIcon(":/resources/icon.png"));
+
+    QFile styleFile(":/resources/app.qss");
+    if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));
+    }
+    else {
+        spdlog::warn("main: failed to load application stylesheet");
+    }
 
     QString settingsDir =
         QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);

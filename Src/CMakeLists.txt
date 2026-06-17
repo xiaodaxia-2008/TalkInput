@@ -47,7 +47,7 @@ qt_add_resources(TalkInput resources
     PREFIX "/"
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
-    "${PROJECT_SOURCE_DIR}/resources/style.qss"
+    "${PROJECT_SOURCE_DIR}/resources/app.qss"
     "${PROJECT_SOURCE_DIR}/resources/icon.png"
     "${PROJECT_SOURCE_DIR}/resources/icon.svg"
     "${PROJECT_SOURCE_DIR}/resources/mic.svg"

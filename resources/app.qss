@@ -1,0 +1,84 @@
+QLabel#historyRealtimeLabel {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #333;
+    font-size: 13px;
+}
+
+QLabel#historyTitleLabel {
+    font-size: 13px;
+    font-weight: bold;
+    color: #444;
+}
+
+QPushButton#historyClearButton {
+    color: #c0392b;
+    font-size: 12px;
+}
+
+QPushButton#historyClearButton:hover {
+    text-decoration: underline;
+}
+
+QPushButton[buttonRole="icon"] {
+    background: transparent;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    padding: 4px;
+}
+
+QPushButton[buttonRole="icon"]:disabled {
+    border-color: #ddd;
+}
+
+QPushButton[buttonRole="icon"]:hover {
+    background: #f0f0f0;
+    border-color: #555;
+}
+
+QPushButton[actionRole="use"]:hover {
+    background: #e8f5e9;
+    border-color: #2e7d32;
+}
+
+QPushButton[actionRole="download"]:hover {
+    background: #e3f2fd;
+    border-color: #1565c0;
+}
+
+QPushButton[actionRole="delete"]:hover {
+    background: #ffebee;
+    border-color: #c62828;
+}
+
+QLabel#hotwordsHintIcon {
+    font-size: 18px;
+}
+
+QLabel#hotwordsHintLabel {
+    color: #555;
+}
+
+QWidget#voiceOverlay {
+    background: rgba(16, 16, 18, 180);
+    border: 1px solid rgba(255, 255, 255, 36);
+    border-radius: 14px;
+}
+
+QLabel#voiceOverlayMicLabel {
+    font-size: 24px;
+    background: transparent;
+}
+
+QScrollArea#scrollTextArea {
+    background: transparent;
+    border: none;
+}
+
+QLabel#scrollTextLabel {
+    color: #e0e0e0;
+    font-size: 15px;
+    background: transparent;
+}
