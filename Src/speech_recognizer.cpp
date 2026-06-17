@@ -129,10 +129,7 @@ bool SpeechRecognizer::startOnline(const Config &config, QString *errorMessage)
         recognizerConfig.decoding_method = "greedy_search";
     }
     recognizerConfig.max_active_paths = 4;
-    recognizerConfig.enable_endpoint = 1;
-    recognizerConfig.rule1_min_trailing_silence = 2.4F;
-    recognizerConfig.rule2_min_trailing_silence = 1.2F;
-    recognizerConfig.rule3_min_utterance_length = 20.0F;
+    recognizerConfig.enable_endpoint = 0;
 
     m_online.recognizer = SherpaOnnxCreateOnlineRecognizer(&recognizerConfig);
     if (!m_online.recognizer) {
