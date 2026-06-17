@@ -29,8 +29,7 @@ QString defaultModelDir()
 
 QString defaultAudioPath()
 {
-    return QStringLiteral(
-        "C:/Users/xiaoz/Music/meetily-recordings/audio.mp4");
+    return QStringLiteral("C:/Users/xiaoz/Music/meetily-recordings/audio.mp4");
 }
 
 QString modelFile(const QString &modelDir, const QString &name)
@@ -52,10 +51,9 @@ QByteArray decodeAudio(const QString &audioPath)
 {
     QProcess ffmpeg;
     ffmpeg.setProgram("ffmpeg");
-    ffmpeg.setArguments({
-        "-v", "error", "-i", audioPath, "-f", "s16le", "-acodec",
-        "pcm_s16le", "-ac", "1", "-ar", QString::number(sampleRate), "-"
-    });
+    ffmpeg.setArguments({"-v", "error", "-i", audioPath, "-f", "s16le",
+                         "-acodec", "pcm_s16le", "-ac", "1", "-ar",
+                         QString::number(sampleRate), "-"});
     ffmpeg.setProcessChannelMode(QProcess::SeparateChannels);
     ffmpeg.start();
 
@@ -117,8 +115,8 @@ QString decodeChunk(const SherpaOnnxOfflineRecognizer *recognizer,
             QString::fromUtf8(result->json ? result->json : "").trimmed();
         if (!json.isEmpty()) {
             qInfo() << QStringLiteral("[chunk %1 json] %2")
-                                     .arg(chunkIndex)
-                                     .arg(json);
+                           .arg(chunkIndex)
+                           .arg(json);
         }
         SherpaOnnxDestroyOfflineRecognizerResult(result);
     }
@@ -134,16 +132,17 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
     const QStringList args = app.arguments();
 
-    const QString modelDir =
-        args.size() > 1 ? QDir::fromNativeSeparators(args.at(1))
-                        : defaultModelDir();
-    const QString audioPath =
-        args.size() > 2 ? QDir::fromNativeSeparators(args.at(2))
-                        : defaultAudioPath();
+    const QString modelDir = args.size() > 1
+                                 ? QDir::fromNativeSeparators(args.at(1))
+                                 : defaultModelDir();
+    const QString audioPath = args.size() > 2
+                                  ? QDir::fromNativeSeparators(args.at(2))
+                                  : defaultAudioPath();
 
     const QString model = modelFile(modelDir, "model.int8.onnx");
     const QString tokens = modelFile(modelDir, "tokens.txt");
-    if (!requireFile(model) || !requireFile(tokens) || !requireFile(audioPath)) {
+    if (!requireFile(model) || !requireFile(tokens) || !requireFile(audioPath))
+    {
         return 2;
     }
 
@@ -182,16 +181,16 @@ int main(int argc, char *argv[])
 
     const std::vector<float> samples = pcm16ToFloat(pcm);
     qInfo() << QStringLiteral("Decoded audio: %1 seconds")
-                             .arg(static_cast<double>(samples.size()) /
-                                  sampleRate, 0, 'f', 2);
+                   .arg(static_cast<double>(samples.size()) / sampleRate, 0,
+                        'f', 2);
 
     QStringList transcript;
     int chunkIndex = 0;
     for (size_t offset = 0; offset < samples.size();
-         offset += static_cast<size_t>(chunkSamples)) {
-        const int count = static_cast<int>(
-            std::min(static_cast<size_t>(chunkSamples),
-                     samples.size() - offset));
+         offset += static_cast<size_t>(chunkSamples))
+    {
+        const int count = static_cast<int>(std::min(
+            static_cast<size_t>(chunkSamples), samples.size() - offset));
         if (count <= 0) {
             continue;
         }
@@ -201,8 +200,8 @@ int main(int argc, char *argv[])
         if (!text.isEmpty()) {
             transcript.append(text);
             qInfo() << QStringLiteral("[chunk %1 text] %2")
-                                     .arg(chunkIndex)
-                                     .arg(text);
+                           .arg(chunkIndex)
+                           .arg(text);
         }
         ++chunkIndex;
     }

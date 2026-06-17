@@ -7,115 +7,125 @@
 #include <QSqlQuery>
 #include <QStandardPaths>
 
+namespace talkinput
+{
 
+RecognitionHistory::RecognitionHistory()
+{
+    QString dbDir =
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (dbDir.isEmpty()) {
+        dbDir = QCoreApplication::applicationDirPath();
+    }
+    QDir().mkpath(dbDir);
 
-namespace talkinput {
+    const QString dbPath = QDir(dbDir).filePath(QStringLiteral("history.db"));
 
-RecognitionHistory::RecognitionHistory() {
-  QString dbDir = QStandardPaths::writableLocation(
-      QStandardPaths::AppDataLocation);
-  if (dbDir.isEmpty())
-    dbDir = QCoreApplication::applicationDirPath();
-  QDir().mkpath(dbDir);
+    m_db = new QSqlDatabase(QSqlDatabase::addDatabase(
+        QStringLiteral("QSQLITE"), QStringLiteral("history")));
+    m_db->setDatabaseName(dbPath);
 
-  const QString dbPath = QDir(dbDir).filePath(QStringLiteral("history.db"));
+    if (!m_db->open()) {
+        qCritical() << "Failed to open history db:" << m_db->lastError().text();
+        return;
+    }
 
-  m_db = new QSqlDatabase(
-      QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"),
-                                QStringLiteral("history")));
-  m_db->setDatabaseName(dbPath);
-
-  if (!m_db->open()) {
-    qCritical() << "Failed to open history db:"
-                          << m_db->lastError().text();
-    return;
-  }
-
-  QSqlQuery q(*m_db);
-  q.exec(QStringLiteral(
-      "CREATE TABLE IF NOT EXISTS recognitions ("
-      "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
-      "  text TEXT NOT NULL,"
-      "  created_at TEXT NOT NULL"
-      ")"));
-  qInfo() << "History db opened:" << dbPath;
+    QSqlQuery q(*m_db);
+    q.exec(QStringLiteral("CREATE TABLE IF NOT EXISTS recognitions ("
+                          "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                          "  text TEXT NOT NULL,"
+                          "  created_at TEXT NOT NULL"
+                          ")"));
+    qInfo() << "History db opened:" << dbPath;
 }
 
-RecognitionHistory::~RecognitionHistory() {
-  if (m_db) {
-    m_db->close();
-    delete m_db;
-  }
+RecognitionHistory::~RecognitionHistory()
+{
+    if (m_db) {
+        m_db->close();
+        delete m_db;
+    }
 }
 
-void RecognitionHistory::addEntry(const QString &text) {
-  if (text.trimmed().isEmpty() || !m_db)
-    return;
+void RecognitionHistory::addEntry(const QString &text)
+{
+    if (text.trimmed().isEmpty() || !m_db) {
+        return;
+    }
 
-  QSqlQuery q(*m_db);
-  q.prepare(QStringLiteral(
-      "INSERT INTO recognitions (text, created_at) VALUES (?, ?)"));
-  q.addBindValue(text.trimmed());
-  q.addBindValue(QDateTime::currentDateTime().toString(Qt::ISODate));
-  if (!q.exec())
-    qCritical() << "Failed to insert history:"
-                          << q.lastError().text();
+    QSqlQuery q(*m_db);
+    q.prepare(QStringLiteral(
+        "INSERT INTO recognitions (text, created_at) VALUES (?, ?)"));
+    q.addBindValue(text.trimmed());
+    q.addBindValue(QDateTime::currentDateTime().toString(Qt::ISODate));
+    if (!q.exec()) {
+        qCritical() << "Failed to insert history:" << q.lastError().text();
+    }
 }
 
-void RecognitionHistory::updateEntry(int id, const QString &text) {
-  if (!m_db)
-    return;
+void RecognitionHistory::updateEntry(int id, const QString &text)
+{
+    if (!m_db) {
+        return;
+    }
 
-  QSqlQuery q(*m_db);
-  q.prepare(QStringLiteral("UPDATE recognitions SET text = ? WHERE id = ?"));
-  q.addBindValue(text.trimmed());
-  q.addBindValue(id);
-  if (!q.exec())
-    qCritical() << "Failed to update history entry" << id << ":"
-                          << q.lastError().text();
+    QSqlQuery q(*m_db);
+    q.prepare(QStringLiteral("UPDATE recognitions SET text = ? WHERE id = ?"));
+    q.addBindValue(text.trimmed());
+    q.addBindValue(id);
+    if (!q.exec()) {
+        qCritical() << "Failed to update history entry" << id << ":"
+                    << q.lastError().text();
+    }
 }
 
-void RecognitionHistory::deleteEntry(int id) {
-  if (!m_db)
-    return;
+void RecognitionHistory::deleteEntry(int id)
+{
+    if (!m_db) {
+        return;
+    }
 
-  QSqlQuery q(*m_db);
-  q.prepare(QStringLiteral("DELETE FROM recognitions WHERE id = ?"));
-  q.addBindValue(id);
-  if (!q.exec())
-    qCritical() << "Failed to delete history entry" << id << ":"
-                          << q.lastError().text();
+    QSqlQuery q(*m_db);
+    q.prepare(QStringLiteral("DELETE FROM recognitions WHERE id = ?"));
+    q.addBindValue(id);
+    if (!q.exec()) {
+        qCritical() << "Failed to delete history entry" << id << ":"
+                    << q.lastError().text();
+    }
 }
 
-void RecognitionHistory::clearAll() {
-  if (!m_db)
-    return;
+void RecognitionHistory::clearAll()
+{
+    if (!m_db) {
+        return;
+    }
 
-  QSqlQuery q(*m_db);
-  if (!q.exec(QStringLiteral("DELETE FROM recognitions")))
-    qCritical() << "Failed to clear history:"
-                          << q.lastError().text();
+    QSqlQuery q(*m_db);
+    if (!q.exec(QStringLiteral("DELETE FROM recognitions"))) {
+        qCritical() << "Failed to clear history:" << q.lastError().text();
+    }
 }
 
-QVector<RecognitionHistory::Entry> RecognitionHistory::allEntries() const {
-  QVector<Entry> result;
+QVector<RecognitionHistory::Entry> RecognitionHistory::allEntries() const
+{
+    QVector<Entry> result;
 
-  if (!m_db)
+    if (!m_db) {
+        return result;
+    }
+
+    QSqlQuery q(*m_db);
+    q.exec(QStringLiteral("SELECT id, text, created_at FROM recognitions "
+                          "ORDER BY id DESC"));
+    while (q.next()) {
+        Entry e;
+        e.id = q.value(0).toInt();
+        e.text = q.value(1).toString();
+        e.createdAt = QDateTime::fromString(q.value(2).toString(), Qt::ISODate);
+        result.append(e);
+    }
+
     return result;
-
-  QSqlQuery q(*m_db);
-  q.exec(QStringLiteral("SELECT id, text, created_at FROM recognitions "
-                         "ORDER BY id DESC"));
-  while (q.next()) {
-    Entry e;
-    e.id = q.value(0).toInt();
-    e.text = q.value(1).toString();
-    e.createdAt =
-        QDateTime::fromString(q.value(2).toString(), Qt::ISODate);
-    result.append(e);
-  }
-
-  return result;
 }
 
 } // namespace talkinput

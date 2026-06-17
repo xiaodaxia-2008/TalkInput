@@ -23,27 +23,35 @@ int main(int argc, char *argv[])
 
     const bool startHidden =
         s.value(QStringLiteral("app/startMinimized"), false).toBool();
-    const QString lang = s.value(QStringLiteral("app/language"),
-                                  QStringLiteral("zh")).toString();
+    const QString lang =
+        s.value(QStringLiteral("app/language"), QStringLiteral("zh"))
+            .toString();
 
     if (lang == QStringLiteral("zh")) {
         auto *appTranslator = new QTranslator(&app);
-        if (appTranslator->load(QStringLiteral(":/i18n/TalkInput_zh.qm")))
+        if (appTranslator->load(QStringLiteral(":/i18n/TalkInput_zh.qm"))) {
             app.installTranslator(appTranslator);
-        else
+        }
+        else {
             delete appTranslator;
+        }
 
         auto *qtTranslator = new QTranslator(&app);
-        if (qtTranslator->load(QStringLiteral("qt_zh_CN"),
-                               QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
+        if (qtTranslator->load(
+                QStringLiteral("qt_zh_CN"),
+                QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
+        {
             app.installTranslator(qtTranslator);
-        else
+        }
+        else {
             delete qtTranslator;
+        }
     }
 
     talkinput::MainWindow window;
-    if (!startHidden)
+    if (!startHidden) {
         window.show();
+    }
 
     return app.exec();
 }

@@ -28,8 +28,7 @@ QString defaultModelDir()
 
 QString defaultAudioPath()
 {
-    return QStringLiteral(
-        "C:/Users/xiaoz/Music/meetily-recordings/audio.mp4");
+    return QStringLiteral("C:/Users/xiaoz/Music/meetily-recordings/audio.mp4");
 }
 
 QString defaultHotwordsPath()
@@ -142,9 +141,8 @@ void feedPcm16(const QByteArray &pcm,
         samples.push_back(static_cast<float>(sample) / 32768.0F);
     }
 
-    SherpaOnnxOnlineStreamAcceptWaveform(
-        stream, sampleRate, samples.data(),
-        static_cast<int32_t>(samples.size()));
+    SherpaOnnxOnlineStreamAcceptWaveform(stream, sampleRate, samples.data(),
+                                         static_cast<int32_t>(samples.size()));
     decodeReady(recognizer, stream);
 
     const QString partial = currentText(recognizer, stream);
@@ -171,15 +169,15 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
     const QStringList args = app.arguments();
 
-    const QString modelDir =
-        args.size() > 1 ? QDir::fromNativeSeparators(args.at(1))
-                        : defaultModelDir();
-    const QString audioPath =
-        args.size() > 2 ? QDir::fromNativeSeparators(args.at(2))
-                        : defaultAudioPath();
-    const QString hotwordsPath =
-        args.size() > 3 ? QDir::fromNativeSeparators(args.at(3))
-                        : defaultHotwordsPath();
+    const QString modelDir = args.size() > 1
+                                 ? QDir::fromNativeSeparators(args.at(1))
+                                 : defaultModelDir();
+    const QString audioPath = args.size() > 2
+                                  ? QDir::fromNativeSeparators(args.at(2))
+                                  : defaultAudioPath();
+    const QString hotwordsPath = args.size() > 3
+                                     ? QDir::fromNativeSeparators(args.at(3))
+                                     : defaultHotwordsPath();
     const bool useHotwords = QFileInfo::exists(hotwordsPath);
 
     const QString encoder = modelFile(modelDir, "encoder.int8.onnx");
@@ -188,8 +186,8 @@ int main(int argc, char *argv[])
     const QString tokens = modelFile(modelDir, "tokens.txt");
 
     if (!requireFile(encoder) || !requireFile(decoder) ||
-        !requireFile(joiner) || !requireFile(tokens) ||
-        !requireFile(audioPath)) {
+        !requireFile(joiner) || !requireFile(tokens) || !requireFile(audioPath))
+    {
         return 2;
     }
 
@@ -200,8 +198,7 @@ int main(int argc, char *argv[])
     qInfo() << "Model:" << QDir::toNativeSeparators(modelDir);
     qInfo() << "Audio:" << QDir::toNativeSeparators(audioPath);
     if (useHotwords) {
-        qInfo() << "Hotwords:"
-                          << QDir::toNativeSeparators(hotwordsPath);
+        qInfo() << "Hotwords:" << QDir::toNativeSeparators(hotwordsPath);
     }
 
     const QByteArray encoderUtf8 = encoder.toUtf8();
@@ -264,10 +261,9 @@ int main(int argc, char *argv[])
 
     QProcess ffmpeg;
     ffmpeg.setProgram("ffmpeg");
-    ffmpeg.setArguments({
-        "-v", "error", "-i", audioPath, "-f", "s16le", "-acodec",
-        "pcm_s16le", "-ac", "1", "-ar", QString::number(sampleRate), "-"
-    });
+    ffmpeg.setArguments({"-v", "error", "-i", audioPath, "-f", "s16le",
+                         "-acodec", "pcm_s16le", "-ac", "1", "-ar",
+                         QString::number(sampleRate), "-"});
     ffmpeg.setProcessChannelMode(QProcess::SeparateChannels);
     ffmpeg.start();
 
@@ -300,7 +296,8 @@ int main(int argc, char *argv[])
                   stream, &segments, &lastPartial);
     }
 
-    const QString ffmpegError = QString::fromUtf8(ffmpeg.readAllStandardError());
+    const QString ffmpegError =
+        QString::fromUtf8(ffmpeg.readAllStandardError());
     if (ffmpeg.exitStatus() != QProcess::NormalExit || ffmpeg.exitCode() != 0) {
         qCritical() << "ffmpeg failed:" << ffmpegError.trimmed();
     }

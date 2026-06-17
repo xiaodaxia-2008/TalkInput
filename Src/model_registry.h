@@ -1,13 +1,15 @@
 #pragma once
 
+#include <QMap>
 #include <QString>
 #include <QStringList>
-#include <QMap>
 #include <QVector>
 
-namespace talkinput {
+namespace talkinput
+{
 
-struct ModelPreset {
+struct ModelPreset
+{
     QString name;
     QString typeStr;
     QString modelDirName;
@@ -17,15 +19,18 @@ struct ModelPreset {
     bool streamingSupport = false;
     bool isPunctuationModel = false;
 
-    struct FileRule {
+    struct FileRule
+    {
         QString configField;
         QStringList globPatterns;
         bool isDir = false;
     };
+
     QVector<FileRule> files;
 };
 
-struct ModelFileSet {
+struct ModelFileSet
+{
     QString typeStr;
     QString modelDirName;
     QMap<QString, QString> resolvedFiles;

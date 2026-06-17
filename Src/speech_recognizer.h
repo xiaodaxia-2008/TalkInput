@@ -89,7 +89,10 @@ public:
     void stop();
     bool isRunning() const;
 
-    bool isStreaming() const { return m_online.recognizer != nullptr; }
+    bool isStreaming() const
+    {
+        return m_online.recognizer != nullptr;
+    }
 
     void acceptPcm16(const QByteArray &audioData, int sampleRate,
                      int channelCount);
