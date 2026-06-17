@@ -122,7 +122,7 @@ void MainWindow::setupUi() {
 
   // ── Buttons ────────────────────────────────────────────────
   applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
-  applyIcon(m_ui->fileButton, ":/resources/folder-plus.svg", 22);
+  applyIcon(m_ui->fileButton, ":/resources/folder-plus.svg", 24);
 
   connect(m_ui->startButton, &QPushButton::clicked, this, [this]() {
     if (m_voiceInput && m_voiceInput->isListening()) {
