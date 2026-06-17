@@ -60,6 +60,7 @@ private:
 
   std::unique_ptr<QWidget> m_overlay;
   QString m_lastResult;
+  bool m_pendingResult = false;
 };
 
 } // namespace talkinput

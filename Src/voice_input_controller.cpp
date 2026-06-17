@@ -244,6 +244,7 @@ void VoiceInputController::stopListening() {
                             Qt::QueuedConnection);
 
   m_isListening = false;
+  m_pendingResult = true;
   hideOverlay();
   emit listeningChanged(false);
 }
@@ -251,7 +252,9 @@ void VoiceInputController::stopListening() {
 void VoiceInputController::onResult(const QString &text, bool isFinal) {
   if (isFinal) {
     m_lastResult = text;
-    if (!m_isListening && !text.trimmed().isEmpty()) {
+    const bool shouldSend = m_pendingResult || !m_isListening;
+    m_pendingResult = false;
+    if (shouldSend && !text.trimmed().isEmpty()) {
       sendText(text.trimmed());
       m_history->addEntry(text.trimmed());
       spdlog::info("VoiceInputController injected and saved: {}", text);
