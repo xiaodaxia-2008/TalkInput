@@ -114,15 +114,11 @@ namespace talkinput
 
 AsrService::AsrService(QObject *parent) : QObject(parent)
 {
-    m_recognizer = new SpeechRecognizer();
-    connect(m_recognizer, &SpeechRecognizer::resultChanged, this,
-            &AsrService::resultChanged);
 }
 
 AsrService::~AsrService()
 {
     unloadModel();
-    delete m_recognizer;
 }
 
 void AsrService::setModelDirectory(const QString &dir)
@@ -318,19 +314,32 @@ void AsrService::loadModel()
     }
 
     SpeechRecognizer::Config config = detectAndConfigure(m_modelDir);
-    m_streamingMode =
+    const bool streamingMode =
         (config.type == SpeechRecognizer::Type::StreamingTransducer ||
          config.type == SpeechRecognizer::Type::StreamingParaformer);
 
+    unloadModel();
+
+    auto recognizer = createSpeechRecognizer(config.type);
+    if (!recognizer) {
+        m_modelLoaded = false;
+        emit modelLoadResult(false, tr("Unsupported model type."));
+        return;
+    }
+
     QString error;
-    if (!m_recognizer->start(config, &error)) {
+    if (!recognizer->start(config, &error)) {
         qCritical() << "AsrService: model load failed:" << error;
         m_modelLoaded = false;
         emit modelLoadResult(false, error);
         return;
     }
 
+    connect(recognizer.get(), &SpeechRecognizer::resultChanged, this,
+            &AsrService::resultChanged);
+    m_recognizer = std::move(recognizer);
     m_modelLoaded = true;
+    m_streamingMode = streamingMode;
     const char *mode = m_streamingMode ? "streaming" : "offline";
     qInfo() << "AsrService:" << mode << "model loaded from" << m_modelDir;
     emit modelLoadResult(true, {});
@@ -338,10 +347,12 @@ void AsrService::loadModel()
 
 void AsrService::unloadModel()
 {
-    if (m_recognizer->isRunning()) {
+    if (m_recognizer && m_recognizer->isRunning()) {
         m_recognizer->stop();
     }
+    m_recognizer.reset();
     m_modelLoaded = false;
+    m_streamingMode = false;
     qInfo() << "AsrService: model unloaded";
 }
 
@@ -352,7 +363,7 @@ void AsrService::startSession()
         return;
     }
 
-    if (m_recognizer->isRunning()) {
+    if (m_recognizer && m_recognizer->isRunning()) {
         m_recognizer->resetStream();
     }
 }
@@ -363,7 +374,9 @@ void AsrService::feedAudio(const QByteArray &pcm16, int sampleRate,
     if (!m_modelLoaded) {
         return;
     }
-    m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
+    if (m_recognizer) {
+        m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
+    }
 }
 
 void AsrService::finishSession()
@@ -372,7 +385,7 @@ void AsrService::finishSession()
         return;
     }
 
-    if (m_recognizer->isRunning()) {
+    if (m_recognizer && m_recognizer->isRunning()) {
         m_recognizer->finish();
         m_recognizer->resetStream();
     }
@@ -380,7 +393,7 @@ void AsrService::finishSession()
 
 void AsrService::abortSession()
 {
-    if (m_modelLoaded && m_recognizer->isRunning()) {
+    if (m_modelLoaded && m_recognizer && m_recognizer->isRunning()) {
         m_recognizer->resetStream();
     }
 }

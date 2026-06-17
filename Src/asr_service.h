@@ -3,6 +3,7 @@
 #include "speech_recognizer.h"
 
 #include <QObject>
+#include <memory>
 
 class QThread;
 
@@ -31,7 +32,7 @@ public:
 
     SpeechRecognizer *recognizer() const
     {
-        return m_recognizer;
+        return m_recognizer.get();
     }
 
     bool isStreamingModel() const
@@ -54,7 +55,7 @@ signals:
 private:
     SpeechRecognizer::Config detectAndConfigure(const QString &modelDir);
 
-    SpeechRecognizer *m_recognizer = nullptr;
+    std::unique_ptr<SpeechRecognizer> m_recognizer;
     QString m_modelDir;
     bool m_modelLoaded = false;
     bool m_streamingMode = false;

@@ -4,19 +4,16 @@
 #include <QObject>
 #include <QString>
 
+#include <memory>
 #include <string>
 #include <vector>
 
-struct SherpaOnnxOnlineRecognizer;
-struct SherpaOnnxOnlineStream;
-struct SherpaOnnxOfflineRecognizer;
-struct SherpaOnnxOfflineStream;
 struct SherpaOnnxOfflinePunctuation;
 
 namespace talkinput
 {
 
-class SpeechRecognizer final : public QObject
+class SpeechRecognizer : public QObject
 {
     Q_OBJECT
 
@@ -87,72 +84,38 @@ public:
     explicit SpeechRecognizer(QObject *parent = nullptr);
     ~SpeechRecognizer() override;
 
-    bool start(const Config &config, QString *errorMessage);
-    void stop();
-    bool isRunning() const;
+    virtual bool start(const Config &config, QString *errorMessage) = 0;
+    virtual void stop() = 0;
+    virtual bool isRunning() const = 0;
+    virtual bool isStreaming() const = 0;
 
-    bool isStreaming() const
-    {
-        return m_online.recognizer != nullptr;
-    }
-
-    void acceptPcm16(const QByteArray &audioData, int sampleRate,
-                     int channelCount);
-    void finish();
-    void resetStream();
+    virtual void acceptPcm16(const QByteArray &audioData, int sampleRate,
+                             int channelCount) = 0;
+    virtual void finish() = 0;
+    virtual void resetStream() = 0;
 
 signals:
     void logMessage(const QString &message);
     void resultChanged(const QString &text, bool isFinal);
 
+protected:
+    bool prepareRecognizer(const Config &config, QString *errorMessage);
+    void stopPunctuation();
+    QString addPunctuation(const QString &text) const;
+
+    static QString modelPath(const QString &modelDir, const QString &fileName);
+    static bool fileExists(const QString &path, QString *errorMessage);
+    static bool pathExists(const QString &path, QString *errorMessage);
+    static QString decodeSherpaText(const char *text);
+    static int appendPcm16AsMonoFloat(const QByteArray &audioData,
+                                      int channelCount,
+                                      std::vector<float> *samples);
+
 private:
-    bool startOnline(const Config &config, QString *errorMessage);
-    bool startOffline(const Config &config, QString *errorMessage);
-
-    void acceptOnlinePcm16(const QByteArray &audioData, int sampleRate,
-                           int channelCount);
-    void acceptOfflinePcm16(const QByteArray &audioData, int sampleRate,
-                            int channelCount);
-
-    void decodePendingOnline();
-    void publishOnlineResult(bool isFinal);
-    QString addPunctuation(const QString &text);
-    void decodeOffline();
-
-    struct OnlineState
-    {
-        const SherpaOnnxOnlineRecognizer *recognizer = nullptr;
-        const SherpaOnnxOnlineStream *stream = nullptr;
-        QString lastText;
-        std::string encoderPath;
-        std::string decoderPath;
-        std::string joinerPath;
-        std::string tokensPath;
-    } m_online;
-
-    struct OfflineState
-    {
-        const SherpaOnnxOfflineRecognizer *recognizer = nullptr;
-        std::vector<float> samples;
-        int sampleRate = 16000;
-        Type type = Type::StreamingTransducer;
-
-        std::string tokensPath;
-        std::string senseVoiceModel;
-        std::string funasrAdaptor;
-        std::string funasrLlm;
-        std::string funasrEmbed;
-        std::string funasrTok;
-        std::string funasrSysPrompt;
-        std::string funasrUserPrompt;
-        std::string funasrLang;
-        std::string qwen3Frontend;
-        std::string qwen3Encoder;
-        std::string qwen3Decoder;
-        std::string qwen3TokDir;
-    } m_offline;
-
     const SherpaOnnxOfflinePunctuation *m_punct = nullptr;
 };
+
+std::unique_ptr<SpeechRecognizer>
+createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent = nullptr);
 
 } // namespace talkinput

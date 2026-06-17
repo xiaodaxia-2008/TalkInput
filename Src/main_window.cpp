@@ -31,9 +31,26 @@
 #include <QTimer>
 #include <QTranslator>
 #include <QVBoxLayout>
+#include <QtEndian>
+
+#include <algorithm>
 
 namespace
 {
+
+void appendInt16(QByteArray &audioData, qint16 sample)
+{
+    const qsizetype offset = audioData.size();
+    audioData.resize(offset + static_cast<qsizetype>(sizeof(qint16)));
+    qToLittleEndian<qint16>(
+        sample, reinterpret_cast<uchar *>(audioData.data() + offset));
+}
+
+qint16 floatToInt16(float sample)
+{
+    const float clamped = std::clamp(sample, -1.0F, 1.0F);
+    return static_cast<qint16>(clamped * 32767.0F);
+}
 
 void applyIcon(QPushButton *btn, const QString &svgPath, int size)
 {
@@ -106,17 +123,15 @@ void MainWindow::setupUi()
             });
     connect(m_modelWidget, &ModelWidget::statusMessage, this,
             [this](const QString &msg) { statusBar()->showMessage(msg); });
-    connect(m_modelWidget, &ModelWidget::punctuationModelReady, this,
-            [this]() {
-                if (m_currentModelDirectory.isEmpty()) {
-                    return;
-                }
-                qInfo() << "Punctuation model ready, reloading ASR model...";
-                statusBar()->showMessage(
-                    tr("Punctuation ready, reloading model..."));
-                QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                          Qt::QueuedConnection);
-            });
+    connect(m_modelWidget, &ModelWidget::punctuationModelReady, this, [this]() {
+        if (m_currentModelDirectory.isEmpty()) {
+            return;
+        }
+        qInfo() << "Punctuation model ready, reloading ASR model...";
+        statusBar()->showMessage(tr("Punctuation ready, reloading model..."));
+        QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                  Qt::QueuedConnection);
+    });
 
     // ── Buttons ────────────────────────────────────────────────
     applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
@@ -445,20 +460,32 @@ void MainWindow::onRecognizeFile()
 
     QByteArray allPcm;
     bool ok = false;
+    int decodedSampleRate = 0;
+    int decodedChannels = 0;
 
     connect(decoder, &QAudioDecoder::bufferReady, this, [&]() {
         const QAudioBuffer buf = decoder->read();
-        if (buf.format().sampleFormat() == QAudioFormat::Int16) {
+        const QAudioFormat format = buf.format();
+        if (decodedSampleRate == 0) {
+            decodedSampleRate = format.sampleRate();
+            decodedChannels = format.channelCount();
+        }
+        else if (decodedSampleRate != format.sampleRate() ||
+                 decodedChannels != format.channelCount())
+        {
+            qWarning() << "Audio decoder format changed from"
+                       << decodedSampleRate << decodedChannels << "to"
+                       << format.sampleRate() << format.channelCount();
+        }
+
+        if (format.sampleFormat() == QAudioFormat::Int16) {
             allPcm.append(
                 reinterpret_cast<const char *>(buf.constData<int16_t>()),
                 buf.byteCount());
         }
-        else if (buf.format().sampleFormat() == QAudioFormat::Float) {
+        else if (format.sampleFormat() == QAudioFormat::Float) {
             for (int i = 0; i < buf.sampleCount(); ++i) {
-                const qint16 s = static_cast<qint16>(
-                    std::clamp(buf.constData<float>()[i], -1.0f, 1.0f) *
-                    32767.0f);
-                allPcm.append(reinterpret_cast<const char *>(&s), sizeof(s));
+                appendInt16(allPcm, floatToInt16(buf.constData<float>()[i]));
             }
         }
     });
@@ -494,19 +521,19 @@ void MainWindow::onRecognizeFile()
         return;
     }
 
-    const int sampleRate = 16000;
-    if (decoder->audioFormat().sampleRate() != sampleRate) {
-        qWarning() << "Sample rate mismatch: got"
-                   << decoder->audioFormat().sampleRate() << "need 16000";
+    if (decodedSampleRate <= 0 || decodedChannels <= 0) {
+        statusBar()->showMessage(tr("Failed to decode audio file."), 5000);
+        return;
     }
 
-    qInfo() << "Decoded" << allPcm.size() << "bytes of PCM16 from" << path;
+    qInfo() << "Decoded" << allPcm.size() << "bytes of PCM16 from" << path
+            << "at" << decodedSampleRate << "Hz channels" << decodedChannels;
 
     QMetaObject::invokeMethod(
         m_asrService,
-        [this, allPcm, sampleRate]() {
+        [this, allPcm, decodedSampleRate, decodedChannels]() {
             m_asrService->startSession();
-            m_asrService->feedAudio(allPcm, sampleRate, 1);
+            m_asrService->feedAudio(allPcm, decodedSampleRate, decodedChannels);
             m_asrService->finishSession();
         },
         Qt::QueuedConnection);

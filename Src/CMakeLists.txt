@@ -18,6 +18,20 @@ add_executable(TalkInput
     model_registry.cpp
     speech_recognizer.cpp
     speech_recognizer.h
+    online_speech_recognizer.cpp
+    online_speech_recognizer.h
+    offline_speech_recognizer.cpp
+    offline_speech_recognizer.h
+    streaming_transducer_recognizer.cpp
+    streaming_transducer_recognizer.h
+    streaming_paraformer_recognizer.cpp
+    streaming_paraformer_recognizer.h
+    sense_voice_recognizer.cpp
+    sense_voice_recognizer.h
+    funasr_nano_recognizer.cpp
+    funasr_nano_recognizer.h
+    qwen3_asr_recognizer.cpp
+    qwen3_asr_recognizer.h
     paste_text.h
     paste_text.cpp
     scroll_text_display.h
