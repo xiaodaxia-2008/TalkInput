@@ -1273,5 +1273,9 @@ Please wait for the model to load, then try again.</source>
         <source>LLM service ready.</source>
         <translation>LLM 服务已就绪。</translation>
     </message>
+    <message>
+        <source>LLM service stopped unexpectedly.</source>
+        <translation>LLM 服务意外停止。</translation>
+    </message>
 </context>
 </TS>

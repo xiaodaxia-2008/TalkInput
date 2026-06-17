@@ -74,6 +74,7 @@ private:
     DownloadKind m_downloadKind = DownloadKind::None;
     bool m_preparing = false;
     bool m_serverReady = false;
+    bool m_stopping = false;
     int m_healthAttempts = 0;
 };
 

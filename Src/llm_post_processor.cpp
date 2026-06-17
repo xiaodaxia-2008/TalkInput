@@ -1,13 +1,9 @@
 #include "llm_post_processor.h"
+#include "archive_utils.h"
 #include "logging.h"
 
-#include <archive.h>
-#include <archive_entry.h>
-
-#include <QCoreApplication>
 #include <QDir>
 #include <QDirIterator>
-#include <QEventLoop>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -38,115 +34,6 @@ QNetworkRequest makeRequest(const QUrl &url)
     return request;
 }
 
-bool isPathInsideDir(const QString &path, const QString &dir)
-{
-    const QString absPath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
-    const QString absDir = QDir::cleanPath(QFileInfo(dir).absoluteFilePath());
-    return absPath == absDir || absPath.startsWith(absDir + '/') ||
-           absPath.startsWith(absDir + '\\');
-}
-
-QString entryPath(struct archive_entry *entry)
-{
-    const char *utf8 = archive_entry_pathname_utf8(entry);
-    return utf8 ? QString::fromUtf8(utf8)
-                : QString::fromLocal8Bit(archive_entry_pathname(entry));
-}
-
-bool extractArchive(const QString &archivePath, const QString &destDir,
-                    QString *errorMessage)
-{
-    QDir dest(destDir);
-    if (!dest.exists() && !dest.mkpath(".")) {
-        if (errorMessage) {
-            *errorMessage = QString("Cannot create: %1").arg(destDir);
-        }
-        return false;
-    }
-
-    archive *reader = archive_read_new();
-    archive_read_support_filter_all(reader);
-    archive_read_support_format_all(reader);
-
-    if (archive_read_open_filename(
-            reader,
-            QDir::toNativeSeparators(archivePath).toLocal8Bit().constData(),
-            10240) != ARCHIVE_OK)
-    {
-        if (errorMessage) {
-            *errorMessage =
-                QString::fromLocal8Bit(archive_error_string(reader));
-        }
-        archive_read_free(reader);
-        return false;
-    }
-
-    archive_entry *entry = nullptr;
-    while (archive_read_next_header(reader, &entry) == ARCHIVE_OK) {
-        const QString rel = QDir::cleanPath(entryPath(entry));
-        if (rel.isEmpty() || rel.startsWith('/') || rel.startsWith("..")) {
-            if (errorMessage) {
-                *errorMessage = QString("Unsafe path: %1").arg(rel);
-            }
-            archive_read_free(reader);
-            return false;
-        }
-
-        const QString outPath = dest.filePath(rel);
-        if (!isPathInsideDir(outPath, dest.absolutePath())) {
-            if (errorMessage) {
-                *errorMessage = QString("Escapes destination: %1").arg(rel);
-            }
-            archive_read_free(reader);
-            return false;
-        }
-
-        const auto fileType = archive_entry_filetype(entry);
-        if (fileType == AE_IFDIR) {
-            QDir().mkpath(outPath);
-            archive_read_data_skip(reader);
-            continue;
-        }
-        if (fileType != AE_IFREG) {
-            archive_read_data_skip(reader);
-            continue;
-        }
-
-        QDir().mkpath(QFileInfo(outPath).absolutePath());
-        QFile outFile(outPath);
-        if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            if (errorMessage) {
-                *errorMessage = QString("Cannot write: %1").arg(outPath);
-            }
-            archive_read_free(reader);
-            return false;
-        }
-
-        const void *buffer = nullptr;
-        size_t size = 0;
-        la_int64_t offset = 0;
-        while (archive_read_data_block(reader, &buffer, &size, &offset) ==
-               ARCHIVE_OK)
-        {
-            Q_UNUSED(offset);
-            if (outFile.write(static_cast<const char *>(buffer),
-                              static_cast<qint64>(size)) !=
-                static_cast<qint64>(size))
-            {
-                if (errorMessage) {
-                    *errorMessage = QString("Write error: %1").arg(outPath);
-                }
-                archive_read_free(reader);
-                return false;
-            }
-        }
-        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    }
-
-    archive_read_free(reader);
-    return true;
-}
-
 } // namespace
 
 namespace talkinput
@@ -159,10 +46,49 @@ LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
     connect(&m_healthTimer, &QTimer::timeout, this,
             &LlmPostProcessor::pollHealth);
     m_healthTimer.setInterval(500);
+
+    connect(&m_server, &QProcess::readyReadStandardError, this, [this]() {
+        const QString text =
+            QString::fromLocal8Bit(m_server.readAllStandardError());
+        if (!text.trimmed().isEmpty()) {
+            spdlog::debug("llama-server stderr: {}", text.trimmed());
+        }
+    });
+    connect(&m_server, &QProcess::readyReadStandardOutput, this, [this]() {
+        const QString text =
+            QString::fromLocal8Bit(m_server.readAllStandardOutput());
+        if (!text.trimmed().isEmpty()) {
+            spdlog::debug("llama-server stdout: {}", text.trimmed());
+        }
+    });
+    connect(&m_server, &QProcess::errorOccurred, this,
+            [this](QProcess::ProcessError) {
+                if (m_stopping) {
+                    return;
+                }
+                failPending(tr("Failed to start llama-server: %1")
+                                .arg(m_server.errorString()));
+            });
+    connect(&m_server,
+            static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(
+                &QProcess::finished),
+            this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+                if (m_stopping) {
+                    return;
+                }
+                spdlog::warn("llama-server exited: code {} status {}", exitCode,
+                             static_cast<int>(exitStatus));
+                m_serverReady = false;
+                m_healthTimer.stop();
+                if (!m_pending.isEmpty()) {
+                    failPending(tr("LLM service stopped unexpectedly."));
+                }
+            });
 }
 
 LlmPostProcessor::~LlmPostProcessor()
 {
+    m_stopping = true;
     if (m_activeDownload) {
         m_activeDownload->abort();
         m_activeDownload->deleteLater();
@@ -365,25 +291,6 @@ void LlmPostProcessor::startServer()
     m_server.setWorkingDirectory(QFileInfo(executable).absolutePath());
     m_server.setArguments({"-m", modelPath(), "--host", "127.0.0.1", "--port",
                            QString::number(ServerPort), "-c", "1024"});
-    connect(&m_server, &QProcess::readyReadStandardError, this, [this]() {
-        const QString text =
-            QString::fromLocal8Bit(m_server.readAllStandardError());
-        if (!text.trimmed().isEmpty()) {
-            spdlog::debug("llama-server stderr: {}", text.trimmed());
-        }
-    });
-    connect(&m_server, &QProcess::readyReadStandardOutput, this, [this]() {
-        const QString text =
-            QString::fromLocal8Bit(m_server.readAllStandardOutput());
-        if (!text.trimmed().isEmpty()) {
-            spdlog::debug("llama-server stdout: {}", text.trimmed());
-        }
-    });
-    connect(&m_server, &QProcess::errorOccurred, this,
-            [this](QProcess::ProcessError) {
-                failPending(tr("Failed to start llama-server: %1")
-                                .arg(m_server.errorString()));
-            });
 
     emit statusMessage(tr("Starting LLM service..."));
     spdlog::info("Starting llama-server: {}", executable);

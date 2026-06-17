@@ -1,10 +1,8 @@
 #include "asr_setting_widget.h"
+#include "archive_utils.h"
 #include "logging.h"
 #include "model_registry.h"
 #include "utils.h"
-
-#include <archive.h>
-#include <archive_entry.h>
 
 #include <QCheckBox>
 #include <QCoreApplication>
@@ -12,6 +10,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -33,114 +32,6 @@
 
 namespace
 {
-
-// ── Archive helpers ────────────────────────────────────────────
-
-bool isPathInsideDir(const QString &path, const QString &dir)
-{
-    const QString absPath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
-    const QString absDir = QDir::cleanPath(QFileInfo(dir).absoluteFilePath());
-    return absPath == absDir || absPath.startsWith(absDir + QLatin1Char('/')) ||
-           absPath.startsWith(absDir + QLatin1Char('\\'));
-}
-
-QString entryPath(struct archive_entry *entry)
-{
-    const char *utf8 = archive_entry_pathname_utf8(entry);
-    return utf8 ? QString::fromUtf8(utf8)
-                : QString::fromLocal8Bit(archive_entry_pathname(entry));
-}
-
-bool extractArchive(const QString &archivePath, const QString &destDir,
-                    QString *error)
-{
-    QDir d(destDir);
-    if (!d.exists() && !d.mkpath(QStringLiteral("."))) {
-        if (error) {
-            *error = QStringLiteral("Cannot create: %1").arg(destDir);
-        }
-        return false;
-    }
-
-    archive *r = archive_read_new();
-    archive_read_support_filter_all(r);
-    archive_read_support_format_tar(r);
-
-    if (archive_read_open_filename(
-            r, QDir::toNativeSeparators(archivePath).toLocal8Bit().constData(),
-            10240) != ARCHIVE_OK)
-    {
-        if (error) {
-            *error = QString::fromLocal8Bit(archive_error_string(r));
-        }
-        archive_read_free(r);
-        return false;
-    }
-
-    archive_entry *entry = nullptr;
-    while (archive_read_next_header(r, &entry) == ARCHIVE_OK) {
-        const QString rel = QDir::cleanPath(entryPath(entry));
-        if (rel.isEmpty() || rel.startsWith(QLatin1Char('/')) ||
-            rel.startsWith(QStringLiteral("..")))
-        {
-            if (error) {
-                *error = QStringLiteral("Unsafe path: %1").arg(rel);
-            }
-            archive_read_free(r);
-            return false;
-        }
-
-        const QString outPath = d.filePath(rel);
-        if (!isPathInsideDir(outPath, d.absolutePath())) {
-            if (error) {
-                *error = QStringLiteral("Escapes destination: %1").arg(rel);
-            }
-            archive_read_free(r);
-            return false;
-        }
-
-        const auto ft = archive_entry_filetype(entry);
-        if (ft == AE_IFDIR) {
-            QDir().mkpath(outPath);
-            archive_read_data_skip(r);
-            continue;
-        }
-        if (ft != AE_IFREG) {
-            archive_read_data_skip(r);
-            continue;
-        }
-
-        QDir().mkpath(QFileInfo(outPath).absolutePath());
-        QFile f(outPath);
-        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            if (error) {
-                *error = QStringLiteral("Cannot write: %1").arg(outPath);
-            }
-            archive_read_free(r);
-            return false;
-        }
-
-        const void *buf = nullptr;
-        size_t sz = 0;
-        la_int64_t off = 0;
-        while (archive_read_data_block(r, &buf, &sz, &off) == ARCHIVE_OK) {
-            Q_UNUSED(off);
-            if (f.write(static_cast<const char *>(buf),
-                        static_cast<qint64>(sz)) != static_cast<qint64>(sz))
-            {
-                if (error) {
-                    *error = QStringLiteral("Write error: %1").arg(outPath);
-                }
-                archive_read_free(r);
-                return false;
-            }
-        }
-        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    }
-
-    archive_read_free(r);
-    return true;
-}
 
 QString cacheDir()
 {
