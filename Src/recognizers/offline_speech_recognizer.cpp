@@ -1,8 +1,8 @@
 #include "offline_speech_recognizer.h"
+#include "logging.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
-#include <QDebug>
 #include <QStringList>
 
 #include <algorithm>
@@ -98,9 +98,9 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
         m_inputSampleRate = sampleRate;
     }
     else if (m_inputSampleRate != sampleRate) {
-        qWarning() << "Offline ASR input sample rate changed from"
-                   << m_inputSampleRate << "to" << sampleRate
-                   << "- keeping the first rate for this utterance";
+        spdlog::warn("Offline ASR input sample rate changed from {} to {}; "
+                     "keeping the first rate for this utterance",
+                     m_inputSampleRate, sampleRate);
     }
 
     appendPcm16AsMonoFloat(audioData, channelCount, &m_samples);

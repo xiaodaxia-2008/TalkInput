@@ -1,16 +1,20 @@
 #include "model_widget.h"
+#include "logging.h"
 
 #include <archive.h>
 #include <archive_entry.h>
 
 #include <QCoreApplication>
 #include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QLabel>
 #include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -22,6 +26,7 @@
 
 #include <QSvgRenderer>
 #include <QTableWidget>
+#include <QTextEdit>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -188,8 +193,14 @@ ModelWidget::ModelWidget(QWidget *parent)
     openBtn->setToolTip(tr("Open model cache directory"));
     connect(openBtn, &QPushButton::clicked, this, &ModelWidget::onOpenDir);
 
+    auto *hotwordsBtn = new QPushButton(tr("Hot Words"), this);
+    hotwordsBtn->setToolTip(tr("Edit hot words"));
+    connect(hotwordsBtn, &QPushButton::clicked, this,
+            &ModelWidget::onEditHotwords);
+
     bottomRow->addWidget(archiveBtn);
     bottomRow->addWidget(openBtn);
+    bottomRow->addWidget(hotwordsBtn);
     bottomRow->addStretch();
     root->addLayout(bottomRow);
 
@@ -289,8 +300,10 @@ ModelWidget::ModelWidget(QWidget *parent)
     // Apply icons to bottom buttons
     applySvg(archiveBtn, QStringLiteral(":/resources/folder-plus.svg"), 22);
     applySvg(openBtn, QStringLiteral(":/resources/folder.svg"), 22);
+    hotwordsBtn->setText("💡");
     archiveBtn->setStyleSheet(btnStyle);
     openBtn->setStyleSheet(btnStyle);
+    hotwordsBtn->setStyleSheet(btnStyle);
 }
 
 ModelWidget::~ModelWidget()
@@ -434,8 +447,7 @@ void ModelWidget::refreshStatus()
 
 // ── Icon helper ───────────────────────────────────────────────
 
-void ModelWidget::applyIcon(QPushButton *btn, const QString &svgPath,
-                              int size)
+void ModelWidget::applyIcon(QPushButton *btn, const QString &svgPath, int size)
 {
     QSvgRenderer svg(svgPath);
     QPixmap pm(size, size);
@@ -478,7 +490,7 @@ void ModelWidget::ensurePunctuationModel()
         return;
     }
 
-    qInfo() << "Punctuation model not found, starting auto-download...";
+    spdlog::info("Punctuation model not found, starting auto-download...");
     emit statusMessage(tr("Punctuation model not found, downloading..."));
     onDownload(m_punctuationRow);
 }
@@ -506,7 +518,7 @@ void ModelWidget::onUse(int row)
             tr("This model does not support real-time recognition."));
     }
 
-    qInfo() << "Selected model:" << m.name << "(" << dir << ")";
+    spdlog::info("Selected model: {} ({})", m.name, dir);
     emit modelSelected(dir, m.name);
 }
 
@@ -584,7 +596,7 @@ void ModelWidget::onDelete(int row)
     }
 
     QDir(dir).removeRecursively();
-    qInfo() << "Deleted model:" << m.name << "(" << dir << ")";
+    spdlog::info("Deleted model: {} ({})", m.name, dir);
     emit statusMessage(tr("Deleted: %1").arg(m.name));
     refreshStatus();
 }
@@ -629,7 +641,7 @@ void ModelWidget::onUseArchive()
 
     const QString modelDir = dest.filePath(base);
     if (QFileInfo(modelDir).isDir()) {
-        qInfo() << "Extracted model:" << modelDir;
+        spdlog::info("Extracted model: {}", modelDir);
         emit modelSelected(modelDir, base);
         emit statusMessage(
             tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));
@@ -649,6 +661,57 @@ void ModelWidget::onOpenDir()
         return;
     }
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
+}
+
+void ModelWidget::onEditHotwords()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Hot Words"));
+    dialog.resize(420, 320);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(10);
+
+    auto *hintRow = new QHBoxLayout();
+    hintRow->setSpacing(8);
+
+    auto *iconLabel = new QLabel("💡", &dialog);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setStyleSheet("font-size: 18px;");
+    iconLabel->setFixedSize(20, 20);
+
+    auto *hintLabel = new QLabel(tr("One hot word per line."), &dialog);
+    hintLabel->setWordWrap(true);
+    hintLabel->setStyleSheet("color: #555;");
+
+    hintRow->addWidget(iconLabel);
+    hintRow->addWidget(hintLabel, 1);
+    layout->addLayout(hintRow);
+
+    auto *editor = new QTextEdit(&dialog);
+    editor->setAcceptRichText(false);
+    editor->setPlaceholderText(tr("Enter hot words, one per line"));
+    {
+        QSettings s;
+        editor->setPlainText(s.value("model/hotwords").toString());
+    }
+    layout->addWidget(editor, 1);
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    QSettings s;
+    s.setValue("model/hotwords", editor->toPlainText().trimmed());
+    emit statusMessage(tr("Hot words saved."));
+    emit hotwordsChanged();
 }
 
 void ModelWidget::onDownloadFinished()

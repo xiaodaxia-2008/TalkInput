@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "logging.h"
 #include "model_widget.h"
 #include "ui_main_window.h"
 
@@ -103,12 +104,12 @@ void MainWindow::setupUi()
     connect(m_asrService, &AsrService::modelLoadResult, this,
             [this](bool success, const QString &error) {
                 if (!success) {
-                    qCritical() << "ASR model load failed:" << error;
+                    spdlog::error("ASR model load failed: {}", error);
                     statusBar()->showMessage(
                         tr("Model load failed: %1").arg(error));
                 }
                 else {
-                    qInfo() << "ASR model loaded successfully";
+                    spdlog::info("ASR model loaded successfully");
                     statusBar()->showMessage(tr("Model ready."));
                 }
             });
@@ -127,8 +128,17 @@ void MainWindow::setupUi()
         if (m_currentModelDirectory.isEmpty()) {
             return;
         }
-        qInfo() << "Punctuation model ready, reloading ASR model...";
+        spdlog::info("Punctuation model ready, reloading ASR model...");
         statusBar()->showMessage(tr("Punctuation ready, reloading model..."));
+        QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                  Qt::QueuedConnection);
+    });
+    connect(m_modelWidget, &ModelWidget::hotwordsChanged, this, [this]() {
+        if (m_currentModelDirectory.isEmpty()) {
+            return;
+        }
+        spdlog::info("Hot words changed, reloading ASR model...");
+        statusBar()->showMessage(tr("Hot words saved, reloading model..."));
         QMetaObject::invokeMethod(m_asrService, "loadModel",
                                   Qt::QueuedConnection);
     });
@@ -157,7 +167,7 @@ void MainWindow::setupUi()
         "QPushButton:pressed { background: #e0e0e0; }");
 
     statusBar()->showMessage(tr("Loading model..."));
-    qInfo() << "Starting ASR service";
+    spdlog::info("Starting ASR service");
 
     // ── VoiceInputController (global hotkey, overlay, text injection) ─
     m_voiceInput = new VoiceInputController(m_asrService, &m_history, this);
@@ -303,7 +313,7 @@ void MainWindow::setupUi()
     const QString savedName = s.value(QStringLiteral("model/name")).toString();
     if (!savedDir.isEmpty()) {
         setRecognitionModel(savedDir, savedName);
-        qInfo() << "Restored model:" << savedName << "(" << savedDir << ")";
+        spdlog::info("Restored model: {} ({})", savedName, savedDir);
     }
 
     // ── Load history ────────────────────────────────────────────
@@ -406,8 +416,8 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     else {
         statusBar()->showMessage(tr("Loading model..."));
     }
-    qInfo() << "Recognition model set:" << m_currentModelName << "("
-            << m_currentModelDirectory << ")";
+    spdlog::info("Recognition model set: {} ({})", m_currentModelName,
+                 m_currentModelDirectory);
 
     QSettings s;
     s.setValue(QStringLiteral("model/directory"), m_currentModelDirectory);
@@ -422,7 +432,7 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
 
 void MainWindow::onResult(const QString &text, bool isFinal)
 {
-    qInfo() << (isFinal ? "[final]" : "[partial]") << text;
+    spdlog::info("{} {}", isFinal ? "[final]" : "[partial]", text);
 
     if (!isFinal && !text.trimmed().isEmpty()) {
         m_realtimeLabel->setText(text.trimmed());
@@ -453,7 +463,7 @@ void MainWindow::onRecognizeFile()
     }
 
     statusBar()->showMessage(tr("Decoding audio..."));
-    qInfo() << "Recognizing file:" << path;
+    spdlog::info("Recognizing file: {}", path);
 
     auto *decoder = new QAudioDecoder(this);
     QEventLoop loop;
@@ -473,9 +483,10 @@ void MainWindow::onRecognizeFile()
         else if (decodedSampleRate != format.sampleRate() ||
                  decodedChannels != format.channelCount())
         {
-            qWarning() << "Audio decoder format changed from"
-                       << decodedSampleRate << decodedChannels << "to"
-                       << format.sampleRate() << format.channelCount();
+            spdlog::warn("Audio decoder format changed from {} channels {} "
+                         "to {} channels {}",
+                         decodedSampleRate, decodedChannels,
+                         format.sampleRate(), format.channelCount());
         }
 
         if (format.sampleFormat() == QAudioFormat::Int16) {
@@ -499,7 +510,8 @@ void MainWindow::onRecognizeFile()
             static_cast<void (QAudioDecoder::*)(QAudioDecoder::Error)>(
                 &QAudioDecoder::error),
             this, [&](QAudioDecoder::Error) {
-                qCritical() << "Audio decoder error:" << decoder->errorString();
+                spdlog::error("Audio decoder error: {}",
+                              decoder->errorString());
                 loop.quit();
             });
 
@@ -526,8 +538,8 @@ void MainWindow::onRecognizeFile()
         return;
     }
 
-    qInfo() << "Decoded" << allPcm.size() << "bytes of PCM16 from" << path
-            << "at" << decodedSampleRate << "Hz channels" << decodedChannels;
+    spdlog::info("Decoded {} bytes of PCM16 from {} at {} Hz channels {}",
+                 allPcm.size(), path, decodedSampleRate, decodedChannels);
 
     QMetaObject::invokeMethod(
         m_asrService,

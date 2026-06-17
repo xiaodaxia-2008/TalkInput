@@ -12,6 +12,7 @@ add_executable(TalkInput
     asr_service.h
     model_widget.cpp
     model_widget.h
+    logging.h
     recognition_history.cpp
     recognition_history.h
     model_registry.h
@@ -74,6 +75,7 @@ target_link_libraries(TalkInput
     LibArchive::LibArchive
     sherpa-onnx-c-api
     QHotkey::QHotkey
+    spdlog::spdlog_header_only
 )
 
 add_executable(TalkInputAsrTest
@@ -92,24 +94,39 @@ target_link_libraries(TalkInputAsrTest
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
+    spdlog::spdlog_header_only
 )
 
 target_link_libraries(TalkInputSenseVoiceTest
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
+    spdlog::spdlog_header_only
 )
 
 target_link_libraries(TalkInputBenchmark
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
+    spdlog::spdlog_header_only
 )
 
-target_include_directories(TalkInput PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(TalkInputAsrTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(TalkInputSenseVoiceTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(TalkInputBenchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(TalkInput PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+)
+target_include_directories(TalkInputAsrTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+)
+target_include_directories(TalkInputSenseVoiceTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+)
+target_include_directories(TalkInputBenchmark PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+)
 
 target_compile_definitions(TalkInput PRIVATE
     PROJECT_VERSION_STR="${PROJECT_VERSION}"

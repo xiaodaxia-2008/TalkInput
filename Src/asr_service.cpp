@@ -1,10 +1,12 @@
 #include "asr_service.h"
+#include "logging.h"
 #include "model_registry.h"
 
 #include <QDir>
 #include <QFileInfo>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QStringList>
 #include <QThread>
 
 namespace
@@ -85,8 +87,9 @@ talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir)
         return talkinput::SpeechRecognizer::Type::SenseVoice;
     }
 
-    qWarning() << "AsrService: unknown model arch in" << modelDir
-               << "falling back to streaming transducer";
+    spdlog::warn("AsrService: unknown model arch in {}; falling back to "
+                 "streaming transducer",
+                 modelDir);
     return talkinput::SpeechRecognizer::Type::StreamingTransducer;
 }
 
@@ -105,6 +108,67 @@ talkinput::SpeechRecognizer::Type typeFromString(const QString &str)
         return talkinput::SpeechRecognizer::Type::StreamingParaformer;
     }
     return talkinput::SpeechRecognizer::Type::StreamingTransducer;
+}
+
+QStringList hotwordLines(const QString &raw)
+{
+    QStringList lines;
+    for (QString line : raw.split(QLatin1Char('\n'))) {
+        line.remove(QLatin1Char('\r'));
+        line = line.trimmed();
+        if (!line.isEmpty()) {
+            lines.append(line);
+        }
+    }
+    return lines;
+}
+
+QString formatCjkHotwordLine(const QString &line)
+{
+    QStringList tokens;
+    const QString trimmed = line.trimmed();
+    tokens.reserve(trimmed.size());
+
+    for (const QChar ch : trimmed) {
+        if (!ch.isSpace()) {
+            tokens.append(QString(ch));
+        }
+    }
+
+    return tokens.join(QLatin1Char(' '));
+}
+
+QString buildHotwordsText(const QString &raw,
+                          talkinput::SpeechRecognizer::Type type)
+{
+    const QStringList lines = hotwordLines(raw);
+    if (lines.isEmpty()) {
+        return {};
+    }
+
+    if (type == talkinput::SpeechRecognizer::Type::Qwen3ASR) {
+        return lines.join(QLatin1Char(','));
+    }
+
+    if (type == talkinput::SpeechRecognizer::Type::FunASRNano) {
+        return lines.join(QLatin1Char('\n'));
+    }
+
+    if (type == talkinput::SpeechRecognizer::Type::StreamingTransducer ||
+        type == talkinput::SpeechRecognizer::Type::StreamingParaformer)
+    {
+        QStringList formatted;
+        formatted.reserve(lines.size());
+        for (const QString &line : lines) {
+            const QString hotword = formatCjkHotwordLine(line);
+            if (!hotword.isEmpty()) {
+                formatted.append(hotword);
+            }
+        }
+        return formatted.join(QLatin1Char('\n'));
+    }
+
+    return {};
 }
 
 } // namespace
@@ -191,7 +255,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         }
         config.senseVoiceUseItn = true;
 
-        qInfo() << "AsrService: configured from preset" << resolved.typeStr;
+        spdlog::info("AsrService: configured from preset {}", resolved.typeStr);
     }
     else {
         // Fall back to file-probing detection
@@ -302,13 +366,19 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         }
     }
 
+    {
+        QSettings s;
+        config.hotwordsText = buildHotwordsText(
+            s.value("model/hotwords").toString(), config.type);
+    }
+
     return config;
 }
 
 void AsrService::loadModel()
 {
     if (m_modelDir.isEmpty()) {
-        qWarning() << "AsrService: cannot load model, directory not set";
+        spdlog::warn("AsrService: cannot load model, directory not set");
         emit modelLoadResult(false, tr("Model directory not set."));
         return;
     }
@@ -329,7 +399,7 @@ void AsrService::loadModel()
 
     QString error;
     if (!recognizer->start(config, &error)) {
-        qCritical() << "AsrService: model load failed:" << error;
+        spdlog::error("AsrService: model load failed: {}", error);
         m_modelLoaded = false;
         emit modelLoadResult(false, error);
         return;
@@ -341,7 +411,7 @@ void AsrService::loadModel()
     m_modelLoaded = true;
     m_streamingMode = streamingMode;
     const char *mode = m_streamingMode ? "streaming" : "offline";
-    qInfo() << "AsrService:" << mode << "model loaded from" << m_modelDir;
+    spdlog::info("AsrService: {} model loaded from {}", mode, m_modelDir);
     emit modelLoadResult(true, {});
 }
 
@@ -353,13 +423,13 @@ void AsrService::unloadModel()
     m_recognizer.reset();
     m_modelLoaded = false;
     m_streamingMode = false;
-    qInfo() << "AsrService: model unloaded";
+    spdlog::info("AsrService: model unloaded");
 }
 
 void AsrService::startSession()
 {
     if (!m_modelLoaded) {
-        qWarning() << "AsrService: startSession called but model not loaded";
+        spdlog::warn("AsrService: startSession called but model not loaded");
         return;
     }
 

@@ -1,5 +1,6 @@
 #include "voice_input_controller.h"
 #include "asr_service.h"
+#include "logging.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
 
@@ -16,9 +17,9 @@
 #include <QtEndian>
 
 #define NOMINMAX
-#include <windows.h>
 #include <imm.h>
 #include <vector>
+#include <windows.h>
 #pragma comment(lib, "imm32")
 
 namespace
@@ -138,8 +139,7 @@ public:
     void stopAnimation()
     {
         m_blinkAnim->stop();
-        static_cast<QGraphicsOpacityEffect *>(
-            m_blinkAnim->targetObject())
+        static_cast<QGraphicsOpacityEffect *>(m_blinkAnim->targetObject())
             ->setOpacity(1.0);
         hide();
     }
@@ -218,15 +218,15 @@ bool VoiceInputController::nativeEventFilter(const QByteArray &eventType,
 
 bool VoiceInputController::startListening()
 {
-    qInfo() << "VoiceInputController: start listening";
+    spdlog::info("VoiceInputController: start listening");
 
     if (m_isListening) {
-        qWarning() << "Already listening";
+        spdlog::warn("Already listening");
         return false;
     }
 
     if (!m_asrService->isModelLoaded()) {
-        qWarning() << "ASR model not loaded";
+        spdlog::warn("ASR model not loaded");
         emit statusMessage(
             tr("Model not loaded yet. Please wait or select a model."));
         return false;
@@ -234,7 +234,7 @@ bool VoiceInputController::startListening()
 
     const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
     if (inputDevice.isNull()) {
-        qCritical() << "No audio input device";
+        spdlog::error("No audio input device");
         emit statusMessage(tr("No microphone available."));
         return false;
     }
@@ -250,7 +250,7 @@ bool VoiceInputController::startListening()
     }
 
     if (!inputDevice.isFormatSupported(m_audioFormat)) {
-        qCritical() << "Audio format not supported";
+        spdlog::error("Audio format not supported");
         emit statusMessage(tr("Microphone format not supported."));
         return false;
     }
@@ -262,7 +262,7 @@ bool VoiceInputController::startListening()
     m_audioSource = std::make_unique<QAudioSource>(inputDevice, m_audioFormat);
     m_audioDevice = m_audioSource->start();
     if (!m_audioDevice) {
-        qCritical() << "Failed to start microphone";
+        spdlog::error("Failed to start microphone");
         m_audioSource.reset();
         emit statusMessage(tr("Failed to start microphone."));
         return false;
@@ -287,13 +287,13 @@ bool VoiceInputController::startListening()
     m_lastResult.clear();
     showOverlay();
     emit listeningChanged(true);
-    qInfo() << "Voice input started";
+    spdlog::info("Voice input started");
     return true;
 }
 
 void VoiceInputController::stopListening()
 {
-    qInfo() << "VoiceInputController: stop listening";
+    spdlog::info("VoiceInputController: stop listening");
 
     if (m_audioSource) {
         m_audioSource->stop();
@@ -320,7 +320,7 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
         if (shouldSend && !text.trimmed().isEmpty()) {
             sendText(text.trimmed());
             m_history->addEntry(text.trimmed());
-            qInfo() << "VoiceInputController injected and saved:" << text;
+            spdlog::info("VoiceInputController injected and saved: {}", text);
         }
     }
     else if (m_isListening && text != m_lastResult) {
@@ -467,7 +467,7 @@ void VoiceInputController::sendText(const QString &text)
         return;
     }
 
-    qInfo() << "Sending text to foreground app:" << text;
+    spdlog::info("Sending text to foreground app: {}", text);
 
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) {
@@ -476,7 +476,7 @@ void VoiceInputController::sendText(const QString &text)
 
     if (isTerminalWindow(hwnd)) {
         // 终端窗口：剪切板 + Ctrl+V（绕过英文丢字问题）
-        qDebug() << "Terminal window, using clipboard paste";
+        spdlog::debug("Terminal window, using clipboard paste");
         if (!tryClipboardPaste(text)) {
             sendViaSendInput(text);
         }
@@ -507,10 +507,10 @@ void VoiceInputController::registerHotKey()
     if (!RegisterHotKey(nullptr, m_hotKeyId,
                         MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'L'))
     {
-        qWarning() << "Failed to register global hotkey (Ctrl+Alt+L)";
+        spdlog::warn("Failed to register global hotkey (Ctrl+Alt+L)");
     }
     else {
-        qInfo() << "Global hotkey registered: Ctrl+Alt+L";
+        spdlog::info("Global hotkey registered: Ctrl+Alt+L");
     }
 }
 

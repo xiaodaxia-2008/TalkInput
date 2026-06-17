@@ -27,6 +27,7 @@ signals:
     void modelSelected(const QString &modelDirectory, const QString &modelName);
     void statusMessage(const QString &message);
     void punctuationModelReady();
+    void hotwordsChanged();
 
 private:
     struct ModelInfo
@@ -48,6 +49,7 @@ private:
     void onDelete(int row);
     void onUseArchive();
     void onOpenDir();
+    void onEditHotwords();
     void onDownloadFinished();
 
     void applyIcon(QPushButton *btn, const QString &svgPath, int size);

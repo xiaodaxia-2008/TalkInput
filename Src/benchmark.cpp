@@ -2,7 +2,6 @@
 
 #include <QByteArray>
 #include <QCoreApplication>
-#include <QDebug>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>

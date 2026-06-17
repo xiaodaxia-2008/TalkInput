@@ -1,4 +1,5 @@
 #include "recognition_history.h"
+#include "logging.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -26,7 +27,8 @@ RecognitionHistory::RecognitionHistory()
     m_db->setDatabaseName(dbPath);
 
     if (!m_db->open()) {
-        qCritical() << "Failed to open history db:" << m_db->lastError().text();
+        spdlog::error("Failed to open history db: {}",
+                      m_db->lastError().text());
         return;
     }
 
@@ -36,7 +38,7 @@ RecognitionHistory::RecognitionHistory()
                           "  text TEXT NOT NULL,"
                           "  created_at TEXT NOT NULL"
                           ")"));
-    qInfo() << "History db opened:" << dbPath;
+    spdlog::info("History db opened: {}", dbPath);
 }
 
 RecognitionHistory::~RecognitionHistory()
@@ -59,7 +61,7 @@ void RecognitionHistory::addEntry(const QString &text)
     q.addBindValue(text.trimmed());
     q.addBindValue(QDateTime::currentDateTime().toString(Qt::ISODate));
     if (!q.exec()) {
-        qCritical() << "Failed to insert history:" << q.lastError().text();
+        spdlog::error("Failed to insert history: {}", q.lastError().text());
     }
 }
 
@@ -74,8 +76,8 @@ void RecognitionHistory::updateEntry(int id, const QString &text)
     q.addBindValue(text.trimmed());
     q.addBindValue(id);
     if (!q.exec()) {
-        qCritical() << "Failed to update history entry" << id << ":"
-                    << q.lastError().text();
+        spdlog::error("Failed to update history entry {}: {}", id,
+                      q.lastError().text());
     }
 }
 
@@ -89,8 +91,8 @@ void RecognitionHistory::deleteEntry(int id)
     q.prepare(QStringLiteral("DELETE FROM recognitions WHERE id = ?"));
     q.addBindValue(id);
     if (!q.exec()) {
-        qCritical() << "Failed to delete history entry" << id << ":"
-                    << q.lastError().text();
+        spdlog::error("Failed to delete history entry {}: {}", id,
+                      q.lastError().text());
     }
 }
 
@@ -102,7 +104,7 @@ void RecognitionHistory::clearAll()
 
     QSqlQuery q(*m_db);
     if (!q.exec(QStringLiteral("DELETE FROM recognitions"))) {
-        qCritical() << "Failed to clear history:" << q.lastError().text();
+        spdlog::error("Failed to clear history: {}", q.lastError().text());
     }
 }
 

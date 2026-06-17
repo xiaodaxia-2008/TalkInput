@@ -1,4 +1,5 @@
 #include "model_registry.h"
+#include "logging.h"
 
 #include <QDir>
 #include <QFile>
@@ -22,7 +23,7 @@ static void ensureLoaded()
 
     QFile f(QStringLiteral(":/resources/models.json"));
     if (!f.open(QIODevice::ReadOnly)) {
-        qWarning() << "model_registry: cannot open models.json resource";
+        spdlog::warn("model_registry: cannot open models.json resource");
         return;
     }
     const QByteArray data = f.readAll();
@@ -31,7 +32,7 @@ static void ensureLoaded()
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
     if (err.error != QJsonParseError::NoError) {
-        qWarning() << "model_registry: JSON parse error:" << err.errorString();
+        spdlog::warn("model_registry: JSON parse error: {}", err.errorString());
         return;
     }
 
@@ -72,7 +73,7 @@ static void ensureLoaded()
         s_presets.append(preset);
     }
 
-    qInfo() << "model_registry: loaded" << s_presets.size() << "presets";
+    spdlog::info("model_registry: loaded {} presets", s_presets.size());
 }
 
 QVector<ModelPreset> loadModelPresets()
@@ -118,8 +119,9 @@ ModelFileSet resolveModelFiles(const QString &modelDir)
 
     ModelFileSet result;
     if (!preset) {
-        qDebug() << "model_registry: no preset for" << dirName
-                 << "caller should fall back to probing";
+        spdlog::debug("model_registry: no preset for {}; caller should fall "
+                      "back to probing",
+                      dirName);
         result.modelDirName = dirName;
         return result;
     }
@@ -131,8 +133,8 @@ ModelFileSet resolveModelFiles(const QString &modelDir)
     for (const auto &rule : preset->files) {
         const QStringList found = findFiles(dir, rule.globPatterns, rule.isDir);
         if (found.isEmpty()) {
-            qWarning() << "model_registry: no match for" << rule.configField
-                       << "in" << dirName;
+            spdlog::warn("model_registry: no match for {} in {}",
+                         rule.configField, dirName);
             continue;
         }
         // Use the first match (preferring int8)

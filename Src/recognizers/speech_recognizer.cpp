@@ -1,6 +1,7 @@
 #include "speech_recognizer.h"
 
 #include "funasr_nano_recognizer.h"
+#include "logging.h"
 #include "qwen3_asr_recognizer.h"
 #include "sense_voice_recognizer.h"
 #include "streaming_paraformer_recognizer.h"
@@ -45,7 +46,7 @@ bool SpeechRecognizer::prepareRecognizer(const Config &config,
 
     const QString punctPath = config.punctuationModelPath;
     if (!QFileInfo::exists(punctPath)) {
-        qWarning() << "Punctuation model not found:" << punctPath;
+        spdlog::warn("Punctuation model not found: {}", punctPath);
         return true;
     }
 
@@ -58,10 +59,10 @@ bool SpeechRecognizer::prepareRecognizer(const Config &config,
 
     m_punct = SherpaOnnxCreateOfflinePunctuation(&punctConfig);
     if (!m_punct) {
-        qWarning() << "Failed to create punctuation processor";
+        spdlog::warn("Failed to create punctuation processor");
     }
     else {
-        qInfo() << "Punctuation model loaded:" << punctPath;
+        spdlog::info("Punctuation model loaded: {}", punctPath);
     }
 
     return true;

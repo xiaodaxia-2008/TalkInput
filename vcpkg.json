@@ -6,6 +6,7 @@
       "features": [
         "bzip2"
       ]
-    }
+    },
+    "spdlog"
   ]
 }
