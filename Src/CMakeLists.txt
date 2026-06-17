@@ -53,6 +53,7 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/check.svg"
     "${PROJECT_SOURCE_DIR}/resources/download.svg"
     "${PROJECT_SOURCE_DIR}/resources/globe.svg"
+    "${PROJECT_SOURCE_DIR}/resources/hotwords.svg"
     "${PROJECT_SOURCE_DIR}/resources/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/copy.svg"
     "${PROJECT_SOURCE_DIR}/resources/edit.svg"

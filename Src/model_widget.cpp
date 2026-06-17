@@ -300,7 +300,7 @@ ModelWidget::ModelWidget(QWidget *parent)
     // Apply icons to bottom buttons
     applySvg(archiveBtn, QStringLiteral(":/resources/folder-plus.svg"), 22);
     applySvg(openBtn, QStringLiteral(":/resources/folder.svg"), 22);
-    hotwordsBtn->setText("💡");
+    applySvg(hotwordsBtn, ":/resources/hotwords.svg", 22);
     archiveBtn->setStyleSheet(btnStyle);
     openBtn->setStyleSheet(btnStyle);
     hotwordsBtn->setStyleSheet(btnStyle);
