@@ -16,7 +16,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPainter>
-#include <QProgressBar>
 #include <QPushButton>
 #include <QSettings>
 #include <QStandardPaths>
@@ -424,9 +423,6 @@ bool SettingWidget::isInstalled(int row) const {
   if (row < 0 || row >= m_models.size()) return false;
   const auto &m = m_models.at(row);
   const QString path = QDir(cacheDir()).filePath(m.modelDirName);
-  if (m.isPunctuationModel) {
-    return QFileInfo(QDir(path).filePath(QStringLiteral("model.onnx"))).isFile();
-  }
   return QFileInfo(path).isDir();
 }
 
@@ -485,11 +481,10 @@ void SettingWidget::onDownload(int row) {
   m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
   if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) return;
 
-  // Show progress bar in status column
-  auto *progressBar = new QProgressBar();
-  progressBar->setRange(0, 100);
-  progressBar->setValue(0);
-  m_table->setCellWidget(row, 3, progressBar);
+  // Show download progress text in status column
+  auto *progressItem = new QTableWidgetItem(tr("Downloading..."));
+  progressItem->setForeground(QColor(0x15, 0x65, 0xc0));
+  m_table->setItem(row, 3, progressItem);
 
   emit statusMessage(tr("Downloading %1...").arg(m.name));
   QNetworkRequest req(m.archiveUrl);
@@ -499,10 +494,13 @@ void SettingWidget::onDownload(int row) {
       m_activeDownloadFile->write(m_activeDownloadReply->readAll());
   });
   connect(m_activeDownloadReply, &QNetworkReply::downloadProgress, this,
-      [progressBar](qint64 received, qint64 total) {
+      [this, row](qint64 received, qint64 total) {
     if (total <= 0) return;
     int pct = static_cast<int>(received * 100 / total);
-    progressBar->setValue(pct);
+    auto *item = new QTableWidgetItem(
+        tr("Downloading %1%").arg(pct));
+    item->setForeground(QColor(0x15, 0x65, 0xc0));
+    m_table->setItem(row, 3, item);
   });
 }
 
@@ -598,7 +596,6 @@ void SettingWidget::onDownloadFinished() {
 
   auto setStatusText = [this](int r, const QString &text, const QColor &color) {
     if (r < 0 || r >= m_models.size()) return;
-    m_table->removeCellWidget(r, 3);
     auto *item = new QTableWidgetItem(text);
     item->setForeground(color);
     m_table->setItem(r, 3, item);
