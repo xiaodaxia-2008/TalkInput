@@ -125,9 +125,9 @@ public:
     void startAnimation()
     {
         m_previewLabel->setText(QStringLiteral("Listening..."));
-        positionOnActiveScreen();
         show();
         raise();
+        positionOnActiveScreen();
 
         HWND hwnd = reinterpret_cast<HWND>(winId());
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
