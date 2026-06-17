@@ -117,7 +117,6 @@ public:
                            "background: transparent;"));
         m_previewLabel->setText(QStringLiteral("Listening..."));
         m_previewLabel->setContentsMargins(0, 0, 0, 0);
-        m_previewLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         lay->addWidget(m_previewLabel, 1);
 
         setMinimumWidth(320);
@@ -143,8 +142,16 @@ public:
 
     void setPreviewText(const QString &text)
     {
-        m_previewLabel->setText(text.isEmpty() ? QStringLiteral("Listening...")
-                                               : text);
+        if (text.isEmpty()) {
+            m_previewLabel->setText(QStringLiteral("Listening..."));
+            return;
+        }
+        QFontMetrics fm(m_previewLabel->font());
+        const int maxW = m_previewLabel->width() - 4;
+        m_previewLabel->setText(
+            fm.horizontalAdvance(text) <= maxW
+                ? text
+                : fm.elidedText(text, Qt::ElideLeft, maxW));
     }
 
 private:
