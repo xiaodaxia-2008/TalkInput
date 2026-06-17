@@ -120,14 +120,6 @@ void MainWindow::setupUi() {
           this, [this](const QString &msg) {
             statusBar()->showMessage(msg);
           });
-  connect(m_settingWidget, &SettingWidget::punctuationModelReady,
-          this, [this]() {
-            if (m_currentModelDirectory.isEmpty()) return;
-            spdlog::info("Punctuation model ready, reloading ASR model...");
-            statusBar()->showMessage(tr("Punctuation ready, reloading model..."));
-            QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                      Qt::QueuedConnection);
-          });
 
   // ── Buttons ────────────────────────────────────────────────
   applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
