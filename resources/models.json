@@ -66,9 +66,9 @@
       "paramCount": 90,
       "streamingSupport": true,
       "files": {
-        "encoderFile": "encoder.onnx",
-        "decoderFile": "decoder.onnx",
-        "joinerFile": "joiner.onnx",
+        "encoderFile": "encoder-epoch-99-avg-1.int8.onnx",
+        "decoderFile": "decoder-epoch-99-avg-1.int8.onnx",
+        "joinerFile": "joiner-epoch-99-avg-1.int8.onnx",
         "tokensFile": "tokens.txt"
       }
     },

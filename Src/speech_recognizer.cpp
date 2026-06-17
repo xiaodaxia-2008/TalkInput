@@ -255,6 +255,11 @@ bool SpeechRecognizer::startOffline(const Config &config, QString *errorMessage)
             config.funasrTemperature;
         recognizerConfig.model_config.funasr_nano.top_p = config.funasrTopP;
         recognizerConfig.model_config.funasr_nano.seed = config.funasrSeed;
+        m_offline.funasrLang = config.funasrLanguage.toUtf8().toStdString();
+        recognizerConfig.model_config.funasr_nano.language =
+            m_offline.funasrLang.c_str();
+        recognizerConfig.model_config.funasr_nano.itn =
+            config.funasrItn ? 1 : 0;
     }
     else if (config.type == Type::Qwen3ASR) {
         const QString frontend =
@@ -310,6 +315,7 @@ bool SpeechRecognizer::startOffline(const Config &config, QString *errorMessage)
     }
 
     m_offline.sampleRate = config.sampleRate;
+    m_offline.type = config.type;
     m_offline.samples.clear();
     return true;
 }
@@ -344,6 +350,7 @@ void SpeechRecognizer::stop()
         m_offline.funasrTok.clear();
         m_offline.funasrSysPrompt.clear();
         m_offline.funasrUserPrompt.clear();
+        m_offline.funasrLang.clear();
         m_offline.qwen3Frontend.clear();
         m_offline.qwen3Encoder.clear();
         m_offline.qwen3Decoder.clear();
@@ -527,32 +534,53 @@ void SpeechRecognizer::decodeOffline()
         return;
     }
 
-    const SherpaOnnxOfflineStream *stream =
-        SherpaOnnxCreateOfflineStream(m_offline.recognizer);
-    if (!stream) {
-        emit logMessage(QStringLiteral("Failed to create offline stream."));
-        return;
+    // FunASR Nano has a 512-token KV cache limit, so we chunk audio
+    // to avoid truncation. 10 seconds per chunk matches the benchmark.
+    int chunkSamples = m_offline.sampleRate * 60;
+    if (m_offline.type == Type::FunASRNano) {
+        chunkSamples = m_offline.sampleRate * 10;
     }
 
-    SherpaOnnxAcceptWaveformOffline(
-        stream, m_offline.sampleRate, m_offline.samples.data(),
-        static_cast<int32_t>(m_offline.samples.size()));
-    SherpaOnnxDecodeOfflineStream(m_offline.recognizer, stream);
+    QStringList transcript;
 
-    const SherpaOnnxOfflineRecognizerResult *result =
-        SherpaOnnxGetOfflineStreamResult(stream);
-    if (result) {
-        QString text = decodeSherpaText(result->text);
-        if (m_punct) {
-            text = addPunctuation(text);
+    for (size_t off = 0; off < m_offline.samples.size(); off += chunkSamples) {
+        int cnt = static_cast<int>(
+            std::min(static_cast<size_t>(chunkSamples),
+                     m_offline.samples.size() - off));
+        if (cnt <= 0) {
+            continue;
         }
-        if (!text.isEmpty()) {
-            emit resultChanged(text, true);
+
+        const SherpaOnnxOfflineStream *stream =
+            SherpaOnnxCreateOfflineStream(m_offline.recognizer);
+        if (!stream) {
+            continue;
         }
-        SherpaOnnxDestroyOfflineRecognizerResult(result);
+
+        SherpaOnnxAcceptWaveformOffline(stream, m_offline.sampleRate,
+                                        m_offline.samples.data() + off, cnt);
+        SherpaOnnxDecodeOfflineStream(m_offline.recognizer, stream);
+
+        const SherpaOnnxOfflineRecognizerResult *result =
+            SherpaOnnxGetOfflineStreamResult(stream);
+        if (result) {
+            QString text = decodeSherpaText(result->text);
+            if (!text.isEmpty()) {
+                transcript.append(text);
+            }
+            SherpaOnnxDestroyOfflineRecognizerResult(result);
+        }
+        SherpaOnnxDestroyOfflineStream(stream);
     }
 
-    SherpaOnnxDestroyOfflineStream(stream);
+    QString finalText = transcript.join("");
+    if (m_punct) {
+        finalText = addPunctuation(finalText);
+    }
+    if (!finalText.isEmpty()) {
+        emit resultChanged(finalText, true);
+    }
+
     m_offline.samples.clear();
 }
 

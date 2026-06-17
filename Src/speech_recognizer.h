@@ -66,6 +66,8 @@ public:
         float funasrTemperature = 1e-6F;
         float funasrTopP = 0.8F;
         int funasrSeed = 42;
+        QString funasrLanguage;
+        bool funasrItn = true;
 
         // Punctuation restoration (offline model, e.g. ct-transformer)
         QString punctuationModelPath;
@@ -133,6 +135,7 @@ private:
         const SherpaOnnxOfflineRecognizer *recognizer = nullptr;
         std::vector<float> samples;
         int sampleRate = 16000;
+        Type type = Type::StreamingTransducer;
 
         std::string tokensPath;
         std::string senseVoiceModel;
@@ -142,6 +145,7 @@ private:
         std::string funasrTok;
         std::string funasrSysPrompt;
         std::string funasrUserPrompt;
+        std::string funasrLang;
         std::string qwen3Frontend;
         std::string qwen3Encoder;
         std::string qwen3Decoder;
