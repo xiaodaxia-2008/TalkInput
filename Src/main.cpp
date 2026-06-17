@@ -1,10 +1,10 @@
 #include "logging.h"
 #include "main_window.h"
+#include "utils.h"
 
 #include <QApplication>
 #include <QDir>
 #include <QFile>
-#include <QIcon>
 #include <QLibraryInfo>
 #include <QSettings>
 #include <QStandardPaths>
@@ -22,7 +22,8 @@ int main(int argc, char *argv[])
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
     QApplication::setOrganizationName("TalkInput");
-    QApplication::setWindowIcon(QIcon(":/resources/icon.png"));
+    QApplication::setWindowIcon(
+        talkinput::resourceIcon(":/resources/icon.png"));
 
     QFile styleFile(":/resources/app.qss");
     if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
