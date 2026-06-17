@@ -40,6 +40,7 @@ private:
                             const QString &modelName = QString());
   void onResult(const QString &text, bool isFinal);
   void refreshHistory();
+  void editEntry(int row);
   void copyEntry(int row);
   void deleteEntry(int row);
   void onRecognizeFile();

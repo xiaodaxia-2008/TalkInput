@@ -62,6 +62,19 @@ void RecognitionHistory::addEntry(const QString &text) {
                   q.lastError().text().toStdString());
 }
 
+void RecognitionHistory::updateEntry(int id, const QString &text) {
+  if (!m_db)
+    return;
+
+  QSqlQuery q(*m_db);
+  q.prepare(QStringLiteral("UPDATE recognitions SET text = ? WHERE id = ?"));
+  q.addBindValue(text.trimmed());
+  q.addBindValue(id);
+  if (!q.exec())
+    spdlog::error("Failed to update history entry {}: {}", id,
+                  q.lastError().text().toStdString());
+}
+
 void RecognitionHistory::deleteEntry(int id) {
   if (!m_db)
     return;

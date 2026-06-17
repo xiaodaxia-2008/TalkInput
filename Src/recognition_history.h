@@ -20,6 +20,7 @@ public:
   ~RecognitionHistory();
 
   void addEntry(const QString &text);
+  void updateEntry(int id, const QString &text);
   void deleteEntry(int id);
   void clearAll();
   QVector<Entry> allEntries() const;

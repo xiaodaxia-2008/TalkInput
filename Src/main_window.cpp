@@ -6,6 +6,8 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QAudioDecoder>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QEventLoop>
 #include <QFileDialog>
@@ -22,6 +24,7 @@
 #include <QStatusBar>
 #include <QSystemTrayIcon>
 #include <QTableWidget>
+#include <QTextEdit>
 #include <QThread>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -190,8 +193,10 @@ void MainWindow::setupUi() {
   m_ui->historyTable->horizontalHeader()->setStretchLastSection(false);
   m_ui->historyTable->horizontalHeader()->setSectionResizeMode(
       0, QHeaderView::Stretch);
+  m_ui->historyTable->setColumnCount(4);
   m_ui->historyTable->setColumnWidth(1, 32);
   m_ui->historyTable->setColumnWidth(2, 32);
+  m_ui->historyTable->setColumnWidth(3, 32);
   m_ui->historyTable->verticalHeader()->hide();
   m_ui->historyTable->verticalHeader()->setDefaultSectionSize(30);
 
@@ -426,6 +431,15 @@ void MainWindow::refreshHistory() {
     textItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_ui->historyTable->setItem(i, 0, textItem);
 
+    auto *editBtn = new QPushButton();
+    editBtn->setIcon(QIcon(QStringLiteral(":/resources/edit.svg")));
+    editBtn->setIconSize(QSize(18, 18));
+    editBtn->setToolTip(tr("Edit text"));
+    editBtn->setFlat(true);
+    connect(editBtn, &QPushButton::clicked, this, [this, i]() {
+      editEntry(i);
+    });
+
     auto *copyBtn = new QPushButton();
     copyBtn->setIcon(QIcon(QStringLiteral(":/resources/copy.svg")));
     copyBtn->setIconSize(QSize(18, 18));
@@ -444,11 +458,49 @@ void MainWindow::refreshHistory() {
       deleteEntry(i);
     });
 
-    m_ui->historyTable->setCellWidget(i, 1, copyBtn);
-    m_ui->historyTable->setCellWidget(i, 2, delBtn);
+    m_ui->historyTable->setCellWidget(i, 1, editBtn);
+    m_ui->historyTable->setCellWidget(i, 2, copyBtn);
+    m_ui->historyTable->setCellWidget(i, 3, delBtn);
   }
 
   m_ui->historyTable->setUpdatesEnabled(true);
+}
+
+void MainWindow::editEntry(int row) {
+  auto *item = m_ui->historyTable->item(row, 0);
+  if (!item) return;
+
+  const auto entries = m_history.allEntries();
+  if (row < 0 || row >= entries.size()) return;
+
+  const auto &e = entries.at(row);
+
+  QDialog dlg(this);
+  dlg.setWindowTitle(tr("Edit Recognition Text"));
+  dlg.setMinimumSize(480, 260);
+
+  auto *lay = new QVBoxLayout(&dlg);
+
+  auto *editor = new QTextEdit(&dlg);
+  editor->setPlainText(e.text);
+  editor->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+  editor->selectAll();
+  lay->addWidget(editor);
+
+  auto *btns = new QDialogButtonBox(
+      QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+  connect(btns, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+  connect(btns, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+  lay->addWidget(btns);
+
+  if (dlg.exec() != QDialog::Accepted) return;
+
+  const QString newText = editor->toPlainText().trimmed();
+  if (newText.isEmpty() || newText == e.text) return;
+
+  m_history.updateEntry(e.id, newText);
+  refreshHistory();
+  statusBar()->showMessage(tr("Updated."), 2000);
 }
 
 void MainWindow::copyEntry(int row) {
