@@ -37,7 +37,39 @@ qint16 floatToInt16(float sample) {
   return static_cast<qint16>(clamped * 32767.0F);
 }
 
-// ── Overlay window ─────────────────────────────────────────────
+// ── Win32 acrylic blur helper ──────────────────────────────────
+
+static void enableAcrylic(HWND hwnd) {
+  HMODULE hUser = GetModuleHandleW(L"user32.dll");
+  if (!hUser)
+    return;
+
+  using SWCA = BOOL(WINAPI *)(HWND, void *);
+  auto func = reinterpret_cast<SWCA>(
+      GetProcAddress(hUser, "SetWindowCompositionAttribute"));
+  if (!func)
+    return;
+
+  struct AccentPolicy {
+    DWORD state;    // ACCENT_STATE
+    DWORD flags;    // AccentFlags
+    DWORD color;    // GradientColor (0xAARRGGBB)
+    DWORD animId;   // AnimationId
+  };
+
+  struct WinCompAttrData {
+    DWORD attr;     // WCA_ACCENT_POLICY = 19
+    const void *data;
+    DWORD dataSize;
+  };
+
+  // ACCENT_ENABLE_ACRYLIC (4) with dark tint
+  AccentPolicy accent = {4, 0, 0xC0101012, 0};
+  WinCompAttrData wcad = {19, &accent, sizeof(accent)};
+  func(hwnd, &wcad);
+}
+
+// ── Overlay window with marquee ────────────────────────────────
 
 class OverlayWindow : public QWidget {
 public:
@@ -52,8 +84,8 @@ public:
     setFixedHeight(56);
 
     setStyleSheet(
-        QStringLiteral("OverlayWindow { background: rgba(16,16,18,230); "
-                       "border: 1px solid rgba(255,255,255,30); "
+        QStringLiteral("OverlayWindow { background: rgba(16,16,18,180); "
+                       "border: 1px solid rgba(255,255,255,36); "
                        "border-radius: 10px; }"));
 
     auto *lay = new QHBoxLayout(this);
@@ -81,9 +113,16 @@ public:
     lay->addWidget(m_previewLabel, 1);
 
     setMinimumWidth(320);
+
+    connect(&m_scrollTimer, &QTimer::timeout, this, [this] {
+      updateMarquee();
+    });
   }
 
   void startAnimation() {
+    m_fullText.clear();
+    m_scrollOffset = 0;
+    m_scrollTimer.stop();
     m_previewLabel->setText(QStringLiteral("Listening..."));
     positionOnActiveScreen();
     show();
@@ -92,16 +131,18 @@ public:
     HWND hwnd = reinterpret_cast<HWND>(winId());
     SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    enableAcrylic(hwnd);
   }
 
   void stopAnimation() {
+    m_scrollTimer.stop();
     hide();
   }
 
   void setPreviewText(const QString &text) {
-    m_previewLabel->setText(text.isEmpty()
-                                ? QStringLiteral("Listening...")
-                                : text);
+    m_fullText = text;
+    m_scrollOffset = 0;
+    updateMarquee();
   }
 
 private:
@@ -118,8 +159,36 @@ private:
     move(x, wr.bottom() - height() - 30);
   }
 
+  void updateMarquee() {
+    if (m_fullText.isEmpty()) {
+      m_previewLabel->setText(QStringLiteral("Listening..."));
+      m_scrollTimer.stop();
+      return;
+    }
+
+    QFontMetrics fm(m_previewLabel->font());
+    if (fm.horizontalAdvance(m_fullText) <= m_previewLabel->width()) {
+      m_previewLabel->setText(m_fullText);
+      m_scrollTimer.stop();
+      return;
+    }
+
+    QString doubled = m_fullText + QStringLiteral("   ") + m_fullText;
+    m_previewLabel->setText(
+        doubled.mid(m_scrollOffset, m_fullText.length() + 3));
+    ++m_scrollOffset;
+    if (m_scrollOffset >= m_fullText.length())
+      m_scrollOffset = 0;
+
+    if (!m_scrollTimer.isActive())
+      m_scrollTimer.start(250);
+  }
+
   QLabel *m_statusLabel = nullptr;
   QLabel *m_previewLabel = nullptr;
+  QTimer m_scrollTimer;
+  QString m_fullText;
+  int m_scrollOffset = 0;
 };
 
 } // namespace
