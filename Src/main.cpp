@@ -1,10 +1,12 @@
 #include "main_window.h"
 
 #include <QApplication>
+#include <QDir>
 #include <QIcon>
 #include <QLibraryInfo>
 #include <QMessageLogContext>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QTranslator>
 #include <QtLogging>
 
@@ -52,6 +54,15 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
     QApplication::setOrganizationName("TalkInput");
     QApplication::setWindowIcon(QIcon(":/resources/icon.png"));
+
+    QString settingsDir =
+        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    if (settingsDir.isEmpty()) {
+        settingsDir = QDir::home().filePath(".config/TalkInput");
+    }
+    QDir().mkpath(settingsDir);
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDir);
 
     QSettings s;
 
