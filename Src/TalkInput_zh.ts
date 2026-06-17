@@ -1199,5 +1199,79 @@ Please wait for the model to load, then try again.</source>
         <source>Failed to start microphone.</source>
         <translation type="unfinished">启动麦克风失败。</translation>
     </message>
+    <message>
+        <source>Post-processing recognition result...</source>
+        <translation>正在后处理识别结果...</translation>
+    </message>
+</context>
+<context>
+    <name>talkinput::AsrSettingWidget</name>
+    <message>
+        <source>LLM post-processing</source>
+        <translation>LLM 后处理</translation>
+    </message>
+    <message>
+        <source>Use a local Qwen model to polish final recognition text</source>
+        <translation>使用本地 Qwen 模型润色最终识别文本</translation>
+    </message>
+    <message>
+        <source>LLM post-processing enabled.</source>
+        <translation>LLM 后处理已启用。</translation>
+    </message>
+    <message>
+        <source>LLM post-processing disabled.</source>
+        <translation>LLM 后处理已关闭。</translation>
+    </message>
+</context>
+<context>
+    <name>talkinput::LlmPostProcessor</name>
+    <message>
+        <source>Downloading LLM runtime...</source>
+        <translation>正在下载 LLM 运行时...</translation>
+    </message>
+    <message>
+        <source>Downloading LLM model...</source>
+        <translation>正在下载 LLM 模型...</translation>
+    </message>
+    <message>
+        <source>Cannot create LLM download file.</source>
+        <translation>无法创建 LLM 下载文件。</translation>
+    </message>
+    <message>
+        <source>Downloading LLM component %1%...</source>
+        <translation>正在下载 LLM 组件 %1%...</translation>
+    </message>
+    <message>
+        <source>LLM download failed: %1</source>
+        <translation>LLM 下载失败：%1</translation>
+    </message>
+    <message>
+        <source>Extracting LLM runtime...</source>
+        <translation>正在解压 LLM 运行时...</translation>
+    </message>
+    <message>
+        <source>LLM runtime extraction failed: %1</source>
+        <translation>LLM 运行时解压失败：%1</translation>
+    </message>
+    <message>
+        <source>llama-server.exe was not found.</source>
+        <translation>未找到 llama-server.exe。</translation>
+    </message>
+    <message>
+        <source>Failed to start llama-server: %1</source>
+        <translation>启动 llama-server 失败：%1</translation>
+    </message>
+    <message>
+        <source>Starting LLM service...</source>
+        <translation>正在启动 LLM 服务...</translation>
+    </message>
+    <message>
+        <source>LLM service did not become ready.</source>
+        <translation>LLM 服务未就绪。</translation>
+    </message>
+    <message>
+        <source>LLM service ready.</source>
+        <translation>LLM 服务已就绪。</translation>
+    </message>
 </context>
 </TS>

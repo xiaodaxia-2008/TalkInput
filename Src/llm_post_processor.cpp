@@ -6,6 +6,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -28,6 +29,14 @@ const QUrl ModelUrl(
     "https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/"
     "main/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf");
 const char *ModelFileName = "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf";
+
+QNetworkRequest makeRequest(const QUrl &url)
+{
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    return request;
+}
 
 bool isPathInsideDir(const QString &path, const QString &dir)
 {
@@ -216,26 +225,10 @@ QString LlmPostProcessor::modelPath() const
 
 QString LlmPostProcessor::serverExecutablePath() const
 {
-    const QString direct = QDir(llamaDir()).filePath("llama-server.exe");
-    if (QFileInfo(direct).isFile()) {
-        return direct;
-    }
-
-    const auto matches =
-        QDir(llamaDir())
-            .entryInfoList({"llama-server.exe"}, QDir::Files, QDir::Name);
-    if (!matches.isEmpty()) {
-        return matches.first().absoluteFilePath();
-    }
-
-    const auto dirs =
-        QDir(llamaDir()).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
-    for (const QFileInfo &dirInfo : dirs) {
-        const QString nested =
-            QDir(dirInfo.absoluteFilePath()).filePath("llama-server.exe");
-        if (QFileInfo(nested).isFile()) {
-            return nested;
-        }
+    QDirIterator it(llamaDir(), {"llama-server.exe"}, QDir::Files,
+                    QDirIterator::Subdirectories);
+    if (it.hasNext()) {
+        return it.next();
     }
 
     return {};
@@ -283,7 +276,7 @@ void LlmPostProcessor::beginDownload(DownloadKind kind, const QUrl &url,
         return;
     }
 
-    QNetworkRequest request(url);
+    QNetworkRequest request = makeRequest(url);
     m_activeDownload = m_network.get(request);
     connect(m_activeDownload, &QNetworkReply::readyRead, this, [this]() {
         if (m_activeDownload && m_downloadFile) {
@@ -371,8 +364,7 @@ void LlmPostProcessor::startServer()
     m_server.setProgram(executable);
     m_server.setWorkingDirectory(QFileInfo(executable).absolutePath());
     m_server.setArguments({"-m", modelPath(), "--host", "127.0.0.1", "--port",
-                           QString::number(ServerPort), "-c", "1024",
-                           "--no-webui"});
+                           QString::number(ServerPort), "-c", "1024"});
     connect(&m_server, &QProcess::readyReadStandardError, this, [this]() {
         const QString text =
             QString::fromLocal8Bit(m_server.readAllStandardError());
@@ -409,7 +401,7 @@ void LlmPostProcessor::pollHealth()
         return;
     }
 
-    QNetworkRequest request(
+    QNetworkRequest request = makeRequest(
         QUrl(QString("http://127.0.0.1:%1/health").arg(ServerPort)));
     auto *reply = m_network.get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
@@ -456,7 +448,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                               {"max_tokens", 512},
                               {"stream", false}};
 
-    QNetworkRequest networkRequest(QUrl(
+    QNetworkRequest networkRequest = makeRequest(QUrl(
         QString("http://127.0.0.1:%1/v1/chat/completions").arg(ServerPort)));
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,
                              "application/json");
