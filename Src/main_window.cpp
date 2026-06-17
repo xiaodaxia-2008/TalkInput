@@ -5,7 +5,10 @@
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
+#include <QAudioDecoder>
 #include <QDir>
+#include <QEventLoop>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QHBoxLayout>
@@ -20,6 +23,7 @@
 #include <QSystemTrayIcon>
 #include <QTableWidget>
 #include <QThread>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <spdlog/common.h>
@@ -115,6 +119,7 @@ void MainWindow::setupUi() {
 
   // ── Buttons ────────────────────────────────────────────────
   applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
+  applyIcon(m_ui->fileButton, ":/resources/folder-plus.svg", 22);
 
   connect(m_ui->startButton, &QPushButton::clicked, this, [this]() {
     if (m_voiceInput && m_voiceInput->isListening()) {
@@ -123,6 +128,8 @@ void MainWindow::setupUi() {
       startListening();
     }
   });
+
+  connect(m_ui->fileButton, &QPushButton::clicked, this, &MainWindow::onRecognizeFile);
 
   // ── Style ──────────────────────────────────────────────────
   m_ui->startButton->setStyleSheet(
@@ -293,7 +300,7 @@ void MainWindow::onResult(const QString &text, bool isFinal) {
       "{} {}", isFinal ? "[final]" : "[partial]", text);
 
   if (isFinal && !text.trimmed().isEmpty()) {
-    refreshHistory();
+    QTimer::singleShot(0, this, &MainWindow::refreshHistory);
   }
 
   if (auto *sb = statusBar()) {
@@ -303,6 +310,82 @@ void MainWindow::onResult(const QString &text, bool isFinal) {
               ? tr("Listening...")
               : tr("Listening — %1").arg(m_currentModelName));
   }
+}
+
+void MainWindow::onRecognizeFile() {
+  const QString path = QFileDialog::getOpenFileName(
+      this, tr("Select Audio File"), QString(),
+      tr("Audio Files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;All Files (*)"));
+  if (path.isEmpty())
+    return;
+
+  statusBar()->showMessage(tr("Decoding audio..."));
+  spdlog::info("Recognizing file: {}", path);
+
+  auto *decoder = new QAudioDecoder(this);
+  QEventLoop loop;
+
+  QByteArray allPcm;
+  bool ok = false;
+
+  connect(decoder, &QAudioDecoder::bufferReady, this, [&]() {
+    const QAudioBuffer buf = decoder->read();
+    if (buf.format().sampleFormat() == QAudioFormat::Int16)
+      allPcm.append(reinterpret_cast<const char *>(buf.constData<int16_t>()),
+                    buf.byteCount());
+    else if (buf.format().sampleFormat() == QAudioFormat::Float)
+      for (int i = 0; i < buf.sampleCount(); ++i) {
+        const qint16 s = static_cast<qint16>(
+            std::clamp(buf.constData<float>()[i], -1.0f, 1.0f) * 32767.0f);
+        allPcm.append(reinterpret_cast<const char *>(&s), sizeof(s));
+      }
+  });
+
+  connect(decoder, &QAudioDecoder::finished, this, [&]() {
+    ok = true;
+    loop.quit();
+  });
+
+  connect(decoder, static_cast<void (QAudioDecoder::*)(QAudioDecoder::Error)>(&QAudioDecoder::error), this, [&](QAudioDecoder::Error) {
+    spdlog::error("Audio decoder error: {}", decoder->errorString());
+    loop.quit();
+  });
+
+  QTimer timeoutTimer;
+  timeoutTimer.setSingleShot(true);
+  connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+  decoder->setSource(QUrl::fromLocalFile(path));
+  decoder->start();
+
+  timeoutTimer.start(30000);
+  loop.exec();
+
+  decoder->stop();
+  decoder->deleteLater();
+
+  if (!ok || allPcm.isEmpty()) {
+    statusBar()->showMessage(tr("Failed to decode audio file."), 5000);
+    return;
+  }
+
+  const int sampleRate = 16000;
+  if (decoder->audioFormat().sampleRate() != sampleRate) {
+    spdlog::warn("Sample rate mismatch: got {}, need 16000",
+                 decoder->audioFormat().sampleRate());
+  }
+
+  spdlog::info("Decoded {} bytes of PCM16 from {}", allPcm.size(), path);
+
+  QMetaObject::invokeMethod(
+      m_asrService,
+      [this, allPcm, sampleRate]() {
+        m_asrService->startSession();
+        m_asrService->feedAudio(allPcm, sampleRate, 1);
+        m_asrService->finishSession();
+      },
+      Qt::QueuedConnection);
+  statusBar()->showMessage(tr("Recognition sent to ASR engine."), 3000);
 }
 
 void MainWindow::refreshHistory() {

@@ -168,6 +168,15 @@ SettingWidget::SettingWidget(QWidget *parent)
   openBtn->setToolTip(tr("Open model cache directory"));
   connect(openBtn, &QPushButton::clicked, this, &SettingWidget::onOpenDir);
 
+  auto *browseBtn = new QPushButton(tr("Browse Models"), this);
+  browseBtn->setToolTip(tr("Open model download page in browser"));
+  connect(browseBtn, &QPushButton::clicked, this, []() {
+    QDesktopServices::openUrl(
+        QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
+                            "releases/tag/asr-models")));
+  });
+
+  bottomRow->addWidget(browseBtn);
   bottomRow->addWidget(archiveBtn);
   bottomRow->addWidget(openBtn);
   bottomRow->addStretch();
