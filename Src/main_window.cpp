@@ -16,6 +16,7 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLibraryInfo>
 #include <QMenu>
@@ -30,6 +31,7 @@
 #include <QTextEdit>
 #include <QThread>
 #include <QTimer>
+#include <QToolBar>
 #include <QTranslator>
 #include <QVBoxLayout>
 #include <QtEndian>
@@ -53,13 +55,6 @@ qint16 floatToInt16(float sample)
     return static_cast<qint16>(clamped * 32767.0F);
 }
 
-void applyIcon(QPushButton *btn, const QString &svgPath, int size)
-{
-    btn->setIcon(QIcon(svgPath));
-    btn->setIconSize(QSize(size, size));
-    btn->setText({});
-}
-
 } // namespace
 
 namespace talkinput
@@ -81,6 +76,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    if (m_forceQuit) {
+        event->accept();
+        return;
+    }
+
     if (m_trayIcon && m_trayIcon->isVisible()) {
         hide();
         event->ignore();
@@ -143,11 +143,17 @@ void MainWindow::setupUi()
                                   Qt::QueuedConnection);
     });
 
-    // ── Buttons ────────────────────────────────────────────────
-    applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
-    applyIcon(m_ui->fileButton, ":/resources/folder-plus.svg", 24);
+    // ── Toolbar ────────────────────────────────────────────────
+    m_recognitionToolBar = addToolBar(tr("Recognition"));
+    m_recognitionToolBar->setObjectName("recognitionToolBar");
+    m_recognitionToolBar->setMovable(false);
+    m_recognitionToolBar->setIconSize(QSize(28, 28));
+    m_recognitionToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
-    connect(m_ui->startButton, &QPushButton::clicked, this, [this]() {
+    m_startAction = m_recognitionToolBar->addAction(
+        QIcon(":/resources/mic.svg"), tr("Start recognition"));
+    m_startAction->setToolTip(tr("Start recognition"));
+    connect(m_startAction, &QAction::triggered, this, [this]() {
         if (m_voiceInput && m_voiceInput->isListening()) {
             m_voiceInput->stopListening();
         }
@@ -156,15 +162,11 @@ void MainWindow::setupUi()
         }
     });
 
-    connect(m_ui->fileButton, &QPushButton::clicked, this,
+    m_fileAction = m_recognitionToolBar->addAction(
+        QIcon(":/resources/folder-plus.svg"), tr("Recognize file"));
+    m_fileAction->setToolTip(tr("Import an audio file for recognition"));
+    connect(m_fileAction, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
-
-    // ── Style ──────────────────────────────────────────────────
-    m_ui->startButton->setStyleSheet(
-        "QPushButton { background: transparent; border: 2px solid #999; "
-        "border-radius: 24px; }"
-        "QPushButton:hover { border-color: #555; background: #f5f5f5; }"
-        "QPushButton:pressed { background: #e0e0e0; }");
 
     statusBar()->showMessage(tr("Loading model..."));
     spdlog::info("Starting ASR service");
@@ -250,6 +252,11 @@ void MainWindow::setupUi()
                                     QStringLiteral(GIT_COMMIT_DATE)));
     });
 
+    m_exitAction = menuBar()->addAction(tr("Exit"));
+    m_exitAction->setShortcut(QKeySequence::Quit);
+    connect(m_exitAction, &QAction::triggered, this,
+            &MainWindow::quitApplication);
+
     // ── Realtime result label (below toolbar, hidden by default) ─
     m_realtimeLabel = new QLabel(this);
     m_realtimeLabel->setWordWrap(true);
@@ -260,7 +267,7 @@ void MainWindow::setupUi()
     m_realtimeLabel->setTextFormat(Qt::PlainText);
     m_realtimeLabel->setMinimumHeight(36);
     m_realtimeLabel->hide();
-    m_ui->recognitionLayout->insertWidget(1, m_realtimeLabel);
+    m_ui->recognitionLayout->insertWidget(0, m_realtimeLabel);
 
     // ── History header row ───────────────────────────────────────
     auto *historyHeader = new QHBoxLayout();
@@ -293,7 +300,7 @@ void MainWindow::setupUi()
 
     auto *headerWidget = new QWidget(this);
     headerWidget->setLayout(historyHeader);
-    m_ui->recognitionLayout->insertWidget(2, headerWidget);
+    m_ui->recognitionLayout->insertWidget(1, headerWidget);
 
     // ── History table setup ──────────────────────────────────────
     m_ui->historyTable->horizontalHeader()->hide();
@@ -334,7 +341,8 @@ void MainWindow::setupTrayIcon()
         raise();
     });
     auto *quitAction = trayMenu->addAction(tr("Quit"));
-    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    connect(quitAction, &QAction::triggered, this,
+            &MainWindow::quitApplication);
 
     m_trayIcon->setContextMenu(trayMenu);
     m_trayIcon->show();
@@ -374,8 +382,11 @@ void MainWindow::stopListening()
 void MainWindow::updateControls(bool listening)
 {
     if (listening) {
-        applyIcon(m_ui->startButton, ":/resources/stop.svg", 28);
-        m_ui->startButton->setToolTip(tr("Stop recognition"));
+        if (m_startAction) {
+            m_startAction->setIcon(QIcon(":/resources/stop.svg"));
+            m_startAction->setText(tr("Stop recognition"));
+            m_startAction->setToolTip(tr("Stop recognition"));
+        }
         statusBar()->showMessage(
             m_currentModelName.isEmpty()
                 ? tr("Listening...")
@@ -384,8 +395,11 @@ void MainWindow::updateControls(bool listening)
         m_realtimeLabel->show();
     }
     else {
-        applyIcon(m_ui->startButton, ":/resources/mic.svg", 28);
-        m_ui->startButton->setToolTip(tr("Start recognition"));
+        if (m_startAction) {
+            m_startAction->setIcon(QIcon(":/resources/mic.svg"));
+            m_startAction->setText(tr("Start recognition"));
+            m_startAction->setToolTip(tr("Start recognition"));
+        }
         if (m_currentModelDirectory.isEmpty()) {
             statusBar()->showMessage(tr("No model selected"));
         }
@@ -677,10 +691,30 @@ void MainWindow::deleteEntry(int row)
     statusBar()->showMessage(tr("Deleted."), 2000);
 }
 
+void MainWindow::quitApplication()
+{
+    m_forceQuit = true;
+    qApp->quit();
+}
+
 void MainWindow::retranslateUi()
 {
     m_ui->retranslateUi(this);
 
+    m_recognitionToolBar->setWindowTitle(tr("Recognition"));
+    if (m_fileAction) {
+        m_fileAction->setText(tr("Recognize file"));
+        m_fileAction->setToolTip(tr("Import an audio file for recognition"));
+    }
+    if (m_startAction) {
+        const bool listening = m_voiceInput && m_voiceInput->isListening();
+        m_startAction->setText(listening ? tr("Stop recognition")
+                                         : tr("Start recognition"));
+        m_startAction->setToolTip(listening ? tr("Stop recognition")
+                                            : tr("Start recognition"));
+    }
+
+    m_exitAction->setText(tr("Exit"));
     m_prefMenu->setTitle(tr("Preferences"));
     m_langMenu->setTitle(tr("Language"));
     m_zhAction->setText(tr("Chinese"));
