@@ -40,6 +40,8 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/copy.svg"
     "${PROJECT_SOURCE_DIR}/resources/edit.svg"
+    "${PROJECT_SOURCE_DIR}/resources/zh.svg"
+    "${PROJECT_SOURCE_DIR}/resources/en.svg"
     "${PROJECT_SOURCE_DIR}/resources/models.json"
 )
 

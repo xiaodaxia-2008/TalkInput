@@ -171,6 +171,40 @@ void MainWindow::setupUi() {
   setupTrayIcon();
 
   // ── Menu bar ────────────────────────────────────────────────
+  auto *prefMenu = menuBar()->addMenu(tr("Preferences"));
+  auto *langMenu = prefMenu->addMenu(QIcon(QStringLiteral(":/resources/globe.svg")),
+                                      tr("Language"));
+
+  auto *zhAction = langMenu->addAction(
+      QIcon(QStringLiteral(":/resources/zh.svg")), tr("Chinese"));
+  zhAction->setCheckable(true);
+  auto *enAction = langMenu->addAction(
+      QIcon(QStringLiteral(":/resources/en.svg")), tr("English"));
+  enAction->setCheckable(true);
+
+  QSettings langS;
+  m_currentLanguage = langS.value(QStringLiteral("app/language"),
+                                   QStringLiteral("zh")).toString();
+  if (m_currentLanguage == QStringLiteral("en"))
+    enAction->setChecked(true);
+  else
+    zhAction->setChecked(true);
+
+  connect(zhAction, &QAction::triggered, this, [this, zhAction, enAction]() {
+    zhAction->setChecked(true);
+    enAction->setChecked(false);
+    m_currentLanguage = QStringLiteral("zh");
+    QSettings s;
+    s.setValue(QStringLiteral("app/language"), m_currentLanguage);
+  });
+  connect(enAction, &QAction::triggered, this, [this, zhAction, enAction]() {
+    enAction->setChecked(true);
+    zhAction->setChecked(false);
+    m_currentLanguage = QStringLiteral("en");
+    QSettings s;
+    s.setValue(QStringLiteral("app/language"), m_currentLanguage);
+  });
+
   auto *helpMenu = menuBar()->addMenu(tr("Help"));
   auto *modelsAction = helpMenu->addAction(QStringLiteral("More Models"));
   connect(modelsAction, &QAction::triggered, this, []() {

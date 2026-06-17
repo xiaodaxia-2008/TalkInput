@@ -54,6 +54,7 @@ private:
 
   QString m_currentModelDirectory;
   QString m_currentModelName;
+  QString m_currentLanguage;
 
   QSystemTrayIcon *m_trayIcon = nullptr;
   QLabel *m_realtimeLabel = nullptr;

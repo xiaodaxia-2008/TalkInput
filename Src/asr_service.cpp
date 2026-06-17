@@ -3,6 +3,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QThread>
 
@@ -150,7 +151,12 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
     }
 
     // Non-file model config
-    config.senseVoiceLanguage = QStringLiteral("auto");
+    {
+      QSettings s;
+      config.senseVoiceLanguage =
+          s.value(QStringLiteral("app/language"),
+                  QStringLiteral("zh")).toString();
+    }
     config.senseVoiceUseItn = true;
 
     spdlog::info("AsrService: configured from preset '{}'", resolved.typeStr);
@@ -176,7 +182,12 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
     case SpeechRecognizer::Type::SenseVoice: {
       auto rel = [&](const QString &abs) { return dir.relativeFilePath(abs); };
       config.senseVoiceModelFile = rel(findModelFile(dir, {QStringLiteral("model.int8.onnx")}));
-      config.senseVoiceLanguage = QStringLiteral("auto");
+      {
+        QSettings s;
+        config.senseVoiceLanguage =
+            s.value(QStringLiteral("app/language"),
+                    QStringLiteral("zh")).toString();
+      }
       config.senseVoiceUseItn = true;
       break;
     }
