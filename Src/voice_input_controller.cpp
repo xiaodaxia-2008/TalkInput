@@ -91,7 +91,7 @@ public:
         setAttribute(Qt::WA_TranslucentBackground);
         setAttribute(Qt::WA_ShowWithoutActivating);
         setAttribute(Qt::WA_TransparentForMouseEvents);
-        setFixedHeight(76);
+        setFixedHeight(72);
 
         setStyleSheet(
             QStringLiteral("OverlayWindow { background: rgba(16,16,18,180); "
@@ -99,20 +99,20 @@ public:
                            "border-radius: 14px; }"));
 
         auto *lay = new QHBoxLayout(this);
-        lay->setContentsMargins(18, 8, 18, 8);
-        lay->setSpacing(10);
+        lay->setContentsMargins(14, 6, 14, 6);
+        lay->setSpacing(8);
 
         auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
         micLabel->setStyleSheet(
-            QStringLiteral("font-size: 26px; background: transparent;"));
+            QStringLiteral("font-size: 24px; background: transparent;"));
         lay->addWidget(micLabel);
 
         auto *effect = new QGraphicsOpacityEffect(micLabel);
         micLabel->setGraphicsEffect(effect);
         m_blinkAnim = new QPropertyAnimation(effect, "opacity", this);
-        m_blinkAnim->setDuration(700);
+        m_blinkAnim->setDuration(1200);
         m_blinkAnim->setStartValue(1.0);
-        m_blinkAnim->setEndValue(0.1);
+        m_blinkAnim->setEndValue(0.15);
         m_blinkAnim->setLoopCount(-1);
         m_blinkAnim->setEasingCurve(QEasingCurve::InOutSine);
 
@@ -157,8 +157,20 @@ public:
     {
         m_previewEdit->setPlainText(
             text.isEmpty() ? QStringLiteral("Listening...") : text);
-        auto *sb = m_previewEdit->verticalScrollBar();
-        sb->setValue(sb->maximum());
+        m_previewEdit->document()->adjustSize();
+
+        int docH = static_cast<int>(
+            m_previewEdit->document()->size().height());
+        int viewH = m_previewEdit->viewport()->height();
+
+        if (docH < viewH) {
+            m_previewEdit->document()->setDocumentMargin(
+                (viewH - docH) / 2.0);
+        } else {
+            m_previewEdit->document()->setDocumentMargin(0);
+            auto *sb = m_previewEdit->verticalScrollBar();
+            sb->setValue(sb->maximum());
+        }
     }
 
 private:
