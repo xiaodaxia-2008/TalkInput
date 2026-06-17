@@ -16,6 +16,7 @@
 #include <QHeaderView>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLibraryInfo>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -28,6 +29,7 @@
 #include <QTextEdit>
 #include <QThread>
 #include <QTimer>
+#include <QTranslator>
 #include <QVBoxLayout>
 
 #include <spdlog/common.h>
@@ -171,48 +173,44 @@ void MainWindow::setupUi() {
   setupTrayIcon();
 
   // ── Menu bar ────────────────────────────────────────────────
-  auto *prefMenu = menuBar()->addMenu(tr("Preferences"));
-  auto *langMenu = prefMenu->addMenu(QIcon(QStringLiteral(":/resources/globe.svg")),
-                                      tr("Language"));
+  m_prefMenu = menuBar()->addMenu(tr("Preferences"));
+  m_langMenu = m_prefMenu->addMenu(
+      QIcon(QStringLiteral(":/resources/globe.svg")), tr("Language"));
 
-  auto *zhAction = langMenu->addAction(
+  m_zhAction = m_langMenu->addAction(
       QIcon(QStringLiteral(":/resources/zh.svg")), tr("Chinese"));
-  zhAction->setCheckable(true);
-  auto *enAction = langMenu->addAction(
+  m_zhAction->setCheckable(true);
+  m_enAction = m_langMenu->addAction(
       QIcon(QStringLiteral(":/resources/en.svg")), tr("English"));
-  enAction->setCheckable(true);
+  m_enAction->setCheckable(true);
 
   QSettings langS;
   m_currentLanguage = langS.value(QStringLiteral("app/language"),
                                    QStringLiteral("zh")).toString();
   if (m_currentLanguage == QStringLiteral("en"))
-    enAction->setChecked(true);
+    m_enAction->setChecked(true);
   else
-    zhAction->setChecked(true);
+    m_zhAction->setChecked(true);
 
-  connect(zhAction, &QAction::triggered, this, [this, zhAction, enAction]() {
-    zhAction->setChecked(true);
-    enAction->setChecked(false);
-    m_currentLanguage = QStringLiteral("zh");
-    QSettings s;
-    s.setValue(QStringLiteral("app/language"), m_currentLanguage);
+  connect(m_zhAction, &QAction::triggered, this, [this]() {
+    m_zhAction->setChecked(true);
+    m_enAction->setChecked(false);
+    doSwitchLanguage(QStringLiteral("zh"));
   });
-  connect(enAction, &QAction::triggered, this, [this, zhAction, enAction]() {
-    enAction->setChecked(true);
-    zhAction->setChecked(false);
-    m_currentLanguage = QStringLiteral("en");
-    QSettings s;
-    s.setValue(QStringLiteral("app/language"), m_currentLanguage);
+  connect(m_enAction, &QAction::triggered, this, [this]() {
+    m_enAction->setChecked(true);
+    m_zhAction->setChecked(false);
+    doSwitchLanguage(QStringLiteral("en"));
   });
 
-  auto *helpMenu = menuBar()->addMenu(tr("Help"));
-  auto *modelsAction = helpMenu->addAction(QStringLiteral("More Models"));
+  m_helpMenu = menuBar()->addMenu(tr("Help"));
+  auto *modelsAction = m_helpMenu->addAction(QStringLiteral("More Models"));
   connect(modelsAction, &QAction::triggered, this, []() {
     QDesktopServices::openUrl(
         QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
                             "releases/tag/asr-models")));
   });
-  auto *aboutAction = helpMenu->addAction(tr("About"));
+  auto *aboutAction = m_helpMenu->addAction(tr("About"));
   connect(aboutAction, &QAction::triggered, this, [this]() {
     QMessageBox::about(
         this, tr("About TalkInput"),
@@ -605,6 +603,60 @@ void MainWindow::deleteEntry(int row) {
   m_history.deleteEntry(id);
   refreshHistory();
   statusBar()->showMessage(tr("Deleted."), 2000);
+}
+
+void MainWindow::retranslateUi() {
+  m_ui->retranslateUi(this);
+
+  m_prefMenu->setTitle(tr("Preferences"));
+  m_langMenu->setTitle(tr("Language"));
+  m_zhAction->setText(tr("Chinese"));
+  m_enAction->setText(tr("English"));
+  m_helpMenu->setTitle(tr("Help"));
+
+  statusBar()->showMessage(
+      m_currentModelDirectory.isEmpty()
+          ? tr("No model selected")
+          : tr("Model: %1").arg(m_currentModelName));
+}
+
+void MainWindow::doSwitchLanguage(const QString &lang) {
+  m_currentLanguage = lang;
+  QSettings s;
+  s.setValue(QStringLiteral("app/language"), lang);
+
+  // Remove old translators
+  if (m_appTranslator) {
+    QApplication::removeTranslator(m_appTranslator);
+    m_appTranslator->deleteLater();
+    m_appTranslator = nullptr;
+  }
+  if (m_qtTranslator) {
+    QApplication::removeTranslator(m_qtTranslator);
+    m_qtTranslator->deleteLater();
+    m_qtTranslator = nullptr;
+  }
+
+  if (lang == QStringLiteral("zh")) {
+    auto *appT = new QTranslator(this);
+    if (appT->load(QStringLiteral(":/i18n/TalkInput_zh.qm"))) {
+      m_appTranslator = appT;
+      QApplication::installTranslator(m_appTranslator);
+    } else {
+      delete appT;
+    }
+
+    auto *qtT = new QTranslator(this);
+    if (qtT->load(QStringLiteral("qt_zh_CN"),
+                  QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
+      m_qtTranslator = qtT;
+      QApplication::installTranslator(m_qtTranslator);
+    } else {
+      delete qtT;
+    }
+  }
+
+  retranslateUi();
 }
 
 } // namespace talkinput

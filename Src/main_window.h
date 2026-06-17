@@ -6,6 +6,7 @@
 
 #include <QCloseEvent>
 #include <QMainWindow>
+#include <QTranslator>
 #include <memory>
 
 class QLabel;
@@ -44,6 +45,8 @@ private:
   void copyEntry(int row);
   void deleteEntry(int row);
   void onRecognizeFile();
+  void retranslateUi();
+  void doSwitchLanguage(const QString &lang);
 
   std::unique_ptr<Ui::MainWindow> m_ui;
   SettingWidget *m_settingWidget = nullptr;
@@ -58,6 +61,15 @@ private:
 
   QSystemTrayIcon *m_trayIcon = nullptr;
   QLabel *m_realtimeLabel = nullptr;
+  QTranslator *m_appTranslator = nullptr;
+  QTranslator *m_qtTranslator = nullptr;
+
+  // Menus created dynamically (needed for retranslation)
+  QMenu *m_prefMenu = nullptr;
+  QMenu *m_langMenu = nullptr;
+  QAction *m_zhAction = nullptr;
+  QAction *m_enAction = nullptr;
+  QMenu *m_helpMenu = nullptr;
 };
 
 } // namespace talkinput
