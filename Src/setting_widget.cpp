@@ -181,7 +181,7 @@ SettingWidget::SettingWidget(QWidget *parent)
        QUrl(QStringLiteral(
            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2")),
-       230 * 1024 * 1024, 40, false},
+       230 * 1024 * 1024, 40, false, true},
 
       {tr("FunASR Nano int8"),
        tr("Offline (LLM)"),
@@ -339,10 +339,21 @@ void SettingWidget::refreshStatus() {
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
     const bool installed = QFileInfo(path).isDir();
 
-    auto *st = new QTableWidgetItem(
-        installed ? tr("Installed") : tr("Not installed"));
-    st->setForeground(installed ? QColor(0x2e, 0x7d, 0x32)
-                                : QColor(0xc6, 0x28, 0x28));
+    QString statusText;
+    QColor statusColor;
+    if (installed) {
+      statusText = tr("Installed");
+      statusColor = QColor(0x2e, 0x7d, 0x32);
+    } else if (m.isDefault) {
+      statusText = tr("Default");
+      statusColor = QColor(0x15, 0x65, 0xc0);
+    } else {
+      statusText = tr("Not installed");
+      statusColor = QColor(0xc6, 0x28, 0x28);
+    }
+
+    auto *st = new QTableWidgetItem(statusText);
+    st->setForeground(statusColor);
     m_table->setItem(i, 3, st);
 
     auto *w = m_table->cellWidget(i, 4);
