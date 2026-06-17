@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS []>
 <TS version="2.1" language="zh">
     <context>
@@ -549,189 +549,189 @@ Please wait for the model to load, then try again.</source>
         </message>
     </context>
     <context>
-        <name>talkinput::SettingWidget</name>
+        <name>talkinput::ModelWidget</name>
         <message>
-            <location filename="setting_widget.cpp" line="171" />
+            <location filename="model_widget.cpp" line="171" />
             <source>Model</source>
             <translation type="unfinished">模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="171" />
+            <location filename="model_widget.cpp" line="171" />
             <source>Type</source>
             <translation type="unfinished">类型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="171" />
+            <location filename="model_widget.cpp" line="171" />
             <source>Size</source>
             <translation type="unfinished">大小</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="171" />
+            <location filename="model_widget.cpp" line="171" />
             <source>Status</source>
             <translation type="unfinished">状态</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="182" />
+            <location filename="model_widget.cpp" line="182" />
             <source>Use Archive</source>
             <translation type="unfinished">使用压缩包</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="183" />
+            <location filename="model_widget.cpp" line="183" />
             <source>Import and extract a model archive</source>
             <translation type="unfinished">导入并解压模型压缩包</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="187" />
+            <location filename="model_widget.cpp" line="187" />
             <source>Open Folder</source>
             <translation type="unfinished">打开文件夹</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="188" />
+            <location filename="model_widget.cpp" line="188" />
             <source>Open model cache directory</source>
             <translation type="unfinished">打开模型缓存目录</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="198" />
+            <location filename="model_widget.cpp" line="198" />
             <source>SenseVoice multilingual int8</source>
             <translation type="unfinished">SenseVoice 多语言 int8</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="198" />
+            <location filename="model_widget.cpp" line="198" />
             <source>Offline</source>
             <translation type="unfinished">离线</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="207" />
+            <location filename="model_widget.cpp" line="207" />
             <source>FunASR Nano int8</source>
             <translation type="unfinished">FunASR Nano int8</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="207" />
-            <location filename="setting_widget.cpp" line="215" />
+            <location filename="model_widget.cpp" line="207" />
+            <location filename="model_widget.cpp" line="215" />
             <source>Offline (LLM)</source>
             <translation type="unfinished">离线 (LLM)</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="215" />
+            <location filename="model_widget.cpp" line="215" />
             <source>Qwen3-ASR 0.6B int8</source>
             <translation type="unfinished">Qwen3-ASR 0.6B int8</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="223" />
+            <location filename="model_widget.cpp" line="223" />
             <source>Streaming Paraformer bilingual zh-en</source>
             <translation type="unfinished">流式 Paraformer 中英双语</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="223" />
-            <location filename="setting_widget.cpp" line="231" />
-            <location filename="setting_widget.cpp" line="241" />
+            <location filename="model_widget.cpp" line="223" />
+            <location filename="model_widget.cpp" line="231" />
+            <location filename="model_widget.cpp" line="241" />
             <source>Online</source>
             <translation type="unfinished">在线</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="231" />
+            <location filename="model_widget.cpp" line="231" />
             <source>Streaming Zipformer bilingual zh-en int8</source>
             <translation type="unfinished">流式 Zipformer 中英双语 int8</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="241" />
+            <location filename="model_widget.cpp" line="241" />
             <source>Streaming Zipformer EN 20M</source>
             <translation type="unfinished">流式 Zipformer 英文 20M</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="249" />
+            <location filename="model_widget.cpp" line="249" />
             <source>Punctuation (zh-en int8)</source>
             <translation type="unfinished">标点 (中英 int8)</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="249" />
+            <location filename="model_widget.cpp" line="249" />
             <source>Tool</source>
             <translation type="unfinished">工具</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="339" />
+            <location filename="model_widget.cpp" line="339" />
             <source>Auto-loaded punctuation model</source>
             <translation type="unfinished">自动加载的标点模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="342" />
+            <location filename="model_widget.cpp" line="342" />
             <source>Use this model</source>
             <translation type="unfinished">使用此模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="347" />
+            <location filename="model_widget.cpp" line="347" />
             <source>Download this model</source>
             <translation type="unfinished">下载此模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="352" />
+            <location filename="model_widget.cpp" line="352" />
             <source>Delete this model</source>
             <translation type="unfinished">删除此模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="406" />
+            <location filename="model_widget.cpp" line="406" />
             <source>Active</source>
             <translation type="unfinished">已启用</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="410" />
+            <location filename="model_widget.cpp" line="410" />
             <source>Installed</source>
             <translation type="unfinished">已安装</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="414" />
+            <location filename="model_widget.cpp" line="414" />
             <source>Not installed</source>
             <translation type="unfinished">未安装</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="482" />
+            <location filename="model_widget.cpp" line="482" />
             <source>Punctuation model not found, downloading...</source>
             <translation type="unfinished">未找到标点模型，正在下载...</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="497" />
+            <location filename="model_widget.cpp" line="497" />
             <source>Model not found</source>
             <translation type="unfinished">未找到模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="498" />
+            <location filename="model_widget.cpp" line="498" />
             <source>Directory does not exist:
 %1</source>
             <translation>目录不存在：
 %1</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="505" />
+            <location filename="model_widget.cpp" line="505" />
             <source>Offline model</source>
             <translation type="unfinished">离线模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="506" />
+            <location filename="model_widget.cpp" line="506" />
             <source>This model does not support real-time recognition.</source>
             <translation type="unfinished">该模型不支持实时识别。</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="541" />
+            <location filename="model_widget.cpp" line="541" />
             <source>Downloading...</source>
             <translation type="unfinished">正在下载...</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="545" />
+            <location filename="model_widget.cpp" line="545" />
             <source>Downloading %1...</source>
             <translation type="unfinished">正在下载 %1...</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="560" />
+            <location filename="model_widget.cpp" line="560" />
             <source>Downloading %1%</source>
             <translation>正在下载 %1%25</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="577" />
+            <location filename="model_widget.cpp" line="577" />
             <source>Delete model</source>
             <translation type="unfinished">删除模型</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="578" />
+            <location filename="model_widget.cpp" line="578" />
             <source>Delete "%1"?
 
 %2</source>
@@ -740,81 +740,81 @@ Please wait for the model to load, then try again.</source>
 %2</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="588" />
+            <location filename="model_widget.cpp" line="588" />
             <source>Deleted: %1</source>
             <translation type="unfinished">已删除：%1</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="594" />
+            <location filename="model_widget.cpp" line="594" />
             <source>Model Archives (*.tar.bz2 *.tar.gz *.tgz *.tar *.zip);;All Files (*)</source>
             <translation>模型压缩包 (*.tar.bz2 *.tar.gz *.tgz *.tar *.zip);;所有文件 (*)</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="599" />
+            <location filename="model_widget.cpp" line="599" />
             <source>Select model archive</source>
             <translation type="unfinished">选择模型压缩包</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="606" />
+            <location filename="model_widget.cpp" line="606" />
             <source>Error</source>
             <translation type="unfinished">错误</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="607" />
+            <location filename="model_widget.cpp" line="607" />
             <source>Cannot create model directory.</source>
             <translation type="unfinished">无法创建模型目录。</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="611" />
-            <location filename="setting_widget.cpp" line="694" />
+            <location filename="model_widget.cpp" line="611" />
+            <location filename="model_widget.cpp" line="694" />
             <source>Extracting...</source>
             <translation type="unfinished">正在解压...</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="616" />
-            <location filename="setting_widget.cpp" line="699" />
+            <location filename="model_widget.cpp" line="616" />
+            <location filename="model_widget.cpp" line="699" />
             <source>Extraction failed</source>
             <translation type="unfinished">解压失败</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="617" />
+            <location filename="model_widget.cpp" line="617" />
             <source>Failed:
 %1</source>
             <translation>失败：
 %1</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="618" />
+            <location filename="model_widget.cpp" line="618" />
             <source>Extraction failed.</source>
             <translation type="unfinished">解压失败。</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="635" />
+            <location filename="model_widget.cpp" line="635" />
             <source>Extracted: %1</source>
             <translation type="unfinished">已解压：%1</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="638" />
+            <location filename="model_widget.cpp" line="638" />
             <source>Directory not found: %1</source>
             <translation type="unfinished">目录未找到：%1</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="685" />
+            <location filename="model_widget.cpp" line="685" />
             <source>Download failed</source>
             <translation type="unfinished">下载失败</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="686" />
+            <location filename="model_widget.cpp" line="686" />
             <source>Download failed.</source>
             <translation type="unfinished">下载失败。</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="700" />
+            <location filename="model_widget.cpp" line="700" />
             <source>Extraction failed: %1</source>
             <translation type="unfinished">解压失败：%1</translation>
         </message>
         <message>
-            <location filename="setting_widget.cpp" line="714" />
+            <location filename="model_widget.cpp" line="714" />
             <source>Downloaded: %1</source>
             <translation type="unfinished">已下载：%1</translation>
         </message>

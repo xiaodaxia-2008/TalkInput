@@ -1,5 +1,5 @@
 #include "main_window.h"
-#include "setting_widget.h"
+#include "model_widget.h"
 #include "ui_main_window.h"
 
 #include <QAction>
@@ -96,17 +96,17 @@ void MainWindow::setupUi()
                 }
             });
 
-    // ── SettingWidget (Models tab) ────────────────────────────
-    m_settingWidget = new SettingWidget(m_ui->modelsTab);
-    m_ui->modelsLayout->addWidget(m_settingWidget);
-    connect(m_settingWidget, &SettingWidget::modelSelected, this,
+    // ── ModelWidget (Models tab) ────────────────────────────
+    m_modelWidget = new ModelWidget(m_ui->modelsTab);
+    m_ui->modelsLayout->addWidget(m_modelWidget);
+    connect(m_modelWidget, &ModelWidget::modelSelected, this,
             [this](const QString &dir, const QString &name) {
                 setRecognitionModel(dir, name);
                 m_ui->tabWidget->setCurrentWidget(m_ui->recognitionTab);
             });
-    connect(m_settingWidget, &SettingWidget::statusMessage, this,
+    connect(m_modelWidget, &ModelWidget::statusMessage, this,
             [this](const QString &msg) { statusBar()->showMessage(msg); });
-    connect(m_settingWidget, &SettingWidget::punctuationModelReady, this,
+    connect(m_modelWidget, &ModelWidget::punctuationModelReady, this,
             [this]() {
                 if (m_currentModelDirectory.isEmpty()) {
                     return;

@@ -32,6 +32,10 @@ include(cmake/QtDeploy.cmake)
 include(cmake/SherpaOnnxRelease.cmake)
 include(cmake/GitInfo.cmake)
 
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 add_subdirectory(Src)
 
 target_compile_definitions(TalkInput PRIVATE

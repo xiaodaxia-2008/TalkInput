@@ -239,268 +239,268 @@ Please wait for the model to load, then try again.</source>
     </message>
 </context>
 <context>
-    <name>talkinput::SettingWidget</name>
+    <name>talkinput::ModelWidget</name>
     <message>
-        <location filename="setting_widget.cpp" line="154"/>
+        <location filename="model_widget.cpp" line="154"/>
         <source>Model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="154"/>
+        <location filename="model_widget.cpp" line="154"/>
         <source>Type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="154"/>
+        <location filename="model_widget.cpp" line="154"/>
         <source>Size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="154"/>
+        <location filename="model_widget.cpp" line="154"/>
         <source>Status</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="165"/>
+        <location filename="model_widget.cpp" line="165"/>
         <source>Use Archive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="166"/>
+        <location filename="model_widget.cpp" line="166"/>
         <source>Import and extract a model archive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="169"/>
+        <location filename="model_widget.cpp" line="169"/>
         <source>Open Folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="170"/>
+        <location filename="model_widget.cpp" line="170"/>
         <source>Open model cache directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="180"/>
+        <location filename="model_widget.cpp" line="180"/>
         <source>SenseVoice multilingual int8</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="181"/>
+        <location filename="model_widget.cpp" line="181"/>
         <source>Offline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="188"/>
+        <location filename="model_widget.cpp" line="188"/>
         <source>FunASR Nano int8</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="189"/>
-        <location filename="setting_widget.cpp" line="197"/>
+        <location filename="model_widget.cpp" line="189"/>
+        <location filename="model_widget.cpp" line="197"/>
         <source>Offline (LLM)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="196"/>
+        <location filename="model_widget.cpp" line="196"/>
         <source>Qwen3-ASR 0.6B int8</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="204"/>
+        <location filename="model_widget.cpp" line="204"/>
         <source>Streaming Paraformer bilingual zh-en</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="205"/>
-        <location filename="setting_widget.cpp" line="213"/>
-        <location filename="setting_widget.cpp" line="222"/>
+        <location filename="model_widget.cpp" line="205"/>
+        <location filename="model_widget.cpp" line="213"/>
+        <location filename="model_widget.cpp" line="222"/>
         <source>Online</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="212"/>
+        <location filename="model_widget.cpp" line="212"/>
         <source>Streaming Zipformer bilingual zh-en int8</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="221"/>
+        <location filename="model_widget.cpp" line="221"/>
         <source>Streaming Zipformer EN 20M</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="229"/>
+        <location filename="model_widget.cpp" line="229"/>
         <source>Punctuation (zh-en int8)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="230"/>
+        <location filename="model_widget.cpp" line="230"/>
         <source>Tool</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="315"/>
+        <location filename="model_widget.cpp" line="315"/>
         <source>Auto-loaded punctuation model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="317"/>
+        <location filename="model_widget.cpp" line="317"/>
         <source>Use this model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="322"/>
+        <location filename="model_widget.cpp" line="322"/>
         <source>Download this model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="326"/>
+        <location filename="model_widget.cpp" line="326"/>
         <source>Delete this model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="380"/>
+        <location filename="model_widget.cpp" line="380"/>
         <source>Active</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="383"/>
+        <location filename="model_widget.cpp" line="383"/>
         <source>Installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="386"/>
+        <location filename="model_widget.cpp" line="386"/>
         <source>Not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="439"/>
+        <location filename="model_widget.cpp" line="439"/>
         <source>Punctuation model not found, downloading...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="451"/>
+        <location filename="model_widget.cpp" line="451"/>
         <source>Model not found</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="452"/>
+        <location filename="model_widget.cpp" line="452"/>
         <source>Directory does not exist:
 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="459"/>
+        <location filename="model_widget.cpp" line="459"/>
         <source>Offline model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="460"/>
+        <location filename="model_widget.cpp" line="460"/>
         <source>This model does not support real-time recognition.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="485"/>
+        <location filename="model_widget.cpp" line="485"/>
         <source>Downloading...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="489"/>
+        <location filename="model_widget.cpp" line="489"/>
         <source>Downloading %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="501"/>
+        <location filename="model_widget.cpp" line="501"/>
         <source>Downloading %1%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="513"/>
+        <location filename="model_widget.cpp" line="513"/>
         <source>Delete model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="514"/>
+        <location filename="model_widget.cpp" line="514"/>
         <source>Delete &quot;%1&quot;?
 
 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="522"/>
+        <location filename="model_widget.cpp" line="522"/>
         <source>Deleted: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="528"/>
+        <location filename="model_widget.cpp" line="528"/>
         <source>Model Archives (*.tar.bz2 *.tar.gz *.tgz *.tar *.zip);;All Files (*)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="532"/>
+        <location filename="model_widget.cpp" line="532"/>
         <source>Select model archive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="537"/>
+        <location filename="model_widget.cpp" line="537"/>
         <source>Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="538"/>
+        <location filename="model_widget.cpp" line="538"/>
         <source>Cannot create model directory.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="542"/>
-        <location filename="setting_widget.cpp" line="616"/>
+        <location filename="model_widget.cpp" line="542"/>
+        <location filename="model_widget.cpp" line="616"/>
         <source>Extracting...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="547"/>
-        <location filename="setting_widget.cpp" line="621"/>
+        <location filename="model_widget.cpp" line="547"/>
+        <location filename="model_widget.cpp" line="621"/>
         <source>Extraction failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="548"/>
+        <location filename="model_widget.cpp" line="548"/>
         <source>Failed:
 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="549"/>
+        <location filename="model_widget.cpp" line="549"/>
         <source>Extraction failed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="567"/>
+        <location filename="model_widget.cpp" line="567"/>
         <source>Extracted: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="569"/>
+        <location filename="model_widget.cpp" line="569"/>
         <source>Directory not found: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="607"/>
+        <location filename="model_widget.cpp" line="607"/>
         <source>Download failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="608"/>
+        <location filename="model_widget.cpp" line="608"/>
         <source>Download failed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="622"/>
+        <location filename="model_widget.cpp" line="622"/>
         <source>Extraction failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="setting_widget.cpp" line="634"/>
+        <location filename="model_widget.cpp" line="634"/>
         <source>Downloaded: %1</source>
         <translation type="unfinished"></translation>
     </message>

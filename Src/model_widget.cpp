@@ -1,4 +1,4 @@
-#include "setting_widget.h"
+#include "model_widget.h"
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -151,12 +151,12 @@ QString cacheDir()
 namespace talkinput
 {
 
-SettingWidget::SettingWidget(QWidget *parent)
+ModelWidget::ModelWidget(QWidget *parent)
     : QWidget(parent), m_networkManager(new QNetworkAccessManager(this))
 {
 
     connect(m_networkManager, &QNetworkAccessManager::finished, this,
-            &SettingWidget::onDownloadFinished);
+            &ModelWidget::onDownloadFinished);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(8, 8, 8, 8);
@@ -182,11 +182,11 @@ SettingWidget::SettingWidget(QWidget *parent)
     auto *archiveBtn = new QPushButton(tr("Use Archive"), this);
     archiveBtn->setToolTip(tr("Import and extract a model archive"));
     connect(archiveBtn, &QPushButton::clicked, this,
-            &SettingWidget::onUseArchive);
+            &ModelWidget::onUseArchive);
 
     auto *openBtn = new QPushButton(tr("Open Folder"), this);
     openBtn->setToolTip(tr("Open model cache directory"));
-    connect(openBtn, &QPushButton::clicked, this, &SettingWidget::onOpenDir);
+    connect(openBtn, &QPushButton::clicked, this, &ModelWidget::onOpenDir);
 
     bottomRow->addWidget(archiveBtn);
     bottomRow->addWidget(openBtn);
@@ -260,7 +260,7 @@ SettingWidget::SettingWidget(QWidget *parent)
     m_startupTimer = new QTimer(this);
     m_startupTimer->setSingleShot(true);
     connect(m_startupTimer, &QTimer::timeout, this,
-            &SettingWidget::ensurePunctuationModel);
+            &ModelWidget::ensurePunctuationModel);
     m_startupTimer->start(1500);
 
     // ── Icon helper ──────────────────────────────────────────────
@@ -293,7 +293,7 @@ SettingWidget::SettingWidget(QWidget *parent)
     openBtn->setStyleSheet(btnStyle);
 }
 
-SettingWidget::~SettingWidget()
+ModelWidget::~ModelWidget()
 {
     if (m_activeDownloadReply) {
         m_activeDownloadReply->abort();
@@ -304,7 +304,7 @@ SettingWidget::~SettingWidget()
 
 // ── Table ─────────────────────────────────────────────────────
 
-void SettingWidget::populateTable()
+void ModelWidget::populateTable()
 {
     m_table->setRowCount(m_models.size());
 
@@ -387,7 +387,7 @@ void SettingWidget::populateTable()
     refreshStatus();
 }
 
-void SettingWidget::refreshStatus()
+void ModelWidget::refreshStatus()
 {
     QSettings s;
     const QString activeDir =
@@ -434,7 +434,7 @@ void SettingWidget::refreshStatus()
 
 // ── Icon helper ───────────────────────────────────────────────
 
-void SettingWidget::applyIcon(QPushButton *btn, const QString &svgPath,
+void ModelWidget::applyIcon(QPushButton *btn, const QString &svgPath,
                               int size)
 {
     QSvgRenderer svg(svgPath);
@@ -450,7 +450,7 @@ void SettingWidget::applyIcon(QPushButton *btn, const QString &svgPath,
 
 // ── Punctuation model helpers ─────────────────────────────────
 
-bool SettingWidget::isInstalled(int row) const
+bool ModelWidget::isInstalled(int row) const
 {
     if (row < 0 || row >= m_models.size()) {
         return false;
@@ -460,13 +460,13 @@ bool SettingWidget::isInstalled(int row) const
     return QFileInfo(path).isDir();
 }
 
-QString SettingWidget::punctuationModelName()
+QString ModelWidget::punctuationModelName()
 {
     return QStringLiteral(
         "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8");
 }
 
-void SettingWidget::ensurePunctuationModel()
+void ModelWidget::ensurePunctuationModel()
 {
     if (m_punctuationRow < 0) {
         return;
@@ -485,7 +485,7 @@ void SettingWidget::ensurePunctuationModel()
 
 // ── Actions ───────────────────────────────────────────────────
 
-void SettingWidget::onUse(int row)
+void ModelWidget::onUse(int row)
 {
     if (row < 0 || row >= m_models.size()) {
         return;
@@ -510,7 +510,7 @@ void SettingWidget::onUse(int row)
     emit modelSelected(dir, m.name);
 }
 
-void SettingWidget::onDownload(int row)
+void ModelWidget::onDownload(int row)
 {
     if (row < 0 || row >= m_models.size() || m_activeDownloadReply) {
         return;
@@ -563,7 +563,7 @@ void SettingWidget::onDownload(int row)
             });
 }
 
-void SettingWidget::onDelete(int row)
+void ModelWidget::onDelete(int row)
 {
     if (row < 0 || row >= m_models.size()) {
         return;
@@ -589,7 +589,7 @@ void SettingWidget::onDelete(int row)
     refreshStatus();
 }
 
-void SettingWidget::onUseArchive()
+void ModelWidget::onUseArchive()
 {
     const QString filter = tr(
         "Model Archives (*.tar.bz2 *.tar.gz *.tgz *.tar *.zip);;All Files (*)");
@@ -642,7 +642,7 @@ void SettingWidget::onUseArchive()
     refreshStatus();
 }
 
-void SettingWidget::onOpenDir()
+void ModelWidget::onOpenDir()
 {
     QDir dir(cacheDir());
     if (!dir.exists() && !dir.mkpath(QStringLiteral("."))) {
@@ -651,7 +651,7 @@ void SettingWidget::onOpenDir()
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
 }
 
-void SettingWidget::onDownloadFinished()
+void ModelWidget::onDownloadFinished()
 {
     auto *reply = m_activeDownloadReply;
     m_activeDownloadReply = nullptr;

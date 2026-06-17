@@ -21,7 +21,7 @@ class MainWindow;
 namespace talkinput
 {
 
-class SettingWidget;
+class ModelWidget;
 
 class MainWindow final : public QMainWindow
 {
@@ -52,7 +52,7 @@ private:
     void doSwitchLanguage(const QString &lang);
 
     std::unique_ptr<Ui::MainWindow> m_ui;
-    SettingWidget *m_settingWidget = nullptr;
+    ModelWidget *m_modelWidget = nullptr;
     VoiceInputController *m_voiceInput = nullptr;
     AsrService *m_asrService = nullptr;
     QThread *m_asrThread = nullptr;
