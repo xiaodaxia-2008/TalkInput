@@ -6,6 +6,9 @@
 #include <QFileInfo>
 #include <QtEndian>
 
+#include <spdlog/spdlog.h>
+#include "qt_fmt.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -62,6 +65,26 @@ bool SpeechRecognizer::start(const Config &config, QString *errorMessage)
         if (errorMessage)
             *errorMessage = QStringLiteral("Model directory is empty.");
         return false;
+    }
+
+    // Initialize punctuation model if path is provided
+    if (!config.punctuationModelPath.isEmpty()) {
+        const QString punctPath = config.punctuationModelPath;
+        if (QFileInfo::exists(punctPath)) {
+            SherpaOnnxOfflinePunctuationConfig punctConfig;
+            std::memset(&punctConfig, 0, sizeof(punctConfig));
+            const std::string punctModelStr = punctPath.toUtf8().toStdString();
+            punctConfig.model.ct_transformer = punctModelStr.c_str();
+            punctConfig.model.num_threads = std::max(1, config.numThreads);
+            punctConfig.model.provider = "cpu";
+            m_punct = SherpaOnnxCreateOfflinePunctuation(&punctConfig);
+            if (!m_punct)
+                spdlog::warn("Failed to create punctuation processor");
+            else
+                spdlog::info("Punctuation model loaded: {}", punctPath);
+        } else {
+            spdlog::warn("Punctuation model not found: {}", punctPath);
+        }
     }
 
     if (config.type == Type::StreamingTransducer ||
@@ -243,6 +266,10 @@ bool SpeechRecognizer::startOffline(const Config &config, QString *errorMessage)
 
 void SpeechRecognizer::stop()
 {
+    if (m_punct) {
+        SherpaOnnxDestroyOfflinePunctuation(m_punct);
+        m_punct = nullptr;
+    }
     if (m_online.recognizer) {
         if (m_online.stream) {
             SherpaOnnxDestroyOnlineStream(m_online.stream);
@@ -393,14 +420,33 @@ void SpeechRecognizer::publishOnlineResult(bool isFinal)
         SherpaOnnxGetOnlineStreamResult(m_online.recognizer, m_online.stream);
     if (!result) return;
 
-    const QString text = decodeSherpaText(result->text);
+    QString text = decodeSherpaText(result->text);
     SherpaOnnxDestroyOnlineRecognizerResult(result);
 
     if (text.isEmpty()) return;
+
+    if (isFinal && m_punct)
+        text = addPunctuation(text);
+
     if (!isFinal && text == m_online.lastText) return;
 
     m_online.lastText = text;
     emit resultChanged(text, isFinal);
+}
+
+QString SpeechRecognizer::addPunctuation(const QString &text)
+{
+    if (text.isEmpty() || !m_punct)
+        return text;
+
+    const std::string utf8Text = text.toUtf8().toStdString();
+    const char *punctResult = SherpaOfflinePunctuationAddPunct(m_punct, utf8Text.c_str());
+    if (!punctResult)
+        return text;
+
+    QString result = QString::fromUtf8(punctResult).trimmed();
+    SherpaOfflinePunctuationFreeText(punctResult);
+    return result.isEmpty() ? text : result;
 }
 
 // ── Offline helper ────────────────────────────────────────────
@@ -424,7 +470,9 @@ void SpeechRecognizer::decodeOffline()
     const SherpaOnnxOfflineRecognizerResult *result =
         SherpaOnnxGetOfflineStreamResult(stream);
     if (result) {
-        const QString text = decodeSherpaText(result->text);
+        QString text = decodeSherpaText(result->text);
+        if (m_punct)
+            text = addPunctuation(text);
         if (!text.isEmpty())
             emit resultChanged(text, true);
         SherpaOnnxDestroyOfflineRecognizerResult(result);

@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
 #include <QThread>
 
 #include <spdlog/spdlog.h>
@@ -142,6 +143,20 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
     config.qwen3TokenizerDir = tokDir.isEmpty() ? modelDir : tokDir;
     break;
   }
+  }
+
+  // Check for punctuation model at well-known locations
+  const QStringList punctCandidates = {
+      QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
+          .filePath(QStringLiteral("punctuation/model.onnx")),
+      QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
+          .filePath(QStringLiteral("models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8/model.onnx")),
+  };
+  for (const auto &p : punctCandidates) {
+    if (QFileInfo::exists(p)) {
+      config.punctuationModelPath = p;
+      break;
+    }
   }
 
   return config;

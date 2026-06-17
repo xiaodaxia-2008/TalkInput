@@ -11,6 +11,7 @@ struct SherpaOnnxOnlineRecognizer;
 struct SherpaOnnxOnlineStream;
 struct SherpaOnnxOfflineRecognizer;
 struct SherpaOnnxOfflineStream;
+struct SherpaOnnxOfflinePunctuation;
 
 namespace talkinput
 {
@@ -66,6 +67,9 @@ public:
         float funasrTopP = 0.8F;
         int funasrSeed = 42;
 
+        // Punctuation restoration (offline model, e.g. ct-transformer)
+        QString punctuationModelPath;
+
         // Qwen3-ASR
         QString qwen3ConvFrontendFile;
         QString qwen3EncoderFile;
@@ -107,6 +111,7 @@ private:
 
     void decodePendingOnline();
     void publishOnlineResult(bool isFinal);
+    QString addPunctuation(const QString &text);
     void decodeOffline();
 
     struct OnlineState
@@ -139,6 +144,8 @@ private:
         std::string qwen3Decoder;
         std::string qwen3TokDir;
     } m_offline;
+
+    const SherpaOnnxOfflinePunctuation *m_punct = nullptr;
 };
 
 } // namespace talkinput
