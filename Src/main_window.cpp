@@ -189,8 +189,41 @@ void MainWindow::setupUi() {
   m_realtimeLabel->hide();
   m_ui->recognitionLayout->insertWidget(1, m_realtimeLabel);
 
+  // ── History header row ───────────────────────────────────────
+  auto *historyHeader = new QHBoxLayout();
+  historyHeader->setContentsMargins(0, 4, 0, 0);
+
+  auto *historyTitle = new QLabel(tr("Recognition History"), this);
+  historyTitle->setStyleSheet(
+      QStringLiteral("font-size: 13px; font-weight: bold; color: #444;"));
+  historyHeader->addWidget(historyTitle);
+
+  historyHeader->addStretch();
+
+  auto *clearBtn = new QPushButton(tr("Clear"), this);
+  clearBtn->setFlat(true);
+  clearBtn->setStyleSheet(
+      QStringLiteral("QPushButton { color: #c0392b; font-size: 12px; }"
+                     "QPushButton:hover { text-decoration: underline; }"));
+  connect(clearBtn, &QPushButton::clicked, this, [this]() {
+    auto reply = QMessageBox::question(
+        this, tr("Clear History"),
+        tr("Are you sure you want to clear all recognition history?"),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (reply == QMessageBox::Yes) {
+      m_history.clearAll();
+      refreshHistory();
+      statusBar()->showMessage(tr("History cleared."), 2000);
+    }
+  });
+  historyHeader->addWidget(clearBtn);
+
+  auto *headerWidget = new QWidget(this);
+  headerWidget->setLayout(historyHeader);
+  m_ui->recognitionLayout->insertWidget(2, headerWidget);
+
   // ── History table setup ──────────────────────────────────────
-  m_ui->historyTable->horizontalHeader()->setStretchLastSection(false);
+  m_ui->historyTable->horizontalHeader()->hide();
   m_ui->historyTable->horizontalHeader()->setSectionResizeMode(
       0, QHeaderView::Stretch);
   m_ui->historyTable->setColumnCount(4);
