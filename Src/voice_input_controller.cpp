@@ -110,19 +110,13 @@ public:
                        "background: transparent;"));
     m_previewLabel->setText(QStringLiteral("Listening..."));
     m_previewLabel->setContentsMargins(0, 0, 0, 0);
+    m_previewLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     lay->addWidget(m_previewLabel, 1);
 
     setMinimumWidth(320);
-
-    connect(&m_scrollTimer, &QTimer::timeout, this, [this] {
-      updateMarquee();
-    });
   }
 
   void startAnimation() {
-    m_fullText.clear();
-    m_scrollOffset = 0;
-    m_scrollTimer.stop();
     m_previewLabel->setText(QStringLiteral("Listening..."));
     positionOnActiveScreen();
     show();
@@ -135,14 +129,13 @@ public:
   }
 
   void stopAnimation() {
-    m_scrollTimer.stop();
     hide();
   }
 
   void setPreviewText(const QString &text) {
-    m_fullText = text;
-    m_scrollOffset = 0;
-    updateMarquee();
+    m_previewLabel->setText(text.isEmpty()
+                                ? QStringLiteral("Listening...")
+                                : text);
   }
 
 private:
@@ -159,36 +152,8 @@ private:
     move(x, wr.bottom() - height() - 30);
   }
 
-  void updateMarquee() {
-    if (m_fullText.isEmpty()) {
-      m_previewLabel->setText(QStringLiteral("Listening..."));
-      m_scrollTimer.stop();
-      return;
-    }
-
-    QFontMetrics fm(m_previewLabel->font());
-    if (fm.horizontalAdvance(m_fullText) <= m_previewLabel->width()) {
-      m_previewLabel->setText(m_fullText);
-      m_scrollTimer.stop();
-      return;
-    }
-
-    QString doubled = m_fullText + QStringLiteral("   ") + m_fullText;
-    m_previewLabel->setText(
-        doubled.mid(m_scrollOffset, m_fullText.length() + 3));
-    ++m_scrollOffset;
-    if (m_scrollOffset >= m_fullText.length())
-      m_scrollOffset = 0;
-
-    if (!m_scrollTimer.isActive())
-      m_scrollTimer.start(250);
-  }
-
   QLabel *m_statusLabel = nullptr;
   QLabel *m_previewLabel = nullptr;
-  QTimer m_scrollTimer;
-  QString m_fullText;
-  int m_scrollOffset = 0;
 };
 
 } // namespace
