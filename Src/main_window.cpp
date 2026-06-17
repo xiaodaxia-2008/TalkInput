@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QAudioDecoder>
+#include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -162,6 +163,12 @@ void MainWindow::setupUi() {
 
   // ── Menu bar ────────────────────────────────────────────────
   auto *helpMenu = menuBar()->addMenu(tr("Help"));
+  auto *modelsAction = helpMenu->addAction(QStringLiteral("More Models"));
+  connect(modelsAction, &QAction::triggered, this, []() {
+    QDesktopServices::openUrl(
+        QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
+                            "releases/tag/asr-models")));
+  });
   auto *aboutAction = helpMenu->addAction(tr("About"));
   connect(aboutAction, &QAction::triggered, this, [this]() {
     QMessageBox::about(
