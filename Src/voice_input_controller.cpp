@@ -270,17 +270,68 @@ void VoiceInputController::onResult(const QString &text, bool isFinal) {
   }
 }
 
-// ── VoiceInputController::sendText ────────────────────────────
-//
-// 核心修复: ASCII 字符(< 0x80)单独发送 + 15 ms 延时。
-// 高速批量塞入英文会使输入法拦截为拼音或终端缓冲区溢出丢包，
-// 中文走 VK_PACKET 路径不受影响，无需延时。
-//
-void VoiceInputController::sendText(const QString &text) {
-  if (text.isEmpty()) return;
+// ── Clipboard paste helper ────────────────────────────────────
+// 先填写剪切板、等待异步传播完成、再发 Ctrl+V。
+// 粘贴后不清除剪切板，文本留给用户备用。
+static bool tryClipboardPaste(const QString &text) {
+  HWND hwnd = GetForegroundWindow();
+  if (!hwnd) return false;
 
-  spdlog::info("Sending text to foreground app: {}", text);
+  if (!OpenClipboard(nullptr))
+    return false;
 
+  EmptyClipboard();
+
+  const int len = text.length();
+  HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE,
+                                static_cast<size_t>(len + 1) * sizeof(wchar_t));
+  if (!hGlobal) {
+    CloseClipboard();
+    return false;
+  }
+
+  auto *dst = static_cast<wchar_t *>(GlobalLock(hGlobal));
+  text.toWCharArray(dst);
+  dst[len] = L'\0';
+  GlobalUnlock(hGlobal);
+
+  if (!SetClipboardData(CF_UNICODETEXT, hGlobal)) {
+    GlobalFree(hGlobal);
+    CloseClipboard();
+    return false;
+  }
+  CloseClipboard();
+
+  // 剪切板更新是异步的 — 等待传播完成再发 Ctrl+V
+  // 轮询 GetClipboardSequenceNumber() 直到变化，再加 20 ms 保险
+  const DWORD seqBefore = GetClipboardSequenceNumber();
+  for (int tries = 0; tries < 50; ++tries) {
+    if (GetClipboardSequenceNumber() != seqBefore)
+      break;
+    Sleep(10);
+  }
+  Sleep(20);
+
+  // Ctrl+V
+  INPUT ctrlV[4] = {};
+  ctrlV[0].type = INPUT_KEYBOARD;
+  ctrlV[0].ki.wVk = VK_CONTROL;
+  ctrlV[1].type = INPUT_KEYBOARD;
+  ctrlV[1].ki.wVk = 'V';
+  ctrlV[2].type = INPUT_KEYBOARD;
+  ctrlV[2].ki.wVk = 'V';
+  ctrlV[2].ki.dwFlags = KEYEVENTF_KEYUP;
+  ctrlV[3].type = INPUT_KEYBOARD;
+  ctrlV[3].ki.wVk = VK_CONTROL;
+  ctrlV[3].ki.dwFlags = KEYEVENTF_KEYUP;
+  SendInput(4, ctrlV, sizeof(INPUT));
+
+  // 不还原剪切板 — 文本留给用户
+  return true;
+}
+
+// ── SendInput 回退：逐字 KEYEVENTF_UNICODE + ASCII 延时 ─────
+static void fallbackSendInput(const QString &text) {
   HWND hwnd = GetForegroundWindow();
   if (!hwnd) return;
 
@@ -289,7 +340,6 @@ void VoiceInputController::sendText(const QString &text) {
   const BOOL attached =
       (tid != ourTid) ? AttachThreadInput(ourTid, tid, TRUE) : FALSE;
 
-  // 尽量关闭 IME，减少对 ASCII 的拦截
   HIMC himc = ImmGetContext(hwnd);
   const BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
   if (himc) ImmSetOpenStatus(himc, FALSE);
@@ -298,7 +348,6 @@ void VoiceInputController::sendText(const QString &text) {
     const ushort code = ch.unicode();
     if (code == 0) continue;
 
-    // 每个字符作为一组 key-down + key-up 发送
     INPUT pair[2] = {};
     pair[0].type = INPUT_KEYBOARD;
     pair[0].ki.wVk = 0;
@@ -312,18 +361,32 @@ void VoiceInputController::sendText(const QString &text) {
 
     SendInput(2, pair, sizeof(INPUT));
 
-    // ASCII 字符加延时，给输入法和终端留出处理时间
     if (code < 0x80)
       Sleep(15);
   }
 
-  // 恢复 IME 状态
   if (himc) {
     ImmSetOpenStatus(himc, wasOpen);
     ImmReleaseContext(hwnd, himc);
   }
 
   if (attached) AttachThreadInput(ourTid, tid, FALSE);
+}
+
+// ── VoiceInputController::sendText ────────────────────────────
+void VoiceInputController::sendText(const QString &text) {
+  if (text.isEmpty()) return;
+
+  spdlog::info("Sending text to foreground app: {}", text);
+
+  // 优先使用剪切板（终端兼容性最好）
+  if (tryClipboardPaste(text)) {
+    spdlog::debug("Clipboard paste succeeded");
+    return;
+  }
+
+  spdlog::warn("Clipboard unavailable, using SendInput fallback");
+  fallbackSendInput(text);
 }
 
 void VoiceInputController::showOverlay() {
