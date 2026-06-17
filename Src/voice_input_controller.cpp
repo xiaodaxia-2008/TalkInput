@@ -49,23 +49,24 @@ public:
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TransparentForMouseEvents);
-    setFixedHeight(40);
+    setFixedHeight(56);
 
     setStyleSheet(
-        QStringLiteral("OverlayWindow { background: rgba(20,20,20,220); "
-                       "border-radius: 8px; }"));
+        QStringLiteral("OverlayWindow { background: rgba(16,16,18,230); "
+                       "border: 1px solid rgba(255,255,255,30); "
+                       "border-radius: 10px; }"));
 
     auto *lay = new QHBoxLayout(this);
-    lay->setContentsMargins(14, 0, 14, 0);
-    lay->setSpacing(6);
+    lay->setContentsMargins(18, 0, 18, 0);
+    lay->setSpacing(10);
 
     auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
     micLabel->setStyleSheet(
-        QStringLiteral("font-size: 18px; background: transparent;"));
+        QStringLiteral("font-size: 26px; background: transparent;"));
     lay->addWidget(micLabel);
 
     m_statusLabel = new QLabel(
-        QStringLiteral("<span style='color:#ff5050;font-size:12px;"
+        QStringLiteral("<span style='color:#ff5050;font-size:15px;"
                        "font-weight:bold;'>REC</span>"),
         this);
     m_statusLabel->setStyleSheet(QStringLiteral("background: transparent;"));
@@ -73,13 +74,13 @@ public:
 
     m_previewLabel = new QLabel(this);
     m_previewLabel->setStyleSheet(
-        QStringLiteral("color: #cccccc; font-size: 12px; "
+        QStringLiteral("color: #e0e0e0; font-size: 15px; "
                        "background: transparent;"));
     m_previewLabel->setText(QStringLiteral("Listening..."));
     m_previewLabel->setContentsMargins(0, 0, 0, 0);
     lay->addWidget(m_previewLabel, 1);
 
-    setMinimumWidth(200);
+    setMinimumWidth(320);
   }
 
   void startAnimation() {
