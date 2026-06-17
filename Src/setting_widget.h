@@ -10,6 +10,7 @@ class QNetworkAccessManager;
 class QNetworkReply;
 class QPushButton;
 class QTableWidget;
+class QTimer;
 
 namespace talkinput {
 
@@ -34,6 +35,7 @@ private:
     qint64 modelSize = 0;
     int paramCount = 0;
     bool streamingSupport = false;
+    bool isPunctuationModel = false;
 
   };
 
@@ -47,6 +49,9 @@ private:
   void onDownloadFinished();
 
   void applyIcon(QPushButton *btn, const QString &svgPath, int size);
+  void ensurePunctuationModel();
+  bool isInstalled(int row) const;
+  static QString punctuationModelName();
 
   QTableWidget *m_table = nullptr;
   QVector<ModelInfo> m_models;
@@ -57,6 +62,8 @@ private:
   QString m_activeDownloadPath;
   QString m_activeDownloadTempPath;
   int m_downloadTargetRow = -1;
+  int m_punctuationRow = -1;
+  QTimer *m_startupTimer = nullptr;
 };
 
 } // namespace talkinput

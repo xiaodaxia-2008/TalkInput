@@ -21,6 +21,7 @@
 #include <QStandardPaths>
 
 #include <QTableWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QSvgRenderer>
 
@@ -224,7 +225,22 @@ SettingWidget::SettingWidget(QWidget *parent)
            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
            "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2")),
        40 * 1024 * 1024, 20, true},
+
+      {tr("Punctuation (zh-en int8)"),
+       tr("Tool"),
+       QStringLiteral("sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8"),
+       QUrl(QStringLiteral(
+           "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/"
+           "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2")),
+       62 * 1024 * 1024, 0, false, true},
   };
+
+  // Auto-download punctuation model after UI is ready
+  m_startupTimer = new QTimer(this);
+  m_startupTimer->setSingleShot(true);
+  connect(m_startupTimer, &QTimer::timeout, this,
+          &SettingWidget::ensurePunctuationModel);
+  m_startupTimer->start(1500);
 
   // ── Icon helper ──────────────────────────────────────────────
   // Use QSvgRenderer for reliable SVG rendering
@@ -294,7 +310,12 @@ void SettingWidget::populateTable() {
     lay->setSpacing(4);
 
     auto *useBtn = new QPushButton();
-    useBtn->setToolTip(tr("Use this model"));
+    if (m.isPunctuationModel) {
+      useBtn->setEnabled(false);
+      useBtn->setToolTip(tr("Auto-loaded punctuation model"));
+    } else {
+      useBtn->setToolTip(tr("Use this model"));
+    }
     connect(useBtn, &QPushButton::clicked, this, [this, i]() { onUse(i); });
 
     auto *dlBtn = new QPushButton();
@@ -331,6 +352,14 @@ void SettingWidget::populateTable() {
     m_table->setCellWidget(i, 4, container);
   }
 
+  m_punctuationRow = -1;
+  for (int i = 0; i < m_models.size(); ++i) {
+    if (m_models[i].isPunctuationModel) {
+      m_punctuationRow = i;
+      break;
+    }
+  }
+
   refreshStatus();
 }
 
@@ -340,8 +369,8 @@ void SettingWidget::refreshStatus() {
 
   for (int i = 0; i < m_models.size(); ++i) {
     const auto &m = m_models.at(i);
+    const bool installed = isInstalled(i);
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
-    const bool installed = QFileInfo(path).isDir();
     const bool isActive = !activeDir.isEmpty() &&
                           QDir(activeDir) == QDir(path);
 
@@ -386,6 +415,32 @@ void SettingWidget::applyIcon(QPushButton *btn, const QString &svgPath,
   btn->setIcon(QIcon(pm));
   btn->setIconSize(QSize(size, size));
   btn->setText({});
+}
+
+// ── Punctuation model helpers ─────────────────────────────────
+
+bool SettingWidget::isInstalled(int row) const {
+  if (row < 0 || row >= m_models.size()) return false;
+  const auto &m = m_models.at(row);
+  const QString path = QDir(cacheDir()).filePath(m.modelDirName);
+  if (m.isPunctuationModel) {
+    return QFileInfo(QDir(path).filePath(QStringLiteral("model.onnx"))).isFile();
+  }
+  return QFileInfo(path).isDir();
+}
+
+QString SettingWidget::punctuationModelName() {
+  return QStringLiteral("sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8");
+}
+
+void SettingWidget::ensurePunctuationModel() {
+  if (m_punctuationRow < 0) return;
+  if (isInstalled(m_punctuationRow)) return;
+  if (m_activeDownloadReply) return;
+
+  spdlog::info("Punctuation model not found, starting auto-download...");
+  emit statusMessage(tr("Punctuation model not found, downloading..."));
+  onDownload(m_punctuationRow);
 }
 
 // ── Actions ───────────────────────────────────────────────────
@@ -550,8 +605,9 @@ void SettingWidget::onDownloadFinished() {
   if (row >= 0 && row < m_models.size()) {
     const auto &m = m_models.at(row);
     const QString modelDir = QDir(cacheDir()).filePath(m.modelDirName);
-    if (QFileInfo(modelDir).isDir()) {
-      emit modelSelected(modelDir, m.name);
+    if (QFileInfo(modelDir).isDir() || isInstalled(row)) {
+      if (!m.isPunctuationModel)
+        emit modelSelected(modelDir, m.name);
       emit statusMessage(tr("Downloaded: %1").arg(m.name));
     }
   }
