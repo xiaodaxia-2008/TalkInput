@@ -78,11 +78,11 @@ bool SpeechRecognizer::start(const Config &config, QString *errorMessage)
             punctConfig.model.provider = "cpu";
             m_punct = SherpaOnnxCreateOfflinePunctuation(&punctConfig);
             if (!m_punct)
-                qWarning().noquote() << "Failed to create punctuation processor";
+                qWarning() << "Failed to create punctuation processor";
             else
-                qInfo().noquote() << "Punctuation model loaded:" << punctPath;
+                qInfo() << "Punctuation model loaded:" << punctPath;
         } else {
-            qWarning().noquote() << "Punctuation model not found:" << punctPath;
+            qWarning() << "Punctuation model not found:" << punctPath;
         }
     }
 

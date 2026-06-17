@@ -43,7 +43,7 @@ bool requireFile(const QString &path)
         return true;
     }
 
-    qCritical().noquote() << "Missing file:" << QDir::toNativeSeparators(path);
+    qCritical() << "Missing file:" << QDir::toNativeSeparators(path);
     return false;
 }
 
@@ -149,7 +149,7 @@ void feedPcm16(const QByteArray &pcm,
 
     const QString partial = currentText(recognizer, stream);
     if (!partial.isEmpty() && partial != *lastPartial) {
-        qInfo().noquote() << "[partial]" << partial;
+        qInfo() << "[partial]" << partial;
         *lastPartial = partial;
     }
 
@@ -157,7 +157,7 @@ void feedPcm16(const QByteArray &pcm,
         const QString finalText = currentText(recognizer, stream);
         if (!finalText.isEmpty()) {
             segments->append(finalText);
-            qInfo().noquote() << "[final]" << finalText;
+            qInfo() << "[final]" << finalText;
         }
         SherpaOnnxOnlineStreamReset(recognizer, stream);
         lastPartial->clear();
@@ -197,10 +197,10 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    qInfo().noquote() << "Model:" << QDir::toNativeSeparators(modelDir);
-    qInfo().noquote() << "Audio:" << QDir::toNativeSeparators(audioPath);
+    qInfo() << "Model:" << QDir::toNativeSeparators(modelDir);
+    qInfo() << "Audio:" << QDir::toNativeSeparators(audioPath);
     if (useHotwords) {
-        qInfo().noquote() << "Hotwords:"
+        qInfo() << "Hotwords:"
                           << QDir::toNativeSeparators(hotwordsPath);
     }
 
@@ -214,11 +214,11 @@ int main(int argc, char *argv[])
         QString hotwordsError;
         hotwordsText = readHotwordsFile(hotwordsPath, &hotwordsError);
         if (hotwordsText.isEmpty()) {
-            qCritical().noquote() << hotwordsError;
+            qCritical() << hotwordsError;
             return 2;
         }
         hotwordsUtf8 = hotwordsText.toUtf8();
-        qInfo().noquote() << "Formatted hotwords:" << hotwordsText;
+        qInfo() << "Formatted hotwords:" << hotwordsText;
     }
 
     SherpaOnnxOnlineRecognizerConfig config;
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
 
     const QString ffmpegError = QString::fromUtf8(ffmpeg.readAllStandardError());
     if (ffmpeg.exitStatus() != QProcess::NormalExit || ffmpeg.exitCode() != 0) {
-        qCritical().noquote() << "ffmpeg failed:" << ffmpegError.trimmed();
+        qCritical() << "ffmpeg failed:" << ffmpegError.trimmed();
     }
 
     SherpaOnnxOnlineStreamInputFinished(stream);
@@ -311,12 +311,12 @@ int main(int argc, char *argv[])
     const QString tail = currentText(recognizer, stream);
     if (!tail.isEmpty() && (segments.isEmpty() || segments.last() != tail)) {
         segments.append(tail);
-        qInfo().noquote() << "[final]" << tail;
+        qInfo() << "[final]" << tail;
     }
 
-    qInfo().noquote() << "";
-    qInfo().noquote() << "==== Transcript ====";
-    qInfo().noquote() << segments.join("");
+    qInfo() << "";
+    qInfo() << "==== Transcript ====";
+    qInfo() << segments.join("");
 
     SherpaOnnxDestroyOnlineStream(stream);
     SherpaOnnxDestroyOnlineRecognizer(recognizer);

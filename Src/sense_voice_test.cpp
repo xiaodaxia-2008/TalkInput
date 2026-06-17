@@ -44,7 +44,7 @@ bool requireFile(const QString &path)
         return true;
     }
 
-    qCritical().noquote() << "Missing file:" << QDir::toNativeSeparators(path);
+    qCritical() << "Missing file:" << QDir::toNativeSeparators(path);
     return false;
 }
 
@@ -73,7 +73,7 @@ QByteArray decodeAudio(const QString &audioPath)
 
     const QString errorText = QString::fromUtf8(ffmpeg.readAllStandardError());
     if (ffmpeg.exitStatus() != QProcess::NormalExit || ffmpeg.exitCode() != 0) {
-        qCritical().noquote() << "ffmpeg failed:" << errorText.trimmed();
+        qCritical() << "ffmpeg failed:" << errorText.trimmed();
         return {};
     }
 
@@ -116,7 +116,7 @@ QString decodeChunk(const SherpaOnnxOfflineRecognizer *recognizer,
         const QString json =
             QString::fromUtf8(result->json ? result->json : "").trimmed();
         if (!json.isEmpty()) {
-            qInfo().noquote() << QStringLiteral("[chunk %1 json] %2")
+            qInfo() << QStringLiteral("[chunk %1 json] %2")
                                      .arg(chunkIndex)
                                      .arg(json);
         }
@@ -147,8 +147,8 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    qInfo().noquote() << "SenseVoice model:" << QDir::toNativeSeparators(modelDir);
-    qInfo().noquote() << "Audio:" << QDir::toNativeSeparators(audioPath);
+    qInfo() << "SenseVoice model:" << QDir::toNativeSeparators(modelDir);
+    qInfo() << "Audio:" << QDir::toNativeSeparators(audioPath);
 
     const QByteArray modelUtf8 = model.toUtf8();
     const QByteArray tokensUtf8 = tokens.toUtf8();
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
     }
 
     const std::vector<float> samples = pcm16ToFloat(pcm);
-    qInfo().noquote() << QStringLiteral("Decoded audio: %1 seconds")
+    qInfo() << QStringLiteral("Decoded audio: %1 seconds")
                              .arg(static_cast<double>(samples.size()) /
                                   sampleRate, 0, 'f', 2);
 
@@ -200,16 +200,16 @@ int main(int argc, char *argv[])
             decodeChunk(recognizer, samples.data() + offset, count, chunkIndex);
         if (!text.isEmpty()) {
             transcript.append(text);
-            qInfo().noquote() << QStringLiteral("[chunk %1 text] %2")
+            qInfo() << QStringLiteral("[chunk %1 text] %2")
                                      .arg(chunkIndex)
                                      .arg(text);
         }
         ++chunkIndex;
     }
 
-    qInfo().noquote() << "";
-    qInfo().noquote() << "==== SenseVoice Transcript ====";
-    qInfo().noquote() << transcript.join("");
+    qInfo() << "";
+    qInfo() << "==== SenseVoice Transcript ====";
+    qInfo() << transcript.join("");
 
     SherpaOnnxDestroyOfflineRecognizer(recognizer);
     return 0;

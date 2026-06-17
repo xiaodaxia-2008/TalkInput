@@ -80,10 +80,10 @@ void MainWindow::setupUi() {
   connect(m_asrService, &AsrService::modelLoadResult, this,
           [this](bool success, const QString &error) {
             if (!success) {
-              qCritical().noquote() << "ASR model load failed:" << error;
+              qCritical() << "ASR model load failed:" << error;
               statusBar()->showMessage(tr("Model load failed: %1").arg(error));
             } else {
-              qInfo().noquote() << "ASR model loaded successfully";
+              qInfo() << "ASR model loaded successfully";
               statusBar()->showMessage(tr("Model ready."));
             }
           });
@@ -103,7 +103,7 @@ void MainWindow::setupUi() {
   connect(m_settingWidget, &SettingWidget::punctuationModelReady,
           this, [this]() {
             if (m_currentModelDirectory.isEmpty()) return;
-            qInfo().noquote() << "Punctuation model ready, reloading ASR model...";
+            qInfo() << "Punctuation model ready, reloading ASR model...";
             statusBar()->showMessage(
                 tr("Punctuation ready, reloading model..."));
             QMetaObject::invokeMethod(m_asrService, "loadModel",
@@ -132,7 +132,7 @@ void MainWindow::setupUi() {
       "QPushButton:pressed { background: #e0e0e0; }");
 
   statusBar()->showMessage(tr("Loading model..."));
-  qInfo().noquote() << "Starting ASR service";
+  qInfo() << "Starting ASR service";
 
   // ── VoiceInputController (global hotkey, overlay, text injection) ─
   m_voiceInput = new VoiceInputController(m_asrService, &m_history, this);
@@ -281,7 +281,7 @@ void MainWindow::setupUi() {
       s.value(QStringLiteral("model/name")).toString();
   if (!savedDir.isEmpty()) {
     setRecognitionModel(savedDir, savedName);
-    qInfo().noquote() << "Restored model:" << savedName << "(" << savedDir << ")";
+    qInfo() << "Restored model:" << savedName << "(" << savedDir << ")";
   }
 
   // ── Load history ────────────────────────────────────────────
@@ -373,7 +373,7 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     statusBar()->showMessage(tr("No model selected"));
   else
     statusBar()->showMessage(tr("Loading model..."));
-  qInfo().noquote() << "Recognition model set:" << m_currentModelName
+  qInfo() << "Recognition model set:" << m_currentModelName
                      << "(" << m_currentModelDirectory << ")";
 
   QSettings s;
@@ -388,7 +388,7 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
 }
 
 void MainWindow::onResult(const QString &text, bool isFinal) {
-  qInfo().noquote() << (isFinal ? "[final]" : "[partial]") << text;
+  qInfo() << (isFinal ? "[final]" : "[partial]") << text;
 
   if (!isFinal && !text.trimmed().isEmpty()) {
     m_realtimeLabel->setText(text.trimmed());
@@ -416,7 +416,7 @@ void MainWindow::onRecognizeFile() {
     return;
 
   statusBar()->showMessage(tr("Decoding audio..."));
-  qInfo().noquote() << "Recognizing file:" << path;
+  qInfo() << "Recognizing file:" << path;
 
   auto *decoder = new QAudioDecoder(this);
   QEventLoop loop;
@@ -443,7 +443,7 @@ void MainWindow::onRecognizeFile() {
   });
 
   connect(decoder, static_cast<void (QAudioDecoder::*)(QAudioDecoder::Error)>(&QAudioDecoder::error), this, [&](QAudioDecoder::Error) {
-    qCritical().noquote() << "Audio decoder error:" << decoder->errorString();
+    qCritical() << "Audio decoder error:" << decoder->errorString();
     loop.quit();
   });
 
@@ -467,11 +467,11 @@ void MainWindow::onRecognizeFile() {
 
   const int sampleRate = 16000;
   if (decoder->audioFormat().sampleRate() != sampleRate) {
-    qWarning().noquote() << "Sample rate mismatch: got"
+    qWarning() << "Sample rate mismatch: got"
                          << decoder->audioFormat().sampleRate() << "need 16000";
   }
 
-  qInfo().noquote() << "Decoded" << allPcm.size() << "bytes of PCM16 from" << path;
+  qInfo() << "Decoded" << allPcm.size() << "bytes of PCM16 from" << path;
 
   QMetaObject::invokeMethod(
       m_asrService,

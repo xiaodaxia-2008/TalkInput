@@ -20,7 +20,7 @@ static void ensureLoaded() {
 
     QFile f(QStringLiteral(":/resources/models.json"));
     if (!f.open(QIODevice::ReadOnly)) {
-        qWarning().noquote() << "model_registry: cannot open models.json resource";
+        qWarning() << "model_registry: cannot open models.json resource";
         return;
     }
     const QByteArray data = f.readAll();
@@ -29,7 +29,7 @@ static void ensureLoaded() {
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
     if (err.error != QJsonParseError::NoError) {
-        qWarning().noquote() << "model_registry: JSON parse error:" << err.errorString();
+        qWarning() << "model_registry: JSON parse error:" << err.errorString();
         return;
     }
 
@@ -64,7 +64,7 @@ static void ensureLoaded() {
         s_presets.append(preset);
     }
 
-    qInfo().noquote() << "model_registry: loaded" << s_presets.size() << "presets";
+    qInfo() << "model_registry: loaded" << s_presets.size() << "presets";
 }
 
 QVector<ModelPreset> loadModelPresets() {
@@ -103,7 +103,7 @@ ModelFileSet resolveModelFiles(const QString &modelDir) {
 
     ModelFileSet result;
     if (!preset) {
-        qDebug().noquote() << "model_registry: no preset for" << dirName << "caller should fall back to probing";
+        qDebug() << "model_registry: no preset for" << dirName << "caller should fall back to probing";
         result.modelDirName = dirName;
         return result;
     }
@@ -115,7 +115,7 @@ ModelFileSet resolveModelFiles(const QString &modelDir) {
     for (const auto &rule : preset->files) {
         const QStringList found = findFiles(dir, rule.globPatterns, rule.isDir);
         if (found.isEmpty()) {
-            qWarning().noquote() << "model_registry: no match for" << rule.configField << "in" << dirName;
+            qWarning() << "model_registry: no match for" << rule.configField << "in" << dirName;
             continue;
         }
         // Use the first match (preferring int8)
