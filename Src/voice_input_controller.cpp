@@ -330,8 +330,8 @@ static bool tryClipboardPaste(const QString &text) {
   return true;
 }
 
-// ── SendInput 回退：逐字 KEYEVENTF_UNICODE + ASCII 延时 ─────
-static void fallbackSendInput(const QString &text) {
+// ── SendInput 模式：逐字 KEYEVENTF_UNICODE + ASCII 延时 ────
+static void sendViaSendInput(const QString &text) {
   HWND hwnd = GetForegroundWindow();
   if (!hwnd) return;
 
@@ -373,20 +373,33 @@ static void fallbackSendInput(const QString &text) {
   if (attached) AttachThreadInput(ourTid, tid, FALSE);
 }
 
+// ── 终端检测 ──────────────────────────────────────────────────
+static bool isTerminalWindow(HWND hwnd) {
+  wchar_t cls[256];
+  if (!GetClassNameW(hwnd, cls, 256))
+    return false;
+  return wcscmp(cls, L"ConsoleWindowClass") == 0 ||
+         wcscmp(cls, L"CASCADIA_HOSTING_WINDOW_CLASS") == 0;
+}
+
 // ── VoiceInputController::sendText ────────────────────────────
 void VoiceInputController::sendText(const QString &text) {
   if (text.isEmpty()) return;
 
   spdlog::info("Sending text to foreground app: {}", text);
 
-  // 优先使用剪切板（终端兼容性最好）
-  if (tryClipboardPaste(text)) {
-    spdlog::debug("Clipboard paste succeeded");
-    return;
-  }
+  HWND hwnd = GetForegroundWindow();
+  if (!hwnd) return;
 
-  spdlog::warn("Clipboard unavailable, using SendInput fallback");
-  fallbackSendInput(text);
+  if (isTerminalWindow(hwnd)) {
+    // 终端窗口：剪切板 + Ctrl+V（绕过英文丢字问题）
+    spdlog::debug("Terminal window, using clipboard paste");
+    if (!tryClipboardPaste(text))
+      sendViaSendInput(text);
+  } else {
+    // 非终端窗口：直接字符发送（兼容性更好）
+    sendViaSendInput(text);
+  }
 }
 
 void VoiceInputController::showOverlay() {
