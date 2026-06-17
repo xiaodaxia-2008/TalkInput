@@ -18,6 +18,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <imm.h>
+#include <vector>
 #pragma comment(lib, "imm32")
 
 namespace {
@@ -269,56 +270,131 @@ void VoiceInputController::onResult(const QString &text, bool isFinal) {
   }
 }
 
-void VoiceInputController::sendText(const QString &text) {
-  if (text.isEmpty())
-    return;
+// ── Console text injection via WriteConsoleInput ────────────────
+static bool tryWriteConsoleInput(const QString &text) {
+  DWORD pid = 0;
+  GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+  if (!pid) return false;
 
-  spdlog::info("Sending text to foreground app: {}", text);
+  FreeConsole();                     // GUI app typically has none
+  if (!AttachConsole(pid)) return false;
 
-  HWND hwnd = GetForegroundWindow();
-  HIMC himc = ImmGetContext(hwnd);
-  BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
-
-  // Disable IME temporarily so English chars aren't consumed by the
-  // Chinese IME composition buffer
-  if (himc) ImmSetOpenStatus(himc, FALSE);
-
-  QVector<INPUT> inputs;
-  inputs.reserve(text.size() * 2);
-
-  for (const QChar ch : text) {
-    if (ch.unicode() == 0)
-      continue;
-
-    INPUT keyDown = {};
-    keyDown.type = INPUT_KEYBOARD;
-    keyDown.ki.wVk = 0;
-    keyDown.ki.wScan = ch.unicode();
-    keyDown.ki.dwFlags = KEYEVENTF_UNICODE;
-
-    INPUT keyUp = {};
-    keyUp.type = INPUT_KEYBOARD;
-    keyUp.ki.wVk = 0;
-    keyUp.ki.wScan = ch.unicode();
-    keyUp.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-
-    inputs.append(keyDown);
-    inputs.append(keyUp);
+  HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+  if (!hInput || hInput == INVALID_HANDLE_VALUE) {
+    FreeConsole();
+    return false;
   }
 
-  UINT sent = SendInput(static_cast<UINT>(inputs.size()), inputs.data(),
-                         sizeof(INPUT));
+  std::vector<INPUT_RECORD> records;
+  records.reserve(static_cast<size_t>(text.size()) * 2);
 
-  // Restore IME state
+  for (const QChar ch : text) {
+    const ushort code = ch.unicode();
+    if (code == 0 || code == '\r') continue;
+
+    // Normalise newline → VK_RETURN for console
+    if (code == '\n') {
+      INPUT_RECORD down = {};
+      down.EventType = KEY_EVENT;
+      down.Event.KeyEvent.bKeyDown = TRUE;
+      down.Event.KeyEvent.wRepeatCount = 1;
+      down.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
+      down.Event.KeyEvent.wVirtualScanCode =
+          static_cast<WORD>(MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC));
+      down.Event.KeyEvent.uChar.UnicodeChar = L'\r';
+      records.push_back(down);
+
+      INPUT_RECORD up = down;
+      up.Event.KeyEvent.bKeyDown = FALSE;
+      records.push_back(up);
+      continue;
+    }
+
+    INPUT_RECORD down = {};
+    down.EventType = KEY_EVENT;
+    down.Event.KeyEvent.bKeyDown = TRUE;
+    down.Event.KeyEvent.wRepeatCount = 1;
+    down.Event.KeyEvent.wVirtualKeyCode = 0;
+    down.Event.KeyEvent.wVirtualScanCode = 0;
+    down.Event.KeyEvent.uChar.UnicodeChar = code;
+    down.Event.KeyEvent.dwControlKeyState = 0;
+    records.push_back(down);
+
+    INPUT_RECORD up = down;
+    up.Event.KeyEvent.bKeyDown = FALSE;
+    records.push_back(up);
+  }
+
+  DWORD written = 0;
+  const BOOL ok = WriteConsoleInputW(hInput, records.data(),
+                                     static_cast<DWORD>(records.size()),
+                                     &written);
+  FreeConsole();
+  return ok && written == records.size();
+}
+
+// ── SendInput (batch, KEYEVENTF_UNICODE) fallback ─────────────
+static void sendViaSendInput(const QString &text, HWND hwnd) {
+  DWORD tid = GetWindowThreadProcessId(hwnd, nullptr);
+  DWORD ourTid = GetCurrentThreadId();
+  const BOOL attached =
+      (tid != ourTid) ? AttachThreadInput(ourTid, tid, TRUE) : FALSE;
+
+  HIMC himc = ImmGetContext(hwnd);
+  const BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
+  if (himc) ImmSetOpenStatus(himc, FALSE);
+
+  // Single batch – all characters sent atomically
+  std::vector<INPUT> inputs;
+  inputs.reserve(static_cast<size_t>(text.size()) * 2);
+
+  for (const QChar ch : text) {
+    const ushort code = ch.unicode();
+    if (code == 0) continue;
+
+    INPUT down = {};
+    down.type = INPUT_KEYBOARD;
+    down.ki.wVk = 0;
+    down.ki.wScan = code;
+    down.ki.dwFlags = KEYEVENTF_UNICODE;
+    inputs.push_back(down);
+
+    INPUT up = {};
+    up.type = INPUT_KEYBOARD;
+    up.ki.wVk = 0;
+    up.ki.wScan = code;
+    up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+    inputs.push_back(up);
+  }
+
+  if (!inputs.empty())
+    SendInput(static_cast<UINT>(inputs.size()), inputs.data(),
+              sizeof(INPUT));
+
   if (himc) {
     ImmSetOpenStatus(himc, wasOpen);
     ImmReleaseContext(hwnd, himc);
   }
 
-  if (static_cast<int>(sent) != inputs.size()) {
-    spdlog::warn("SendInput: only {}/{} events processed", sent,
-                 inputs.size());
+  if (attached) AttachThreadInput(ourTid, tid, FALSE);
+}
+
+void VoiceInputController::sendText(const QString &text) {
+  if (text.isEmpty()) return;
+
+  spdlog::info("Sending text to foreground app: {}", text);
+
+  HWND hwnd = GetForegroundWindow();
+  if (!hwnd) return;
+
+  // Console windows → write directly to input buffer (no VK_PACKET issues)
+  if (tryWriteConsoleInput(text)) {
+    spdlog::debug("Console input path succeeded");
+    return;
   }
+
+  // Non-console windows → batch SendInput with KEYEVENTF_UNICODE
+  sendViaSendInput(text, hwnd);
 }
 
 void VoiceInputController::showOverlay() {
