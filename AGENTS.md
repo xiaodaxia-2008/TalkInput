@@ -70,6 +70,10 @@ Src/
 
 All button icons are Feather-style SVGs stored in `resources/` and accessed as `:/resources/xxx.svg`. Qt6::Svg must be linked. `windeployqt` deploys the `qsvg.dll` image format plugin. `QIcon(":/resources/xxx.svg")` works only when Qt6::Svg is linked.
 
+## Commit Rule
+
+Every modification must be committed immediately after a successful compile. Do not batch multiple logical changes into one commit unless they are trivial and atomic (e.g. a single-line fix). Each commit message should concisely describe what was changed.
+
 ## Dependencies
 
 `QT` is installed in an external folder.

@@ -46,28 +46,44 @@ public:
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TransparentForMouseEvents);
-    setFixedSize(220, 70);
+
+    setMinimumWidth(280);
+    setMaximumWidth(800);
 
     setStyleSheet(
-        QStringLiteral("OverlayWindow { background: rgba(0,0,0,180); "
-                       "border-radius: 12px; }"));
+        QStringLiteral("OverlayWindow { background: rgba(0,0,0,200); "
+                       "border-radius: 8px; }"));
 
-    auto *lay = new QHBoxLayout(this);
-    lay->setContentsMargins(16, 8, 16, 8);
+    auto *lay = new QVBoxLayout(this);
+    lay->setContentsMargins(16, 8, 16, 10);
+    lay->setSpacing(4);
+
+    auto *topRow = new QHBoxLayout();
+    topRow->setSpacing(8);
 
     auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
     micLabel->setStyleSheet(
-        QStringLiteral("font-size: 24px; background: transparent;"));
-    lay->addWidget(micLabel);
+        QStringLiteral("font-size: 20px; background: transparent;"));
+    topRow->addWidget(micLabel);
 
-    auto *textLabel = new QLabel(
-        QStringLiteral("<span style='color:#ff5050;font-size:16px;"
+    m_statusLabel = new QLabel(
+        QStringLiteral("<span style='color:#ff5050;font-size:14px;"
                        "font-weight:bold;'>REC</span>"),
         this);
-    textLabel->setStyleSheet(QStringLiteral("background: transparent;"));
-    lay->addWidget(textLabel);
+    m_statusLabel->setStyleSheet(QStringLiteral("background: transparent;"));
+    topRow->addWidget(m_statusLabel);
 
-    lay->addStretch();
+    topRow->addStretch();
+    lay->addLayout(topRow);
+
+    m_previewLabel = new QLabel(this);
+    m_previewLabel->setStyleSheet(
+        QStringLiteral("color: #cccccc; font-size: 13px; "
+                       "background: transparent;"));
+    m_previewLabel->setWordWrap(true);
+    m_previewLabel->setMaximumHeight(60);
+    m_previewLabel->hide();
+    lay->addWidget(m_previewLabel);
 
     m_animTimer->setInterval(600);
     connect(m_animTimer, &QTimer::timeout, this, [this, micLabel]() {
@@ -78,6 +94,9 @@ public:
 
   void startAnimation() {
     m_micVisible = true;
+    m_previewLabel->hide();
+    m_previewLabel->setText({});
+    adjustSize();
     positionOnActiveScreen();
     show();
     raise();
@@ -94,6 +113,17 @@ public:
     hide();
   }
 
+  void setPreviewText(const QString &text) {
+    if (text.isEmpty()) {
+      m_previewLabel->hide();
+      setFixedHeight(38);
+    } else {
+      m_previewLabel->setText(text);
+      m_previewLabel->show();
+      adjustSize();
+    }
+  }
+
 private:
   void positionOnActiveScreen() {
     QScreen *screen = QGuiApplication::primaryScreen();
@@ -104,18 +134,22 @@ private:
       if (GetMonitorInfo(mon, &mi)) {
         int w = mi.rcWork.right - mi.rcWork.left;
         int h = mi.rcWork.bottom - mi.rcWork.top;
-        move((mi.rcWork.left + w / 2) - width() / 2,
-             mi.rcWork.top + h - height() - 20);
+        int x = (mi.rcWork.left + w / 2) - width() / 2;
+        if (x < mi.rcWork.left) x = mi.rcWork.left + 8;
+        move(x, mi.rcWork.top + h - height() - 20);
         return;
       }
     }
     if (screen) {
       QRect wr = screen->availableGeometry();
-      move(wr.left() + wr.width() / 2 - width() / 2,
-           wr.top() + wr.height() - height() - 20);
+      int x = wr.left() + wr.width() / 2 - width() / 2;
+      if (x < wr.left()) x = wr.left() + 8;
+      move(x, wr.top() + wr.height() - height() - 20);
     }
   }
 
+  QLabel *m_statusLabel = nullptr;
+  QLabel *m_previewLabel = nullptr;
   QTimer *m_animTimer;
   bool m_micVisible = true;
 };
@@ -252,11 +286,17 @@ void VoiceInputController::stopListening() {
 }
 
 void VoiceInputController::onResult(const QString &text, bool isFinal) {
-  m_lastResult = text;
-  if (isFinal && !m_isListening && !text.trimmed().isEmpty()) {
-    sendText(text.trimmed());
-    m_history->addEntry(text.trimmed());
-    spdlog::info("VoiceInputController injected and saved: {}", text);
+  if (isFinal) {
+    m_lastResult = text;
+    if (!m_isListening && !text.trimmed().isEmpty()) {
+      sendText(text.trimmed());
+      m_history->addEntry(text.trimmed());
+      spdlog::info("VoiceInputController injected and saved: {}", text);
+    }
+  } else if (m_isListening && text != m_lastResult) {
+    m_lastResult = text;
+    if (m_overlay)
+      static_cast<OverlayWindow *>(m_overlay.get())->setPreviewText(text);
   }
 }
 
