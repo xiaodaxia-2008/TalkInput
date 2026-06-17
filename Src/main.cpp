@@ -1,3 +1,4 @@
+#include "logging.h"
 #include "main_window.h"
 
 #include <QApplication>
@@ -48,7 +49,12 @@ static void messageHandler(QtMsgType type, const QMessageLogContext &ctx,
 int main(int argc, char *argv[])
 {
     qInstallMessageHandler(messageHandler);
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::flush_on(spdlog::level::debug);
+    spdlog::debug("main: starting application");
+
     QApplication app(argc, argv);
+    spdlog::debug("main: QApplication created");
     QApplication::setApplicationName("TalkInput");
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
@@ -63,6 +69,7 @@ int main(int argc, char *argv[])
     QDir().mkpath(settingsDir);
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDir);
+    spdlog::debug("main: settings directory set to {}", settingsDir);
 
     QSettings s;
 
@@ -73,6 +80,7 @@ int main(int argc, char *argv[])
             .toString();
 
     if (lang == QStringLiteral("zh")) {
+        spdlog::debug("main: loading Chinese translations");
         auto *appTranslator = new QTranslator(&app);
         if (appTranslator->load(QStringLiteral(":/i18n/TalkInput_zh.qm"))) {
             app.installTranslator(appTranslator);
@@ -93,10 +101,17 @@ int main(int argc, char *argv[])
         }
     }
 
+    spdlog::debug("main: constructing MainWindow");
     talkinput::MainWindow window;
+    spdlog::debug("main: MainWindow constructed");
     if (!startHidden) {
+        spdlog::debug("main: showing MainWindow");
         window.show();
     }
+    else {
+        spdlog::debug("main: start hidden is enabled");
+    }
 
+    spdlog::debug("main: entering event loop");
     return app.exec();
 }

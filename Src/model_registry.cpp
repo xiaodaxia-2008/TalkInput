@@ -30,6 +30,8 @@ static ModelPreset parsePreset(const QJsonObject &obj)
         obj.value(QStringLiteral("streamingSupport")).toBool();
     preset.isPunctuationModel =
         obj.value(QStringLiteral("isPunctuationModel")).toBool();
+    spdlog::debug("model_registry: parsing preset {} ({})", preset.name,
+                  preset.modelDirName);
 
     const QJsonObject filesObj = obj.value(QStringLiteral("files")).toObject();
     for (auto it = filesObj.begin(); it != filesObj.end(); ++it) {
@@ -56,6 +58,7 @@ static QVector<ModelPreset> parsePresetArray(const QJsonObject &root,
 {
     QVector<ModelPreset> presets;
     const QJsonArray arr = root.value(key).toArray();
+    spdlog::debug("model_registry: parsing {} with {} items", key, arr.size());
     for (const auto &val : arr) {
         presets.append(parsePreset(val.toObject()));
     }
@@ -76,6 +79,7 @@ static void ensureLoaded()
     }
     const QByteArray data = f.readAll();
     f.close();
+    spdlog::debug("model_registry: read models.json, {} bytes", data.size());
 
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);

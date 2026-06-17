@@ -184,6 +184,7 @@ namespace talkinput
 AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_networkManager(new QNetworkAccessManager(this))
 {
+    spdlog::debug("AsrSettingWidget: constructor begin");
 
     connect(m_networkManager, &QNetworkAccessManager::finished, this,
             &AsrSettingWidget::onDownloadFinished);
@@ -232,7 +233,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     root->addLayout(bottomRow);
 
     // ── Model definitions ──────────────────────────────────────
+    spdlog::debug("AsrSettingWidget: loading ASR presets");
     for (const auto &preset : loadModelPresets()) {
+        spdlog::debug("AsrSettingWidget: ASR preset {} ({})", preset.name,
+                      preset.modelDirName);
         m_models.append({displayNameForPreset(preset),
                          displayTypeForPreset(preset), preset.languages,
                          preset.modelDirName, QUrl(preset.url), preset.size,
@@ -240,7 +244,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                          preset.isPunctuationModel});
     }
 
+    spdlog::debug("AsrSettingWidget: loading tool presets");
     for (const auto &preset : loadToolPresets()) {
+        spdlog::debug("AsrSettingWidget: tool preset {} ({})", preset.name,
+                      preset.modelDirName);
         m_models.append({displayNameForPreset(preset),
                          displayTypeForPreset(preset), preset.languages,
                          preset.modelDirName, QUrl(preset.url), preset.size,
@@ -276,7 +283,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         "QPushButton:disabled { border-color: #ddd; }";
 
     // ── Table rows ──────────────────────────────────────────────
+    spdlog::debug("AsrSettingWidget: populating table with {} rows",
+                  m_models.size());
     populateTable();
+    spdlog::debug("AsrSettingWidget: table populated");
 
     // Apply icons to bottom buttons
     applySvg(archiveBtn, QStringLiteral(":/resources/folder-plus.svg"), 22);
@@ -285,6 +295,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     archiveBtn->setStyleSheet(btnStyle);
     openBtn->setStyleSheet(btnStyle);
     hotwordsBtn->setStyleSheet(btnStyle);
+    spdlog::debug("AsrSettingWidget: constructor end");
 }
 
 AsrSettingWidget::~AsrSettingWidget()
@@ -300,6 +311,7 @@ AsrSettingWidget::~AsrSettingWidget()
 
 void AsrSettingWidget::populateTable()
 {
+    spdlog::debug("AsrSettingWidget::populateTable: begin");
     m_table->setRowCount(m_models.size());
 
     for (int i = 0; i < m_models.size(); ++i) {
@@ -380,10 +392,12 @@ void AsrSettingWidget::populateTable()
     }
 
     refreshStatus();
+    spdlog::debug("AsrSettingWidget::populateTable: end");
 }
 
 void AsrSettingWidget::refreshStatus()
 {
+    spdlog::debug("AsrSettingWidget::refreshStatus: begin");
     QSettings s;
     const QString activeDir =
         s.value(QStringLiteral("model/directory")).toString();
@@ -425,6 +439,7 @@ void AsrSettingWidget::refreshStatus()
             btns[2]->setVisible(installed);  // Delete
         }
     }
+    spdlog::debug("AsrSettingWidget::refreshStatus: end");
 }
 
 // ── Icon helper ───────────────────────────────────────────────

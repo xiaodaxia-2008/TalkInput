@@ -55,7 +55,9 @@ namespace talkinput
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>())
 {
+    spdlog::debug("MainWindow: constructor begin");
     setupUi();
+    spdlog::debug("MainWindow: constructor end");
 }
 
 MainWindow::~MainWindow()
@@ -81,15 +83,19 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::setupUi()
 {
+    spdlog::debug("MainWindow::setupUi: begin");
     m_ui->setupUi(this);
+    spdlog::debug("MainWindow::setupUi: ui setup complete");
 
     // ── ASR Service (persistent worker thread) ────────────────
+    spdlog::debug("MainWindow::setupUi: creating ASR service thread");
     m_asrService = new AsrService();
     m_asrThread = new QThread(this);
     m_asrService->moveToThread(m_asrThread);
     connect(m_asrThread, &QThread::finished, m_asrService,
             &QObject::deleteLater);
     m_asrThread->start();
+    spdlog::debug("MainWindow::setupUi: ASR service thread started");
 
     connect(m_asrService, &AsrService::resultChanged, this,
             &MainWindow::onResult);
@@ -107,15 +113,19 @@ void MainWindow::setupUi()
             });
 
     // ── History tab ────────────────────────────────────────────
+    spdlog::debug("MainWindow::setupUi: creating HistoryWidget");
     m_historyWidget = new HistoryWidget(&m_history, m_ui->historyTab);
     m_ui->historyLayout->addWidget(m_historyWidget);
+    spdlog::debug("MainWindow::setupUi: HistoryWidget added");
     connect(
         m_historyWidget, &HistoryWidget::statusMessage, this,
         [this](const QString &msg) { statusBar()->showMessage(msg, 2000); });
 
     // ── ASR settings tab ────────────────────────────────────────
+    spdlog::debug("MainWindow::setupUi: creating AsrSettingWidget");
     m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
+    spdlog::debug("MainWindow::setupUi: AsrSettingWidget added");
     connect(m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
             [this](const QString &dir, const QString &name) {
                 setRecognitionModel(dir, name);
@@ -146,6 +156,7 @@ void MainWindow::setupUi()
         });
 
     // ── Toolbar ────────────────────────────────────────────────
+    spdlog::debug("MainWindow::setupUi: creating toolbar");
     m_recognitionToolBar = addToolBar(tr("Recognition"));
     m_recognitionToolBar->setObjectName("recognitionToolBar");
     m_recognitionToolBar->setMovable(false);
@@ -174,6 +185,7 @@ void MainWindow::setupUi()
     spdlog::info("Starting ASR service");
 
     // ── VoiceInputController (global hotkey, overlay, text injection) ─
+    spdlog::debug("MainWindow::setupUi: creating VoiceInputController");
     m_voiceInput = new VoiceInputController(m_asrService, &m_history, this);
     qApp->installNativeEventFilter(m_voiceInput);
 
@@ -183,9 +195,11 @@ void MainWindow::setupUi()
             [this](const QString &msg) { statusBar()->showMessage(msg); });
 
     // ── System tray ────────────────────────────────────────────
+    spdlog::debug("MainWindow::setupUi: setting up tray icon");
     setupTrayIcon();
 
     // ── Menu bar ────────────────────────────────────────────────
+    spdlog::debug("MainWindow::setupUi: creating menu bar");
     m_prefMenu = menuBar()->addMenu(tr("Preferences"));
     m_langMenu = m_prefMenu->addMenu(
         QIcon(QStringLiteral(":/resources/globe.svg")), tr("Language"));
@@ -265,9 +279,13 @@ void MainWindow::setupUi()
         s.value(QStringLiteral("model/directory")).toString();
     const QString savedName = s.value(QStringLiteral("model/name")).toString();
     if (!savedDir.isEmpty()) {
+        spdlog::debug("MainWindow::setupUi: restoring saved model {}",
+                      savedDir);
         setRecognitionModel(savedDir, savedName);
         spdlog::info("Restored model: {} ({})", savedName, savedDir);
     }
+
+    spdlog::debug("MainWindow::setupUi: end");
 }
 
 void MainWindow::setupTrayIcon()
