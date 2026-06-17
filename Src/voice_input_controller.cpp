@@ -4,10 +4,12 @@
 
 #include <QAudioDevice>
 #include <QAudioSource>
+#include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMediaDevices>
+#include <QPropertyAnimation>
 #include <QScreen>
 #include <QTimer>
 #include <QtEndian>
@@ -87,7 +89,7 @@ public:
         setAttribute(Qt::WA_TranslucentBackground);
         setAttribute(Qt::WA_ShowWithoutActivating);
         setAttribute(Qt::WA_TransparentForMouseEvents);
-        setFixedHeight(56);
+        setFixedHeight(76);
 
         setStyleSheet(
             QStringLiteral("OverlayWindow { background: rgba(16,16,18,180); "
@@ -95,7 +97,7 @@ public:
                            "border-radius: 10px; }"));
 
         auto *lay = new QHBoxLayout(this);
-        lay->setContentsMargins(18, 0, 18, 0);
+        lay->setContentsMargins(18, 8, 18, 8);
         lay->setSpacing(10);
 
         auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
@@ -103,13 +105,14 @@ public:
             QStringLiteral("font-size: 26px; background: transparent;"));
         lay->addWidget(micLabel);
 
-        m_statusLabel = new QLabel(
-            QStringLiteral("<span style='color:#ff5050;font-size:15px;"
-                           "font-weight:bold;'>REC</span>"),
-            this);
-        m_statusLabel->setStyleSheet(
-            QStringLiteral("background: transparent;"));
-        lay->addWidget(m_statusLabel);
+        auto *effect = new QGraphicsOpacityEffect(micLabel);
+        micLabel->setGraphicsEffect(effect);
+        m_blinkAnim = new QPropertyAnimation(effect, "opacity", this);
+        m_blinkAnim->setDuration(700);
+        m_blinkAnim->setStartValue(1.0);
+        m_blinkAnim->setEndValue(0.1);
+        m_blinkAnim->setLoopCount(-1);
+        m_blinkAnim->setEasingCurve(QEasingCurve::InOutSine);
 
         m_previewLabel = new QLabel(this);
         m_previewLabel->setStyleSheet(
@@ -117,6 +120,7 @@ public:
                            "background: transparent;"));
         m_previewLabel->setText(QStringLiteral("Listening..."));
         m_previewLabel->setContentsMargins(0, 0, 0, 0);
+        m_previewLabel->setWordWrap(true);
         lay->addWidget(m_previewLabel, 1);
 
         setMinimumWidth(320);
@@ -124,6 +128,7 @@ public:
 
     void startAnimation()
     {
+        m_blinkAnim->start();
         m_previewLabel->setText(QStringLiteral("Listening..."));
         show();
         raise();
@@ -137,21 +142,18 @@ public:
 
     void stopAnimation()
     {
+        m_blinkAnim->stop();
+        static_cast<QGraphicsOpacityEffect *>(
+            m_blinkAnim->targetObject())
+            ->setOpacity(1.0);
         hide();
     }
 
     void setPreviewText(const QString &text)
     {
-        if (text.isEmpty()) {
-            m_previewLabel->setText(QStringLiteral("Listening..."));
-            return;
-        }
-        QFontMetrics fm(m_previewLabel->font());
-        const int maxW = m_previewLabel->width() - 4;
-        m_previewLabel->setText(
-            fm.horizontalAdvance(text) <= maxW
-                ? text
-                : fm.elidedText(text, Qt::ElideLeft, maxW));
+        m_previewLabel->setText(text.isEmpty()
+                                    ? QStringLiteral("Listening...")
+                                    : text);
     }
 
 private:
@@ -173,7 +175,7 @@ private:
         move(x, wr.bottom() - height() - 30);
     }
 
-    QLabel *m_statusLabel = nullptr;
+    QPropertyAnimation *m_blinkAnim = nullptr;
     QLabel *m_previewLabel = nullptr;
 };
 
