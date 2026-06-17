@@ -20,6 +20,8 @@ add_executable(TalkInput
     speech_recognizer.h
     paste_text.h
     paste_text.cpp
+    scroll_text_display.h
+    scroll_text_display.cpp
 )
 
 qt_add_resources(TalkInput resources

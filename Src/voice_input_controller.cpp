@@ -1,6 +1,7 @@
 #include "voice_input_controller.h"
 #include "asr_service.h"
 #include "paste_text.h"
+#include "scroll_text_display.h"
 
 #include <QAudioDevice>
 #include <QAudioSource>
@@ -11,8 +12,6 @@
 #include <QMediaDevices>
 #include <QPropertyAnimation>
 #include <QScreen>
-#include <QScrollBar>
-#include <QTextEdit>
 #include <QTimer>
 #include <QtEndian>
 
@@ -116,16 +115,8 @@ public:
         m_blinkAnim->setLoopCount(-1);
         m_blinkAnim->setEasingCurve(QEasingCurve::InOutSine);
 
-        m_previewEdit = new QTextEdit(this);
-        m_previewEdit->setReadOnly(true);
-        m_previewEdit->setFrameShape(QFrame::NoFrame);
-        m_previewEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        m_previewEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        m_previewEdit->setStyleSheet(
-            QStringLiteral("QTextEdit { color: #e0e0e0; font-size: 15px; "
-                           "background: transparent; border: none; }"));
-        m_previewEdit->setPlainText(QStringLiteral("Listening..."));
-        lay->addWidget(m_previewEdit, 1);
+        m_scrollText = new ScrollTextDisplay(this);
+        lay->addWidget(m_scrollText, 1);
 
         setMinimumWidth(320);
     }
@@ -133,7 +124,7 @@ public:
     void startAnimation()
     {
         m_blinkAnim->start();
-        m_previewEdit->setPlainText(QStringLiteral("Listening..."));
+        m_scrollText->setText(QString());
         show();
         raise();
         positionOnActiveScreen();
@@ -155,22 +146,7 @@ public:
 
     void setPreviewText(const QString &text)
     {
-        m_previewEdit->setPlainText(
-            text.isEmpty() ? QStringLiteral("Listening...") : text);
-        m_previewEdit->document()->adjustSize();
-
-        int docH = static_cast<int>(
-            m_previewEdit->document()->size().height());
-        int viewH = m_previewEdit->viewport()->height();
-
-        if (docH < viewH) {
-            m_previewEdit->document()->setDocumentMargin(
-                (viewH - docH) / 2.0);
-        } else {
-            m_previewEdit->document()->setDocumentMargin(0);
-            auto *sb = m_previewEdit->verticalScrollBar();
-            sb->setValue(sb->maximum());
-        }
+        m_scrollText->setText(text);
     }
 
 private:
@@ -193,7 +169,7 @@ private:
     }
 
     QPropertyAnimation *m_blinkAnim = nullptr;
-    QTextEdit *m_previewEdit = nullptr;
+    ScrollTextDisplay *m_scrollText = nullptr;
 };
 
 } // namespace
