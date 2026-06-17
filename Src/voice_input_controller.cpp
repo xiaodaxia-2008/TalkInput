@@ -38,65 +38,48 @@ qint16 floatToInt16(float sample) {
 class OverlayWindow : public QWidget {
 public:
   OverlayWindow()
-      : QWidget(nullptr),
-        m_animTimer(new QTimer(this)) {
+      : QWidget(nullptr) {
     setWindowTitle(QStringLiteral("TalkInput"));
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TransparentForMouseEvents);
-
-    setMinimumWidth(280);
-    setMaximumWidth(800);
+    setFixedHeight(40);
 
     setStyleSheet(
-        QStringLiteral("OverlayWindow { background: rgba(0,0,0,200); "
+        QStringLiteral("OverlayWindow { background: rgba(20,20,20,220); "
                        "border-radius: 8px; }"));
 
-    auto *lay = new QVBoxLayout(this);
-    lay->setContentsMargins(16, 8, 16, 10);
-    lay->setSpacing(4);
-
-    auto *topRow = new QHBoxLayout();
-    topRow->setSpacing(8);
+    auto *lay = new QHBoxLayout(this);
+    lay->setContentsMargins(14, 0, 14, 0);
+    lay->setSpacing(6);
 
     auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
     micLabel->setStyleSheet(
-        QStringLiteral("font-size: 20px; background: transparent;"));
-    topRow->addWidget(micLabel);
+        QStringLiteral("font-size: 18px; background: transparent;"));
+    lay->addWidget(micLabel);
 
     m_statusLabel = new QLabel(
-        QStringLiteral("<span style='color:#ff5050;font-size:14px;"
+        QStringLiteral("<span style='color:#ff5050;font-size:12px;"
                        "font-weight:bold;'>REC</span>"),
         this);
     m_statusLabel->setStyleSheet(QStringLiteral("background: transparent;"));
-    topRow->addWidget(m_statusLabel);
-
-    topRow->addStretch();
-    lay->addLayout(topRow);
+    lay->addWidget(m_statusLabel);
 
     m_previewLabel = new QLabel(this);
     m_previewLabel->setStyleSheet(
-        QStringLiteral("color: #cccccc; font-size: 13px; "
+        QStringLiteral("color: #cccccc; font-size: 12px; "
                        "background: transparent;"));
-    m_previewLabel->setWordWrap(true);
-    m_previewLabel->setMaximumHeight(60);
-    m_previewLabel->hide();
-    lay->addWidget(m_previewLabel);
+    m_previewLabel->setText(QStringLiteral("Listening..."));
+    m_previewLabel->setContentsMargins(0, 0, 0, 0);
+    lay->addWidget(m_previewLabel, 1);
 
-    m_animTimer->setInterval(600);
-    connect(m_animTimer, &QTimer::timeout, this, [this, micLabel]() {
-      m_micVisible = !m_micVisible;
-      micLabel->setVisible(m_micVisible);
-    });
+    setMinimumWidth(200);
   }
 
   void startAnimation() {
-    m_micVisible = true;
-    m_previewLabel->hide();
-    m_previewLabel->setText({});
-    adjustSize();
+    m_previewLabel->setText(QStringLiteral("Listening..."));
     positionOnActiveScreen();
     show();
     raise();
@@ -104,24 +87,16 @@ public:
     HWND hwnd = reinterpret_cast<HWND>(winId());
     SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-    m_animTimer->start();
   }
 
   void stopAnimation() {
-    m_animTimer->stop();
     hide();
   }
 
   void setPreviewText(const QString &text) {
-    if (text.isEmpty()) {
-      m_previewLabel->hide();
-      setFixedHeight(38);
-    } else {
-      m_previewLabel->setText(text);
-      m_previewLabel->show();
-      adjustSize();
-    }
+    m_previewLabel->setText(text.isEmpty()
+                                ? QStringLiteral("Listening...")
+                                : text);
   }
 
 private:
@@ -133,19 +108,13 @@ private:
     if (!screen)
       return;
     QRect wr = screen->availableGeometry();
-    int ow = std::max(width(), minimumWidth());
-    int x = wr.left() + (wr.width() - ow) / 2;
+    int x = wr.left() + wr.width() / 2 - width() / 2;
     if (x < wr.left()) x = wr.left() + 8;
-    int y = wr.bottom() - height() - 30;
-    move(x, y);
-    spdlog::info("Overlay at ({}, {}) on screen {} (dpr={})", x, y,
-                 screen->name().toStdString(), screen->devicePixelRatio());
+    move(x, wr.bottom() - height() - 30);
   }
 
   QLabel *m_statusLabel = nullptr;
   QLabel *m_previewLabel = nullptr;
-  QTimer *m_animTimer;
-  bool m_micVisible = true;
 };
 
 } // namespace
