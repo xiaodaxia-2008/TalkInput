@@ -25,6 +25,7 @@ signals:
   void modelSelected(const QString &modelDirectory,
                      const QString &modelName);
   void statusMessage(const QString &message);
+  void punctuationModelReady();
 
 private:
   struct ModelInfo {
