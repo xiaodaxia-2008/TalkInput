@@ -38,7 +38,8 @@ qint16 floatToInt16(float sample) {
 class OverlayWindow : public QWidget {
 public:
   OverlayWindow()
-      : QWidget(nullptr) {
+      : QWidget(nullptr),
+        m_animTimer(new QTimer(this)) {
     setWindowTitle(QStringLiteral("TalkInput"));
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
@@ -55,10 +56,11 @@ public:
     lay->setContentsMargins(14, 0, 14, 0);
     lay->setSpacing(6);
 
-    auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
-    micLabel->setStyleSheet(
+    m_micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
+    m_micLabel->setStyleSheet(
         QStringLiteral("font-size: 18px; background: transparent;"));
-    lay->addWidget(micLabel);
+    m_micLabel->setMinimumWidth(22);
+    lay->addWidget(m_micLabel);
 
     m_statusLabel = new QLabel(
         QStringLiteral("<span style='color:#ff5050;font-size:12px;"
@@ -76,9 +78,18 @@ public:
     lay->addWidget(m_previewLabel, 1);
 
     setMinimumWidth(200);
+
+    m_animTimer->setInterval(600);
+    connect(m_animTimer, &QTimer::timeout, this, [this]() {
+      m_micVisible = !m_micVisible;
+      m_micLabel->setText(m_micVisible
+                              ? QStringLiteral("\xF0\x9F\x8E\x99")
+                              : QString());
+    });
   }
 
   void startAnimation() {
+    m_micVisible = false;
     m_previewLabel->setText(QStringLiteral("Listening..."));
     positionOnActiveScreen();
     show();
@@ -87,9 +98,12 @@ public:
     HWND hwnd = reinterpret_cast<HWND>(winId());
     SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+    m_animTimer->start();
   }
 
   void stopAnimation() {
+    m_animTimer->stop();
     hide();
   }
 
@@ -113,8 +127,11 @@ private:
     move(x, wr.bottom() - height() - 30);
   }
 
+  QLabel *m_micLabel = nullptr;
   QLabel *m_statusLabel = nullptr;
   QLabel *m_previewLabel = nullptr;
+  QTimer *m_animTimer;
+  bool m_micVisible = false;
 };
 
 } // namespace
