@@ -69,6 +69,7 @@ private:
   QMenu *m_langMenu = nullptr;
   QAction *m_zhAction = nullptr;
   QAction *m_enAction = nullptr;
+  QAction *m_startHiddenAction = nullptr;
   QMenu *m_helpMenu = nullptr;
 };
 

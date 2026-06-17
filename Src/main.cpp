@@ -16,6 +16,9 @@ int main(int argc, char *argv[])
     QApplication::setWindowIcon(QIcon(":/resources/icon.png"));
 
     QSettings s;
+
+    const bool startHidden =
+        s.value(QStringLiteral("app/startMinimized"), false).toBool();
     const QString lang = s.value(QStringLiteral("app/language"),
                                   QStringLiteral("zh")).toString();
 
@@ -35,7 +38,8 @@ int main(int argc, char *argv[])
     }
 
     talkinput::MainWindow window;
-    window.show();
+    if (!startHidden)
+        window.show();
 
     return app.exec();
 }

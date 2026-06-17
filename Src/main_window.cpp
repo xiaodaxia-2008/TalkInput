@@ -203,6 +203,20 @@ void MainWindow::setupUi() {
     doSwitchLanguage(QStringLiteral("en"));
   });
 
+  m_prefMenu->addSeparator();
+  m_startHiddenAction = m_prefMenu->addAction(tr("Start minimized"));
+  m_startHiddenAction->setCheckable(true);
+
+  QSettings startupS;
+  const bool startHidden =
+      startupS.value(QStringLiteral("app/startMinimized"), false).toBool();
+  m_startHiddenAction->setChecked(startHidden);
+
+  connect(m_startHiddenAction, &QAction::toggled, this, [](bool checked) {
+    QSettings s;
+    s.setValue(QStringLiteral("app/startMinimized"), checked);
+  });
+
   m_helpMenu = menuBar()->addMenu(tr("Help"));
   auto *modelsAction = m_helpMenu->addAction(QStringLiteral("More Models"));
   connect(modelsAction, &QAction::triggered, this, []() {
@@ -612,6 +626,7 @@ void MainWindow::retranslateUi() {
   m_langMenu->setTitle(tr("Language"));
   m_zhAction->setText(tr("Chinese"));
   m_enAction->setText(tr("English"));
+  m_startHiddenAction->setText(tr("Start minimized"));
   m_helpMenu->setTitle(tr("Help"));
 
   statusBar()->showMessage(
