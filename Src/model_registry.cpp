@@ -1,6 +1,5 @@
 #include "model_registry.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -16,39 +15,13 @@ namespace talkinput {
 static QVector<ModelPreset> s_presets;
 static bool s_loaded = false;
 
-static QString findModelsFile() {
-    // Look relative to the executable first
-    QString path = QCoreApplication::applicationDirPath();
-    QString candidate = QDir(path).filePath(QStringLiteral("models.json"));
-    if (QFileInfo::exists(candidate))
-        return candidate;
-
-    candidate = QDir(path).filePath(
-        QStringLiteral("../Models/models.json"));
-    if (QFileInfo::exists(candidate))
-        return candidate;
-
-    // Fall back to current working directory
-    candidate = QDir::current().filePath(QStringLiteral("Models/models.json"));
-    if (QFileInfo::exists(candidate))
-        return candidate;
-
-    return {};
-}
-
 static void ensureLoaded() {
     if (s_loaded) return;
     s_loaded = true;
 
-    const QString modelsPath = findModelsFile();
-    if (modelsPath.isEmpty()) {
-        spdlog::warn("model_registry: models.json not found");
-        return;
-    }
-
-    QFile f(modelsPath);
+    QFile f(QStringLiteral(":/resources/models.json"));
     if (!f.open(QIODevice::ReadOnly)) {
-        spdlog::warn("model_registry: cannot open {}", modelsPath);
+        spdlog::warn("model_registry: cannot open models.json resource");
         return;
     }
     const QByteArray data = f.readAll();
