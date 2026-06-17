@@ -270,86 +270,98 @@ void VoiceInputController::onResult(const QString &text, bool isFinal) {
   }
 }
 
-// ── Clipboard text injection (works universally, incl. Windows Terminal) ─
-static bool tryClipboardText(const QString &text) {
-  HWND hwnd = GetForegroundWindow();
-  if (!hwnd) return false;
+// ── Helpers: add one character to the INPUT batch ──────────────
+static void addUnicodeInputs(std::vector<INPUT> &inputs, ushort code) {
+  INPUT down = {};
+  down.type = INPUT_KEYBOARD;
+  down.ki.wVk = 0;
+  down.ki.wScan = code;
+  down.ki.dwFlags = KEYEVENTF_UNICODE;
+  inputs.push_back(down);
 
-  if (!OpenClipboard(nullptr))
-    return false;
-
-  EmptyClipboard();
-
-  const int len = text.length();
-  HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, (len + 1) * sizeof(wchar_t));
-  if (!hGlobal) {
-    CloseClipboard();
-    return false;
-  }
-
-  auto *dst = static_cast<wchar_t *>(GlobalLock(hGlobal));
-  text.toWCharArray(dst);
-  dst[len] = L'\0';
-  GlobalUnlock(hGlobal);
-
-  SetClipboardData(CF_UNICODETEXT, hGlobal);
-  CloseClipboard();
-
-  // Brief pause for clipboard to propagate
-  Sleep(10);
-
-  // Ctrl+V via batch SendInput
-  INPUT ctrlV[4] = {};
-  ctrlV[0].type = INPUT_KEYBOARD;
-  ctrlV[0].ki.wVk = VK_CONTROL;
-  ctrlV[1].type = INPUT_KEYBOARD;
-  ctrlV[1].ki.wVk = 'V';
-  ctrlV[2].type = INPUT_KEYBOARD;
-  ctrlV[2].ki.wVk = 'V';
-  ctrlV[2].ki.dwFlags = KEYEVENTF_KEYUP;
-  ctrlV[3].type = INPUT_KEYBOARD;
-  ctrlV[3].ki.wVk = VK_CONTROL;
-  ctrlV[3].ki.dwFlags = KEYEVENTF_KEYUP;
-  SendInput(4, ctrlV, sizeof(INPUT));
-
-  // Clipboard keeps our text — NOT cleared, NOT restored (per user request)
-  return true;
+  INPUT up = {};
+  up.type = INPUT_KEYBOARD;
+  up.ki.wVk = 0;
+  up.ki.wScan = code;
+  up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+  inputs.push_back(up);
 }
 
-// ── SendInput (batch, KEYEVENTF_UNICODE) fallback ─────────────
-static bool trySendInput(const QString &text) {
+static void addAsciiInputs(std::vector<INPUT> &inputs, ushort code,
+                            HKL kbl) {
+  SHORT vkResult = VkKeyScanExW(static_cast<wchar_t>(code), kbl);
+  if (vkResult == -1) {
+    // Layout doesn't have this char → VK_PACKET fallback
+    addUnicodeInputs(inputs, code);
+    return;
+  }
+
+  const BYTE vk = LOBYTE(vkResult);
+  const BYTE mod = HIBYTE(vkResult);
+
+  auto addMod = [&](BYTE vkMod, bool down) {
+    INPUT in = {};
+    in.type = INPUT_KEYBOARD;
+    in.ki.wVk = vkMod;
+    if (!down) in.ki.dwFlags = KEYEVENTF_KEYUP;
+    inputs.push_back(in);
+  };
+
+  if (mod & 1) addMod(VK_SHIFT, true);
+  if (mod & 2) addMod(VK_CONTROL, true);
+  if (mod & 4) addMod(VK_MENU, true);
+
+  INPUT keyDown = {};
+  keyDown.type = INPUT_KEYBOARD;
+  keyDown.ki.wVk = vk;
+  inputs.push_back(keyDown);
+
+  INPUT keyUp = {};
+  keyUp.type = INPUT_KEYBOARD;
+  keyUp.ki.wVk = vk;
+  keyUp.ki.dwFlags = KEYEVENTF_KEYUP;
+  inputs.push_back(keyUp);
+
+  if (mod & 1) addMod(VK_SHIFT, false);
+  if (mod & 2) addMod(VK_CONTROL, false);
+  if (mod & 4) addMod(VK_MENU, false);
+}
+
+// ── VoiceInputController::sendText ────────────────────────────
+void VoiceInputController::sendText(const QString &text) {
+  if (text.isEmpty()) return;
+
+  spdlog::info("Sending text to foreground app: {}", text);
+
   HWND hwnd = GetForegroundWindow();
-  if (!hwnd) return false;
+  if (!hwnd) return;
 
   DWORD tid = GetWindowThreadProcessId(hwnd, nullptr);
   DWORD ourTid = GetCurrentThreadId();
   const BOOL attached =
       (tid != ourTid) ? AttachThreadInput(ourTid, tid, TRUE) : FALSE;
 
+  const HKL kbl = GetKeyboardLayout(tid);
+
+  // Disable IME so it doesn't intercept VK events
   HIMC himc = ImmGetContext(hwnd);
   const BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
   if (himc) ImmSetOpenStatus(himc, FALSE);
 
+  // Build a single atomic batch:
+  //   ASCII characters  → virtual-key codes (works in Windows Terminal)
+  //   Non-ASCII         → KEYEVENTF_UNICODE  (already works everywhere)
   std::vector<INPUT> inputs;
-  inputs.reserve(static_cast<size_t>(text.size()) * 2);
+  inputs.reserve(static_cast<size_t>(text.size()) * 4);
 
   for (const QChar ch : text) {
     const ushort code = ch.unicode();
     if (code == 0) continue;
 
-    INPUT down = {};
-    down.type = INPUT_KEYBOARD;
-    down.ki.wVk = 0;
-    down.ki.wScan = code;
-    down.ki.dwFlags = KEYEVENTF_UNICODE;
-    inputs.push_back(down);
-
-    INPUT up = {};
-    up.type = INPUT_KEYBOARD;
-    up.ki.wVk = 0;
-    up.ki.wScan = code;
-    up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-    inputs.push_back(up);
+    if (code < 0x80)
+      addAsciiInputs(inputs, code, kbl);
+    else
+      addUnicodeInputs(inputs, code);
   }
 
   if (!inputs.empty())
@@ -362,24 +374,6 @@ static bool trySendInput(const QString &text) {
   }
 
   if (attached) AttachThreadInput(ourTid, tid, FALSE);
-  return true;
-}
-
-void VoiceInputController::sendText(const QString &text) {
-  if (text.isEmpty()) return;
-
-  spdlog::info("Sending text to foreground app: {}", text);
-
-  // Clipboard injection works universally (incl. Windows Terminal, UWP, etc.)
-  // and leaves the text on the clipboard afterward.
-  if (tryClipboardText(text)) {
-    spdlog::debug("Clipboard injection succeeded");
-    return;
-  }
-
-  // Fallback: batch SendInput with KEYEVENTF_UNICODE
-  spdlog::warn("Clipboard unavailable, falling back to SendInput");
-  trySendInput(text);
 }
 
 void VoiceInputController::showOverlay() {
