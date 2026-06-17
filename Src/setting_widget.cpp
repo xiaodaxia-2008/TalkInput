@@ -16,6 +16,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPainter>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QSettings>
 #include <QStandardPaths>
@@ -484,12 +485,24 @@ void SettingWidget::onDownload(int row) {
   m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
   if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) return;
 
+  // Show progress bar in status column
+  auto *progressBar = new QProgressBar();
+  progressBar->setRange(0, 100);
+  progressBar->setValue(0);
+  m_table->setCellWidget(row, 3, progressBar);
+
   emit statusMessage(tr("Downloading %1...").arg(m.name));
   QNetworkRequest req(m.archiveUrl);
   m_activeDownloadReply = m_networkManager->get(req);
   connect(m_activeDownloadReply, &QNetworkReply::readyRead, this, [this]() {
     if (m_activeDownloadReply && m_activeDownloadFile)
       m_activeDownloadFile->write(m_activeDownloadReply->readAll());
+  });
+  connect(m_activeDownloadReply, &QNetworkReply::downloadProgress, this,
+      [progressBar](qint64 received, qint64 total) {
+    if (total <= 0) return;
+    int pct = static_cast<int>(received * 100 / total);
+    progressBar->setValue(pct);
   });
 }
 
@@ -583,9 +596,18 @@ void SettingWidget::onDownloadFinished() {
 
   if (reply) reply->deleteLater();
 
+  auto setStatusText = [this](int r, const QString &text, const QColor &color) {
+    if (r < 0 || r >= m_models.size()) return;
+    m_table->removeCellWidget(r, 3);
+    auto *item = new QTableWidgetItem(text);
+    item->setForeground(color);
+    m_table->setItem(r, 3, item);
+  };
+
   if (failed) {
     QFile::remove(m_activeDownloadTempPath);
     m_activeDownloadFile.reset();
+    setStatusText(row, tr("Download failed"), QColor(0xc6, 0x28, 0x28));
     emit statusMessage(tr("Download failed."));
     return;
   }
@@ -594,10 +616,12 @@ void SettingWidget::onDownloadFinished() {
   QFile::rename(m_activeDownloadTempPath, m_activeDownloadPath);
   m_activeDownloadFile.reset();
 
-  emit statusMessage(tr("Extracting..."));
+  setStatusText(row, tr("Extracting..."), QColor(0x15, 0x65, 0xc0));
+  QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
   QString err;
   if (!extractArchive(m_activeDownloadPath, cacheDir(), &err)) {
+    setStatusText(row, tr("Extraction failed"), QColor(0xc6, 0x28, 0x28));
     emit statusMessage(tr("Extraction failed: %1").arg(err));
     return;
   }
