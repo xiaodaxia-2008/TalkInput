@@ -627,7 +627,9 @@ void SettingWidget::onDownloadFinished() {
     const auto &m = m_models.at(row);
     const QString modelDir = QDir(cacheDir()).filePath(m.modelDirName);
     if (QFileInfo(modelDir).isDir() || isInstalled(row)) {
-      if (!m.isPunctuationModel)
+      if (m.isPunctuationModel)
+        emit punctuationModelReady();
+      else
         emit modelSelected(modelDir, m.name);
       emit statusMessage(tr("Downloaded: %1").arg(m.name));
     }
