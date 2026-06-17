@@ -76,7 +76,6 @@ static void ensureLoaded() {
         const QJsonObject filesObj = obj.value(QStringLiteral("files")).toObject();
         for (auto it = filesObj.begin(); it != filesObj.end(); ++it) {
             const QString key = it.key();
-            const QJsonArray patterns = it.value().toArray();
 
             ModelPreset::FileRule rule;
             if (key.endsWith(QStringLiteral(">dir"))) {
@@ -86,8 +85,7 @@ static void ensureLoaded() {
                 rule.configField = key;
                 rule.isDir = false;
             }
-            for (const auto &p : patterns)
-                rule.globPatterns.append(p.toString());
+            rule.globPatterns.append(it.value().toString());
             preset.files.append(rule);
         }
 
