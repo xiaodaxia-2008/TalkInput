@@ -98,9 +98,15 @@ if(WIN32)
         windows/system_speech_recognizer.cpp
     )
 elseif(APPLE)
-    target_sources(TalkInput PRIVATE macos/system_ocr_service.cpp)
+    target_sources(TalkInput PRIVATE
+        macos/system_ocr_service.cpp
+        macos/system_speech_recognizer.cpp
+    )
 elseif(UNIX)
-    target_sources(TalkInput PRIVATE linux/system_ocr_service.cpp)
+    target_sources(TalkInput PRIVATE
+        linux/system_ocr_service.cpp
+        linux/system_speech_recognizer.cpp
+    )
 endif()
 
 target_compile_definitions(TalkInput PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)

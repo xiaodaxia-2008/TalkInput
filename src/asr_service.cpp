@@ -12,88 +12,6 @@
 namespace
 {
 
-QString findModelFile(const QDir &dir, const QStringList &patterns)
-{
-    const auto files = dir.entryInfoList(patterns, QDir::Files, QDir::Name);
-    if (files.isEmpty()) {
-        return {};
-    }
-    for (const QFileInfo &fi : files) {
-        if (fi.fileName().contains(QStringLiteral("int8"))) {
-            return fi.absoluteFilePath();
-        }
-    }
-    return files.first().absoluteFilePath();
-}
-
-QString findModelFileOrDir(const QDir &dir, const QStringList &patterns)
-{
-    const auto files =
-        dir.entryInfoList(patterns, QDir::Files | QDir::Dirs, QDir::Name);
-    if (files.isEmpty()) {
-        return {};
-    }
-    for (const QFileInfo &fi : files) {
-        if (fi.fileName().contains(QStringLiteral("int8"))) {
-            return fi.absoluteFilePath();
-        }
-    }
-    return files.first().absoluteFilePath();
-}
-
-bool hasFile(const QDir &dir, const QStringList &patterns)
-{
-    return !dir.entryInfoList(patterns, QDir::Files, QDir::Name).isEmpty();
-}
-
-talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir)
-{
-    const QDir dir(modelDir);
-
-    const bool hasEncoder = hasFile(dir, {QStringLiteral("*encoder*")});
-    const bool hasDecoder = hasFile(dir, {QStringLiteral("*decoder*")});
-    const bool hasTokens =
-        QFileInfo(dir.filePath(QStringLiteral("tokens.txt"))).exists();
-
-    const bool hasFunasrFiles =
-        hasFile(dir, {QStringLiteral("*encoder_adaptor*")}) &&
-        hasFile(dir, {QStringLiteral("*llm*")}) &&
-        hasFile(dir, {QStringLiteral("*embedding*")});
-
-    const bool hasModelInt8 = hasFile(dir, {QStringLiteral("model.int8.onnx")});
-
-    if (hasFunasrFiles) {
-        return talkinput::SpeechRecognizer::Type::FunASRNano;
-    }
-
-    if (hasEncoder && hasDecoder && hasTokens) {
-        return talkinput::SpeechRecognizer::Type::StreamingParaformer;
-    }
-
-    if (hasModelInt8 && hasTokens) {
-        return talkinput::SpeechRecognizer::Type::SenseVoice;
-    }
-
-    SPDLOG_WARN("AsrService: unknown model arch in {}; falling back to "
-                "paraformer",
-                modelDir);
-    return talkinput::SpeechRecognizer::Type::StreamingParaformer;
-}
-
-talkinput::SpeechRecognizer::Type typeFromString(const QString &str)
-{
-    if (str == QStringLiteral("SenseVoice")) {
-        return talkinput::SpeechRecognizer::Type::SenseVoice;
-    }
-    if (str == QStringLiteral("FunASRNano")) {
-        return talkinput::SpeechRecognizer::Type::FunASRNano;
-    }
-    if (str == QStringLiteral("StreamingParaformer")) {
-        return talkinput::SpeechRecognizer::Type::StreamingParaformer;
-    }
-    return talkinput::SpeechRecognizer::Type::StreamingParaformer;
-}
-
 QStringList hotwordLines(const QString &raw)
 {
     QStringList lines;
@@ -105,21 +23,6 @@ QStringList hotwordLines(const QString &raw)
         }
     }
     return lines;
-}
-
-QString formatCjkHotwordLine(const QString &line)
-{
-    QStringList tokens;
-    const QString trimmed = line.trimmed();
-    tokens.reserve(trimmed.size());
-
-    for (const QChar ch : trimmed) {
-        if (!ch.isSpace()) {
-            tokens.append(QString(ch));
-        }
-    }
-
-    return tokens.join(QLatin1Char(' '));
 }
 
 QString buildHotwordsText(const QString &raw,
@@ -135,6 +38,20 @@ QString buildHotwordsText(const QString &raw,
     }
 
     return {};
+}
+
+talkinput::SpeechRecognizer::Type typeFromString(const QString &str)
+{
+    if (str == QStringLiteral("SenseVoice")) {
+        return talkinput::SpeechRecognizer::Type::SenseVoice;
+    }
+    if (str == QStringLiteral("FunASRNano")) {
+        return talkinput::SpeechRecognizer::Type::FunASRNano;
+    }
+    if (str == QStringLiteral("StreamingParaformer")) {
+        return talkinput::SpeechRecognizer::Type::StreamingParaformer;
+    }
+    return talkinput::SpeechRecognizer::Type::StreamingParaformer;
 }
 
 } // namespace
@@ -167,123 +84,6 @@ void AsrService::setPunctuationModelDir(const QString &dir)
     }
     SPDLOG_DEBUG("AsrService: punctuation model dir set to {}",
                  m_punctuationModelDir);
-}
-
-SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
-{
-    const QDir dir(modelDir);
-    SpeechRecognizer::Config config;
-    config.modelDir = modelDir;
-
-    // Try the preset registry first
-    ModelFileSet resolved = resolveModelFiles(modelDir);
-    if (resolved.matched) {
-        config.type = typeFromString(QString::fromStdString(resolved.type));
-        auto rel = [&](const QString &abs) {
-            return dir.relativeFilePath(abs);
-        };
-
-        auto resolvedFile = [&](const char *key) {
-            const auto it = resolved.resolvedFiles.find(key);
-            return it == resolved.resolvedFiles.end()
-                       ? QString()
-                       : QString::fromStdString(it->second);
-        };
-        auto assign = [&](const char *key, QString &field) {
-            const QString v = resolvedFile(key);
-            if (!v.isEmpty()) {
-                field = rel(v);
-            }
-        };
-        assign("encoderFile", config.encoderFile);
-        assign("decoderFile", config.decoderFile);
-        assign("tokensFile", config.tokensFile);
-        assign("senseVoiceModelFile", config.senseVoiceModelFile);
-        assign("funasrEncoderAdaptorFile", config.funasrEncoderAdaptorFile);
-        assign("funasrLlmFile", config.funasrLlmFile);
-        assign("funasrEmbeddingFile", config.funasrEmbeddingFile);
-
-        // Directory fields (not relative to modelDir — already absolute or
-        // relative)
-        {
-            const QString tok = resolvedFile("funasrTokenizerFile");
-            if (!tok.isEmpty()) {
-                config.funasrTokenizerFile = dir.relativeFilePath(tok);
-            }
-            else {
-                config.funasrTokenizerFile = QStringLiteral("Qwen3-0.6B");
-            }
-        }
-
-        // Non-file model config
-        config.senseVoiceLanguage =
-            appConfigString("settings/app/language", "zh");
-        config.senseVoiceUseItn = true;
-
-        SPDLOG_INFO("AsrService: configured from preset {}", resolved.type);
-    }
-    else {
-        // Fall back to file-probing detection
-        const auto arch = detectModelArch(modelDir);
-        config.type = arch;
-
-        switch (arch) {
-        case SpeechRecognizer::Type::StreamingParaformer: {
-            auto rel = [&](const QString &abs) {
-                return dir.relativeFilePath(abs);
-            };
-            config.encoderFile =
-                rel(findModelFile(dir, {QStringLiteral("*encoder*")}));
-            config.decoderFile =
-                rel(findModelFile(dir, {QStringLiteral("*decoder*")}));
-            break;
-        }
-        case SpeechRecognizer::Type::SenseVoice: {
-            auto rel = [&](const QString &abs) {
-                return dir.relativeFilePath(abs);
-            };
-            config.senseVoiceModelFile =
-                rel(findModelFile(dir, {QStringLiteral("model.int8.onnx")}));
-            config.senseVoiceLanguage =
-                appConfigString("settings/app/language", "zh");
-            config.senseVoiceUseItn = true;
-            break;
-        }
-        case SpeechRecognizer::Type::FunASRNano: {
-            auto rel = [&](const QString &abs) {
-                return dir.relativeFilePath(abs);
-            };
-            config.funasrEncoderAdaptorFile =
-                rel(findModelFile(dir, {QStringLiteral("*encoder_adaptor*")}));
-            config.funasrLlmFile =
-                rel(findModelFile(dir, {QStringLiteral("*llm*")}));
-            config.funasrEmbeddingFile =
-                rel(findModelFile(dir, {QStringLiteral("*embedding*")}));
-            const auto tokDir =
-                findModelFileOrDir(dir, {QStringLiteral("*Qwen3*"),
-                                         QStringLiteral("*tokenizer*")});
-            if (!tokDir.isEmpty()) {
-                config.funasrTokenizerFile = dir.relativeFilePath(tokDir);
-            }
-            else {
-                config.funasrTokenizerFile = QStringLiteral("Qwen3-0.6B");
-            }
-            break;
-        }
-        }
-    }
-
-    // Look for punctuation model if configured
-    const QString punctModelPath = findPunctuationModelPath(modelDir);
-    if (!punctModelPath.isEmpty()) {
-        config.punctuationModelPath = punctModelPath;
-        SPDLOG_DEBUG("AsrService: using punctuation model: {}", punctModelPath);
-    }
-
-    config.hotwordsText = buildHotwordsText(
-        appConfigString("settings/model/hotwords"), config.type);
-
-    return config;
 }
 
 QString AsrService::findPunctuationModelPath(const QString &modelDir) const
@@ -335,9 +135,69 @@ void AsrService::loadModel()
         return;
     }
 
-    SpeechRecognizer::Config config = detectAndConfigure(m_modelDir);
+    // Resolve model config from preset registry
+    ModelFileSet resolved = resolveModelFiles(m_modelDir);
+    if (!resolved.matched) {
+        SPDLOG_WARN("AsrService: no preset found for model directory: {}",
+                    m_modelDir);
+        emit modelLoadResult(false,
+                             tr("No preset found for the selected model."));
+        return;
+    }
+
+    SpeechRecognizer::Config config;
+    config.modelDir = m_modelDir;
+    config.type = typeFromString(QString::fromStdString(resolved.type));
     const bool streamingMode =
         (config.type == SpeechRecognizer::Type::StreamingParaformer);
+
+    const QDir dir(m_modelDir);
+    auto rel = [&](const QString &abs) { return dir.relativeFilePath(abs); };
+    auto resolvedFile = [&](const char *key) -> QString {
+        const auto it = resolved.resolvedFiles.find(key);
+        return it == resolved.resolvedFiles.end()
+                   ? QString()
+                   : QString::fromStdString(it->second);
+    };
+    auto assign = [&](const char *key, QString &field) {
+        const QString v = resolvedFile(key);
+        if (!v.isEmpty()) {
+            field = rel(v);
+        }
+    };
+
+    assign("encoderFile", config.encoderFile);
+    assign("decoderFile", config.decoderFile);
+    assign("tokensFile", config.tokensFile);
+    assign("senseVoiceModelFile", config.senseVoiceModelFile);
+    assign("funasrEncoderAdaptorFile", config.funasrEncoderAdaptorFile);
+    assign("funasrLlmFile", config.funasrLlmFile);
+    assign("funasrEmbeddingFile", config.funasrEmbeddingFile);
+
+    {
+        const QString tok = resolvedFile("funasrTokenizerFile");
+        if (!tok.isEmpty()) {
+            config.funasrTokenizerFile = dir.relativeFilePath(tok);
+        }
+        else {
+            config.funasrTokenizerFile = QStringLiteral("Qwen3-0.6B");
+        }
+    }
+
+    config.senseVoiceLanguage = appConfigString("settings/app/language", "zh");
+    config.senseVoiceUseItn = true;
+
+    // Punctuation model
+    config.punctuationModelPath = findPunctuationModelPath(m_modelDir);
+    if (!config.punctuationModelPath.isEmpty()) {
+        SPDLOG_DEBUG("AsrService: using punctuation model: {}",
+                     config.punctuationModelPath);
+    }
+
+    config.hotwordsText = buildHotwordsText(
+        appConfigString("settings/model/hotwords"), config.type);
+
+    SPDLOG_INFO("AsrService: configured from preset {}", resolved.type);
 
     unloadModel();
 
