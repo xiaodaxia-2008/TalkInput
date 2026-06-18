@@ -154,9 +154,7 @@ QString buildHotwordsText(const QString &raw,
         return lines.join(QLatin1Char('\n'));
     }
 
-    if (type == talkinput::SpeechRecognizer::Type::StreamingTransducer ||
-        type == talkinput::SpeechRecognizer::Type::StreamingParaformer)
-    {
+    if (type == talkinput::SpeechRecognizer::Type::StreamingTransducer) {
         QStringList formatted;
         formatted.reserve(lines.size());
         for (const QString &line : lines) {
