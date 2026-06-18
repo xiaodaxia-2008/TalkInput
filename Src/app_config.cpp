@@ -60,8 +60,10 @@ nlohmann::json mergeDefaults(const nlohmann::json &defaults,
 
     nlohmann::json merged = defaults;
     for (auto it = user.begin(); it != user.end(); ++it) {
-        merged[it.key()] =
-            mergeDefaults(merged.value(it.key(), nullptr), it.value());
+        const nlohmann::json defaultValue = merged.contains(it.key())
+                                                ? merged.at(it.key())
+                                                : nlohmann::json(nullptr);
+        merged[it.key()] = mergeDefaults(defaultValue, it.value());
     }
     return merged;
 }
@@ -73,13 +75,21 @@ void ensureLoaded()
     }
     s_loaded = true;
 
-    s_defaultConfig = readConfigObject(":/resources/config.json");
-    const nlohmann::json userConfig = readConfigObject(appConfigPath());
-    s_config = userConfig.empty() ? s_defaultConfig
-                                  : mergeDefaults(s_defaultConfig, userConfig);
+    try {
+        s_defaultConfig = readConfigObject(":/resources/config.json");
+        const nlohmann::json userConfig = readConfigObject(appConfigPath());
+        s_config = userConfig.empty()
+                       ? s_defaultConfig
+                       : mergeDefaults(s_defaultConfig, userConfig);
 
-    spdlog::info("config: loaded {}",
-                 userConfig.empty() ? "defaults" : appConfigPath());
+        spdlog::info("config: loaded {}",
+                     userConfig.empty() ? "defaults" : appConfigPath());
+    }
+    catch (const nlohmann::json::exception &e) {
+        spdlog::warn("config: failed to load merged config: {}", e.what());
+        s_config = s_defaultConfig.empty() ? nlohmann::json::object()
+                                           : s_defaultConfig;
+    }
 }
 
 bool writeConfigNow()
