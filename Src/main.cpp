@@ -1,13 +1,11 @@
+#include "app_config.h"
 #include "logging.h"
 #include "main_window.h"
 #include "utils.h"
 
 #include <QApplication>
-#include <QDir>
 #include <QFile>
 #include <QLibraryInfo>
-#include <QSettings>
-#include <QStandardPaths>
 #include <QTranslator>
 
 int main(int argc, char *argv[])
@@ -24,6 +22,8 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName("TalkInput");
     QApplication::setWindowIcon(
         talkinput::resourceIcon(":/resources/icon.png"));
+    QObject::connect(&app, &QCoreApplication::aboutToQuit,
+                     &talkinput::saveAppConfig);
 
     QFile styleFile(":/resources/app.qss");
     if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -33,23 +33,12 @@ int main(int argc, char *argv[])
         spdlog::warn("main: failed to load application stylesheet");
     }
 
-    QString settingsDir =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    if (settingsDir.isEmpty()) {
-        settingsDir = QDir::home().filePath(".config/TalkInput");
-    }
-    QDir().mkpath(settingsDir);
-    QSettings::setDefaultFormat(QSettings::IniFormat);
-    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDir);
-    spdlog::debug("main: settings directory set to {}", settingsDir);
-
-    QSettings s;
+    spdlog::debug("main: config path {}", talkinput::appConfigPath());
 
     const bool startHidden =
-        s.value(QStringLiteral("app/startMinimized"), false).toBool();
+        talkinput::appConfigBool("settings/app/startMinimized", false);
     const QString lang =
-        s.value(QStringLiteral("app/language"), QStringLiteral("zh"))
-            .toString();
+        talkinput::appConfigString("settings/app/language", "zh");
 
     if (lang == QStringLiteral("zh")) {
         spdlog::debug("main: loading Chinese translations");

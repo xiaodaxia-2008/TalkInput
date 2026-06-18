@@ -52,6 +52,7 @@ struct LlmProviderPreset
     QString name;
     QString endpoint;
     QString model;
+    QStringList models;
     bool custom = false;
     bool managedLocalService = false;
 };
@@ -65,6 +66,7 @@ LlmProviderPreset findLlmProviderPreset(const QString &id);
 QString defaultLlmProviderId();
 QString defaultLlmEndpoint();
 QString defaultLlmModel();
+QString defaultLlmSystemPrompt();
 ModelFileSet resolveModelFiles(const QString &modelDir);
 
 } // namespace talkinput

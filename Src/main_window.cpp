@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "app_config.h"
 #include "asr_setting_widget.h"
 #include "history_widget.h"
 #include "logging.h"
@@ -18,7 +19,6 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
@@ -218,10 +218,7 @@ void MainWindow::setupUi()
                                        tr("English"));
     m_enAction->setCheckable(true);
 
-    QSettings langS;
-    m_currentLanguage =
-        langS.value(QStringLiteral("app/language"), QStringLiteral("zh"))
-            .toString();
+    m_currentLanguage = appConfigString("settings/app/language", "zh");
     if (m_currentLanguage == QStringLiteral("en")) {
         m_enAction->setChecked(true);
     }
@@ -244,14 +241,12 @@ void MainWindow::setupUi()
     m_startHiddenAction = m_prefMenu->addAction(tr("Start minimized"));
     m_startHiddenAction->setCheckable(true);
 
-    QSettings startupS;
     const bool startHidden =
-        startupS.value(QStringLiteral("app/startMinimized"), false).toBool();
+        appConfigBool("settings/app/startMinimized", false);
     m_startHiddenAction->setChecked(startHidden);
 
     connect(m_startHiddenAction, &QAction::toggled, this, [](bool checked) {
-        QSettings s;
-        s.setValue(QStringLiteral("app/startMinimized"), checked);
+        setAppConfigValue("settings/app/startMinimized", checked);
     });
 
     m_helpMenu = menuBar()->addMenu(tr("Help"));
@@ -281,10 +276,8 @@ void MainWindow::setupUi()
             &MainWindow::quitApplication);
 
     // ── Restore persisted state & load model ────────────────────
-    QSettings s;
-    const QString savedDir =
-        s.value(QStringLiteral("model/directory")).toString();
-    const QString savedName = s.value(QStringLiteral("model/name")).toString();
+    const QString savedDir = appConfigString("settings/model/directory");
+    const QString savedName = appConfigString("settings/model/name");
     if (!savedDir.isEmpty()) {
         spdlog::debug("MainWindow::setupUi: restoring saved model {}",
                       savedDir);
@@ -404,9 +397,8 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     spdlog::info("Recognition model set: {} ({})", m_currentModelName,
                  m_currentModelDirectory);
 
-    QSettings s;
-    s.setValue(QStringLiteral("model/directory"), m_currentModelDirectory);
-    s.setValue(QStringLiteral("model/name"), m_currentModelName);
+    setAppConfigValue("settings/model/directory", m_currentModelDirectory);
+    setAppConfigValue("settings/model/name", m_currentModelName);
 
     if (m_asrService) {
         m_asrService->setModelDirectory(m_currentModelDirectory);
@@ -579,8 +571,7 @@ void MainWindow::retranslateUi()
 void MainWindow::doSwitchLanguage(const QString &lang)
 {
     m_currentLanguage = lang;
-    QSettings s;
-    s.setValue(QStringLiteral("app/language"), lang);
+    setAppConfigValue("settings/app/language", lang);
 
     // Remove old translators
     if (m_appTranslator) {

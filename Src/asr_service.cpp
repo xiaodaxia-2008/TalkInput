@@ -1,10 +1,10 @@
 #include "asr_service.h"
+#include "app_config.h"
 #include "logging.h"
 #include "model_registry.h"
 
 #include <QDir>
 #include <QFileInfo>
-#include <QSettings>
 #include <QStandardPaths>
 #include <QStringList>
 #include <QThread>
@@ -247,12 +247,8 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         }
 
         // Non-file model config
-        {
-            QSettings s;
-            config.senseVoiceLanguage =
-                s.value(QStringLiteral("app/language"), QStringLiteral("zh"))
-                    .toString();
-        }
+        config.senseVoiceLanguage =
+            appConfigString("settings/app/language", "zh");
         config.senseVoiceUseItn = true;
 
         spdlog::info("AsrService: configured from preset {}", resolved.typeStr);
@@ -291,13 +287,8 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
             };
             config.senseVoiceModelFile =
                 rel(findModelFile(dir, {QStringLiteral("model.int8.onnx")}));
-            {
-                QSettings s;
-                config.senseVoiceLanguage =
-                    s.value(QStringLiteral("app/language"),
-                            QStringLiteral("zh"))
-                        .toString();
-            }
+            config.senseVoiceLanguage =
+                appConfigString("settings/app/language", "zh");
             config.senseVoiceUseItn = true;
             break;
         }
@@ -361,11 +352,8 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         }
     }
 
-    {
-        QSettings s;
-        config.hotwordsText = buildHotwordsText(
-            s.value("model/hotwords").toString(), config.type);
-    }
+    config.hotwordsText = buildHotwordsText(
+        appConfigString("settings/model/hotwords"), config.type);
 
     return config;
 }

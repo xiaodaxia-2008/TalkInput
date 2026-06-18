@@ -1,4 +1,5 @@
 #include "asr_setting_widget.h"
+#include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
 #include "model_registry.h"
@@ -26,7 +27,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPushButton>
-#include <QSettings>
 #include <QSignalBlocker>
 #include <QStandardPaths>
 
@@ -66,6 +66,21 @@ QString displayNameForPreset(const talkinput::ModelPreset &preset)
 {
     return QCoreApplication::translate("talkinput::AsrSettingWidget",
                                        preset.name.toUtf8().constData());
+}
+
+QString llmProviderModelKey(const QString &providerId)
+{
+    return QString("settings/llm/providerModels/%1").arg(providerId);
+}
+
+QString currentLlmSystemPrompt()
+{
+    QString prompt =
+        talkinput::appConfigString("settings/llm/systemPrompt").trimmed();
+    if (prompt.isEmpty()) {
+        prompt = talkinput::defaultLlmSystemPrompt();
+    }
+    return prompt;
 }
 
 } // namespace
@@ -117,11 +132,33 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     auto *endpointEdit = new QLineEdit(llmGroup);
     endpointEdit->setPlaceholderText(
         tr("OpenAI-compatible chat completions endpoint"));
-    auto *modelEdit = new QLineEdit(llmGroup);
-    modelEdit->setPlaceholderText(tr("Model name sent to the LLM service"));
+    auto *modelCombo = new QComboBox(llmGroup);
+    modelCombo->setEditable(true);
+    modelCombo->setInsertPolicy(QComboBox::NoInsert);
+    modelCombo->lineEdit()->setPlaceholderText(
+        tr("Model name sent to the LLM service"));
     auto *apiKeyEdit = new QLineEdit(llmGroup);
     apiKeyEdit->setEchoMode(QLineEdit::Password);
     apiKeyEdit->setPlaceholderText(tr("Optional API key"));
+    auto *promptWidget = new QWidget(llmGroup);
+    auto *promptLayout = new QHBoxLayout(promptWidget);
+    promptLayout->setContentsMargins(0, 0, 0, 0);
+    promptLayout->setSpacing(6);
+    auto *promptLabel = new QLabel(promptWidget);
+    promptLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    promptLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    auto *promptEditBtn = new QPushButton(promptWidget);
+    promptEditBtn->setToolTip(tr("Edit LLM prompt"));
+    setButtonIcon(promptEditBtn, ":/resources/edit.svg", 18);
+    promptLayout->addWidget(promptLabel, 1);
+    promptLayout->addWidget(promptEditBtn);
+
+    auto refreshPromptLabel = [promptLabel]() {
+        const QString prompt = currentLlmSystemPrompt().simplified();
+        promptLabel->setText(prompt);
+        promptLabel->setToolTip(prompt);
+    };
+    refreshPromptLabel();
 
     auto providerAt = [llmProviders](int index) {
         if (index >= 0 && index < llmProviders.size()) {
@@ -129,54 +166,56 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
         return defaultLlmProvider();
     };
-    auto applyProvider = [providerCombo, endpointEdit, modelEdit](
+    auto applyProvider = [providerCombo, endpointEdit, modelCombo](
                              const LlmProviderPreset &provider, bool persist) {
-        QSettings settings;
         const bool custom = provider.custom;
         const QString endpoint =
-            custom ? settings
-                         .value("llm/customEndpoint",
-                                settings.value("llm/endpoint").toString())
-                         .toString()
+            custom ? appConfigString("settings/llm/customEndpoint",
+                                     appConfigString("settings/llm/endpoint"))
                    : provider.endpoint;
         const QString model =
-            custom ? settings
-                         .value("llm/customModel",
-                                settings.value("llm/model").toString())
-                         .toString()
-                   : provider.model;
+            custom ? appConfigString("settings/llm/customModel",
+                                     appConfigString("settings/llm/model"))
+                   : appConfigString(llmProviderModelKey(provider.id),
+                                     provider.model);
 
         {
             const QSignalBlocker endpointBlocker(endpointEdit);
-            const QSignalBlocker modelBlocker(modelEdit);
+            const QSignalBlocker modelBlocker(modelCombo);
             endpointEdit->setText(endpoint);
-            modelEdit->setText(model);
+            modelCombo->clear();
+            for (const QString &presetModel : provider.models) {
+                modelCombo->addItem(presetModel);
+            }
+            if (!model.isEmpty() && modelCombo->findText(model) < 0) {
+                modelCombo->addItem(model);
+            }
+            modelCombo->setEditText(model);
         }
         endpointEdit->setReadOnly(!custom);
-        modelEdit->setReadOnly(!custom);
 
         if (!persist) {
             return;
         }
 
-        settings.setValue("llm/providerId", provider.id);
-        settings.setValue("llm/endpoint", endpoint);
-        settings.setValue("llm/model", model);
+        setAppConfigValue("settings/llm/providerId", provider.id);
+        setAppConfigValue("settings/llm/endpoint", endpoint);
+        setAppConfigValue("settings/llm/model", model);
+        setAppConfigValue(llmProviderModelKey(provider.id), model);
         if (custom) {
-            settings.setValue("llm/customEndpoint", endpoint);
-            settings.setValue("llm/customModel", model);
+            setAppConfigValue("settings/llm/customEndpoint", endpoint);
+            setAppConfigValue("settings/llm/customModel", model);
         }
         providerCombo->setCurrentIndex(providerCombo->findData(provider.id));
     };
 
     {
-        QSettings settings;
         QString providerId =
-            settings.value("llm/providerId", defaultLlmProviderId()).toString();
+            appConfigString("settings/llm/providerId", defaultLlmProviderId());
         const QString savedEndpoint =
-            settings.value("llm/endpoint").toString().trimmed();
-        if (!settings.contains("llm/providerId") && !savedEndpoint.isEmpty() &&
-            savedEndpoint != defaultLlmEndpoint())
+            appConfigString("settings/llm/endpoint").trimmed();
+        if (!appConfigContains("settings/llm/providerId") &&
+            !savedEndpoint.isEmpty() && savedEndpoint != defaultLlmEndpoint())
         {
             providerId = "custom";
         }
@@ -189,7 +228,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
         providerCombo->setCurrentIndex(providerIndex);
         applyProvider(providerAt(providerIndex), false);
-        apiKeyEdit->setText(settings.value("llm/apiKey").toString());
+        apiKeyEdit->setText(appConfigString("settings/llm/apiKey"));
     }
 
     connect(providerCombo, &QComboBox::currentIndexChanged, this,
@@ -203,34 +242,84 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(endpointEdit, &QLineEdit::editingFinished, this,
             [this, providerCombo, endpointEdit]() {
                 const QString endpoint = endpointEdit->text().trimmed();
-                QSettings settings;
-                settings.setValue("llm/endpoint", endpoint);
+                setAppConfigValue("settings/llm/endpoint", endpoint);
                 if (providerCombo->currentData().toString() == "custom") {
-                    settings.setValue("llm/customEndpoint", endpoint);
+                    setAppConfigValue("settings/llm/customEndpoint", endpoint);
                 }
                 emit statusMessage(tr("LLM endpoint saved."));
             });
-    connect(modelEdit, &QLineEdit::editingFinished, this,
-            [this, providerCombo, modelEdit]() {
-                const QString model = modelEdit->text().trimmed();
-                QSettings settings;
-                settings.setValue("llm/model", model);
-                if (providerCombo->currentData().toString() == "custom") {
-                    settings.setValue("llm/customModel", model);
+    auto saveModel = [this, providerCombo, modelCombo]() {
+        const QString model = modelCombo->currentText().trimmed();
+        const QString providerId = providerCombo->currentData().toString();
+        setAppConfigValue("settings/llm/model", model);
+        setAppConfigValue(llmProviderModelKey(providerId), model);
+        if (providerId == "custom") {
+            setAppConfigValue("settings/llm/customModel", model);
+        }
+        emit statusMessage(tr("LLM model saved."));
+    };
+    connect(modelCombo->lineEdit(), &QLineEdit::editingFinished, this,
+            saveModel);
+    connect(modelCombo, &QComboBox::activated, this,
+            [saveModel](int) { saveModel(); });
+    connect(modelCombo, &QComboBox::currentTextChanged, this,
+            [providerCombo, modelCombo]() {
+                const QString model = modelCombo->currentText().trimmed();
+                if (model.isEmpty()) {
+                    return;
                 }
-                emit statusMessage(tr("LLM model saved."));
+                const QString providerId =
+                    providerCombo->currentData().toString();
+                setAppConfigValue("settings/llm/model", model);
+                setAppConfigValue(llmProviderModelKey(providerId), model);
+                if (providerId == "custom") {
+                    setAppConfigValue("settings/llm/customModel", model);
+                }
             });
     connect(apiKeyEdit, &QLineEdit::editingFinished, this,
             [this, apiKeyEdit]() {
-                QSettings settings;
-                settings.setValue("llm/apiKey", apiKeyEdit->text().trimmed());
+                setAppConfigValue("settings/llm/apiKey",
+                                  apiKeyEdit->text().trimmed());
                 emit statusMessage(tr("LLM API key saved."));
+            });
+    connect(promptEditBtn, &QPushButton::clicked, this,
+            [this, refreshPromptLabel]() {
+                QDialog dialog(this);
+                dialog.setWindowTitle(tr("LLM Prompt"));
+                dialog.resize(520, 360);
+
+                auto *layout = new QVBoxLayout(&dialog);
+                layout->setContentsMargins(16, 16, 16, 16);
+                layout->setSpacing(10);
+
+                auto *editor = new QTextEdit(&dialog);
+                editor->setAcceptRichText(false);
+                editor->setPlainText(currentLlmSystemPrompt());
+                layout->addWidget(editor, 1);
+
+                auto *buttons = new QDialogButtonBox(
+                    QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+                connect(buttons, &QDialogButtonBox::accepted, &dialog,
+                        &QDialog::accept);
+                connect(buttons, &QDialogButtonBox::rejected, &dialog,
+                        &QDialog::reject);
+                layout->addWidget(buttons);
+
+                if (dialog.exec() != QDialog::Accepted) {
+                    return;
+                }
+
+                setAppConfigValue("settings/llm/systemPrompt",
+                                  editor->toPlainText().trimmed());
+                refreshPromptLabel();
+                emit statusMessage(tr("LLM prompt saved."));
             });
 
     llmForm->addRow(tr("Provider"), providerCombo);
     llmForm->addRow(tr("Endpoint"), endpointEdit);
-    llmForm->addRow(tr("Model"), modelEdit);
+    llmForm->addRow(tr("Model"), modelCombo);
     llmForm->addRow(tr("API Key"), apiKeyEdit);
+    llmForm->addRow(tr("Prompt"), promptWidget);
     root->addWidget(llmGroup);
 
     auto *bottomRow = new QHBoxLayout();
@@ -251,15 +340,11 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     auto *llmPostProcessCheck = new QCheckBox(tr("LLM post-processing"), this);
     llmPostProcessCheck->setToolTip(
         tr("Use a local Qwen model to polish final recognition text"));
-    {
-        QSettings settings;
-        llmPostProcessCheck->setChecked(
-            settings.value("llm/postProcessingEnabled", false).toBool());
-    }
+    llmPostProcessCheck->setChecked(
+        appConfigBool("settings/llm/postProcessingEnabled", false));
     connect(
         llmPostProcessCheck, &QCheckBox::toggled, this, [this](bool checked) {
-            QSettings settings;
-            settings.setValue("llm/postProcessingEnabled", checked);
+            setAppConfigValue("settings/llm/postProcessingEnabled", checked);
             emit statusMessage(checked ? tr("LLM post-processing enabled.")
                                        : tr("LLM post-processing disabled."));
         });
@@ -412,9 +497,7 @@ void AsrSettingWidget::populateTable()
 void AsrSettingWidget::refreshStatus()
 {
     spdlog::debug("AsrSettingWidget::refreshStatus: begin");
-    QSettings s;
-    const QString activeDir =
-        s.value(QStringLiteral("model/directory")).toString();
+    const QString activeDir = appConfigString("settings/model/directory");
 
     for (int i = 0; i < m_models.size(); ++i) {
         const auto &m = m_models.at(i);
@@ -688,10 +771,7 @@ void AsrSettingWidget::onEditHotwords()
     auto *editor = new QTextEdit(&dialog);
     editor->setAcceptRichText(false);
     editor->setPlaceholderText(tr("Enter hot words, one per line"));
-    {
-        QSettings s;
-        editor->setPlainText(s.value("model/hotwords").toString());
-    }
+    editor->setPlainText(appConfigString("settings/model/hotwords"));
     layout->addWidget(editor, 1);
 
     auto *buttons = new QDialogButtonBox(
@@ -704,8 +784,8 @@ void AsrSettingWidget::onEditHotwords()
         return;
     }
 
-    QSettings s;
-    s.setValue("model/hotwords", editor->toPlainText().trimmed());
+    setAppConfigValue("settings/model/hotwords",
+                      editor->toPlainText().trimmed());
     emit statusMessage(tr("Hot words saved."));
     emit hotwordsChanged();
 }

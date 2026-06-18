@@ -1,4 +1,5 @@
 #include "llm_post_processor.h"
+#include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
 #include "model_registry.h"
@@ -8,12 +9,8 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QSettings>
 #include <QStandardPaths>
 #include <QUrl>
 
@@ -36,6 +33,11 @@ constexpr int MaxHealthAttempts = 120;
 const QUrl LlamaArchiveUrl(
     "https://github.com/ggml-org/llama.cpp/releases/download/b9685/"
     "llama-b9685-bin-win-cpu-x64.zip");
+
+QString llmProviderModelKey(const QString &providerId)
+{
+    return QString("settings/llm/providerModels/%1").arg(providerId);
+}
 
 QNetworkRequest makeRequest(const QUrl &url)
 {
@@ -205,8 +207,7 @@ void LlmPostProcessor::shutdown()
 
 bool LlmPostProcessor::isEnabled() const
 {
-    QSettings settings;
-    return settings.value("llm/postProcessingEnabled", false).toBool();
+    return appConfigBool("settings/llm/postProcessingEnabled", false);
 }
 
 void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
@@ -270,15 +271,13 @@ QString LlmPostProcessor::serverExecutablePath() const
 
 LlmProviderPreset LlmPostProcessor::configuredProvider() const
 {
-    QSettings settings;
     QString providerId =
-        settings.value("llm/providerId", defaultLlmProviderId())
-            .toString()
+        appConfigString("settings/llm/providerId", defaultLlmProviderId())
             .trimmed();
     const QString savedEndpoint =
-        settings.value("llm/endpoint").toString().trimmed();
-    if (!settings.contains("llm/providerId") && !savedEndpoint.isEmpty() &&
-        savedEndpoint != defaultLlmEndpoint())
+        appConfigString("settings/llm/endpoint").trimmed();
+    if (!appConfigContains("settings/llm/providerId") &&
+        !savedEndpoint.isEmpty() && savedEndpoint != defaultLlmEndpoint())
     {
         providerId = "custom";
     }
@@ -287,32 +286,35 @@ LlmProviderPreset LlmPostProcessor::configuredProvider() const
 
 QString LlmPostProcessor::configuredEndpoint() const
 {
-    QSettings settings;
     const LlmProviderPreset provider = configuredProvider();
     if (!provider.custom) {
         const QString endpoint = provider.endpoint.trimmed();
         return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
     }
 
-    return settings.value("llm/endpoint").toString().trimmed();
+    return appConfigString("settings/llm/endpoint").trimmed();
 }
 
 QString LlmPostProcessor::configuredModel() const
 {
-    QSettings settings;
     const LlmProviderPreset provider = configuredProvider();
-    if (!provider.custom) {
-        const QString model = provider.model.trimmed();
-        return model.isEmpty() ? defaultLlmModel() : model;
+    const QString providerModel =
+        appConfigString(llmProviderModelKey(provider.id)).trimmed();
+    if (!providerModel.isEmpty()) {
+        return providerModel;
     }
-
-    return settings.value("llm/model").toString().trimmed();
+    const QString configuredModel =
+        appConfigString("settings/llm/model").trimmed();
+    if (!configuredModel.isEmpty()) {
+        return configuredModel;
+    }
+    const QString model = provider.model.trimmed();
+    return model.isEmpty() ? defaultLlmModel() : model;
 }
 
 QString LlmPostProcessor::configuredApiKey() const
 {
-    QSettings settings;
-    return settings.value("llm/apiKey").toString().trimmed();
+    return appConfigString("settings/llm/apiKey").trimmed();
 }
 
 bool LlmPostProcessor::usesManagedLocalService() const
@@ -529,28 +531,26 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
 
     spdlog::debug("LLM post-process input: {}", request.text);
 
-    const QString systemPrompt =
-        "你是语音识别文本后处理器。修正错别字、同音误识别、"
-        "标点和自然断句。不要解释，不要添加原文没有的信息，只"
-        "返回修正后的文本。";
+    QString systemPrompt =
+        appConfigString("settings/llm/systemPrompt").trimmed();
+    if (systemPrompt.isEmpty()) {
+        systemPrompt = defaultLlmSystemPrompt();
+    }
     const QString userPrompt =
         QString("请后处理这段语音识别文本：\n%1").arg(request.text);
 
     spdlog::debug("LLM system prompt: {}", systemPrompt);
     spdlog::debug("LLM user prompt: {}", userPrompt);
 
-    QJsonArray messages;
-    messages.append(QJsonObject{{"role", "system"}, {"content", systemPrompt}});
-    messages.append(QJsonObject{{"role", "user"}, {"content", userPrompt}});
-
-    QJsonObject payload{{"messages", messages},
-                        {"model", configuredModel()},
-                        {"temperature", 0.1},
-                        {"max_tokens", 512},
-                        {"stream", false}};
+    nlohmann::json payload = {{"messages",
+                               {{{"role", "system"}, {"content", systemPrompt}},
+                                {{"role", "user"}, {"content", userPrompt}}}},
+                              {"model", configuredModel()},
+                              {"temperature", 0.1},
+                              {"max_tokens", 512},
+                              {"stream", false}};
     if (usesManagedLocalService()) {
-        payload.insert("chat_template_kwargs",
-                       QJsonObject{{"enable_thinking", false}});
+        payload["chat_template_kwargs"] = {{"enable_thinking", false}};
     }
 
     QNetworkRequest networkRequest = makeRequest(QUrl(configuredEndpoint()));
@@ -561,48 +561,55 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
     }
-    const QByteArray requestBody =
-        QJsonDocument(payload).toJson(QJsonDocument::Compact);
+    const std::string requestJson = payload.dump();
+    const QByteArray requestBody = QByteArray::fromStdString(requestJson);
     spdlog::debug("LLM chat request JSON: {}", QString::fromUtf8(requestBody));
 
     auto *reply = m_network.post(networkRequest, requestBody);
-    connect(
-        reply, &QNetworkReply::finished, this,
-        [this, reply, request]() mutable {
-            QString result = request.text;
-            bool requestFailed = false;
-            if (reply->error() == QNetworkReply::NoError) {
-                const QByteArray responseBody = reply->readAll();
-                spdlog::debug("LLM chat response JSON: {}",
-                              QString::fromUtf8(responseBody));
-                const QJsonDocument doc = QJsonDocument::fromJson(responseBody);
-                const QJsonArray choices =
-                    doc.object().value("choices").toArray();
-                if (!choices.isEmpty()) {
-                    const QJsonObject message =
-                        choices.first().toObject().value("message").toObject();
-                    const QString content =
-                        message.value("content").toString().trimmed();
-                    if (!content.isEmpty()) {
-                        result = cleanupResponseText(content);
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, request]() mutable {
+                QString result = request.text;
+                bool requestFailed = false;
+                if (reply->error() == QNetworkReply::NoError) {
+                    const QByteArray responseBody = reply->readAll();
+                    spdlog::debug("LLM chat response JSON: {}",
+                                  QString::fromUtf8(responseBody));
+                    try {
+                        const nlohmann::json doc = nlohmann::json::parse(
+                            responseBody.constData(),
+                            responseBody.constData() + responseBody.size());
+                        const auto &choices =
+                            doc.value("choices", nlohmann::json::array());
+                        if (!choices.empty()) {
+                            const auto &message = choices.front().value(
+                                "message", nlohmann::json::object());
+                            const QString content =
+                                message.value("content", QString()).trimmed();
+                            if (!content.isEmpty()) {
+                                result = cleanupResponseText(content);
+                            }
+                        }
+                    }
+                    catch (const nlohmann::json::exception &e) {
+                        spdlog::warn("LLM response parse failed: {}", e.what());
+                        requestFailed = true;
                     }
                 }
-            }
-            else {
-                spdlog::warn("LLM post-process failed: {}",
-                             reply->errorString());
-                requestFailed = true;
-            }
-            spdlog::debug("LLM post-process output: {}", result);
-            reply->deleteLater();
-            if (request.receiver && request.callback) {
-                request.callback(result);
-            }
-            emit statusMessage(requestFailed
-                                   ? tr("LLM post-processing failed; using "
-                                        "original text.")
-                                   : tr("LLM post-processing complete."));
-        });
+                else {
+                    spdlog::warn("LLM post-process failed: {}",
+                                 reply->errorString());
+                    requestFailed = true;
+                }
+                spdlog::debug("LLM post-process output: {}", result);
+                reply->deleteLater();
+                if (request.receiver && request.callback) {
+                    request.callback(result);
+                }
+                emit statusMessage(requestFailed
+                                       ? tr("LLM post-processing failed; using "
+                                            "original text.")
+                                       : tr("LLM post-processing complete."));
+            });
 }
 
 void LlmPostProcessor::failPending(const QString &reason)

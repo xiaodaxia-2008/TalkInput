@@ -10,6 +10,9 @@ add_executable(TalkInput
     voice_input_controller.h
     asr_service.cpp
     asr_service.h
+    app_config.cpp
+    app_config.h
+    json_utils.h
     archive_utils.cpp
     archive_utils.h
     asr_setting_widget.cpp
@@ -85,6 +88,7 @@ target_link_libraries(TalkInput
     sherpa-onnx-c-api
     QHotkey::QHotkey
     spdlog::spdlog_header_only
+    nlohmann_json::nlohmann_json
 )
 
 add_executable(TalkInputAsrTest

@@ -1,12 +1,9 @@
 #include "model_registry.h"
+#include "app_config.h"
 #include "logging.h"
 
 #include <QDir>
-#include <QFile>
 #include <QFileInfo>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 
 namespace talkinput
 {
@@ -24,29 +21,36 @@ static QVector<ModelPreset> s_asrPresets;
 static QVector<ModelPreset> s_toolPresets;
 static LlmLocalModel s_llmLocalModel;
 static QVector<LlmProviderPreset> s_llmProviderPresets;
+static QString s_llmSystemPrompt;
 static bool s_loaded = false;
 
-static ModelPreset parsePreset(const QJsonObject &obj)
+static QString jsonString(const nlohmann::json &obj, const char *key)
+{
+    if (!obj.is_object() || !obj.contains(key) || !obj.at(key).is_string()) {
+        return {};
+    }
+    return obj.at(key).get<QString>();
+}
+
+static ModelPreset parsePreset(const nlohmann::json &obj)
 {
     ModelPreset preset;
-    preset.name = obj.value(QStringLiteral("name")).toString();
-    preset.typeStr = obj.value(QStringLiteral("type")).toString();
-    preset.languages = obj.value(QStringLiteral("languages")).toString();
-    preset.modelDirName = obj.value(QStringLiteral("modelDirName")).toString();
-    preset.url = obj.value(QStringLiteral("url")).toString();
-    preset.size =
-        static_cast<qint64>(obj.value(QStringLiteral("size")).toDouble());
-    preset.paramCount = obj.value(QStringLiteral("paramCount")).toInt();
-    preset.streamingSupport =
-        obj.value(QStringLiteral("streamingSupport")).toBool();
-    preset.isPunctuationModel =
-        obj.value(QStringLiteral("isPunctuationModel")).toBool();
+    preset.name = jsonString(obj, "name");
+    preset.typeStr = jsonString(obj, "type");
+    preset.languages = jsonString(obj, "languages");
+    preset.modelDirName = jsonString(obj, "modelDirName");
+    preset.url = jsonString(obj, "url");
+    preset.size = obj.value("size", 0);
+    preset.paramCount = obj.value("paramCount", 0);
+    preset.streamingSupport = obj.value("streamingSupport", false);
+    preset.isPunctuationModel = obj.value("isPunctuationModel", false);
     spdlog::debug("model_registry: parsing preset {} ({})", preset.name,
                   preset.modelDirName);
 
-    const QJsonObject filesObj = obj.value(QStringLiteral("files")).toObject();
+    const nlohmann::json filesObj =
+        obj.value("files", nlohmann::json::object());
     for (auto it = filesObj.begin(); it != filesObj.end(); ++it) {
-        const QString key = it.key();
+        const QString key = QString::fromStdString(it.key());
 
         ModelPreset::FileRule rule;
         if (key.endsWith(QStringLiteral(">dir"))) {
@@ -57,61 +61,78 @@ static ModelPreset parsePreset(const QJsonObject &obj)
             rule.configField = key;
             rule.isDir = false;
         }
-        rule.globPatterns.append(it.value().toString());
+        if (it.value().is_string()) {
+            rule.globPatterns.append(it.value().get<QString>());
+        }
         preset.files.append(rule);
     }
 
     return preset;
 }
 
-static QVector<ModelPreset> parsePresetArray(const QJsonObject &root,
+static QVector<ModelPreset> parsePresetArray(const nlohmann::json &root,
                                              const QString &key)
 {
     QVector<ModelPreset> presets;
-    const QJsonArray arr = root.value(key).toArray();
+    const nlohmann::json arr =
+        root.value(key.toStdString(), nlohmann::json::array());
     spdlog::debug("model_registry: parsing {} with {} items", key, arr.size());
     for (const auto &val : arr) {
-        presets.append(parsePreset(val.toObject()));
+        presets.append(parsePreset(val));
     }
     return presets;
 }
 
-static LlmLocalModel parseLlmLocalModel(const QJsonObject &root)
+static LlmLocalModel parseLlmLocalModel(const nlohmann::json &root)
 {
-    const QJsonObject llmObj =
-        root.value(QStringLiteral("llmPostProcessing")).toObject();
-    const QJsonObject localModelObj =
-        llmObj.value(QStringLiteral("localModel")).toObject();
+    const nlohmann::json llmObj =
+        root.value("llmPostProcessing", nlohmann::json::object());
+    const nlohmann::json localModelObj =
+        llmObj.value("localModel", nlohmann::json::object());
 
     LlmLocalModel model;
-    model.name = localModelObj.value(QStringLiteral("name")).toString();
-    model.url = localModelObj.value(QStringLiteral("url")).toString();
-    model.fileName = localModelObj.value(QStringLiteral("fileName")).toString();
-    model.size = static_cast<qint64>(
-        localModelObj.value(QStringLiteral("size")).toDouble());
+    model.name = jsonString(localModelObj, "name");
+    model.url = jsonString(localModelObj, "url");
+    model.fileName = jsonString(localModelObj, "fileName");
+    model.size = localModelObj.value("size", 0);
     spdlog::debug("model_registry: loaded LLM local model {} ({})", model.name,
                   model.fileName);
     return model;
 }
 
 static QVector<LlmProviderPreset>
-parseLlmProviderPresets(const QJsonObject &root)
+parseLlmProviderPresets(const nlohmann::json &root)
 {
-    const QJsonObject llmObj = root.value("llmPostProcessing").toObject();
-    const QJsonArray providerArray = llmObj.value("providers").toArray();
+    const nlohmann::json llmObj =
+        root.value("llmPostProcessing", nlohmann::json::object());
+    const nlohmann::json providerArray =
+        llmObj.value("providers", nlohmann::json::array());
 
     QVector<LlmProviderPreset> providers;
     providers.reserve(providerArray.size());
     for (const auto &value : providerArray) {
-        const QJsonObject obj = value.toObject();
+        const nlohmann::json obj =
+            value.is_object() ? value : nlohmann::json::object();
         LlmProviderPreset provider;
-        provider.id = obj.value("id").toString();
-        provider.name = obj.value("name").toString();
-        provider.endpoint = obj.value("endpoint").toString();
-        provider.model = obj.value("model").toString();
-        provider.custom = obj.value("custom").toBool();
-        provider.managedLocalService =
-            obj.value("managedLocalService").toBool();
+        provider.id = jsonString(obj, "id");
+        provider.name = jsonString(obj, "name");
+        provider.endpoint = jsonString(obj, "endpoint");
+        provider.model = jsonString(obj, "model");
+        const nlohmann::json modelArray =
+            obj.value("models", nlohmann::json::array());
+        for (const auto &modelValue : modelArray) {
+            const QString model =
+                (modelValue.is_string() ? modelValue.get<QString>() : QString())
+                    .trimmed();
+            if (!model.isEmpty()) {
+                provider.models.append(model);
+            }
+        }
+        if (provider.models.isEmpty() && !provider.model.isEmpty()) {
+            provider.models.append(provider.model);
+        }
+        provider.custom = obj.value("custom", false);
+        provider.managedLocalService = obj.value("managedLocalService", false);
         if (!provider.id.isEmpty()) {
             providers.append(provider);
             spdlog::debug("model_registry: loaded LLM provider {} ({})",
@@ -120,10 +141,22 @@ parseLlmProviderPresets(const QJsonObject &root)
     }
 
     if (providers.isEmpty()) {
-        providers.append({"llama.cpp", "llama.cpp", DefaultLlmEndpoint,
-                          DefaultLlmModel, false, true});
+        providers.append({"llama.cpp",
+                          "llama.cpp",
+                          DefaultLlmEndpoint,
+                          DefaultLlmModel,
+                          {DefaultLlmModel},
+                          false,
+                          true});
     }
     return providers;
+}
+
+static QString parseLlmSystemPrompt(const nlohmann::json &root)
+{
+    const nlohmann::json llmObj =
+        root.value("llmPostProcessing", nlohmann::json::object());
+    return jsonString(llmObj, "systemPrompt");
 }
 
 static void ensureLoaded()
@@ -133,27 +166,12 @@ static void ensureLoaded()
     }
     s_loaded = true;
 
-    QFile f(QStringLiteral(":/resources/config.json"));
-    if (!f.open(QIODevice::ReadOnly)) {
-        spdlog::warn("model_registry: cannot open config.json resource");
-        return;
-    }
-    const QByteArray data = f.readAll();
-    f.close();
-    spdlog::debug("model_registry: read config.json, {} bytes", data.size());
-
-    QJsonParseError err;
-    const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
-    if (err.error != QJsonParseError::NoError) {
-        spdlog::warn("model_registry: JSON parse error: {}", err.errorString());
-        return;
-    }
-
-    const QJsonObject root = doc.object();
+    const nlohmann::json root = appConfigRoot();
     s_asrPresets = parsePresetArray(root, QStringLiteral("asrPresets"));
     s_toolPresets = parsePresetArray(root, QStringLiteral("toolPresets"));
     s_llmLocalModel = parseLlmLocalModel(root);
     s_llmProviderPresets = parseLlmProviderPresets(root);
+    s_llmSystemPrompt = parseLlmSystemPrompt(root);
 
     spdlog::info("model_registry: loaded {} ASR presets, {} tool presets, {} "
                  "LLM providers, LLM model {}",
@@ -191,8 +209,13 @@ LlmProviderPreset defaultLlmProvider()
     if (!s_llmProviderPresets.isEmpty()) {
         return s_llmProviderPresets.first();
     }
-    return {"llama.cpp",     "llama.cpp", DefaultLlmEndpoint,
-            DefaultLlmModel, false,       true};
+    return {"llama.cpp",
+            "llama.cpp",
+            DefaultLlmEndpoint,
+            DefaultLlmModel,
+            {DefaultLlmModel},
+            false,
+            true};
 }
 
 LlmProviderPreset findLlmProviderPreset(const QString &id)
@@ -222,6 +245,12 @@ QString defaultLlmModel()
 {
     const QString model = defaultLlmProvider().model.trimmed();
     return model.isEmpty() ? QString::fromUtf8(DefaultLlmModel) : model;
+}
+
+QString defaultLlmSystemPrompt()
+{
+    ensureLoaded();
+    return s_llmSystemPrompt;
 }
 
 static QStringList findFiles(const QDir &dir, const QStringList &names,
