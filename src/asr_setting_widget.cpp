@@ -291,7 +291,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     };
     refreshPromptLabel();
 
-    auto providerAt = [&llmProviders](int index) -> nlohmann::json {
+    auto providerAt = [llmProviders](int index) -> nlohmann::json {
         if (index >= 0 && static_cast<std::size_t>(index) < llmProviders.size())
         {
             return llmProviders[static_cast<std::size_t>(index)];
@@ -344,7 +344,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             setAppConfigValue("settings/llm/customEndpoint", endpoint);
             setAppConfigValue("settings/llm/customModel", model);
         }
-        providerCombo->setCurrentIndex(providerCombo->findData(providerId));
+        int idx = providerCombo->findData(providerId);
+        if (idx >= 0 && idx != providerCombo->currentIndex()) {
+            providerCombo->setCurrentIndex(idx);
+        }
     };
 
     {
