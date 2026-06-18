@@ -90,5 +90,13 @@
       "streamingSupport": false,
       "isPunctuationModel": true
     }
-  ]
+  ],
+  "llmPostProcessing": {
+    "localModel": {
+      "name": "Qwen3.5 2B Q4_K_M",
+      "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
+      "fileName": "Qwen3.5-2B-Q4_K_M.gguf",
+      "size": 1280835840
+    }
+  }
 }

@@ -52,8 +52,13 @@ private:
     QString llamaArchivePath() const;
     QString modelPath() const;
     QString serverExecutablePath() const;
+    QString configuredEndpoint() const;
+    QString configuredModel() const;
+    QString configuredApiKey() const;
+    bool usesManagedLocalService() const;
 
     void ensureReady();
+    void prepareManagedLocalService();
     void beginDownload(DownloadKind kind, const QUrl &url, const QString &path);
     void onDownloadFinished(QNetworkReply *reply);
     bool extractLlamaArchive(QString *errorMessage);

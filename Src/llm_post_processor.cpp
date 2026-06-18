@@ -1,7 +1,9 @@
 #include "llm_post_processor.h"
 #include "archive_utils.h"
 #include "logging.h"
+#include "model_registry.h"
 
+#include <QByteArray>
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
@@ -12,6 +14,18 @@
 #include <QNetworkRequest>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QUrl>
+
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+// clang-format off
+#include <winsock2.h>
+#include <windows.h>
+#include <iphlpapi.h>
+// clang-format on
+#endif
 
 namespace
 {
@@ -21,10 +35,6 @@ constexpr int MaxHealthAttempts = 120;
 const QUrl LlamaArchiveUrl(
     "https://github.com/ggml-org/llama.cpp/releases/download/b9685/"
     "llama-b9685-bin-win-cpu-x64.zip");
-const QUrl ModelUrl{
-    "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/"
-    "Qwen3.5-2B-Q4_K_M.gguf"};
-const char *ModelFileName = "Qwen3.5-2B-Q4_K_M.gguf";
 
 QNetworkRequest makeRequest(const QUrl &url)
 {
@@ -33,6 +43,85 @@ QNetworkRequest makeRequest(const QUrl &url)
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     return request;
 }
+
+#ifdef Q_OS_WIN
+void stopProcessListeningOnPort(quint16 port)
+{
+    using GetExtendedTcpTableFn =
+        DWORD(WINAPI *)(PVOID, PDWORD, BOOL, ULONG, TCP_TABLE_CLASS, ULONG);
+
+    HMODULE module = LoadLibraryW(L"iphlpapi.dll");
+    if (!module) {
+        spdlog::warn("Cannot load iphlpapi.dll to inspect LLM server port");
+        return;
+    }
+
+    auto *getExtendedTcpTable = reinterpret_cast<GetExtendedTcpTableFn>(
+        GetProcAddress(module, "GetExtendedTcpTable"));
+    if (!getExtendedTcpTable) {
+        spdlog::warn("Cannot resolve GetExtendedTcpTable");
+        FreeLibrary(module);
+        return;
+    }
+
+    DWORD size = 0;
+    DWORD ret = getExtendedTcpTable(nullptr, &size, FALSE, AF_INET,
+                                    TCP_TABLE_OWNER_PID_LISTENER, 0);
+    if (ret != ERROR_INSUFFICIENT_BUFFER) {
+        FreeLibrary(module);
+        return;
+    }
+
+    QByteArray buffer;
+    buffer.resize(static_cast<qsizetype>(size));
+    auto *table = reinterpret_cast<PMIB_TCPTABLE_OWNER_PID>(buffer.data());
+    ret = getExtendedTcpTable(table, &size, FALSE, AF_INET,
+                              TCP_TABLE_OWNER_PID_LISTENER, 0);
+    if (ret != NO_ERROR) {
+        spdlog::warn("GetExtendedTcpTable failed: {}", ret);
+        FreeLibrary(module);
+        return;
+    }
+
+    for (DWORD i = 0; i < table->dwNumEntries; ++i) {
+        const auto &row = table->table[i];
+        const auto localPort =
+            static_cast<quint16>(ntohs(static_cast<u_short>(row.dwLocalPort)));
+        if (localPort != port) {
+            continue;
+        }
+
+        const DWORD pid = row.dwOwningPid;
+        if (pid == 0 || pid == GetCurrentProcessId()) {
+            continue;
+        }
+
+        HANDLE process =
+            OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+        if (!process) {
+            spdlog::warn("Cannot open process {} listening on LLM port {}", pid,
+                         port);
+            continue;
+        }
+
+        spdlog::warn("Terminating existing process {} listening on LLM port {}",
+                     pid, port);
+        if (TerminateProcess(process, 0)) {
+            WaitForSingleObject(process, 3000);
+        }
+        else {
+            spdlog::warn("TerminateProcess failed for pid {}", pid);
+        }
+        CloseHandle(process);
+    }
+
+    FreeLibrary(module);
+}
+#else
+void stopProcessListeningOnPort(quint16)
+{
+}
+#endif
 
 } // namespace
 
@@ -148,7 +237,11 @@ QString LlmPostProcessor::llamaArchivePath() const
 
 QString LlmPostProcessor::modelPath() const
 {
-    return QDir(modelDir()).filePath(ModelFileName);
+    const LlmLocalModel model = loadLlmLocalModel();
+    if (model.fileName.isEmpty()) {
+        return {};
+    }
+    return QDir(modelDir()).filePath(model.fileName);
 }
 
 QString LlmPostProcessor::serverExecutablePath() const
@@ -162,15 +255,64 @@ QString LlmPostProcessor::serverExecutablePath() const
     return {};
 }
 
+QString LlmPostProcessor::configuredEndpoint() const
+{
+    QSettings settings;
+    const QString endpoint =
+        settings.value("llm/endpoint", defaultLlmEndpoint())
+            .toString()
+            .trimmed();
+    return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
+}
+
+QString LlmPostProcessor::configuredModel() const
+{
+    QSettings settings;
+    const QString model =
+        settings.value("llm/model", defaultLlmModel()).toString().trimmed();
+    return model.isEmpty() ? defaultLlmModel() : model;
+}
+
+QString LlmPostProcessor::configuredApiKey() const
+{
+    QSettings settings;
+    return settings.value("llm/apiKey").toString().trimmed();
+}
+
+bool LlmPostProcessor::usesManagedLocalService() const
+{
+    const QUrl endpoint(configuredEndpoint());
+    return endpoint.scheme() == "http" && endpoint.host() == "127.0.0.1" &&
+           endpoint.port(ServerPort) == ServerPort &&
+           endpoint.path() == "/v1/chat/completions";
+}
+
 void LlmPostProcessor::ensureReady()
 {
-    if (m_serverReady) {
+    if (!usesManagedLocalService()) {
         drainQueue();
         return;
     }
+
+    if (m_serverReady && m_server.state() != QProcess::NotRunning) {
+        drainQueue();
+        return;
+    }
+    m_serverReady = false;
     if (m_preparing) {
         return;
     }
+
+    prepareManagedLocalService();
+}
+
+void LlmPostProcessor::prepareManagedLocalService()
+{
+    if (m_preparing) {
+        return;
+    }
+
+    stopProcessListeningOnPort(ServerPort);
 
     QDir().mkpath(llamaDir());
     QDir().mkpath(modelDir());
@@ -182,9 +324,20 @@ void LlmPostProcessor::ensureReady()
         return;
     }
 
-    if (!QFileInfo(modelPath()).isFile()) {
+    const QString localModelPath = modelPath();
+    if (localModelPath.isEmpty()) {
+        failPending(tr("LLM local model file name is not configured."));
+        return;
+    }
+
+    if (!QFileInfo(localModelPath).isFile()) {
         emit statusMessage(tr("Downloading LLM model..."));
-        beginDownload(DownloadKind::Model, ModelUrl, modelPath());
+        const LlmLocalModel model = loadLlmLocalModel();
+        if (model.url.isEmpty()) {
+            failPending(tr("LLM local model URL is not configured."));
+            return;
+        }
+        beginDownload(DownloadKind::Model, QUrl(model.url), modelPath());
         return;
     }
 
@@ -357,15 +510,24 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     messages.append(QJsonObject{{"role", "system"}, {"content", systemPrompt}});
     messages.append(QJsonObject{{"role", "user"}, {"content", userPrompt}});
 
-    const QJsonObject payload{{"messages", messages},
-                              {"temperature", 0.1},
-                              {"max_tokens", 512},
-                              {"stream", false}};
+    QJsonObject payload{{"messages", messages},
+                        {"model", configuredModel()},
+                        {"temperature", 0.1},
+                        {"max_tokens", 512},
+                        {"stream", false}};
+    if (usesManagedLocalService()) {
+        payload.insert("chat_template_kwargs",
+                       QJsonObject{{"enable_thinking", false}});
+    }
 
-    QNetworkRequest networkRequest = makeRequest(QUrl(
-        QString("http://127.0.0.1:%1/v1/chat/completions").arg(ServerPort)));
+    QNetworkRequest networkRequest = makeRequest(QUrl(configuredEndpoint()));
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,
                              "application/json");
+    const QString apiKey = configuredApiKey();
+    if (!apiKey.isEmpty()) {
+        networkRequest.setRawHeader("Authorization",
+                                    QString("Bearer %1").arg(apiKey).toUtf8());
+    }
     const QByteArray requestBody =
         QJsonDocument(payload).toJson(QJsonDocument::Compact);
     spdlog::debug("LLM chat request JSON: {}", QString::fromUtf8(requestBody));

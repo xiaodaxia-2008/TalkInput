@@ -38,8 +38,19 @@ struct ModelFileSet
     bool matched = false;
 };
 
+struct LlmLocalModel
+{
+    QString name;
+    QString url;
+    QString fileName;
+    qint64 size = 0;
+};
+
 QVector<ModelPreset> loadModelPresets();
 QVector<ModelPreset> loadToolPresets();
+LlmLocalModel loadLlmLocalModel();
+QString defaultLlmEndpoint();
+QString defaultLlmModel();
 ModelFileSet resolveModelFiles(const QString &modelDir);
 
 } // namespace talkinput

@@ -11,8 +11,18 @@
 namespace talkinput
 {
 
+namespace
+{
+
+constexpr const char *DefaultLlmEndpoint =
+    "http://127.0.0.1:8765/v1/chat/completions";
+constexpr const char *DefaultLlmModel = "Qwen3.5-2B-Q4_K_M";
+
+} // namespace
+
 static QVector<ModelPreset> s_asrPresets;
 static QVector<ModelPreset> s_toolPresets;
+static LlmLocalModel s_llmLocalModel;
 static bool s_loaded = false;
 
 static ModelPreset parsePreset(const QJsonObject &obj)
@@ -65,6 +75,24 @@ static QVector<ModelPreset> parsePresetArray(const QJsonObject &root,
     return presets;
 }
 
+static LlmLocalModel parseLlmLocalModel(const QJsonObject &root)
+{
+    const QJsonObject llmObj =
+        root.value(QStringLiteral("llmPostProcessing")).toObject();
+    const QJsonObject localModelObj =
+        llmObj.value(QStringLiteral("localModel")).toObject();
+
+    LlmLocalModel model;
+    model.name = localModelObj.value(QStringLiteral("name")).toString();
+    model.url = localModelObj.value(QStringLiteral("url")).toString();
+    model.fileName = localModelObj.value(QStringLiteral("fileName")).toString();
+    model.size = static_cast<qint64>(
+        localModelObj.value(QStringLiteral("size")).toDouble());
+    spdlog::debug("model_registry: loaded LLM local model {} ({})", model.name,
+                  model.fileName);
+    return model;
+}
+
 static void ensureLoaded()
 {
     if (s_loaded) {
@@ -91,9 +119,12 @@ static void ensureLoaded()
     const QJsonObject root = doc.object();
     s_asrPresets = parsePresetArray(root, QStringLiteral("asrPresets"));
     s_toolPresets = parsePresetArray(root, QStringLiteral("toolPresets"));
+    s_llmLocalModel = parseLlmLocalModel(root);
 
-    spdlog::info("model_registry: loaded {} ASR presets and {} tool presets",
-                 s_asrPresets.size(), s_toolPresets.size());
+    spdlog::info("model_registry: loaded {} ASR presets, {} tool presets, LLM "
+                 "model {}",
+                 s_asrPresets.size(), s_toolPresets.size(),
+                 s_llmLocalModel.fileName);
 }
 
 QVector<ModelPreset> loadModelPresets()
@@ -106,6 +137,22 @@ QVector<ModelPreset> loadToolPresets()
 {
     ensureLoaded();
     return s_toolPresets;
+}
+
+LlmLocalModel loadLlmLocalModel()
+{
+    ensureLoaded();
+    return s_llmLocalModel;
+}
+
+QString defaultLlmEndpoint()
+{
+    return QString::fromUtf8(DefaultLlmEndpoint);
+}
+
+QString defaultLlmModel()
+{
+    return QString::fromUtf8(DefaultLlmModel);
 }
 
 static QStringList findFiles(const QDir &dir, const QStringList &names,

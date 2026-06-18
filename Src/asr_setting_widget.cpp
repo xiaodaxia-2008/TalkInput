@@ -14,9 +14,12 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -101,6 +104,62 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     m_table->setColumnWidth(5, 110);
     m_table->verticalHeader()->hide();
     root->addWidget(m_table);
+
+    auto *llmGroup = new QGroupBox(tr("LLM Service"), this);
+    auto *llmForm = new QFormLayout(llmGroup);
+    llmForm->setContentsMargins(10, 10, 10, 10);
+    llmForm->setSpacing(8);
+
+    auto *endpointEdit = new QLineEdit(llmGroup);
+    endpointEdit->setPlaceholderText(
+        tr("OpenAI-compatible chat completions endpoint"));
+    auto *modelEdit = new QLineEdit(llmGroup);
+    modelEdit->setPlaceholderText(tr("Model name sent to the LLM service"));
+    auto *apiKeyEdit = new QLineEdit(llmGroup);
+    apiKeyEdit->setEchoMode(QLineEdit::Password);
+    apiKeyEdit->setPlaceholderText(tr("Optional API key"));
+
+    {
+        QSettings settings;
+        const QString endpoint =
+            settings.value("llm/endpoint", defaultLlmEndpoint()).toString();
+        const QString model =
+            settings.value("llm/model", defaultLlmModel()).toString();
+        endpointEdit->setText(endpoint);
+        modelEdit->setText(model);
+        apiKeyEdit->setText(settings.value("llm/apiKey").toString());
+    }
+
+    connect(endpointEdit, &QLineEdit::editingFinished, this,
+            [this, endpointEdit]() {
+                const QString endpoint = endpointEdit->text().trimmed();
+                QSettings settings;
+                settings.setValue("llm/endpoint", endpoint.isEmpty()
+                                                      ? defaultLlmEndpoint()
+                                                      : endpoint);
+                endpointEdit->setText(
+                    settings.value("llm/endpoint").toString());
+                emit statusMessage(tr("LLM endpoint saved."));
+            });
+    connect(modelEdit, &QLineEdit::editingFinished, this, [this, modelEdit]() {
+        const QString model = modelEdit->text().trimmed();
+        QSettings settings;
+        settings.setValue("llm/model",
+                          model.isEmpty() ? defaultLlmModel() : model);
+        modelEdit->setText(settings.value("llm/model").toString());
+        emit statusMessage(tr("LLM model saved."));
+    });
+    connect(apiKeyEdit, &QLineEdit::editingFinished, this,
+            [this, apiKeyEdit]() {
+                QSettings settings;
+                settings.setValue("llm/apiKey", apiKeyEdit->text().trimmed());
+                emit statusMessage(tr("LLM API key saved."));
+            });
+
+    llmForm->addRow(tr("Endpoint"), endpointEdit);
+    llmForm->addRow(tr("Model"), modelEdit);
+    llmForm->addRow(tr("API Key"), apiKeyEdit);
+    root->addWidget(llmGroup);
 
     auto *bottomRow = new QHBoxLayout();
     auto *archiveBtn = new QPushButton(tr("Use Archive"), this);
