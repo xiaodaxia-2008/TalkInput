@@ -1,11 +1,11 @@
 #include "speech_recognizer.h"
 
-#include "funasr_nano_recognizer.h"
 #include "logging.h"
-#include "qwen3_asr_recognizer.h"
-#include "sense_voice_recognizer.h"
-#include "streaming_paraformer_recognizer.h"
-#include "streaming_transducer_recognizer.h"
+#include "recognizers/funasr_nano_recognizer.h"
+#include "recognizers/qwen3_asr_recognizer.h"
+#include "recognizers/sense_voice_recognizer.h"
+#include "recognizers/streaming_paraformer_recognizer.h"
+#include "recognizers/streaming_transducer_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 

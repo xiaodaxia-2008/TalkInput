@@ -412,7 +412,9 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
 
 void MainWindow::onResult(const QString &text, bool isFinal)
 {
-    SPDLOG_INFO("{} {}", isFinal ? "[final]" : "[partial]", text);
+    if (isFinal) {
+        SPDLOG_INFO("[final] {}", text);
+    }
 
     if (!isFinal && !text.trimmed().isEmpty()) {
         m_historyWidget->setRealtimeText(text);

@@ -47,6 +47,14 @@ struct LlmLocalModel
     std::int64_t size = 0;
 };
 
+struct LlmPricing
+{
+    double inputPer1M = 0;
+    double outputPer1M = 0;
+    double cacheHitInputPer1M = 0;
+    double cacheMissInputPer1M = 0;
+};
+
 struct LlmProviderPreset
 {
     std::string id;
@@ -56,6 +64,7 @@ struct LlmProviderPreset
     std::vector<std::string> models;
     bool custom = false;
     bool managedLocalService = false;
+    std::map<std::string, LlmPricing> modelPricing;
 };
 
 std::vector<ModelPreset> loadModelPresets();

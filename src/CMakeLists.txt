@@ -24,13 +24,14 @@ add_executable(TalkInput
     ocr_service.cpp
     ocr_service.h
     ocr_service_system.h
+    speech_recognizer.h
+    speech_recognizer.cpp
+    speech_recognizer_system.h
     logging.h
     recognition_history.cpp
     recognition_history.h
     model_registry.h
     model_registry.cpp
-    recognizers/speech_recognizer.cpp
-    recognizers/speech_recognizer.h
     recognizers/online_speech_recognizer.cpp
     recognizers/online_speech_recognizer.h
     recognizers/offline_speech_recognizer.cpp
@@ -96,7 +97,10 @@ target_link_libraries(TalkInput
 
 if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore)
-    target_sources(TalkInput PRIVATE windows/ocr_service_system.cpp)
+    target_sources(TalkInput PRIVATE
+        windows/ocr_service_system.cpp
+        windows/system_speech_recognizer.cpp
+    )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE macos/ocr_service_system.cpp)
 elseif(UNIX)

@@ -11,6 +11,7 @@
 #include <QFileInfo>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUrl>
 
@@ -25,6 +26,8 @@
 // clang-format on
 #endif
 
+#include <spdlog/stopwatch.h>
+
 namespace
 {
 
@@ -33,6 +36,23 @@ constexpr int MaxHealthAttempts = 120;
 const QUrl LlamaArchiveUrl(
     "https://github.com/ggml-org/llama.cpp/releases/download/b9685/"
     "llama-b9685-bin-win-cpu-x64.zip");
+
+QString extractOcrWords(const QString &text)
+{
+    if (text.isEmpty()) {
+        return {};
+    }
+    // Match continuous runs of Chinese characters or ASCII alphanumeric.
+    // This strips punctuation, symbols, and whitespace, keeping only words.
+    static const QRegularExpression re(
+        QStringLiteral("[\\x{4e00}-\\x{9fff}]+|[a-zA-Z0-9]+"));
+    QStringList words;
+    auto it = QRegularExpressionMatchIterator(re.globalMatch(text));
+    while (it.hasNext()) {
+        words << it.next().captured();
+    }
+    return words.join(' ');
+}
 
 QString llmProviderModelKey(const QString &providerId)
 {
@@ -542,14 +562,21 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     if (!request.receiver) {
         return;
     }
+    // ---- Split input text by lines and join with commas ----
+    QStringList lines = request.text.split('\n', Qt::SkipEmptyParts);
+    const QString formattedInput = lines.join(", ");
+
+    // ---- Clean OCR context: extract only words (Chinese + alphanumeric) ----
+    const QString cleanedContext = extractOcrWords(request.contextText);
+
     // ---- System prompt (template replacement) ----
     QString systemPrompt =
         appConfigString("settings/llm/systemPrompt").trimmed();
     if (systemPrompt.isEmpty()) {
         systemPrompt = qs(defaultLlmSystemPrompt()).trimmed();
     }
-    systemPrompt.replace("{{input}}", request.text);
-    systemPrompt.replace("{{context}}", request.contextText);
+    systemPrompt.replace("{{input}}", formattedInput);
+    systemPrompt.replace("{{context}}", cleanedContext);
     systemPrompt.replace("{{hotwords}}", request.hotwords);
 
     // ---- User prompt (template replacement) ----
@@ -557,8 +584,8 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     if (userPrompt.isEmpty()) {
         userPrompt = qs(defaultLlmUserPrompt()).trimmed();
     }
-    userPrompt.replace("{{input}}", request.text);
-    userPrompt.replace("{{context}}", request.contextText);
+    userPrompt.replace("{{input}}", formattedInput);
+    userPrompt.replace("{{context}}", cleanedContext);
     userPrompt.replace("{{hotwords}}", request.hotwords);
 
     nlohmann::json payload = {{"messages",
@@ -582,56 +609,98 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
     }
-    SPDLOG_DEBUG("LLM chat request body:", payload.dump(2));
+    SPDLOG_DEBUG("LLM chat request body:\n{}", payload.dump(2));
 
     const std::string requestJson = payload.dump();
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
 
+    const std::string modelName = configuredModel().toStdString();
+    const auto provider = configuredProvider();
+    auto pricingIt = provider.modelPricing.find(modelName);
+    const LlmPricing pricing = pricingIt != provider.modelPricing.end()
+                                   ? pricingIt->second
+                                   : LlmPricing();
+
     QNetworkReply *reply = m_network.post(networkRequest, requestBody);
     const PendingRequest pendingCopy = request;
-    connect(reply, &QNetworkReply::finished, this,
-            [this, reply, pendingCopy]() mutable {
-                QString result = pendingCopy.text;
-                bool requestFailed = false;
-                if (reply->error() == QNetworkReply::NoError) {
-                    const QByteArray responseBody = reply->readAll();
-                    try {
-                        const nlohmann::json doc = nlohmann::json::parse(
-                            responseBody.constData(),
-                            responseBody.constData() + responseBody.size());
-                        SPDLOG_DEBUG("LLM chat response JSON: {}", doc.dump(2));
-                        const auto &choices =
-                            doc.value("choices", nlohmann::json::array());
-                        if (!choices.empty()) {
-                            const auto &message = choices.front().value(
-                                "message", nlohmann::json::object());
-                            const QString content =
-                                message.value("content", QString()).trimmed();
-                            if (!content.isEmpty()) {
-                                result = this->cleanupResponseText(content);
-                            }
+    connect(
+        reply, &QNetworkReply::finished, this,
+        [this, reply, pendingCopy, pricing]() mutable {
+            QString result = pendingCopy.text;
+            bool requestFailed = false;
+            if (reply->error() == QNetworkReply::NoError) {
+                const QByteArray responseBody = reply->readAll();
+                try {
+                    const nlohmann::json doc = nlohmann::json::parse(
+                        responseBody.constData(),
+                        responseBody.constData() + responseBody.size());
+                    SPDLOG_DEBUG("LLM chat response JSON: {}", doc.dump(2));
+
+                    // ---- Extract content ----
+                    const auto &choices =
+                        doc.value("choices", nlohmann::json::array());
+                    if (!choices.empty()) {
+                        const auto &message = choices.front().value(
+                            "message", nlohmann::json::object());
+                        const QString content =
+                            message.value("content", QString()).trimmed();
+                        if (!content.isEmpty()) {
+                            result = this->cleanupResponseText(content);
                         }
                     }
-                    catch (const nlohmann::json::exception &e) {
-                        SPDLOG_WARN("LLM response parse failed: {}", e.what());
-                        requestFailed = true;
+
+                    // ---- Token usage & cost calculation ----
+                    const auto &usage =
+                        doc.value("usage", nlohmann::json::object());
+                    if (!usage.empty() && pricing.inputPer1M > 0) {
+                        const double promptCacheHit =
+                            usage.value("prompt_cache_hit_tokens", 0.0);
+                        const double promptCacheMiss =
+                            usage.value("prompt_cache_miss_tokens", 0.0);
+                        const double outputTokens =
+                            usage.value("completion_tokens", 0.0);
+                        const double totalTokens =
+                            usage.value("total_tokens", 0.0);
+
+                        const double inputCost =
+                            promptCacheHit * pricing.cacheHitInputPer1M / 1e6 +
+                            promptCacheMiss * pricing.cacheMissInputPer1M / 1e6;
+                        const double outputCost =
+                            outputTokens * pricing.outputPer1M / 1e6;
+                        const double totalCost = inputCost + outputCost;
+
+                        SPDLOG_INFO("LLM cost: {} tokens, $"
+                                    "{:.6f} (cache hit: "
+                                    "{:.0f} * ${:.4f}/M, cache "
+                                    "miss: {:.0f} * ${:.4f}/M, "
+                                    "output: {:.0f} * "
+                                    "${:.4f}/M)",
+                                    totalTokens, totalCost, promptCacheHit,
+                                    pricing.cacheHitInputPer1M, promptCacheMiss,
+                                    pricing.cacheMissInputPer1M, outputTokens,
+                                    pricing.outputPer1M);
                     }
                 }
-                else {
-                    SPDLOG_WARN("LLM post-process failed: {}",
-                                reply->errorString());
+                catch (const nlohmann::json::exception &e) {
+                    SPDLOG_WARN("LLM response parse failed: {}", e.what());
                     requestFailed = true;
                 }
-                SPDLOG_DEBUG("LLM post-process output: {}", result);
-                reply->deleteLater();
-                if (pendingCopy.receiver && pendingCopy.callback) {
-                    pendingCopy.callback(result);
-                }
-                emit this->statusMessage(
-                    requestFailed ? tr("LLM post-processing failed; using "
-                                       "original text.")
-                                  : tr("LLM post-processing complete."));
-            });
+            }
+            else {
+                SPDLOG_WARN("LLM post-process failed: {}",
+                            reply->errorString());
+                requestFailed = true;
+            }
+            SPDLOG_DEBUG("LLM post-process output: {}", result);
+            reply->deleteLater();
+            if (pendingCopy.receiver && pendingCopy.callback) {
+                pendingCopy.callback(result);
+            }
+            emit this->statusMessage(
+                requestFailed ? tr("LLM post-processing failed; using "
+                                   "original text.")
+                              : tr("LLM post-processing complete."));
+        });
 }
 
 void LlmPostProcessor::failPending(const QString &reason)

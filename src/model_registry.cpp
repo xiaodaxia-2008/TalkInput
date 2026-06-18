@@ -127,6 +127,14 @@ parseLlmProviderPresets(const nlohmann::json &root)
         if (provider.models.empty() && !provider.model.empty()) {
             provider.models.push_back(provider.model);
         }
+
+        // ---- Parse per-model pricing ----
+        const auto pricingJson =
+            value.value("pricing", nlohmann::json::object());
+        for (auto it = pricingJson.begin(); it != pricingJson.end(); ++it) {
+            provider.modelPricing[it.key()] = it.value().get<LlmPricing>();
+        }
+
         if (!provider.id.empty()) {
             providers.push_back(std::move(provider));
             SPDLOG_DEBUG("model_registry: loaded LLM provider {} ({})",

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recognizers/speech_recognizer.h"
+#include "speech_recognizer.h"
 
 #include <QObject>
 #include <memory>
