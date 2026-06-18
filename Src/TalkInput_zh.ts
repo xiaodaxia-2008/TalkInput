@@ -1207,6 +1207,14 @@ Please wait for the model to load, then try again.</source>
 <context>
     <name>talkinput::AsrSettingWidget</name>
     <message>
+        <source>Provider</source>
+        <translation>提供商</translation>
+    </message>
+    <message>
+        <source>LLM provider saved: %1</source>
+        <translation>LLM 提供商已保存：%1</translation>
+    </message>
+    <message>
         <source>LLM post-processing</source>
         <translation>LLM 后处理</translation>
     </message>

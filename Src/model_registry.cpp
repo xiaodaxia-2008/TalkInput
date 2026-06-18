@@ -23,6 +23,7 @@ constexpr const char *DefaultLlmModel = "Qwen3.5-2B-Q4_K_M";
 static QVector<ModelPreset> s_asrPresets;
 static QVector<ModelPreset> s_toolPresets;
 static LlmLocalModel s_llmLocalModel;
+static QVector<LlmProviderPreset> s_llmProviderPresets;
 static bool s_loaded = false;
 
 static ModelPreset parsePreset(const QJsonObject &obj)
@@ -93,6 +94,38 @@ static LlmLocalModel parseLlmLocalModel(const QJsonObject &root)
     return model;
 }
 
+static QVector<LlmProviderPreset>
+parseLlmProviderPresets(const QJsonObject &root)
+{
+    const QJsonObject llmObj = root.value("llmPostProcessing").toObject();
+    const QJsonArray providerArray = llmObj.value("providers").toArray();
+
+    QVector<LlmProviderPreset> providers;
+    providers.reserve(providerArray.size());
+    for (const auto &value : providerArray) {
+        const QJsonObject obj = value.toObject();
+        LlmProviderPreset provider;
+        provider.id = obj.value("id").toString();
+        provider.name = obj.value("name").toString();
+        provider.endpoint = obj.value("endpoint").toString();
+        provider.model = obj.value("model").toString();
+        provider.custom = obj.value("custom").toBool();
+        provider.managedLocalService =
+            obj.value("managedLocalService").toBool();
+        if (!provider.id.isEmpty()) {
+            providers.append(provider);
+            spdlog::debug("model_registry: loaded LLM provider {} ({})",
+                          provider.id, provider.endpoint);
+        }
+    }
+
+    if (providers.isEmpty()) {
+        providers.append({"llama.cpp", "llama.cpp", DefaultLlmEndpoint,
+                          DefaultLlmModel, false, true});
+    }
+    return providers;
+}
+
 static void ensureLoaded()
 {
     if (s_loaded) {
@@ -100,14 +133,14 @@ static void ensureLoaded()
     }
     s_loaded = true;
 
-    QFile f(QStringLiteral(":/resources/models.json"));
+    QFile f(QStringLiteral(":/resources/config.json"));
     if (!f.open(QIODevice::ReadOnly)) {
-        spdlog::warn("model_registry: cannot open models.json resource");
+        spdlog::warn("model_registry: cannot open config.json resource");
         return;
     }
     const QByteArray data = f.readAll();
     f.close();
-    spdlog::debug("model_registry: read models.json, {} bytes", data.size());
+    spdlog::debug("model_registry: read config.json, {} bytes", data.size());
 
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
@@ -120,11 +153,12 @@ static void ensureLoaded()
     s_asrPresets = parsePresetArray(root, QStringLiteral("asrPresets"));
     s_toolPresets = parsePresetArray(root, QStringLiteral("toolPresets"));
     s_llmLocalModel = parseLlmLocalModel(root);
+    s_llmProviderPresets = parseLlmProviderPresets(root);
 
-    spdlog::info("model_registry: loaded {} ASR presets, {} tool presets, LLM "
-                 "model {}",
+    spdlog::info("model_registry: loaded {} ASR presets, {} tool presets, {} "
+                 "LLM providers, LLM model {}",
                  s_asrPresets.size(), s_toolPresets.size(),
-                 s_llmLocalModel.fileName);
+                 s_llmProviderPresets.size(), s_llmLocalModel.fileName);
 }
 
 QVector<ModelPreset> loadModelPresets()
@@ -145,14 +179,49 @@ LlmLocalModel loadLlmLocalModel()
     return s_llmLocalModel;
 }
 
+QVector<LlmProviderPreset> loadLlmProviderPresets()
+{
+    ensureLoaded();
+    return s_llmProviderPresets;
+}
+
+LlmProviderPreset defaultLlmProvider()
+{
+    ensureLoaded();
+    if (!s_llmProviderPresets.isEmpty()) {
+        return s_llmProviderPresets.first();
+    }
+    return {"llama.cpp",     "llama.cpp", DefaultLlmEndpoint,
+            DefaultLlmModel, false,       true};
+}
+
+LlmProviderPreset findLlmProviderPreset(const QString &id)
+{
+    ensureLoaded();
+    for (const auto &provider : s_llmProviderPresets) {
+        if (provider.id == id) {
+            return provider;
+        }
+    }
+    return defaultLlmProvider();
+}
+
+QString defaultLlmProviderId()
+{
+    return defaultLlmProvider().id;
+}
+
 QString defaultLlmEndpoint()
 {
-    return QString::fromUtf8(DefaultLlmEndpoint);
+    const QString endpoint = defaultLlmProvider().endpoint.trimmed();
+    return endpoint.isEmpty() ? QString::fromUtf8(DefaultLlmEndpoint)
+                              : endpoint;
 }
 
 QString defaultLlmModel()
 {
-    return QString::fromUtf8(DefaultLlmModel);
+    const QString model = defaultLlmProvider().model.trimmed();
+    return model.isEmpty() ? QString::fromUtf8(DefaultLlmModel) : model;
 }
 
 static QStringList findFiles(const QDir &dir, const QStringList &names,

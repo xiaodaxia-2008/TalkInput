@@ -5,6 +5,7 @@
 #include "utils.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDialog>
@@ -26,6 +27,7 @@
 #include <QNetworkRequest>
 #include <QPushButton>
 #include <QSettings>
+#include <QSignalBlocker>
 #include <QStandardPaths>
 
 #include <QTableWidget>
@@ -106,6 +108,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     llmForm->setContentsMargins(10, 10, 10, 10);
     llmForm->setSpacing(8);
 
+    const QVector<LlmProviderPreset> llmProviders = loadLlmProviderPresets();
+    auto *providerCombo = new QComboBox(llmGroup);
+    for (const auto &provider : llmProviders) {
+        providerCombo->addItem(provider.name, provider.id);
+    }
+
     auto *endpointEdit = new QLineEdit(llmGroup);
     endpointEdit->setPlaceholderText(
         tr("OpenAI-compatible chat completions endpoint"));
@@ -115,36 +123,103 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     apiKeyEdit->setEchoMode(QLineEdit::Password);
     apiKeyEdit->setPlaceholderText(tr("Optional API key"));
 
+    auto providerAt = [llmProviders](int index) {
+        if (index >= 0 && index < llmProviders.size()) {
+            return llmProviders[index];
+        }
+        return defaultLlmProvider();
+    };
+    auto applyProvider = [providerCombo, endpointEdit, modelEdit](
+                             const LlmProviderPreset &provider, bool persist) {
+        QSettings settings;
+        const bool custom = provider.custom;
+        const QString endpoint =
+            custom ? settings
+                         .value("llm/customEndpoint",
+                                settings.value("llm/endpoint").toString())
+                         .toString()
+                   : provider.endpoint;
+        const QString model =
+            custom ? settings
+                         .value("llm/customModel",
+                                settings.value("llm/model").toString())
+                         .toString()
+                   : provider.model;
+
+        {
+            const QSignalBlocker endpointBlocker(endpointEdit);
+            const QSignalBlocker modelBlocker(modelEdit);
+            endpointEdit->setText(endpoint);
+            modelEdit->setText(model);
+        }
+        endpointEdit->setReadOnly(!custom);
+        modelEdit->setReadOnly(!custom);
+
+        if (!persist) {
+            return;
+        }
+
+        settings.setValue("llm/providerId", provider.id);
+        settings.setValue("llm/endpoint", endpoint);
+        settings.setValue("llm/model", model);
+        if (custom) {
+            settings.setValue("llm/customEndpoint", endpoint);
+            settings.setValue("llm/customModel", model);
+        }
+        providerCombo->setCurrentIndex(providerCombo->findData(provider.id));
+    };
+
     {
         QSettings settings;
-        const QString endpoint =
-            settings.value("llm/endpoint", defaultLlmEndpoint()).toString();
-        const QString model =
-            settings.value("llm/model", defaultLlmModel()).toString();
-        endpointEdit->setText(endpoint);
-        modelEdit->setText(model);
+        QString providerId =
+            settings.value("llm/providerId", defaultLlmProviderId()).toString();
+        const QString savedEndpoint =
+            settings.value("llm/endpoint").toString().trimmed();
+        if (!settings.contains("llm/providerId") && !savedEndpoint.isEmpty() &&
+            savedEndpoint != defaultLlmEndpoint())
+        {
+            providerId = "custom";
+        }
+        int providerIndex = providerCombo->findData(providerId);
+        if (providerIndex < 0) {
+            providerIndex = providerCombo->findData(defaultLlmProviderId());
+        }
+        if (providerIndex < 0 && providerCombo->count() > 0) {
+            providerIndex = 0;
+        }
+        providerCombo->setCurrentIndex(providerIndex);
+        applyProvider(providerAt(providerIndex), false);
         apiKeyEdit->setText(settings.value("llm/apiKey").toString());
     }
 
+    connect(providerCombo, &QComboBox::currentIndexChanged, this,
+            [this, providerCombo, providerAt, applyProvider](int index) {
+                const auto provider = providerAt(index);
+                applyProvider(provider, true);
+                emit statusMessage(tr("LLM provider saved: %1")
+                                       .arg(providerCombo->itemText(
+                                           providerCombo->currentIndex())));
+            });
     connect(endpointEdit, &QLineEdit::editingFinished, this,
-            [this, endpointEdit]() {
+            [this, providerCombo, endpointEdit]() {
                 const QString endpoint = endpointEdit->text().trimmed();
                 QSettings settings;
-                settings.setValue("llm/endpoint", endpoint.isEmpty()
-                                                      ? defaultLlmEndpoint()
-                                                      : endpoint);
-                endpointEdit->setText(
-                    settings.value("llm/endpoint").toString());
+                settings.setValue("llm/endpoint", endpoint);
+                if (providerCombo->currentData().toString() == "custom") {
+                    settings.setValue("llm/customEndpoint", endpoint);
+                }
                 emit statusMessage(tr("LLM endpoint saved."));
             });
-    connect(modelEdit, &QLineEdit::editingFinished, this, [this, modelEdit]() {
-        const QString model = modelEdit->text().trimmed();
-        QSettings settings;
-        settings.setValue("llm/model",
-                          model.isEmpty() ? defaultLlmModel() : model);
-        modelEdit->setText(settings.value("llm/model").toString());
-        emit statusMessage(tr("LLM model saved."));
-    });
+    connect(modelEdit, &QLineEdit::editingFinished, this,
+            [this, providerCombo, modelEdit]() {
+                const QString model = modelEdit->text().trimmed();
+                QSettings settings;
+                settings.setValue("llm/model", model);
+                if (providerCombo->currentData().toString() == "custom") {
+                    settings.setValue("llm/customModel", model);
+                }
+                emit statusMessage(tr("LLM model saved."));
+            });
     connect(apiKeyEdit, &QLineEdit::editingFinished, this,
             [this, apiKeyEdit]() {
                 QSettings settings;
@@ -152,6 +227,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 emit statusMessage(tr("LLM API key saved."));
             });
 
+    llmForm->addRow(tr("Provider"), providerCombo);
     llmForm->addRow(tr("Endpoint"), endpointEdit);
     llmForm->addRow(tr("Model"), modelEdit);
     llmForm->addRow(tr("API Key"), apiKeyEdit);

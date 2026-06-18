@@ -1,5 +1,7 @@
 #pragma once
 
+#include "model_registry.h"
+
 #include <QFile>
 #include <QNetworkAccessManager>
 #include <QObject>
@@ -52,10 +54,12 @@ private:
     QString llamaArchivePath() const;
     QString modelPath() const;
     QString serverExecutablePath() const;
+    LlmProviderPreset configuredProvider() const;
     QString configuredEndpoint() const;
     QString configuredModel() const;
     QString configuredApiKey() const;
     bool usesManagedLocalService() const;
+    void shutdown();
 
     void ensureReady();
     void prepareManagedLocalService();

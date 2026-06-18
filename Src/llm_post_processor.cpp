@@ -4,6 +4,7 @@
 #include "model_registry.h"
 
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
@@ -130,6 +131,11 @@ namespace talkinput
 
 LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
 {
+    if (QCoreApplication::instance()) {
+        connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                this, &LlmPostProcessor::shutdown);
+    }
+
     connect(&m_network, &QNetworkAccessManager::finished, this,
             &LlmPostProcessor::onDownloadFinished);
     connect(&m_healthTimer, &QTimer::timeout, this,
@@ -177,10 +183,17 @@ LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
 
 LlmPostProcessor::~LlmPostProcessor()
 {
+    shutdown();
+}
+
+void LlmPostProcessor::shutdown()
+{
     m_stopping = true;
+    m_healthTimer.stop();
     if (m_activeDownload) {
         m_activeDownload->abort();
         m_activeDownload->deleteLater();
+        m_activeDownload = nullptr;
     }
     if (m_server.state() != QProcess::NotRunning) {
         m_server.terminate();
@@ -255,22 +268,45 @@ QString LlmPostProcessor::serverExecutablePath() const
     return {};
 }
 
+LlmProviderPreset LlmPostProcessor::configuredProvider() const
+{
+    QSettings settings;
+    QString providerId =
+        settings.value("llm/providerId", defaultLlmProviderId())
+            .toString()
+            .trimmed();
+    const QString savedEndpoint =
+        settings.value("llm/endpoint").toString().trimmed();
+    if (!settings.contains("llm/providerId") && !savedEndpoint.isEmpty() &&
+        savedEndpoint != defaultLlmEndpoint())
+    {
+        providerId = "custom";
+    }
+    return findLlmProviderPreset(providerId);
+}
+
 QString LlmPostProcessor::configuredEndpoint() const
 {
     QSettings settings;
-    const QString endpoint =
-        settings.value("llm/endpoint", defaultLlmEndpoint())
-            .toString()
-            .trimmed();
-    return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
+    const LlmProviderPreset provider = configuredProvider();
+    if (!provider.custom) {
+        const QString endpoint = provider.endpoint.trimmed();
+        return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
+    }
+
+    return settings.value("llm/endpoint").toString().trimmed();
 }
 
 QString LlmPostProcessor::configuredModel() const
 {
     QSettings settings;
-    const QString model =
-        settings.value("llm/model", defaultLlmModel()).toString().trimmed();
-    return model.isEmpty() ? defaultLlmModel() : model;
+    const LlmProviderPreset provider = configuredProvider();
+    if (!provider.custom) {
+        const QString model = provider.model.trimmed();
+        return model.isEmpty() ? defaultLlmModel() : model;
+    }
+
+    return settings.value("llm/model").toString().trimmed();
 }
 
 QString LlmPostProcessor::configuredApiKey() const
@@ -281,10 +317,7 @@ QString LlmPostProcessor::configuredApiKey() const
 
 bool LlmPostProcessor::usesManagedLocalService() const
 {
-    const QUrl endpoint(configuredEndpoint());
-    return endpoint.scheme() == "http" && endpoint.host() == "127.0.0.1" &&
-           endpoint.port(ServerPort) == ServerPort &&
-           endpoint.path() == "/v1/chat/completions";
+    return configuredProvider().managedLocalService;
 }
 
 void LlmPostProcessor::ensureReady()
@@ -533,40 +566,43 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     spdlog::debug("LLM chat request JSON: {}", QString::fromUtf8(requestBody));
 
     auto *reply = m_network.post(networkRequest, requestBody);
-    connect(reply, &QNetworkReply::finished, this,
-            [this, reply, request]() mutable {
-        QString result = request.text;
-        bool requestFailed = false;
-        if (reply->error() == QNetworkReply::NoError) {
-            const QByteArray responseBody = reply->readAll();
-            spdlog::debug("LLM chat response JSON: {}",
-                          QString::fromUtf8(responseBody));
-            const QJsonDocument doc = QJsonDocument::fromJson(responseBody);
-            const QJsonArray choices = doc.object().value("choices").toArray();
-            if (!choices.isEmpty()) {
-                const QJsonObject message =
-                    choices.first().toObject().value("message").toObject();
-                const QString content =
-                    message.value("content").toString().trimmed();
-                if (!content.isEmpty()) {
-                    result = cleanupResponseText(content);
+    connect(
+        reply, &QNetworkReply::finished, this,
+        [this, reply, request]() mutable {
+            QString result = request.text;
+            bool requestFailed = false;
+            if (reply->error() == QNetworkReply::NoError) {
+                const QByteArray responseBody = reply->readAll();
+                spdlog::debug("LLM chat response JSON: {}",
+                              QString::fromUtf8(responseBody));
+                const QJsonDocument doc = QJsonDocument::fromJson(responseBody);
+                const QJsonArray choices =
+                    doc.object().value("choices").toArray();
+                if (!choices.isEmpty()) {
+                    const QJsonObject message =
+                        choices.first().toObject().value("message").toObject();
+                    const QString content =
+                        message.value("content").toString().trimmed();
+                    if (!content.isEmpty()) {
+                        result = cleanupResponseText(content);
+                    }
                 }
             }
-        }
-        else {
-            spdlog::warn("LLM post-process failed: {}", reply->errorString());
-            requestFailed = true;
-        }
-        spdlog::debug("LLM post-process output: {}", result);
-        reply->deleteLater();
-        if (request.receiver && request.callback) {
-            request.callback(result);
-        }
-        emit statusMessage(requestFailed
-                               ? tr("LLM post-processing failed; using "
-                                    "original text.")
-                               : tr("LLM post-processing complete."));
-    });
+            else {
+                spdlog::warn("LLM post-process failed: {}",
+                             reply->errorString());
+                requestFailed = true;
+            }
+            spdlog::debug("LLM post-process output: {}", result);
+            reply->deleteLater();
+            if (request.receiver && request.callback) {
+                request.callback(result);
+            }
+            emit statusMessage(requestFailed
+                                   ? tr("LLM post-processing failed; using "
+                                        "original text.")
+                                   : tr("LLM post-processing complete."));
+        });
 }
 
 void LlmPostProcessor::failPending(const QString &reason)

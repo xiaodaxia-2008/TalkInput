@@ -97,6 +97,28 @@
       "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
       "fileName": "Qwen3.5-2B-Q4_K_M.gguf",
       "size": 1280835840
-    }
+    },
+    "providers": [
+      {
+        "id": "llama.cpp",
+        "name": "llama.cpp",
+        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+        "model": "Qwen3.5-2B-Q4_K_M",
+        "managedLocalService": true
+      },
+      {
+        "id": "deepseek",
+        "name": "DeepSeek",
+        "endpoint": "https://api.deepseek.com/v1/chat/completions",
+        "model": "deepseek-chat"
+      },
+      {
+        "id": "custom",
+        "name": "Custom",
+        "endpoint": "",
+        "model": "",
+        "custom": true
+      }
+    ]
   }
 }

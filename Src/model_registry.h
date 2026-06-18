@@ -46,9 +46,23 @@ struct LlmLocalModel
     qint64 size = 0;
 };
 
+struct LlmProviderPreset
+{
+    QString id;
+    QString name;
+    QString endpoint;
+    QString model;
+    bool custom = false;
+    bool managedLocalService = false;
+};
+
 QVector<ModelPreset> loadModelPresets();
 QVector<ModelPreset> loadToolPresets();
 LlmLocalModel loadLlmLocalModel();
+QVector<LlmProviderPreset> loadLlmProviderPresets();
+LlmProviderPreset defaultLlmProvider();
+LlmProviderPreset findLlmProviderPreset(const QString &id);
+QString defaultLlmProviderId();
 QString defaultLlmEndpoint();
 QString defaultLlmModel();
 ModelFileSet resolveModelFiles(const QString &modelDir);
