@@ -1,7 +1,7 @@
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh)
 
 add_executable(TalkInput
-    ${PROJECT_SOURCE_DIR}/resources/app.rc
+    ${PROJECT_SOURCE_DIR}/resources/misc/app.rc
     main.cpp
     main_window.cpp
     main_window.h
@@ -54,23 +54,23 @@ qt_add_resources(TalkInput resources
     PREFIX "/"
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
-    "${PROJECT_SOURCE_DIR}/resources/app.qss"
-    "${PROJECT_SOURCE_DIR}/resources/icon.png"
-    "${PROJECT_SOURCE_DIR}/resources/icon.svg"
-    "${PROJECT_SOURCE_DIR}/resources/mic.svg"
-    "${PROJECT_SOURCE_DIR}/resources/stop.svg"
-    "${PROJECT_SOURCE_DIR}/resources/folder.svg"
-    "${PROJECT_SOURCE_DIR}/resources/folder-plus.svg"
-    "${PROJECT_SOURCE_DIR}/resources/check.svg"
-    "${PROJECT_SOURCE_DIR}/resources/download.svg"
-    "${PROJECT_SOURCE_DIR}/resources/globe.svg"
-    "${PROJECT_SOURCE_DIR}/resources/hotwords.svg"
-    "${PROJECT_SOURCE_DIR}/resources/delete.svg"
-    "${PROJECT_SOURCE_DIR}/resources/copy.svg"
-    "${PROJECT_SOURCE_DIR}/resources/edit.svg"
-    "${PROJECT_SOURCE_DIR}/resources/zh.svg"
-    "${PROJECT_SOURCE_DIR}/resources/en.svg"
-    "${PROJECT_SOURCE_DIR}/resources/config.json"
+    "${PROJECT_SOURCE_DIR}/resources/misc/app.qss"
+    "${PROJECT_SOURCE_DIR}/resources/icons/icon.png"
+    "${PROJECT_SOURCE_DIR}/resources/icons/icon.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/mic.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/stop.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/folder.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/folder-plus.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/check.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/download.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/globe.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/hotwords.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/copy.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/edit.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/zh.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/en.svg"
+    "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
 qt_add_translations(TalkInput)

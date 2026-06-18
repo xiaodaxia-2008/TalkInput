@@ -76,7 +76,7 @@ void ensureLoaded()
     s_loaded = true;
 
     try {
-        s_defaultConfig = readConfigObject(":/resources/config.json");
+        s_defaultConfig = readConfigObject(":/resources/misc/config.json");
         const nlohmann::json userConfig = readConfigObject(appConfigPath());
         s_config = userConfig.empty()
                        ? s_defaultConfig

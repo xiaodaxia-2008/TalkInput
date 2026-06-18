@@ -107,21 +107,21 @@ void HistoryWidget::refreshHistory()
         m_table->setItem(i, 0, textItem);
 
         auto *editButton = new QPushButton();
-        setButtonIcon(editButton, ":/resources/edit.svg", 18);
+        setButtonIcon(editButton, ":/resources/icons/edit.svg", 18);
         editButton->setToolTip(tr("Edit text"));
         editButton->setFlat(true);
         connect(editButton, &QPushButton::clicked, this,
                 [this, i]() { editEntry(i); });
 
         auto *copyButton = new QPushButton();
-        setButtonIcon(copyButton, ":/resources/copy.svg", 18);
+        setButtonIcon(copyButton, ":/resources/icons/copy.svg", 18);
         copyButton->setToolTip(tr("Copy text"));
         copyButton->setFlat(true);
         connect(copyButton, &QPushButton::clicked, this,
                 [this, i]() { copyEntry(i); });
 
         auto *deleteButton = new QPushButton();
-        setButtonIcon(deleteButton, ":/resources/delete.svg", 18);
+        setButtonIcon(deleteButton, ":/resources/icons/delete.svg", 18);
         deleteButton->setToolTip(tr("Delete entry"));
         deleteButton->setFlat(true);
         connect(deleteButton, &QPushButton::clicked, this,

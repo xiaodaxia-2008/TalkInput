@@ -20,11 +20,11 @@ int main(int argc, char *argv[])
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
     QApplication::setOrganizationName("TalkInput");
-    QApplication::setWindowIcon(QIcon(":/resources/icon.png"));
+    QApplication::setWindowIcon(QIcon(":/resources/icons/icon.png"));
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      &talkinput::saveAppConfig);
 
-    QFile styleFile(":/resources/app.qss");
+    QFile styleFile(":/resources/misc/app.qss");
     if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));
     }

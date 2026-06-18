@@ -195,7 +195,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     promptLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     auto *promptEditBtn = new QPushButton(promptWidget);
     promptEditBtn->setToolTip(tr("Edit LLM prompt"));
-    setButtonIcon(promptEditBtn, ":/resources/edit.svg", 18);
+    setButtonIcon(promptEditBtn, ":/resources/icons/edit.svg", 18);
     promptLayout->addWidget(promptLabel, 1);
     promptLayout->addWidget(promptEditBtn);
 
@@ -596,9 +596,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     }
 
     // Apply icons to bottom buttons
-    setButtonIcon(archiveBtn, ":/resources/folder-plus.svg", 22);
-    setButtonIcon(openBtn, ":/resources/folder.svg", 22);
-    setButtonIcon(hotwordsBtn, ":/resources/hotwords.svg", 22);
+    setButtonIcon(archiveBtn, ":/resources/icons/folder-plus.svg", 22);
+    setButtonIcon(openBtn, ":/resources/icons/folder.svg", 22);
+    setButtonIcon(hotwordsBtn, ":/resources/icons/hotwords.svg", 22);
     archiveBtn->setProperty("buttonRole", "icon");
     openBtn->setProperty("buttonRole", "icon");
     hotwordsBtn->setProperty("buttonRole", "icon");

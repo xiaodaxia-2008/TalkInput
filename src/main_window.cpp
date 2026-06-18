@@ -169,7 +169,7 @@ void MainWindow::setupUi()
     m_recognitionToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
     m_startAction = m_recognitionToolBar->addAction(
-        QIcon(":/resources/mic.svg"), tr("Start recognition"));
+        QIcon(":/resources/icons/mic.svg"), tr("Start recognition"));
     m_startAction->setToolTip(tr("Start recognition"));
     connect(m_startAction, &QAction::triggered, this, [this]() {
         if (m_voiceInput && m_voiceInput->isListening()) {
@@ -181,7 +181,7 @@ void MainWindow::setupUi()
     });
 
     m_fileAction = m_recognitionToolBar->addAction(
-        QIcon(":/resources/folder-plus.svg"), tr("Recognize file"));
+        QIcon(":/resources/icons/folder-plus.svg"), tr("Recognize file"));
     m_fileAction->setToolTip(tr("Import an audio file for recognition"));
     connect(m_fileAction, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
@@ -214,13 +214,13 @@ void MainWindow::setupUi()
     SPDLOG_DEBUG("MainWindow::setupUi: creating menu bar");
     m_prefMenu = menuBar()->addMenu(tr("Preferences"));
     m_langMenu =
-        m_prefMenu->addMenu(QIcon(":/resources/globe.svg"), tr("Language"));
+        m_prefMenu->addMenu(QIcon(":/resources/icons/globe.svg"), tr("Language"));
 
     m_zhAction =
-        m_langMenu->addAction(QIcon(":/resources/zh.svg"), tr("Chinese"));
+        m_langMenu->addAction(QIcon(":/resources/icons/zh.svg"), tr("Chinese"));
     m_zhAction->setCheckable(true);
     m_enAction =
-        m_langMenu->addAction(QIcon(":/resources/en.svg"), tr("English"));
+        m_langMenu->addAction(QIcon(":/resources/icons/en.svg"), tr("English"));
     m_enAction->setCheckable(true);
 
     m_currentLanguage = appConfigString("settings/app/language", "zh");
@@ -295,7 +295,7 @@ void MainWindow::setupUi()
 
 void MainWindow::setupTrayIcon()
 {
-    m_trayIcon = new QSystemTrayIcon(QIcon(":/resources/icon.png"), this);
+    m_trayIcon = new QSystemTrayIcon(QIcon(":/resources/icons/icon.png"), this);
     m_trayIcon->setToolTip(QStringLiteral("TalkInput"));
 
     auto *trayMenu = new QMenu(this);
@@ -348,7 +348,7 @@ void MainWindow::updateControls(bool listening)
 {
     if (listening) {
         if (m_startAction) {
-            m_startAction->setIcon(QIcon(":/resources/stop.svg"));
+            m_startAction->setIcon(QIcon(":/resources/icons/stop.svg"));
             m_startAction->setText(tr("Stop recognition"));
             m_startAction->setToolTip(tr("Stop recognition"));
         }
@@ -362,7 +362,7 @@ void MainWindow::updateControls(bool listening)
     }
     else {
         if (m_startAction) {
-            m_startAction->setIcon(QIcon(":/resources/mic.svg"));
+            m_startAction->setIcon(QIcon(":/resources/icons/mic.svg"));
             m_startAction->setText(tr("Start recognition"));
             m_startAction->setToolTip(tr("Start recognition"));
         }
