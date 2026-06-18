@@ -31,22 +31,6 @@
       }
     },
     {
-      "name": "Qwen3-ASR 0.6B",
-      "type": "Qwen3ASR",
-      "languages": "zh",
-      "modelDirName": "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25",
-      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2",
-      "size": 987758592,
-      "paramCount": 600,
-      "streamingSupport": false,
-      "files": {
-        "qwen3ConvFrontendFile": "conv_frontend.onnx",
-        "qwen3EncoderFile": "encoder.int8.onnx",
-        "qwen3DecoderFile": "decoder.int8.onnx",
-        "qwen3TokenizerDir>dir": "tokenizer"
-      }
-    },
-    {
       "name": "Streaming Paraformer",
       "type": "StreamingParaformer",
       "languages": "zh,en",
@@ -58,22 +42,6 @@
       "files": {
         "encoderFile": "encoder.int8.onnx",
         "decoderFile": "decoder.int8.onnx",
-        "tokensFile": "tokens.txt"
-      }
-    },
-    {
-      "name": "Streaming Zipformer",
-      "type": "StreamingTransducer",
-      "languages": "zh,en",
-      "modelDirName": "sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
-      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2",
-      "size": 209715200,
-      "paramCount": 90,
-      "streamingSupport": true,
-      "files": {
-        "encoderFile": "encoder-epoch-99-avg-1.int8.onnx",
-        "decoderFile": "decoder-epoch-99-avg-1.int8.onnx",
-        "joinerFile": "joiner-epoch-99-avg-1.int8.onnx",
         "tokensFile": "tokens.txt"
       }
     }
@@ -92,8 +60,8 @@
     }
   ],
   "llmPostProcessing": {
-    "systemPrompt": "你是一个有帮助的助手",
-    "userPrompt": "请后处理这段语音识别文本：\n{{input}}\n\n当前焦点输入框附近的 OCR 上下文如下（仅用于判断专有名词、代码、文件名或上下文语义；不要把语音文本中没有表达的内容直接插入结果）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}",
+    "systemPrompt": "你是一个有用的的智能助手",
+    "userPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}",
     "localModel": {
       "name": "Qwen3.5 2B Q4_K_M",
       "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",

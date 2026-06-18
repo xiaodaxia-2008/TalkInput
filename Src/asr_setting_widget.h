@@ -5,11 +5,12 @@
 #include <QWidget>
 #include <memory>
 
+class QComboBox;
 class QFile;
+class QLabel;
 class QNetworkAccessManager;
 class QNetworkReply;
 class QPushButton;
-class QTableWidget;
 class QTimer;
 
 namespace talkinput
@@ -43,11 +44,20 @@ private:
         bool isPunctuationModel = false;
     };
 
-    void populateTable();
+    struct ModeDef
+    {
+        QString label;
+        QString primaryDirName; // modelDirName of primary model
+        QString backupDirName; // modelDirName of fallback model (empty if none)
+        bool isStreaming = false;
+    };
+
+    void onModeChanged(int index);
     void refreshStatus();
-    void onUse(int row);
-    void onDownload(int row);
-    void onDelete(int row);
+    int findModelRow(const QString &modelDirName) const;
+    void onDownloadCurrent();
+    void onDeleteCurrent();
+    void activateModel(int modelRow);
     void onUseArchive();
     void onOpenDir();
     void onEditHotwords();
@@ -55,11 +65,19 @@ private:
 
     void ensurePunctuationModel();
     bool isInstalled(int row) const;
+    int currentPrimaryModelRow() const;
     static QString punctuationModelName();
 
-    QTableWidget *m_table = nullptr;
     QVector<ModelInfo> m_models;
+    QVector<ModeDef> m_modes;
 
+    // UI
+    QComboBox *m_modeCombo = nullptr;
+    QLabel *m_statusLabel = nullptr;
+    QPushButton *m_dlBtn = nullptr;
+    QPushButton *m_delBtn = nullptr;
+
+    // Download
     QNetworkAccessManager *m_networkManager = nullptr;
     QNetworkReply *m_activeDownloadReply = nullptr;
     std::unique_ptr<QFile> m_activeDownloadFile;

@@ -19,7 +19,6 @@
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -29,8 +28,6 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStandardPaths>
-
-#include <QTableWidget>
 #include <QTextEdit>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -73,6 +70,16 @@ QString displayNameForPreset(const talkinput::ModelPreset &preset)
                                        preset.name.c_str());
 }
 
+QString formatSize(qint64 bytes)
+{
+    if (bytes >= 1073741824) {
+        return QStringLiteral("%1 GB").arg(
+            static_cast<double>(bytes) / 1073741824.0, 0, 'f', 1);
+    }
+    return QStringLiteral("%1 MB").arg(static_cast<double>(bytes) / 1048576.0,
+                                       0, 'f', 0);
+}
+
 QString llmProviderModelKey(const QString &providerId)
 {
     return QString("settings/llm/providerModels/%1").arg(providerId);
@@ -105,24 +112,39 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     root->setContentsMargins(8, 8, 8, 8);
     root->setSpacing(8);
 
-    m_table = new QTableWidget(this);
-    m_table->setSelectionMode(QAbstractItemView::NoSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setAlternatingRowColors(true);
-    m_table->setColumnCount(6);
-    m_table->setHorizontalHeaderLabels({tr("Model"), tr("Type"),
-                                        tr("Languages"), tr("Size"),
-                                        tr("Status"), QString()});
-    m_table->horizontalHeader()->setStretchLastSection(false);
-    m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    m_table->setColumnWidth(1, 120);
-    m_table->setColumnWidth(2, 100);
-    m_table->setColumnWidth(3, 100);
-    m_table->setColumnWidth(4, 100);
-    m_table->setColumnWidth(5, 110);
-    m_table->verticalHeader()->hide();
-    root->addWidget(m_table);
+    // ── Model mode selector ────────────────────────────────────
+    auto *modelGroup = new QGroupBox(tr("Recognition Mode"), this);
+    auto *modelLayout = new QVBoxLayout(modelGroup);
+    modelLayout->setContentsMargins(10, 10, 10, 10);
+    modelLayout->setSpacing(8);
 
+    auto *modeRow = new QHBoxLayout();
+    modeRow->setSpacing(8);
+    m_modeCombo = new QComboBox(modelGroup);
+    m_modeCombo->addItem(tr("Non-realtime recognition")); // offline
+    m_modeCombo->addItem(tr("Realtime recognition"));     // streaming
+    modeRow->addWidget(new QLabel(tr("Mode:"), modelGroup));
+    modeRow->addWidget(m_modeCombo, 1);
+    modelLayout->addLayout(modeRow);
+
+    m_statusLabel = new QLabel(modelGroup);
+    m_statusLabel->setWordWrap(true);
+    modelLayout->addWidget(m_statusLabel);
+
+    auto *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(8);
+    m_dlBtn = new QPushButton(tr("Download"), modelGroup);
+    m_delBtn = new QPushButton(tr("Delete"), modelGroup);
+    m_dlBtn->setEnabled(false);
+    m_delBtn->setEnabled(false);
+    btnRow->addWidget(m_dlBtn);
+    btnRow->addWidget(m_delBtn);
+    btnRow->addStretch();
+    modelLayout->addLayout(btnRow);
+
+    root->addWidget(modelGroup);
+
+    // ── LLM Service ────────────────────────────────────────────
     auto *llmGroup = new QGroupBox(tr("LLM Service"), this);
     auto *llmForm = new QFormLayout(llmGroup);
     llmForm->setContentsMargins(10, 10, 10, 10);
@@ -165,7 +187,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             appConfigString("settings/llm/userPrompt").trimmed();
         if (!usrPrompt.isEmpty()) {
             promptLabel->setText(
-                QString("[System] %1 … [User] %2 …")
+                QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
                     .arg(sysPrompt.left(40), usrPrompt.left(40)));
         }
         else {
@@ -328,7 +350,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
             auto *sysEditor = new QTextEdit(&dialog);
             sysEditor->setAcceptRichText(false);
-            sysEditor->setPlaceholderText(tr("例如：你是一个有帮助的助手"));
+            sysEditor->setPlaceholderText(
+                tr("\344\276\213\345\246\202\357\274\232\344\275\240\346\230"
+                   "\257\344\270\200\344\270\252\346\234\211\345\270\256\345"
+                   "\212\251\347\232\204\345\212\251\346\211\213"));
             sysEditor->setPlainText(currentLlmSystemPrompt());
             sysEditor->setMaximumHeight(150);
             layout->addWidget(sysEditor);
@@ -350,9 +375,13 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             layout->addWidget(usrEditor);
 
             // -- Hint about default template --
-            auto *defaultHint = new QLabel(
-                tr("<small>留空则使用 config.json 中的默认模板。</small>"),
-                &dialog);
+            auto *defaultHint =
+                new QLabel(tr("<small>"
+                              "\347\225\231\347\251\272\345\210\231\344\275\277"
+                              "\347\224\250 config.json "
+                              "\344\270\255\347\232\204\351\273\230\350\256\244"
+                              "\346\250\241\346\235\277\343\200\202</small>"),
+                           &dialog);
             defaultHint->setWordWrap(true);
             defaultHint->setStyleSheet("color: gray");
             layout->addWidget(defaultHint);
@@ -393,6 +422,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     llmForm->addRow(tr("Prompt"), promptWidget);
     root->addWidget(llmGroup);
 
+    // ── Bottom row ──────────────────────────────────────────────
     auto *bottomRow = new QHBoxLayout();
     auto *archiveBtn = new QPushButton(tr("Use Archive"), this);
     archiveBtn->setToolTip(tr("Import and extract a model archive"));
@@ -474,6 +504,48 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         });
     }
 
+    // Mode definitions
+    // Mode 0: offline -> primary SenseVoice, backup FunASR Nano
+    // Mode 1: streaming -> primary Streaming Paraformer
+    m_modes.append({
+        .label = tr("Non-realtime recognition"),
+        .primaryDirName = QStringLiteral(
+            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"),
+        .backupDirName =
+            QStringLiteral("sherpa-onnx-funasr-nano-int8-2025-12-30"),
+        .isStreaming = false,
+    });
+    m_modes.append({
+        .label = tr("Realtime recognition"),
+        .primaryDirName =
+            QStringLiteral("sherpa-onnx-streaming-paraformer-bilingual-zh-en"),
+        .backupDirName = {},
+        .isStreaming = true,
+    });
+
+    // Find punctuation row index
+    m_punctuationRow = -1;
+    for (int i = 0; i < m_models.size(); ++i) {
+        if (m_models[i].isPunctuationModel) {
+            m_punctuationRow = i;
+            break;
+        }
+    }
+
+    // Restore saved mode
+    const bool savedStreaming =
+        appConfigBool("settings/model/streamingMode", false);
+    m_modeCombo->setCurrentIndex(savedStreaming ? 1 : 0);
+
+    connect(m_modeCombo, &QComboBox::currentIndexChanged, this,
+            &AsrSettingWidget::onModeChanged);
+
+    // Download/delete buttons
+    connect(m_dlBtn, &QPushButton::clicked, this,
+            &AsrSettingWidget::onDownloadCurrent);
+    connect(m_delBtn, &QPushButton::clicked, this,
+            &AsrSettingWidget::onDeleteCurrent);
+
     // Auto-download punctuation model after UI is ready
     m_startupTimer = new QTimer(this);
     m_startupTimer->setSingleShot(true);
@@ -481,11 +553,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             &AsrSettingWidget::ensurePunctuationModel);
     m_startupTimer->start(1500);
 
-    // ── Table rows ──────────────────────────────────────────────
-    spdlog::debug("AsrSettingWidget: populating table with {} rows",
-                  m_models.size());
-    populateTable();
-    spdlog::debug("AsrSettingWidget: table populated");
+    // Initial status
+    onModeChanged(m_modeCombo->currentIndex());
 
     // Apply icons to bottom buttons
     setButtonIcon(archiveBtn, ":/resources/folder-plus.svg", 22);
@@ -506,203 +575,103 @@ AsrSettingWidget::~AsrSettingWidget()
     }
 }
 
-// ── Table ─────────────────────────────────────────────────────
+// ── Mode ───────────────────────────────────────────────────────
 
-void AsrSettingWidget::populateTable()
+void AsrSettingWidget::onModeChanged(int index)
 {
-    spdlog::debug("AsrSettingWidget::populateTable: begin");
-    m_table->setRowCount(m_models.size());
-
-    for (int i = 0; i < m_models.size(); ++i) {
-        const auto &m = m_models.at(i);
-
-        auto *nameItem = new QTableWidgetItem(m.name);
-        nameItem->setData(Qt::UserRole, i);
-        m_table->setItem(i, 0, nameItem);
-        m_table->setItem(i, 1, new QTableWidgetItem(m.type));
-        m_table->setItem(i, 2, new QTableWidgetItem(m.languages));
-
-        QString szStr;
-        if (m.modelSize >= 1073741824) {
-            szStr = QStringLiteral("%1 GB").arg(
-                static_cast<double>(m.modelSize) / 1073741824.0, 0, 'f', 1);
-        }
-        else {
-            szStr = QStringLiteral("%1 MB").arg(
-                static_cast<double>(m.modelSize) / 1048576.0, 0, 'f', 0);
-        }
-        m_table->setItem(i, 3, new QTableWidgetItem(szStr));
-
-        // Action buttons container
-        auto *container = new QWidget();
-        auto *lay = new QHBoxLayout(container);
-        lay->setContentsMargins(4, 2, 4, 2);
-        lay->setSpacing(4);
-
-        auto *useBtn = new QPushButton();
-        if (m.isPunctuationModel) {
-            useBtn->setEnabled(false);
-            useBtn->setToolTip(tr("Auto-loaded punctuation model"));
-        }
-        else {
-            useBtn->setToolTip(tr("Use this model"));
-        }
-        connect(useBtn, &QPushButton::clicked, this, [this, i]() { onUse(i); });
-
-        auto *dlBtn = new QPushButton();
-        dlBtn->setToolTip(tr("Download this model"));
-        connect(dlBtn, &QPushButton::clicked, this,
-                [this, i]() { onDownload(i); });
-
-        auto *delBtn = new QPushButton();
-        delBtn->setToolTip(tr("Delete this model"));
-        connect(delBtn, &QPushButton::clicked, this,
-                [this, i]() { onDelete(i); });
-
-        setButtonIcon(useBtn, ":/resources/check.svg", 18);
-        useBtn->setProperty("buttonRole", "icon");
-        useBtn->setProperty("actionRole", "use");
-
-        setButtonIcon(dlBtn, ":/resources/download.svg", 18);
-        dlBtn->setProperty("buttonRole", "icon");
-        dlBtn->setProperty("actionRole", "download");
-
-        setButtonIcon(delBtn, ":/resources/delete.svg", 18);
-        delBtn->setProperty("buttonRole", "icon");
-        delBtn->setProperty("actionRole", "delete");
-
-        lay->addWidget(useBtn);
-        lay->addWidget(dlBtn);
-        lay->addWidget(delBtn);
-        m_table->setCellWidget(i, 5, container);
+    if (index < 0 || index >= m_modes.size()) {
+        return;
     }
 
-    m_punctuationRow = -1;
-    for (int i = 0; i < m_models.size(); ++i) {
-        if (m_models[i].isPunctuationModel) {
-            m_punctuationRow = i;
-            break;
+    const auto &mode = m_modes[index];
+    const int primaryRow = findModelRow(mode.primaryDirName);
+
+    if (primaryRow < 0) {
+        m_statusLabel->setText(tr("Error: model preset not found"));
+        m_dlBtn->setEnabled(false);
+        m_delBtn->setEnabled(false);
+        return;
+    }
+
+    const bool installed = isInstalled(primaryRow);
+    const auto &model = m_models[primaryRow];
+
+    if (installed) {
+        const QString sizeStr =
+            model.modelSize > 0
+                ? QString(" (%1)").arg(formatSize(model.modelSize))
+                : QString();
+        m_statusLabel->setText(
+            tr("Model installed: %1%2").arg(model.name, sizeStr));
+        m_dlBtn->setEnabled(false);
+        m_delBtn->setEnabled(true);
+
+        // Auto-activate
+        activateModel(primaryRow);
+    }
+    else {
+        // Check backup model
+        int backupRow = -1;
+        if (!mode.backupDirName.isEmpty()) {
+            backupRow = findModelRow(mode.backupDirName);
+        }
+        if (backupRow >= 0 && isInstalled(backupRow)) {
+            const auto &backup = m_models[backupRow];
+            m_statusLabel->setText(
+                tr("Using backup model: %1").arg(backup.name));
+            m_dlBtn->setEnabled(false);
+            m_delBtn->setEnabled(true);
+            activateModel(backupRow);
+        }
+        else {
+            const QString sizeStr =
+                model.modelSize > 0 ? formatSize(model.modelSize) : QString();
+            m_statusLabel->setText(
+                tr("Model not installed (%1, %2). Click Download.")
+                    .arg(model.name, sizeStr));
+            m_dlBtn->setEnabled(true);
+            m_delBtn->setEnabled(false);
         }
     }
 
-    refreshStatus();
-    spdlog::debug("AsrSettingWidget::populateTable: end");
+    // Save mode preference
+    setAppConfigValue("settings/model/streamingMode", mode.isStreaming);
 }
 
 void AsrSettingWidget::refreshStatus()
 {
-    spdlog::debug("AsrSettingWidget::refreshStatus: begin");
-    const QString activeDir = appConfigString("settings/model/directory");
+    onModeChanged(m_modeCombo->currentIndex());
+}
 
+int AsrSettingWidget::findModelRow(const QString &modelDirName) const
+{
     for (int i = 0; i < m_models.size(); ++i) {
-        const auto &m = m_models.at(i);
-        const bool installed = isInstalled(i);
-        const QString path = QDir(cacheDir()).filePath(m.modelDirName);
-        const bool isActive =
-            !activeDir.isEmpty() && QDir(activeDir) == QDir(path);
-
-        QString statusText;
-        QColor statusColor;
-        if (isActive) {
-            statusText = tr("Active");
-            statusColor = QColor(0x15, 0x65, 0xc0);
-        }
-        else if (installed) {
-            statusText = tr("Installed");
-            statusColor = QColor(0x2e, 0x7d, 0x32);
-        }
-        else {
-            statusText = tr("Not installed");
-            statusColor = QColor(0xc6, 0x28, 0x28);
-        }
-
-        auto *st = new QTableWidgetItem(statusText);
-        st->setForeground(statusColor);
-        m_table->setItem(i, 4, st);
-
-        auto *w = m_table->cellWidget(i, 5);
-        if (!w) {
-            continue;
-        }
-        auto btns = w->findChildren<QPushButton *>();
-        if (btns.size() >= 3) {
-            btns[0]->setEnabled(installed);  // Use
-            btns[1]->setVisible(!installed); // Download
-            btns[2]->setVisible(installed);  // Delete
+        if (m_models[i].modelDirName == modelDirName) {
+            return i;
         }
     }
-    spdlog::debug("AsrSettingWidget::refreshStatus: end");
+    return -1;
 }
 
-// ── Punctuation model helpers ─────────────────────────────────
-
-bool AsrSettingWidget::isInstalled(int row) const
+int AsrSettingWidget::currentPrimaryModelRow() const
 {
-    if (row < 0 || row >= m_models.size()) {
-        return false;
+    const int idx = m_modeCombo->currentIndex();
+    if (idx < 0 || idx >= m_modes.size()) {
+        return -1;
     }
-    const auto &m = m_models.at(row);
-    const QString path = QDir(cacheDir()).filePath(m.modelDirName);
-    return QFileInfo(path).isDir();
+    return findModelRow(m_modes[idx].primaryDirName);
 }
 
-QString AsrSettingWidget::punctuationModelName()
+// ── Actions ────────────────────────────────────────────────────
+
+void AsrSettingWidget::onDownloadCurrent()
 {
-    return QStringLiteral(
-        "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8");
-}
-
-void AsrSettingWidget::ensurePunctuationModel()
-{
-    if (m_punctuationRow < 0) {
-        return;
-    }
-    if (isInstalled(m_punctuationRow)) {
-        return;
-    }
-    if (m_activeDownloadReply) {
+    const int row = currentPrimaryModelRow();
+    if (row < 0 || m_activeDownloadReply) {
         return;
     }
 
-    spdlog::info("Punctuation model not found, starting auto-download...");
-    emit statusMessage(tr("Punctuation model not found, downloading..."));
-    onDownload(m_punctuationRow);
-}
-
-// ── Actions ───────────────────────────────────────────────────
-
-void AsrSettingWidget::onUse(int row)
-{
-    if (row < 0 || row >= m_models.size()) {
-        return;
-    }
-    const auto &m = m_models.at(row);
-    const QString dir = QDir(cacheDir()).filePath(m.modelDirName);
-
-    if (!QFileInfo(dir).isDir()) {
-        QMessageBox::warning(this, tr("Model not found"),
-                             tr("Directory does not exist:\n%1")
-                                 .arg(QDir::toNativeSeparators(dir)));
-        return;
-    }
-
-    if (!m.streamingSupport) {
-        QMessageBox::information(
-            this, tr("Offline model"),
-            tr("This model does not support real-time recognition."));
-    }
-
-    spdlog::info("Selected model: {} ({})", m.name, dir);
-    emit modelSelected(dir, m.name);
-}
-
-void AsrSettingWidget::onDownload(int row)
-{
-    if (row < 0 || row >= m_models.size() || m_activeDownloadReply) {
-        return;
-    }
-
-    const auto &m = m_models.at(row);
+    const auto &m = m_models[row];
     if (m.archiveUrl.isEmpty()) {
         return;
     }
@@ -723,55 +692,81 @@ void AsrSettingWidget::onDownload(int row)
         return;
     }
 
-    // Show download progress text in status column
-    auto *progressItem = new QTableWidgetItem(tr("Downloading..."));
-    progressItem->setForeground(QColor(0x15, 0x65, 0xc0));
-    m_table->setItem(row, 4, progressItem);
-
     emit statusMessage(tr("Downloading %1...").arg(m.name));
+    m_dlBtn->setEnabled(false);
+
     QNetworkRequest req(m.archiveUrl);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
     m_activeDownloadReply = m_networkManager->get(req);
     connect(m_activeDownloadReply, &QNetworkReply::readyRead, this, [this]() {
         if (m_activeDownloadReply && m_activeDownloadFile) {
             m_activeDownloadFile->write(m_activeDownloadReply->readAll());
         }
     });
-    connect(m_activeDownloadReply, &QNetworkReply::downloadProgress, this,
-            [this, row](qint64 received, qint64 total) {
-                if (total <= 0) {
-                    return;
-                }
-                int pct = static_cast<int>(received * 100 / total);
-                auto *item =
-                    new QTableWidgetItem(tr("Downloading %1%").arg(pct));
-                item->setForeground(QColor(0x15, 0x65, 0xc0));
-                m_table->setItem(row, 4, item);
-            });
+    connect(
+        m_activeDownloadReply, &QNetworkReply::downloadProgress, this,
+        [this, row](qint64 received, qint64 total) {
+            if (total <= 0) {
+                return;
+            }
+            const int pct = static_cast<int>(received * 100 / total);
+            emit statusMessage(
+                tr("Downloading %1... %2%").arg(m_models[row].name).arg(pct));
+        });
 }
 
-void AsrSettingWidget::onDelete(int row)
+void AsrSettingWidget::onDeleteCurrent()
 {
+    const int row = currentPrimaryModelRow();
     if (row < 0 || row >= m_models.size()) {
         return;
     }
-    const auto &m = m_models.at(row);
+
+    const auto &m = m_models[row];
     const QString dir = QDir(cacheDir()).filePath(m.modelDirName);
     if (!QFileInfo(dir).isDir()) {
+        emit statusMessage(tr("Model not found."));
         return;
     }
 
-    if (QMessageBox::question(this, tr("Delete model"),
-                              tr("Delete \"%1\"?\n\n%2")
-                                  .arg(m.name)
-                                  .arg(QDir::toNativeSeparators(dir))) !=
-        QMessageBox::Yes)
-    {
+    auto result = QMessageBox::question(
+        this, tr("Delete Model"),
+        tr("Delete %1?\n\n%2").arg(m.name, QDir::toNativeSeparators(dir)),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+    if (result != QMessageBox::Yes) {
         return;
     }
 
     QDir(dir).removeRecursively();
     spdlog::info("Deleted model: {} ({})", m.name, dir);
     emit statusMessage(tr("Deleted: %1").arg(m.name));
+    refreshStatus();
+}
+
+void AsrSettingWidget::activateModel(int modelRow)
+{
+    if (modelRow < 0 || modelRow >= m_models.size()) {
+        return;
+    }
+
+    const auto &m = m_models[modelRow];
+    const QString dir = QDir(cacheDir()).filePath(m.modelDirName);
+
+    if (!QFileInfo(dir).isDir()) {
+        return;
+    }
+
+    if (m_downloadTargetRow == modelRow) {
+        m_downloadTargetRow = -1;
+    }
+
+    spdlog::info("Recognition model set: {} ({})", m.name, dir);
+    setAppConfigValue("settings/model/directory", dir);
+    setAppConfigValue("settings/model/name", m.name);
+    emit modelSelected(dir, m.name);
+    emit statusMessage(tr("Model selected: %1").arg(m.name));
     refreshStatus();
 }
 
@@ -850,7 +845,7 @@ void AsrSettingWidget::onEditHotwords()
     auto *hintRow = new QHBoxLayout();
     hintRow->setSpacing(8);
 
-    auto *iconLabel = new QLabel("💡", &dialog);
+    auto *iconLabel = new QLabel("\360\237\222\241", &dialog);
     iconLabel->setObjectName("hotwordsHintIcon");
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFixedSize(20, 20);
@@ -885,6 +880,8 @@ void AsrSettingWidget::onEditHotwords()
     emit hotwordsChanged();
 }
 
+// ── Download finished ───────────────────────────────────────────
+
 void AsrSettingWidget::onDownloadFinished()
 {
     auto *reply = m_activeDownloadReply;
@@ -903,21 +900,11 @@ void AsrSettingWidget::onDownloadFinished()
         reply->deleteLater();
     }
 
-    auto setStatusText = [this](int r, const QString &text,
-                                const QColor &color) {
-        if (r < 0 || r >= m_models.size()) {
-            return;
-        }
-        auto *item = new QTableWidgetItem(text);
-        item->setForeground(color);
-        m_table->setItem(r, 4, item);
-    };
-
     if (failed) {
         QFile::remove(m_activeDownloadTempPath);
         m_activeDownloadFile.reset();
-        setStatusText(row, tr("Download failed"), QColor(0xc6, 0x28, 0x28));
         emit statusMessage(tr("Download failed."));
+        refreshStatus();
         return;
     }
 
@@ -925,13 +912,13 @@ void AsrSettingWidget::onDownloadFinished()
     QFile::rename(m_activeDownloadTempPath, m_activeDownloadPath);
     m_activeDownloadFile.reset();
 
-    setStatusText(row, tr("Extracting..."), QColor(0x15, 0x65, 0xc0));
+    emit statusMessage(tr("Extracting..."));
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
     QString err;
     if (!extractArchive(m_activeDownloadPath, cacheDir(), &err)) {
-        setStatusText(row, tr("Extraction failed"), QColor(0xc6, 0x28, 0x28));
         emit statusMessage(tr("Extraction failed: %1").arg(err));
+        refreshStatus();
         return;
     }
 
@@ -944,12 +931,78 @@ void AsrSettingWidget::onDownloadFinished()
             }
             else {
                 emit modelSelected(modelDir, m.name);
+                setAppConfigValue("settings/model/directory", modelDir);
+                setAppConfigValue("settings/model/name", m.name);
             }
             emit statusMessage(tr("Downloaded: %1").arg(m.name));
         }
     }
 
     refreshStatus();
+}
+
+// ── Punctuation model helpers ──────────────────────────────────
+
+bool AsrSettingWidget::isInstalled(int row) const
+{
+    if (row < 0 || row >= m_models.size()) {
+        return false;
+    }
+    const auto &m = m_models.at(row);
+    const QString path = QDir(cacheDir()).filePath(m.modelDirName);
+    return QFileInfo(path).isDir();
+}
+
+QString AsrSettingWidget::punctuationModelName()
+{
+    return QStringLiteral(
+        "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8");
+}
+
+void AsrSettingWidget::ensurePunctuationModel()
+{
+    if (m_punctuationRow < 0) {
+        return;
+    }
+    if (isInstalled(m_punctuationRow)) {
+        spdlog::debug("Punctuation model already installed");
+        emit punctuationModelReady();
+        return;
+    }
+    if (m_activeDownloadReply) {
+        return;
+    }
+
+    const auto &m = m_models[m_punctuationRow];
+    spdlog::info("Punctuation model not found, starting auto-download...");
+    emit statusMessage(tr("Punctuation model not found, downloading..."));
+
+    QDir cache(cacheDir());
+    if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) {
+        return;
+    }
+
+    const QString archiveName = QFileInfo(m.archiveUrl.path()).fileName();
+    m_activeDownloadPath = cache.filePath(archiveName);
+    m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
+    m_downloadTargetRow = m_punctuationRow;
+
+    QFile::remove(m_activeDownloadTempPath);
+    m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
+    if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) {
+        m_downloadTargetRow = -1;
+        return;
+    }
+
+    QNetworkRequest req(m.archiveUrl);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    m_activeDownloadReply = m_networkManager->get(req);
+    connect(m_activeDownloadReply, &QNetworkReply::readyRead, this, [this]() {
+        if (m_activeDownloadReply && m_activeDownloadFile) {
+            m_activeDownloadFile->write(m_activeDownloadReply->readAll());
+        }
+    });
 }
 
 } // namespace talkinput
