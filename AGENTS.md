@@ -3,8 +3,8 @@
 ## Build & Run
 
 ```powershell
-cmake --preset release --fresh
-cmake --build --preset release
+pwsh msvc.ps1 cmake --preset release --fresh
+pwsh msvc.ps1 cmake --build build
 .\build\bin\TalkInput.exe
 ```
 
