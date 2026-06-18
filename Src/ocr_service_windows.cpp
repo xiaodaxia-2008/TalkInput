@@ -461,16 +461,19 @@ QImage WindowsOcrService::captureFocusedTextInputImage() const
         return {};
     }
 
-    QImage image = captureWindowWithPrintWindow(hwnd);
+    // Desktop BitBlt first: reliable for all window types (including
+    // DirectX-accelerated windows where PrintWindow returns blank).
+    QImage image = captureWindowFromDesktop(hwnd);
     if (!image.isNull()) {
-        spdlog::debug("OCR: focused window captured by PrintWindow: {}x{}",
+        spdlog::debug("OCR: focused window captured from desktop: {}x{}",
                       image.width(), image.height());
         return image;
     }
 
-    image = captureWindowFromDesktop(hwnd);
+    // Fallback to PrintWindow for off-screen or obscured windows.
+    image = captureWindowWithPrintWindow(hwnd);
     if (!image.isNull()) {
-        spdlog::debug("OCR: focused window captured from desktop: {}x{}",
+        spdlog::debug("OCR: focused window captured by PrintWindow: {}x{}",
                       image.width(), image.height());
         return image;
     }
