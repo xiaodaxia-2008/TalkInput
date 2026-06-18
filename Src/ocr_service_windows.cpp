@@ -311,12 +311,10 @@ QString recognizeWindowsText(QImage image)
 
     spdlog::debug("OCR: Windows OCR input image: {}x{} fmt={}", image.width(),
                   image.height(), static_cast<int>(image.format()));
-    if (image.width() > MaxContextWidth || image.height() > MaxContextHeight) {
-        image = image.scaled(MaxContextWidth, MaxContextHeight,
-                             Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        spdlog::debug("OCR: Windows OCR scaled image: {}x{}", image.width(),
-                      image.height());
-    }
+    // NOTE: deliberately NOT scaling the image here. The OCR engine handles
+    // large images well (~250ms for 2576x1456). Scaling to 900x360 made text
+    // unreadable and caused the empty result bug. MaxContextWidth/Height are
+    // used only for contextRectAround() in the focus-area logic, not for OCR.
 
     // Ensure we have a consistent pixel layout: convert to Format_RGB32
     // (byte-aligned 32-bit BGRA with unused alpha) so the BMP we write
