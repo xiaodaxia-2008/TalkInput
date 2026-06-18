@@ -60,6 +60,42 @@ QString llmProviderModelKey(const QString &providerId)
     return QString("settings/llm/providerModels/%1").arg(providerId);
 }
 
+QString modelJsonString(const nlohmann::json &model, const std::string &key,
+                        const QString &fallback = {})
+{
+    return model.contains(key) && model[key].is_string()
+               ? QString::fromStdString(model[key].get<std::string>())
+               : fallback;
+}
+
+qint64 modelJsonInt64(const nlohmann::json &model, const std::string &key,
+                      qint64 fallback = 0)
+{
+    return model.contains(key) && model[key].is_number_integer()
+               ? static_cast<qint64>(model[key].get<std::int64_t>())
+               : fallback;
+}
+
+bool modelJsonBool(const nlohmann::json &model, const std::string &key,
+                   bool fallback = false)
+{
+    return model.contains(key) && model[key].is_boolean()
+               ? model[key].get<bool>()
+               : fallback;
+}
+
+QUrl modelArchiveUrl(const nlohmann::json &model)
+{
+    return QUrl(modelJsonString(model, "url"));
+}
+
+QString postPunctuationDirName(const nlohmann::json &model)
+{
+    const nlohmann::json punct =
+        model.value("postPunctuationModel", nlohmann::json::object());
+    return modelJsonString(punct, "modelDirName");
+}
+
 QString currentLlmSystemPrompt()
 {
     QString prompt =
@@ -486,50 +522,30 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // ── Load model presets from config ───────────────────────────
     SPDLOG_DEBUG("AsrSettingWidget: loading model presets");
-    const auto presets = loadModelPresets();
-    const auto toolPresets = loadToolPresets();
+    const auto presets = loadModelPresetJsons();
+    const auto toolPresets = loadToolPresetJsons();
 
     // Store ALL presets (ASR + tool/punctuation) in m_models
     for (const auto &preset : presets) {
-        SPDLOG_DEBUG("AsrSettingWidget: preset {} ({})", preset.name,
-                     preset.modelDirName);
-        ModelInfo info;
-        info.name = qs(preset.name);
-        info.type = qs(preset.type);
-        info.languages = qs(preset.languages);
-        info.modelDirName = qs(preset.modelDirName);
-        info.archiveUrl = QUrl(qs(preset.url));
-        info.modelSize = static_cast<qint64>(preset.size);
-        info.paramCount = preset.paramCount;
-        info.streamingSupport = preset.streamingSupport;
-        info.isPunctuationModel = preset.isPunctuationModel;
+        const QString name = modelJsonString(preset, "name");
+        const QString dirName = modelJsonString(preset, "modelDirName");
+        SPDLOG_DEBUG("AsrSettingWidget: preset {} ({})", name, dirName);
 
-        // Store punctuation partner dir name if configured
-        if (!preset.postPunctuationModelDirName.empty()) {
-            info.postPunctuationDirName =
-                qs(preset.postPunctuationModelDirName);
+        const QString punctDirName = postPunctuationDirName(preset);
+        if (!punctDirName.isEmpty()) {
             SPDLOG_DEBUG("AsrSettingWidget: {} has punctuation partner {}",
-                         info.name, info.postPunctuationDirName);
+                         name, punctDirName);
         }
 
-        m_models.append(std::move(info));
+        m_models.append(preset);
     }
 
     // Store tool presets too (for punctuation model lookups)
     for (const auto &preset : toolPresets) {
-        SPDLOG_DEBUG("AsrSettingWidget: tool preset {} ({})", preset.name,
-                     preset.modelDirName);
-        ModelInfo info;
-        info.name = qs(preset.name);
-        info.type = qs(preset.type);
-        info.languages = qs(preset.languages);
-        info.modelDirName = qs(preset.modelDirName);
-        info.archiveUrl = QUrl(qs(preset.url));
-        info.modelSize = static_cast<qint64>(preset.size);
-        info.paramCount = preset.paramCount;
-        info.streamingSupport = preset.streamingSupport;
-        info.isPunctuationModel = preset.isPunctuationModel;
-        m_models.append(std::move(info));
+        const QString name = modelJsonString(preset, "name");
+        const QString dirName = modelJsonString(preset, "modelDirName");
+        SPDLOG_DEBUG("AsrSettingWidget: tool preset {} ({})", name, dirName);
+        m_models.append(preset);
     }
 
     // Populate ComboBox with ASR (non-punctuation) models
@@ -537,14 +553,16 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     m_asrModelIndices.clear();
     m_modelCombo->clear();
     for (int i = 0; i < m_models.size(); ++i) {
-        if (m_models[i].isPunctuationModel) {
+        if (modelJsonBool(m_models[i], "isPunctuationModel")) {
             continue; // skip punctuation models in combo
         }
         const QString label =
             QStringLiteral("%1 - %2 - %3")
-                .arg(m_models[i].name,
-                     streamingLabel(m_models[i].streamingSupport),
-                     languageDisplay(m_models[i].languages));
+                .arg(modelJsonString(m_models[i], "name"),
+                     streamingLabel(
+                         modelJsonBool(m_models[i], "streamingSupport")),
+                     languageDisplay(
+                         modelJsonString(m_models[i], "languages")));
         m_modelCombo->addItem(label);
         m_asrModelIndices.append(i);
     }
@@ -557,7 +575,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     if (savedType == QStringLiteral("System")) {
         for (int ci = 0; ci < m_asrModelIndices.size(); ++ci) {
             const int mi = m_asrModelIndices[ci];
-            if (m_models[mi].type == savedType) {
+            if (modelJsonString(m_models[mi], "type") == savedType) {
                 restoreIndex = ci;
                 break;
             }
@@ -566,7 +584,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     else if (!savedDirName.isEmpty()) {
         for (int ci = 0; ci < m_asrModelIndices.size(); ++ci) {
             const int mi = m_asrModelIndices[ci];
-            if (m_models[mi].modelDirName == savedDirName) {
+            if (modelJsonString(m_models[mi], "modelDirName") == savedDirName) {
                 restoreIndex = ci;
                 break;
             }
@@ -618,8 +636,11 @@ void AsrSettingWidget::onModelChanged(int index)
     }
 
     const bool installed = isInstalled(modelRow);
-    const auto &model = m_models[modelRow];
-    const bool systemModel = model.type == QStringLiteral("System");
+    const nlohmann::json &model = m_models[modelRow];
+    const QString modelName = modelJsonString(model, "name");
+    const bool systemModel =
+        modelJsonString(model, "type") == QStringLiteral("System");
+    const qint64 modelSize = modelJsonInt64(model, "size");
 
     m_dlBtn->setEnabled(false);
     m_delBtn->setEnabled(false);
@@ -632,20 +653,19 @@ void AsrSettingWidget::onModelChanged(int index)
     }
     else if (installed) {
         const QString sizeStr =
-            model.modelSize > 0
-                ? QString(" (%1)").arg(formatSize(model.modelSize))
-                : QString();
+            modelSize > 0 ? QString(" (%1)").arg(formatSize(modelSize))
+                          : QString();
         m_statusLabel->setText(
             tr("Installed: %1%2 \342\200\224 click \"Use\" to load")
-                .arg(model.name, sizeStr));
+                .arg(modelName, sizeStr));
         m_delBtn->setEnabled(true);
         m_useBtn->setEnabled(true);
     }
     else {
         const QString sizeStr =
-            model.modelSize > 0 ? formatSize(model.modelSize) : QString();
+            modelSize > 0 ? formatSize(modelSize) : QString();
         m_statusLabel->setText(tr("Not installed (%1, %2). Click Download.")
-                                   .arg(model.name, sizeStr));
+                                   .arg(modelName, sizeStr));
         m_dlBtn->setEnabled(true);
     }
 }
@@ -677,8 +697,9 @@ void AsrSettingWidget::onDownloadCurrent()
         return;
     }
 
-    const auto &m = m_models[row];
-    if (m.archiveUrl.isEmpty()) {
+    const nlohmann::json &m = m_models[row];
+    const QUrl archiveUrl = modelArchiveUrl(m);
+    if (archiveUrl.isEmpty()) {
         return;
     }
 
@@ -690,8 +711,9 @@ void AsrSettingWidget::onDownloadCurrent()
     m_downloadQueue.enqueue(row);
 
     // Queue punctuation model partner if configured and not installed
-    if (!m.postPunctuationDirName.isEmpty()) {
-        const int punctRow = findModelRowByDirName(m.postPunctuationDirName);
+    const QString punctDirName = postPunctuationDirName(m);
+    if (!punctDirName.isEmpty()) {
+        const int punctRow = findModelRowByDirName(punctDirName);
         if (punctRow >= 0 && !isInstalled(punctRow)) {
             m_downloadQueue.enqueue(punctRow);
         }
@@ -705,9 +727,11 @@ void AsrSettingWidget::startModelDownload(int row)
     if (row < 0 || row >= m_models.size()) {
         return;
     }
-    const auto &m = m_models[row];
+    const nlohmann::json &m = m_models[row];
+    const QUrl archiveUrl = modelArchiveUrl(m);
+    const QString modelName = modelJsonString(m, "name");
 
-    const QString archiveName = QFileInfo(m.archiveUrl.path()).fileName();
+    const QString archiveName = QFileInfo(archiveUrl.path()).fileName();
     m_activeDownloadPath = QDir(cacheDir()).filePath(archiveName);
     m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
     m_downloadTargetRow = row;
@@ -720,10 +744,10 @@ void AsrSettingWidget::startModelDownload(int row)
         return;
     }
 
-    emit statusMessage(tr("Downloading %1...").arg(m.name));
+    emit statusMessage(tr("Downloading %1...").arg(modelName));
     m_dlBtn->setEnabled(false);
 
-    QNetworkRequest req(m.archiveUrl);
+    QNetworkRequest req(archiveUrl);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
     m_activeDownloadReply = m_networkManager->get(req);
@@ -740,7 +764,9 @@ void AsrSettingWidget::startModelDownload(int row)
             }
             const int pct = static_cast<int>(received * 100 / total);
             emit statusMessage(
-                tr("Downloading %1... %2%").arg(m_models[row].name).arg(pct));
+                tr("Downloading %1... %2%")
+                    .arg(modelJsonString(m_models[row], "name"))
+                    .arg(pct));
         });
 }
 
@@ -751,8 +777,10 @@ void AsrSettingWidget::onDeleteCurrent()
         return;
     }
 
-    const auto &m = m_models[row];
-    const QString dir = QDir(cacheDir()).filePath(m.modelDirName);
+    const nlohmann::json &m = m_models[row];
+    const QString modelName = modelJsonString(m, "name");
+    const QString dir =
+        QDir(cacheDir()).filePath(modelJsonString(m, "modelDirName"));
     if (!QFileInfo(dir).isDir()) {
         emit statusMessage(tr("Model not found."));
         return;
@@ -760,7 +788,7 @@ void AsrSettingWidget::onDeleteCurrent()
 
     auto result = QMessageBox::question(
         this, tr("Delete Model"),
-        tr("Delete %1?\n\n%2").arg(m.name, QDir::toNativeSeparators(dir)),
+        tr("Delete %1?\n\n%2").arg(modelName, QDir::toNativeSeparators(dir)),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
 
     if (result != QMessageBox::Yes) {
@@ -768,8 +796,8 @@ void AsrSettingWidget::onDeleteCurrent()
     }
 
     QDir(dir).removeRecursively();
-    SPDLOG_INFO("Deleted model: {} ({})", m.name, dir);
-    emit statusMessage(tr("Deleted: %1").arg(m.name));
+    SPDLOG_INFO("Deleted model: {} ({})", modelName, dir);
+    emit statusMessage(tr("Deleted: %1").arg(modelName));
     refreshStatus();
 }
 
@@ -789,7 +817,9 @@ void AsrSettingWidget::onUseCurrent()
     // configured punctuation model partner from config.json if installed)
     activateModel(row);
 
-    emit statusMessage(tr("Model loaded: %1").arg(m_models[row].name));
+    emit statusMessage(
+        tr("Model loaded: %1")
+            .arg(modelJsonString(m_models[row], "name")));
 }
 
 void AsrSettingWidget::activateModel(int modelRow)
@@ -798,10 +828,13 @@ void AsrSettingWidget::activateModel(int modelRow)
         return;
     }
 
-    const auto &m = m_models[modelRow];
-    const bool systemModel = m.type == QStringLiteral("System");
+    const nlohmann::json &m = m_models[modelRow];
+    const QString modelName = modelJsonString(m, "name");
+    const QString modelType = modelJsonString(m, "type");
+    const bool systemModel = modelType == QStringLiteral("System");
     const QString dir =
-        systemModel ? QString() : QDir(cacheDir()).filePath(m.modelDirName);
+        systemModel ? QString() : QDir(cacheDir()).filePath(
+                                      modelJsonString(m, "modelDirName"));
 
     if (!systemModel && !QFileInfo(dir).isDir()) {
         return;
@@ -811,12 +844,12 @@ void AsrSettingWidget::activateModel(int modelRow)
         m_downloadTargetRow = -1;
     }
 
-    SPDLOG_INFO("Recognition model set: {} ({})", m.name, dir);
+    SPDLOG_INFO("Recognition model set: {} ({})", modelName, dir);
     setAppConfigValue("settings/model/directory", dir);
-    setAppConfigValue("settings/model/name", m.name);
-    setAppConfigValue("settings/model/type", m.type);
-    emit modelSelected(dir, m.name, m.type);
-    emit statusMessage(tr("Model selected: %1").arg(m.name));
+    setAppConfigValue("settings/model/name", modelName);
+    setAppConfigValue("settings/model/type", modelType);
+    emit modelSelected(dir, modelName, modelType);
+    emit statusMessage(tr("Model selected: %1").arg(modelName));
 }
 
 void AsrSettingWidget::onUseArchive()
@@ -974,17 +1007,20 @@ void AsrSettingWidget::onDownloadFinished()
     }
 
     if (row >= 0 && row < m_models.size()) {
-        const auto &m = m_models.at(row);
-        const QString modelDir = QDir(cacheDir()).filePath(m.modelDirName);
+        const nlohmann::json &m = m_models.at(row);
+        const QString modelName = modelJsonString(m, "name");
+        const QString modelDir =
+            QDir(cacheDir()).filePath(modelJsonString(m, "modelDirName"));
         if (QFileInfo(modelDir).isDir() || isInstalled(row)) {
-            if (m.isPunctuationModel) {
+            if (modelJsonBool(m, "isPunctuationModel")) {
                 emit statusMessage(
-                    tr("Punctuation model ready: %1").arg(m.name));
+                    tr("Punctuation model ready: %1").arg(modelName));
             }
             else {
                 // Don't auto-load — user must click "Use"
                 emit statusMessage(
-                    tr("Downloaded: %1. Click \"Use\" to load.").arg(m.name));
+                    tr("Downloaded: %1. Click \"Use\" to load.")
+                        .arg(modelName));
             }
         }
     }
@@ -1004,19 +1040,21 @@ bool AsrSettingWidget::isInstalled(int row) const
     if (row < 0 || row >= m_models.size()) {
         return false;
     }
-    const auto &m = m_models.at(row);
-    if (m.type == QStringLiteral("System") || m.modelDirName.isEmpty()) {
+    const nlohmann::json &m = m_models.at(row);
+    const QString modelDirName = modelJsonString(m, "modelDirName");
+    if (modelJsonString(m, "type") == QStringLiteral("System") ||
+        modelDirName.isEmpty()) {
         return true;
     }
-    const QString path = QDir(cacheDir()).filePath(m.modelDirName);
-    SPDLOG_DEBUG("model {} cache path: {}", m.modelDirName, path);
+    const QString path = QDir(cacheDir()).filePath(modelDirName);
+    SPDLOG_DEBUG("model {} cache path: {}", modelDirName, path);
     return QFileInfo(path).isDir();
 }
 
 int AsrSettingWidget::findModelRowByDirName(const QString &dirName) const
 {
     for (int i = 0; i < m_models.size(); ++i) {
-        if (m_models[i].modelDirName == dirName) {
+        if (modelJsonString(m_models[i], "modelDirName") == dirName) {
             return i;
         }
     }

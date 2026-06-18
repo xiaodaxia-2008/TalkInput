@@ -20,7 +20,6 @@ public:
 
     void setModelDirectory(const QString &dir);
     void setModelType(const QString &type);
-    void setPunctuationModelDir(const QString &dir);
 
     QString modelDirectory() const
     {
@@ -47,6 +46,12 @@ public:
 public slots:
     void loadModel();
     void unloadModel();
+
+private:
+    void loadFromJson(const nlohmann::json &config,
+                      SpeechRecognizer::Type type);
+
+public slots:
     void startSession();
     void feedAudio(const QByteArray &pcm16, int sampleRate, int channels);
     void finishSession();
@@ -60,7 +65,6 @@ private:
     std::unique_ptr<SpeechRecognizer> m_recognizer;
     QString m_modelDir;
     QString m_modelType;
-    QString m_punctuationModelDir;
     bool m_modelLoaded = false;
     bool m_streamingMode = false;
 };

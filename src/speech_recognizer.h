@@ -1,5 +1,7 @@
 #pragma once
 
+#include "json_utils.h"
+
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -26,40 +28,11 @@ public:
         System,
     };
 
-    struct Config
-    {
-        Type type = Type::StreamingParaformer;
-
-        QString modelDir;
-        int sampleRate = 16000;
-        int featureDim = 80;
-        int numThreads = 2;
-        QString language = "zh";
-        QString modelingUnit = "cjkchar";
-
-        QString hotwordsText;
-        float hotwordsScore = 1.5F;
-
-        // SenseVoice
-        bool senseVoiceUseItn = true;
-
-        // FunASR Nano
-        QString funasrSystemPrompt = "You are a helpful assistant.";
-        QString funasrUserPrompt = "\u8BED\u97F3\u8F6C\u5199\uFF1A";
-        int funasrMaxNewTokens = 128;
-        float funasrTemperature = 1e-6F;
-        float funasrTopP = 0.8F;
-        int funasrSeed = 42;
-        bool funasrItn = true;
-
-        // Punctuation restoration (offline model, e.g. ct-transformer)
-        QString punctuationModelDir;
-    };
-
     explicit SpeechRecognizer(QObject *parent = nullptr);
     ~SpeechRecognizer() override;
 
-    virtual bool start(const Config &config, QString *errorMessage) = 0;
+    virtual bool start(const nlohmann::json &config,
+                       QString *errorMessage) = 0;
     virtual void stop() = 0;
     virtual bool isRunning() const = 0;
     virtual bool isStreaming() const = 0;
@@ -75,12 +48,13 @@ signals:
     void resultChanged(const QString &text, bool isFinal);
 
 protected:
-    bool prepareRecognizer(const Config &config, QString *errorMessage);
+    bool prepareRecognizer(const nlohmann::json &config,
+                           QString *errorMessage);
     void stopPunctuation();
     QString addPunctuation(const QString &text) const;
 
     static QString modelPath(const QString &modelDir, const QString &fileName);
-    static bool configuredModelPath(const Config &config,
+    static bool configuredModelPath(const nlohmann::json &config,
                                     const char *configField, QString *path,
                                     QString *errorMessage);
     static bool fileExists(const QString &path, QString *errorMessage);

@@ -34,6 +34,8 @@ constexpr const char *DefaultLlmModel = "Qwen3.5-2B-Q4_K_M";
 
 std::vector<ModelPreset> s_asrPresets;
 std::vector<ModelPreset> s_toolPresets;
+nlohmann::json s_asrPresetJsons = nlohmann::json::array();
+nlohmann::json s_toolPresetJsons = nlohmann::json::array();
 LlmLocalModel s_llmLocalModel;
 std::vector<LlmProviderPreset> s_llmProviderPresets;
 std::string s_llmSystemPrompt;
@@ -208,9 +210,11 @@ void ensureLoaded()
     s_loaded = true;
 
     const nlohmann::json root = appConfigRoot();
+    s_asrPresetJsons = root.value("asrPresets", nlohmann::json::array());
+    s_toolPresetJsons = root.value("toolPresets", nlohmann::json::array());
+    std::vector<ModelPreset> nestedTools = parseNestedToolPresets(root);
     s_asrPresets = parsePresetArray(root, "asrPresets");
     s_toolPresets = parsePresetArray(root, "toolPresets");
-    std::vector<ModelPreset> nestedTools = parseNestedToolPresets(root);
     s_toolPresets.insert(s_toolPresets.end(),
                          std::make_move_iterator(nestedTools.begin()),
                          std::make_move_iterator(nestedTools.end()));
@@ -332,6 +336,56 @@ std::string defaultLlmUserPrompt()
 {
     ensureLoaded();
     return s_llmUserPrompt;
+}
+
+std::vector<nlohmann::json> loadModelPresetJsons()
+{
+    ensureLoaded();
+    std::vector<nlohmann::json> result;
+    for (const auto &val : s_asrPresetJsons) {
+        result.push_back(val);
+    }
+    return result;
+}
+
+std::vector<nlohmann::json> loadToolPresetJsons()
+{
+    ensureLoaded();
+    std::vector<nlohmann::json> result;
+    for (const auto &val : s_toolPresetJsons) {
+        result.push_back(val);
+    }
+    return result;
+}
+
+std::optional<nlohmann::json> findModelPresetJsonByDirName(
+    const std::string &dirName)
+{
+    ensureLoaded();
+    for (const auto &val : s_asrPresetJsons) {
+        if (val.value("modelDirName", std::string()) == dirName) {
+            return std::optional<nlohmann::json>(val);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<nlohmann::json> findModelPresetJsonByDirectory(
+    const QString &modelDir)
+{
+    return findModelPresetJsonByDirName(QDir(modelDir).dirName().toStdString());
+}
+
+std::optional<nlohmann::json> findToolPresetJsonByDirName(
+    const std::string &dirName)
+{
+    ensureLoaded();
+    for (const auto &val : s_toolPresetJsons) {
+        if (val.value("modelDirName", std::string()) == dirName) {
+            return std::optional<nlohmann::json>(val);
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace talkinput

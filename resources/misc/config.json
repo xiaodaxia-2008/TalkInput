@@ -10,6 +10,7 @@
       "paramCount": 0,
       "streamingSupport": true,
       "hotwordsSupport": false,
+      "params": {},
       "files": {}
     },
     {
@@ -22,6 +23,14 @@
       "paramCount": 40,
       "streamingSupport": false,
       "hotwordsSupport": false,
+      "params": {
+        "sampleRate": 16000,
+        "featureDim": 80,
+        "numThreads": 2,
+        "language": "zh",
+        "senseVoiceUseItn": true,
+        "hotwordsScore": 1.5
+      },
       "files": {
         "senseVoiceModelFile": "model.int8.onnx",
         "tokensFile": "tokens.txt"
@@ -37,6 +46,20 @@
       "paramCount": 600,
       "streamingSupport": false,
       "hotwordsSupport": true,
+      "params": {
+        "sampleRate": 16000,
+        "featureDim": 80,
+        "numThreads": 2,
+        "language": "zh",
+        "funasrSystemPrompt": "You are a helpful assistant.",
+        "funasrUserPrompt": "语音转写：",
+        "funasrMaxNewTokens": 128,
+        "funasrTemperature": 1e-6,
+        "funasrTopP": 0.8,
+        "funasrSeed": 42,
+        "funasrItn": true,
+        "hotwordsScore": 1.5
+      },
       "files": {
         "funasrEncoderAdaptorFile": "encoder_adaptor.int8.onnx",
         "funasrLlmFile": "llm.int8.onnx",
@@ -54,37 +77,31 @@
       "paramCount": 0,
       "streamingSupport": true,
       "hotwordsSupport": false,
+      "params": {
+        "sampleRate": 16000,
+        "featureDim": 80,
+        "numThreads": 2,
+        "modelingUnit": "cjkchar",
+        "hotwordsScore": 1.5
+      },
       "files": {
         "encoderFile": "encoder.int8.onnx",
         "decoderFile": "decoder.int8.onnx",
         "tokensFile": "tokens.txt"
       },
       "postPunctuationModel": {
-        "name": "Punctuation",
-        "type": "Tool",
         "languages": "zh,en",
         "modelDirName": "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
         "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2",
         "size": 65011712,
         "paramCount": 0,
-        "streamingSupport": false,
-        "hotwordsSupport": false,
-        "isPunctuationModel": true,
         "files": {
-          "punctuationModelFile": "model.onnx"
+          "punctuationModelFile": "model.int8.onnx"
         }
       }
     }
   ],
   "llmPostProcessing": {
-    "systemPrompt": "你是一个有用的的智能助手",
-    "userPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}",
-    "localModel": {
-      "name": "Qwen3.5 2B Q4_K_M",
-      "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
-      "fileName": "Qwen3.5-2B-Q4_K_M.gguf",
-      "size": 1280835840
-    },
     "providers": [
       {
         "id": "llama.cpp",
@@ -92,6 +109,14 @@
         "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
         "model": "Qwen3.5-2B-Q4_K_M",
         "models": ["Qwen3.5-2B-Q4_K_M"],
+        "modelsInfo": {
+          "Qwen3.5-2B-Q4_K_M": {
+            "name": "Qwen3.5 2B Q4_K_M",
+            "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
+            "fileName": "Qwen3.5-2B-Q4_K_M.gguf",
+            "size": 1280835840
+          }
+        },
         "managedLocalService": true
       },
       {
@@ -148,8 +173,8 @@
       "customModel": "",
       "apiKey": "",
       "postProcessingEnabled": false,
-      "systemPrompt": "",
-      "userPrompt": ""
+      "systemPrompt": "你是一个有用的的智能助手",
+      "userPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}"
     },
     "ocr": {
       "useFocusedInputContext": false

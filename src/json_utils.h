@@ -24,6 +24,38 @@ inline void from_json(const nlohmann::json &j, QString &value)
                           : QString();
 }
 
+inline QString jsonString(const nlohmann::json &obj, const std::string &key,
+                          const QString &fallback = {})
+{
+    return obj.contains(key) && obj[key].is_string()
+               ? QString::fromStdString(obj[key].get<std::string>())
+               : fallback;
+}
+
+inline int jsonInt(const nlohmann::json &obj, const std::string &key,
+                   int fallback)
+{
+    return obj.contains(key) && obj[key].is_number_integer()
+               ? obj[key].get<int>()
+               : fallback;
+}
+
+inline float jsonFloat(const nlohmann::json &obj, const std::string &key,
+                       float fallback)
+{
+    return obj.contains(key) && obj[key].is_number()
+               ? obj[key].get<float>()
+               : fallback;
+}
+
+inline bool jsonBool(const nlohmann::json &obj, const std::string &key,
+                     bool fallback)
+{
+    return obj.contains(key) && obj[key].is_boolean()
+               ? obj[key].get<bool>()
+               : fallback;
+}
+
 namespace talkinput::json_detail
 {
 

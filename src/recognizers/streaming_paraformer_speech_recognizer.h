@@ -14,7 +14,7 @@ public:
     }
 
 protected:
-    bool configureModel(const Config &config,
+    bool configureModel(const nlohmann::json &config,
                         SherpaOnnxOnlineRecognizerConfig *recognizer,
                         QString *errorMessage) override;
 

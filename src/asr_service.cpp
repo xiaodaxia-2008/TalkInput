@@ -82,30 +82,28 @@ void AsrService::setModelType(const QString &type)
     m_modelType = type.trimmed();
 }
 
-void AsrService::setPunctuationModelDir(const QString &dir)
-{
-    m_punctuationModelDir = QDir::fromNativeSeparators(dir.trimmed());
-    if (!m_punctuationModelDir.isEmpty()) {
-        m_punctuationModelDir = QDir::cleanPath(m_punctuationModelDir);
-    }
-    SPDLOG_DEBUG("AsrService: punctuation model dir set to {}",
-                 m_punctuationModelDir);
-}
-
 void AsrService::loadModel()
 {
-    SpeechRecognizer::Config config;
-    config.modelDir = m_modelDir;
-
-    QString typeName = m_modelType;
-    std::optional<ModelPreset> modelPreset;
-    if (typeName.isEmpty() && !m_modelDir.isEmpty()) {
-        modelPreset = findModelPresetByDirectory(m_modelDir);
-        if (modelPreset) {
-            typeName = QString::fromStdString(modelPreset->type);
-        }
+    if (m_modelType == QStringLiteral("System")) {
+        loadFromJson({}, SpeechRecognizer::Type::System);
+        return;
     }
 
+    if (m_modelDir.isEmpty()) {
+        SPDLOG_WARN("AsrService: cannot load model, directory not set");
+        emit modelLoadResult(false, tr("Model directory not set."));
+        return;
+    }
+
+    const auto modelPresetJson = findModelPresetJsonByDirectory(m_modelDir);
+    if (!modelPresetJson) {
+        SPDLOG_WARN("AsrService: no preset found for {}", m_modelDir);
+        emit modelLoadResult(false, tr("No preset found for the selected model."));
+        return;
+    }
+
+    const QString typeName =
+        QString::fromStdString(modelPresetJson->value("type", std::string()));
     const auto type = typeFromString(typeName);
     if (!type) {
         SPDLOG_WARN("AsrService: unsupported recognizer type {}", typeName);
@@ -113,48 +111,69 @@ void AsrService::loadModel()
         return;
     }
 
-    config.type = *type;
-    if (config.type != SpeechRecognizer::Type::System &&
-        config.modelDir.isEmpty())
-    {
-        SPDLOG_WARN("AsrService: cannot load model, directory not set");
-        emit modelLoadResult(false, tr("Model directory not set."));
-        return;
-    }
+    nlohmann::json config = *modelPresetJson;
+    config["modelDir"] = m_modelDir;
 
-    config.language = appConfigString("settings/app/language", "zh");
-    config.senseVoiceUseItn = true;
-    config.punctuationModelDir = m_punctuationModelDir;
-    if (!modelPreset && !m_modelDir.isEmpty()) {
-        modelPreset = findModelPresetByDirectory(m_modelDir);
+    // Resolve absolute paths for all configured model files
+    const nlohmann::json files =
+        config.value("files", nlohmann::json::object());
+    nlohmann::json resolvedFiles = nlohmann::json::object();
+    for (auto it = files.begin(); it != files.end(); ++it) {
+        if (!it->is_string()) {
+            continue;
+        }
+        const QString relative = QString::fromStdString(it->get<std::string>());
+        const QString absolute = QDir(m_modelDir).filePath(relative);
+        resolvedFiles[it.key()] = absolute.toStdString();
     }
+    config["files"] = resolvedFiles;
 
-    // Auto-select installed punctuation model partner if none explicitly set
-    if (modelPreset && config.punctuationModelDir.isEmpty()) {
-        const QString punctDirName =
-            QString::fromStdString(modelPreset->postPunctuationModelDirName);
-        if (!punctDirName.isEmpty()) {
-            const QString punctDir =
-                QDir(QDir(appDataDir()).filePath(QStringLiteral("models")))
-                    .filePath(punctDirName);
-            if (QFileInfo(punctDir).isDir()) {
-                config.punctuationModelDir = punctDir;
-                SPDLOG_INFO("AsrService: auto-selected punctuation model dir {}",
-                            punctDir);
+    // Resolve punctuation model file if a partner is configured
+    const QString punctDirName =
+        QString::fromStdString(
+            config.value("postPunctuationModel", nlohmann::json::object())
+                .value("modelDirName", std::string()));
+    if (!punctDirName.isEmpty()) {
+        const QString punctDir =
+            QDir(QDir(appDataDir()).filePath(QStringLiteral("models")))
+                .filePath(punctDirName);
+        const auto punctPresetJson = findToolPresetJsonByDirName(
+            punctDirName.toStdString());
+        if (punctPresetJson) {
+            const nlohmann::json punctFiles =
+                punctPresetJson->value("files", nlohmann::json::object());
+            auto it = punctFiles.find("punctuationModelFile");
+            if (it != punctFiles.end() && it->is_string()) {
+                const QString punctModelRelative =
+                    QString::fromStdString(it->get<std::string>());
+                const QString punctModelAbsolute =
+                    QDir(punctDir).filePath(punctModelRelative);
+                if (QFileInfo(punctModelAbsolute).exists()) {
+                    config["punctuationModelFile"] =
+                        punctModelAbsolute.toStdString();
+                }
             }
         }
     }
 
     const bool hotwordsSupport =
-        modelPreset ? modelPreset->hotwordsSupport : false;
-    config.hotwordsText = buildHotwordsText(
-        appConfigString("settings/model/hotwords"), hotwordsSupport);
+        config.value("hotwordsSupport", false);
+    config["hotwordsText"] =
+        buildHotwordsText(appConfigString("settings/model/hotwords"),
+                          hotwordsSupport)
+            .toStdString();
 
     SPDLOG_INFO("AsrService: configured recognizer {}", typeName);
 
+    loadFromJson(config, *type);
+}
+
+void AsrService::loadFromJson(const nlohmann::json &config,
+                              SpeechRecognizer::Type type)
+{
     unloadModel();
 
-    auto recognizer = createSpeechRecognizer(config.type);
+    auto recognizer = createSpeechRecognizer(type);
     if (!recognizer) {
         m_modelLoaded = false;
         emit modelLoadResult(false, tr("Unsupported model type."));
@@ -187,7 +206,6 @@ void AsrService::unloadModel()
     m_recognizer.reset();
     m_modelLoaded = false;
     m_streamingMode = false;
-    // Keep punctuation dir across reloads; cleared by setPunctuationModelDir()
     SPDLOG_INFO("AsrService: model unloaded");
 }
 

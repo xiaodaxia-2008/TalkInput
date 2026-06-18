@@ -1,5 +1,7 @@
 #pragma once
 
+#include "json_utils.h"
+
 #include <QString>
 #include <cstdint>
 #include <map>
@@ -66,6 +68,15 @@ std::vector<ModelPreset> loadToolPresets();
 std::optional<ModelPreset> findModelPresetByDirName(const std::string &dirName);
 std::optional<ModelPreset> findModelPresetByDirectory(const QString &modelDir);
 std::optional<ModelPreset> findToolPresetByDirName(const std::string &dirName);
+
+std::vector<nlohmann::json> loadModelPresetJsons();
+std::vector<nlohmann::json> loadToolPresetJsons();
+std::optional<nlohmann::json> findModelPresetJsonByDirName(
+    const std::string &dirName);
+std::optional<nlohmann::json> findModelPresetJsonByDirectory(
+    const QString &modelDir);
+std::optional<nlohmann::json> findToolPresetJsonByDirName(
+    const std::string &dirName);
 LlmLocalModel loadLlmLocalModel();
 std::vector<LlmProviderPreset> loadLlmProviderPresets();
 LlmProviderPreset defaultLlmProvider();

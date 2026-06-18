@@ -70,14 +70,17 @@ public:
         stop();
     }
 
-    bool start(const Config &config, QString *errorMessage,
+    bool start(const nlohmann::json &config, QString *errorMessage,
                QPointer<SystemSpeechRecognizer> context)
     {
         try {
             initWinrtApartment();
 
             // Create recognizer
-            const QString language = windowsLanguageTag(config.language);
+            const nlohmann::json params =
+                config.value("params", nlohmann::json::object());
+            const QString language =
+                windowsLanguageTag(jsonString(params, "language", "zh"));
             if (!language.isEmpty()) {
                 m_recognizer = Speech::SpeechRecognizer(
                     winrt::Windows::Globalization::Language(
@@ -221,7 +224,8 @@ SystemSpeechRecognizer::SystemSpeechRecognizer(QObject *parent)
 
 SystemSpeechRecognizer::~SystemSpeechRecognizer() = default;
 
-bool SystemSpeechRecognizer::start(const Config &config, QString *errorMessage)
+bool SystemSpeechRecognizer::start(const nlohmann::json &config,
+                                   QString *errorMessage)
 {
     Q_UNUSED(errorMessage);
     m_config = config;

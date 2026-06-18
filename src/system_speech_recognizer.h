@@ -19,7 +19,7 @@ public:
     explicit SystemSpeechRecognizer(QObject *parent = nullptr);
     ~SystemSpeechRecognizer() override;
 
-    bool start(const Config &config, QString *errorMessage) override;
+    bool start(const nlohmann::json &config, QString *errorMessage) override;
     void stop() override;
     bool isRunning() const override;
     bool isStreaming() const override;
@@ -34,7 +34,7 @@ public:
 private:
     class Impl;
     std::unique_ptr<Impl> m_impl;
-    Config m_config;
+    nlohmann::json m_config;
 };
 
 } // namespace talkinput

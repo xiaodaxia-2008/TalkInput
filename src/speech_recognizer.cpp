@@ -1,8 +1,6 @@
 #include "speech_recognizer.h"
 
 #include "logging.h"
-#include "model_registry.h"
-#include "utils.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
 #include "recognizers/streaming_paraformer_speech_recognizer.h"
@@ -16,68 +14,15 @@
 
 #include <algorithm>
 #include <cstring>
-#include <optional>
 
 namespace talkinput
 {
 namespace
 {
 
-const FileRule *findFileRule(const ModelPreset &preset, const char *configField)
+QString configuredPunctuationModelPath(const nlohmann::json &config)
 {
-    for (const FileRule &rule : preset.files) {
-        if (rule.configField == configField) {
-            return &rule;
-        }
-    }
-    return nullptr;
-}
-
-QString modelsCacheDir()
-{
-    return QDir(talkinput::appDataDir()).filePath(QStringLiteral("models"));
-}
-
-QString configuredToolPath(const QString &toolDir, const char *configField)
-{
-    if (toolDir.trimmed().isEmpty()) {
-        return {};
-    }
-
-    const QDir dir(toolDir);
-    const auto preset = findToolPresetByDirName(dir.dirName().toStdString());
-    if (!preset) {
-        return {};
-    }
-
-    const FileRule *rule = findFileRule(*preset, configField);
-    if (!rule || rule->relativePath.empty()) {
-        return {};
-    }
-
-    return dir.filePath(QString::fromStdString(rule->relativePath));
-}
-
-QString configuredPunctuationModelPath(const SpeechRecognizer::Config &config)
-{
-    if (!config.punctuationModelDir.trimmed().isEmpty()) {
-        return configuredToolPath(config.punctuationModelDir,
-                                  "punctuationModelFile");
-    }
-
-    if (config.modelDir.trimmed().isEmpty()) {
-        return {};
-    }
-
-    const auto preset = findModelPresetByDirectory(config.modelDir);
-    if (!preset || preset->postPunctuationModelDirName.empty()) {
-        return {};
-    }
-
-    const QString punctDir = QDir(modelsCacheDir())
-                                 .filePath(QString::fromStdString(
-                                     preset->postPunctuationModelDirName));
-    return configuredToolPath(punctDir, "punctuationModelFile");
+    return jsonString(config, "punctuationModelFile");
 }
 
 } // namespace
@@ -91,12 +36,13 @@ SpeechRecognizer::~SpeechRecognizer()
     stopPunctuation();
 }
 
-bool SpeechRecognizer::prepareRecognizer(const Config &config,
+bool SpeechRecognizer::prepareRecognizer(const nlohmann::json &config,
                                          QString *errorMessage)
 {
     stopPunctuation();
 
-    if (config.modelDir.trimmed().isEmpty()) {
+    const QString modelDir = jsonString(config, "modelDir");
+    if (modelDir.trimmed().isEmpty()) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("Model directory is empty.");
         }
@@ -113,11 +59,14 @@ bool SpeechRecognizer::prepareRecognizer(const Config &config,
         return true;
     }
 
+    const int numThreads = jsonInt(config.value("params", nlohmann::json::object()),
+                                   "numThreads", 2);
+
     SherpaOnnxOfflinePunctuationConfig punctConfig;
     std::memset(&punctConfig, 0, sizeof(punctConfig));
     const std::string punctModelStr = punctPath.toUtf8().toStdString();
     punctConfig.model.ct_transformer = punctModelStr.c_str();
-    punctConfig.model.num_threads = std::max(1, config.numThreads);
+    punctConfig.model.num_threads = std::max(1, numThreads);
     punctConfig.model.provider = "cpu";
 
     m_punct = SherpaOnnxCreateOfflinePunctuation(&punctConfig);
@@ -163,39 +112,35 @@ QString SpeechRecognizer::modelPath(const QString &modelDir,
     return QDir(modelDir).filePath(fileName);
 }
 
-bool SpeechRecognizer::configuredModelPath(const Config &config,
+bool SpeechRecognizer::configuredModelPath(const nlohmann::json &config,
                                            const char *configField,
                                            QString *path, QString *errorMessage)
 {
-    const auto preset = findModelPresetByDirectory(config.modelDir);
-    if (!preset) {
+    const QString resolved = jsonString(
+        config.value("files", nlohmann::json::object()), configField);
+    if (resolved.isEmpty()) {
         if (errorMessage) {
             *errorMessage =
-                QStringLiteral("No preset found for the selected model.");
-        }
-        return false;
-    }
-
-    const FileRule *rule = findFileRule(*preset, configField);
-    if (!rule || rule->relativePath.empty()) {
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("Model preset does not configure %1.")
+                QStringLiteral("Model file not configured: %1")
                     .arg(QString::fromLatin1(configField));
         }
         return false;
     }
 
-    const QString resolved =
-        modelPath(config.modelDir, QString::fromStdString(rule->relativePath));
-    const bool exists = rule->isDir ? pathExists(resolved, errorMessage)
-                                    : fileExists(resolved, errorMessage);
-    if (!exists) {
+    const QString modelDir = jsonString(config, "modelDir");
+    const QString absolutePath = modelPath(modelDir, resolved);
+
+    if (!QFileInfo::exists(absolutePath)) {
+        if (errorMessage) {
+            *errorMessage =
+                QStringLiteral("Required model file is missing: %1")
+                    .arg(QDir::toNativeSeparators(absolutePath));
+        }
         return false;
     }
 
     if (path) {
-        *path = resolved;
+        *path = absolutePath;
     }
     return true;
 }

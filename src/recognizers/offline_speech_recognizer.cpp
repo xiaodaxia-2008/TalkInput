@@ -22,7 +22,8 @@ OfflineSpeechRecognizer::~OfflineSpeechRecognizer()
     stop();
 }
 
-bool OfflineSpeechRecognizer::start(const Config &config, QString *errorMessage)
+bool OfflineSpeechRecognizer::start(const nlohmann::json &config,
+                                    QString *errorMessage)
 {
     stop();
 
@@ -30,10 +31,14 @@ bool OfflineSpeechRecognizer::start(const Config &config, QString *errorMessage)
         return false;
     }
 
+    const nlohmann::json params =
+        config.value("params", nlohmann::json::object());
+    const int sampleRate = jsonInt(params, "sampleRate", 16000);
+
     SherpaOnnxOfflineRecognizerConfig recognizerConfig;
     std::memset(&recognizerConfig, 0, sizeof(recognizerConfig));
-    recognizerConfig.feat_config.sample_rate = config.sampleRate;
-    recognizerConfig.feat_config.feature_dim = config.featureDim;
+    recognizerConfig.feat_config.sample_rate = sampleRate;
+    recognizerConfig.feat_config.feature_dim = jsonInt(params, "featureDim", 80);
 
     if (!configureModel(config, &recognizerConfig, errorMessage)) {
         stop();
@@ -41,8 +46,12 @@ bool OfflineSpeechRecognizer::start(const Config &config, QString *errorMessage)
     }
 
     recognizerConfig.model_config.provider = "cpu";
-    recognizerConfig.model_config.num_threads = std::max(1, config.numThreads);
-    recognizerConfig.model_config.modeling_unit = "cjkchar";
+    recognizerConfig.model_config.num_threads =
+        std::max(1, jsonInt(params, "numThreads", 2));
+    m_modelingUnit = jsonString(params, "modelingUnit", "cjkchar")
+                         .toUtf8()
+                         .toStdString();
+    recognizerConfig.model_config.modeling_unit = m_modelingUnit.c_str();
     recognizerConfig.decoding_method = "greedy_search";
     recognizerConfig.max_active_paths = 4;
 
@@ -56,7 +65,7 @@ bool OfflineSpeechRecognizer::start(const Config &config, QString *errorMessage)
         return false;
     }
 
-    m_modelSampleRate = config.sampleRate;
+    m_modelSampleRate = sampleRate;
     m_inputSampleRate = 0;
     m_samples.clear();
     return true;
@@ -72,6 +81,7 @@ void OfflineSpeechRecognizer::stop()
     m_samples.clear();
     m_inputSampleRate = 0;
     m_tokensPath.clear();
+    m_modelingUnit.clear();
     stopPunctuation();
 }
 

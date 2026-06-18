@@ -6,8 +6,8 @@ namespace talkinput
 {
 
 bool StreamingParaformerSpeechRecognizer::configureModel(
-    const Config &config, SherpaOnnxOnlineRecognizerConfig *recognizer,
-    QString *errorMessage)
+    const nlohmann::json &config,
+    SherpaOnnxOnlineRecognizerConfig *recognizer, QString *errorMessage)
 {
     QString encoder;
     QString decoder;

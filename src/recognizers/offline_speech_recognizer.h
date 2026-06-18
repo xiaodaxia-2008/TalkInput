@@ -17,7 +17,7 @@ public:
     explicit OfflineSpeechRecognizer(QObject *parent = nullptr);
     ~OfflineSpeechRecognizer() override;
 
-    bool start(const Config &config, QString *errorMessage) final;
+    bool start(const nlohmann::json &config, QString *errorMessage) final;
     void stop() override;
     bool isRunning() const final;
     bool isStreaming() const final;
@@ -28,12 +28,13 @@ public:
     void resetStream() final;
 
 protected:
-    virtual bool configureModel(const Config &config,
+    virtual bool configureModel(const nlohmann::json &config,
                                 SherpaOnnxOfflineRecognizerConfig *recognizer,
                                 QString *errorMessage) = 0;
     virtual int chunkSeconds() const;
 
     std::string m_tokensPath;
+    std::string m_modelingUnit;
 
 private:
     void decode();

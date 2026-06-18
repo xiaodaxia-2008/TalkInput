@@ -690,7 +690,6 @@ void MainWindow::resetUserSettings()
         if (m_asrService) {
             m_asrService->setModelDirectory({});
             m_asrService->setModelType({});
-            m_asrService->setPunctuationModelDir({});
             QMetaObject::invokeMethod(m_asrService, "unloadModel",
                                       Qt::QueuedConnection);
         }

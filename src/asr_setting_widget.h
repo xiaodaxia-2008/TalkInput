@@ -1,7 +1,8 @@
 #pragma once
 
+#include "json_utils.h"
+
 #include <QQueue>
-#include <QUrl>
 #include <QVector>
 #include <QWidget>
 #include <memory>
@@ -32,20 +33,6 @@ signals:
     void hotwordsChanged();
 
 private:
-    struct ModelInfo
-    {
-        QString name;
-        QString type;
-        QString languages;
-        QString modelDirName;
-        QUrl archiveUrl;
-        qint64 modelSize = 0;
-        int paramCount = 0;
-        bool streamingSupport = false;
-        bool isPunctuationModel = false;
-        QString postPunctuationDirName; // dir name of punctuation model partner
-    };
-
     void onModelChanged(int index);
     void refreshStatus();
     void onDownloadCurrent();
@@ -62,7 +49,7 @@ private:
     bool isInstalled(int row) const;
     int currentModelRow() const;
 
-    QVector<ModelInfo> m_models;
+    QVector<nlohmann::json> m_models;
 
     // Maps combo index → m_models index for ASR (non-punctuation) models
     QVector<int> m_asrModelIndices;

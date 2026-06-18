@@ -17,7 +17,7 @@ public:
         stop();
     }
 
-    bool start(const Config &, QString *errorMessage,
+    bool start(const nlohmann::json &, QString *errorMessage,
                QPointer<SystemSpeechRecognizer>)
     {
         SPDLOG_WARN("System speech recognizer is not implemented on macOS");
@@ -56,7 +56,8 @@ SystemSpeechRecognizer::SystemSpeechRecognizer(QObject *parent)
 
 SystemSpeechRecognizer::~SystemSpeechRecognizer() = default;
 
-bool SystemSpeechRecognizer::start(const Config &config, QString *errorMessage)
+bool SystemSpeechRecognizer::start(const nlohmann::json &config,
+                                   QString *errorMessage)
 {
     return m_impl->start(config, errorMessage, this);
 }
