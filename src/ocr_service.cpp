@@ -3,7 +3,7 @@
 #include <QMetaObject>
 
 #ifdef Q_OS_WIN
-#include "ocr_service_system.h"
+#include "system_ocr_service.h"
 #endif
 
 namespace talkinput
