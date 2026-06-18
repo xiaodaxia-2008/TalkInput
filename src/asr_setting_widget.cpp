@@ -668,85 +668,12 @@ int AsrSettingWidget::currentModelRow() const
 
 // ── Punctuation model auto-load ──────────────────────────────────
 
-void AsrSettingWidget::autoLoadPunctuationModel(int modelRow)
-{
-    if (modelRow < 0 || modelRow >= m_models.size()) {
-        return;
-    }
-
-    const QString punctDirName = m_models[modelRow].postPunctuationDirName;
-    if (punctDirName.isEmpty()) {
-        return;
-    }
-
-    // Find the punctuation model row by dir name
-    int punctRow = -1;
-    for (int i = 0; i < m_models.size(); ++i) {
-        if (m_models[i].modelDirName == punctDirName) {
-            punctRow = i;
-            break;
-        }
-    }
-    if (punctRow < 0) {
-        SPDLOG_WARN("AsrSettingWidget: punctuation model {} not found in "
-                    "presets",
-                    punctDirName);
-        return;
-    }
-
-    // Check if already installed (AsrService::loadModel will pick it up)
-    if (isInstalled(punctRow)) {
-        SPDLOG_DEBUG("AsrSettingWidget: punctuation model {} already installed",
-                     punctDirName);
-        return;
-    }
-
-    if (m_activeDownloadReply) {
-        SPDLOG_DEBUG("AsrSettingWidget: download already in progress");
-        return;
-    }
-
-    // Auto-download punctuation model
-    const auto &m = m_models[punctRow];
-    SPDLOG_INFO("AsrSettingWidget: punctuation model not found, "
-                "auto-downloading {}...",
-                punctDirName);
-    emit statusMessage(tr("Downloading punctuation model..."));
-
-    QDir cache(cacheDir());
-    if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) {
-        return;
-    }
-
-    const QString archiveName = QFileInfo(m.archiveUrl.path()).fileName();
-    m_activeDownloadPath = cache.filePath(archiveName);
-    m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
-    m_downloadTargetRow = punctRow;
-
-    QFile::remove(m_activeDownloadTempPath);
-    m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
-    if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) {
-        m_downloadTargetRow = -1;
-        return;
-    }
-
-    QNetworkRequest req(m.archiveUrl);
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                     QNetworkRequest::NoLessSafeRedirectPolicy);
-    m_activeDownloadReply = m_networkManager->get(req);
-    connect(m_activeDownloadReply, &QNetworkReply::readyRead, this, [this]() {
-        if (m_activeDownloadReply && m_activeDownloadFile) {
-            m_activeDownloadFile->write(m_activeDownloadReply->readAll());
-        }
-    });
-}
-
 // ── Actions ──────────────────────────────────────────────────────
 
 void AsrSettingWidget::onDownloadCurrent()
 {
     const int row = currentModelRow();
-    if (row < 0 || m_activeDownloadReply) {
+    if (row < 0 || m_activeDownloadReply || !m_downloadQueue.isEmpty()) {
         return;
     }
 
@@ -760,14 +687,36 @@ void AsrSettingWidget::onDownloadCurrent()
         return;
     }
 
+    m_downloadQueue.enqueue(row);
+
+    // Queue punctuation model partner if configured and not installed
+    if (!m.postPunctuationDirName.isEmpty()) {
+        const int punctRow = findModelRowByDirName(m.postPunctuationDirName);
+        if (punctRow >= 0 && !isInstalled(punctRow)) {
+            m_downloadQueue.enqueue(punctRow);
+        }
+    }
+
+    startModelDownload(m_downloadQueue.dequeue());
+}
+
+void AsrSettingWidget::startModelDownload(int row)
+{
+    if (row < 0 || row >= m_models.size()) {
+        return;
+    }
+    const auto &m = m_models[row];
+
     const QString archiveName = QFileInfo(m.archiveUrl.path()).fileName();
-    m_activeDownloadPath = cache.filePath(archiveName);
+    m_activeDownloadPath = QDir(cacheDir()).filePath(archiveName);
     m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
     m_downloadTargetRow = row;
 
     QFile::remove(m_activeDownloadTempPath);
     m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
     if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) {
+        m_downloadTargetRow = -1;
+        m_downloadQueue.clear();
         return;
     }
 
@@ -836,17 +785,11 @@ void AsrSettingWidget::onUseCurrent()
         return;
     }
 
-    const auto &model = m_models[row];
-
-    // Activate this model
+    // Activate this model (AsrService::loadModel will pick up the
+    // configured punctuation model partner from config.json if installed)
     activateModel(row);
 
-    // Check for punctuation model partner
-    if (!model.postPunctuationDirName.isEmpty()) {
-        autoLoadPunctuationModel(row);
-    }
-
-    emit statusMessage(tr("Model loaded: %1").arg(model.name));
+    emit statusMessage(tr("Model loaded: %1").arg(m_models[row].name));
 }
 
 void AsrSettingWidget::activateModel(int modelRow)
@@ -1009,6 +952,7 @@ void AsrSettingWidget::onDownloadFinished()
     if (failed) {
         QFile::remove(m_activeDownloadTempPath);
         m_activeDownloadFile.reset();
+        m_downloadQueue.clear();
         emit statusMessage(tr("Download failed."));
         refreshStatus();
         return;
@@ -1023,6 +967,7 @@ void AsrSettingWidget::onDownloadFinished()
 
     QString err;
     if (!extractArchive(m_activeDownloadPath, cacheDir(), &err)) {
+        m_downloadQueue.clear();
         emit statusMessage(tr("Extraction failed: %1").arg(err));
         refreshStatus();
         return;
@@ -1033,8 +978,6 @@ void AsrSettingWidget::onDownloadFinished()
         const QString modelDir = QDir(cacheDir()).filePath(m.modelDirName);
         if (QFileInfo(modelDir).isDir() || isInstalled(row)) {
             if (m.isPunctuationModel) {
-                // Notify that a punctuation model is now ready
-                emit punctuationModelReady(modelDir);
                 emit statusMessage(
                     tr("Punctuation model ready: %1").arg(m.name));
             }
@@ -1046,7 +989,12 @@ void AsrSettingWidget::onDownloadFinished()
         }
     }
 
-    refreshStatus();
+    if (!m_downloadQueue.isEmpty()) {
+        startModelDownload(m_downloadQueue.dequeue());
+    }
+    else {
+        refreshStatus();
+    }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -1063,6 +1011,16 @@ bool AsrSettingWidget::isInstalled(int row) const
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
     SPDLOG_DEBUG("model {} cache path: {}", m.modelDirName, path);
     return QFileInfo(path).isDir();
+}
+
+int AsrSettingWidget::findModelRowByDirName(const QString &dirName) const
+{
+    for (int i = 0; i < m_models.size(); ++i) {
+        if (m_models[i].modelDirName == dirName) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 } // namespace talkinput

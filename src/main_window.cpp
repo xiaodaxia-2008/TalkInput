@@ -284,21 +284,6 @@ void MainWindow::setupAsrSettingWidget()
         });
     connect(m_asrSettingWidget, &AsrSettingWidget::statusMessage, this,
             [this](const QString &msg) { statusBar()->showMessage(msg); });
-    connect(m_asrSettingWidget, &AsrSettingWidget::punctuationModelReady, this,
-            [this](const QString &punctuationDir) {
-                if (m_currentModelDirectory.isEmpty()) {
-                    return;
-                }
-                SPDLOG_INFO("Punctuation model ready: {}", punctuationDir);
-                SPDLOG_INFO("Punctuation ready, reloading ASR model...");
-                statusBar()->showMessage(
-                    tr("Punctuation ready, reloading model..."));
-                if (m_asrService) {
-                    m_asrService->setPunctuationModelDir(punctuationDir);
-                    QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                              Qt::QueuedConnection);
-                }
-            });
     connect(
         m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
             if (m_currentModelDirectory.isEmpty()) {

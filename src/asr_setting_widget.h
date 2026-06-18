@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QQueue>
 #include <QUrl>
 #include <QVector>
 #include <QWidget>
@@ -28,7 +29,6 @@ signals:
     void modelSelected(const QString &modelDirectory, const QString &modelName,
                        const QString &modelType);
     void statusMessage(const QString &message);
-    void punctuationModelReady(const QString &punctuationDir);
     void hotwordsChanged();
 
 private:
@@ -57,7 +57,8 @@ private:
     void onEditHotwords();
     void onDownloadFinished();
 
-    void autoLoadPunctuationModel(int modelRow);
+    void startModelDownload(int row);
+    int findModelRowByDirName(const QString &dirName) const;
     bool isInstalled(int row) const;
     int currentModelRow() const;
 
@@ -80,6 +81,7 @@ private:
     QString m_activeDownloadPath;
     QString m_activeDownloadTempPath;
     int m_downloadTargetRow = -1;
+    QQueue<int> m_downloadQueue;
 };
 
 } // namespace talkinput
