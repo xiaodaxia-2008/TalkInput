@@ -50,26 +50,6 @@ QString cacheDir()
     return QDir(base).filePath(QStringLiteral("models"));
 }
 
-QString displayTypeForPreset(const talkinput::ModelPreset &preset)
-{
-    if (preset.type == "Tool") {
-        return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                           "Tool");
-    }
-    if (preset.streamingSupport) {
-        return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                           "Realtime recognition");
-    }
-    return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                       "Non-realtime recognition");
-}
-
-QString displayNameForPreset(const talkinput::ModelPreset &preset)
-{
-    return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                       preset.name.c_str());
-}
-
 QString formatSize(qint64 bytes)
 {
     if (bytes >= 1073741824) {
@@ -95,6 +75,38 @@ QString currentLlmSystemPrompt()
     return prompt;
 }
 
+QString languageDisplay(const QString &lang)
+{
+    if (lang == QStringLiteral("multilingual")) {
+        return QCoreApplication::translate(
+            "talkinput::AsrSettingWidget",
+            "\345\244\232\350\257\255\350\250\200");
+    }
+    if (lang == QStringLiteral("zh") || lang == QStringLiteral("zh-CN")) {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "\344\270\255\346\226\207");
+    }
+    if (lang == QStringLiteral("en") || lang == QStringLiteral("en-US")) {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "English");
+    }
+    if (lang == QStringLiteral("zh,en") || lang == QStringLiteral("zh,en-US")) {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "\344\270\255\350\213\261");
+    }
+    return lang;
+}
+
+QString streamingLabel(bool streaming)
+{
+    if (streaming) {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "\345\256\236\346\227\266");
+    }
+    return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                       "\351\235\236\345\256\236\346\227\266");
+}
+
 } // namespace
 
 namespace talkinput
@@ -112,20 +124,18 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     root->setContentsMargins(8, 8, 8, 8);
     root->setSpacing(8);
 
-    // ── Model mode selector ────────────────────────────────────
-    auto *modelGroup = new QGroupBox(tr("Recognition Mode"), this);
+    // ── Model selector ───────────────────────────────────────────
+    auto *modelGroup = new QGroupBox(tr("Recognition Model"), this);
     auto *modelLayout = new QVBoxLayout(modelGroup);
     modelLayout->setContentsMargins(10, 10, 10, 10);
     modelLayout->setSpacing(8);
 
-    auto *modeRow = new QHBoxLayout();
-    modeRow->setSpacing(8);
-    m_modeCombo = new QComboBox(modelGroup);
-    m_modeCombo->addItem(tr("Non-realtime recognition")); // offline
-    m_modeCombo->addItem(tr("Realtime recognition"));     // streaming
-    modeRow->addWidget(new QLabel(tr("Mode:"), modelGroup));
-    modeRow->addWidget(m_modeCombo, 1);
-    modelLayout->addLayout(modeRow);
+    auto *modelRow = new QHBoxLayout();
+    modelRow->setSpacing(8);
+    m_modelCombo = new QComboBox(modelGroup);
+    modelRow->addWidget(new QLabel(tr("Model:"), modelGroup));
+    modelRow->addWidget(m_modelCombo, 1);
+    modelLayout->addLayout(modelRow);
 
     m_statusLabel = new QLabel(modelGroup);
     m_statusLabel->setWordWrap(true);
@@ -135,16 +145,20 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     btnRow->setSpacing(8);
     m_dlBtn = new QPushButton(tr("Download"), modelGroup);
     m_delBtn = new QPushButton(tr("Delete"), modelGroup);
+    m_useBtn = new QPushButton(tr("Use"), modelGroup);
     m_dlBtn->setEnabled(false);
     m_delBtn->setEnabled(false);
+    m_useBtn->setEnabled(false);
+    m_useBtn->setStyleSheet("font-weight: bold;");
     btnRow->addWidget(m_dlBtn);
     btnRow->addWidget(m_delBtn);
+    btnRow->addWidget(m_useBtn);
     btnRow->addStretch();
     modelLayout->addLayout(btnRow);
 
     root->addWidget(modelGroup);
 
-    // ── LLM Service ────────────────────────────────────────────
+    // ── LLM Service ──────────────────────────────────────────────
     auto *llmGroup = new QGroupBox(tr("LLM Service"), this);
     auto *llmForm = new QFormLayout(llmGroup);
     llmForm->setContentsMargins(10, 10, 10, 10);
@@ -422,7 +436,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     llmForm->addRow(tr("Prompt"), promptWidget);
     root->addWidget(llmGroup);
 
-    // ── Bottom row ──────────────────────────────────────────────
+    // ── Bottom row ───────────────────────────────────────────────
     auto *bottomRow = new QHBoxLayout();
     auto *archiveBtn = new QPushButton(tr("Use Archive"), this);
     archiveBtn->setToolTip(tr("Import and extract a model archive"));
@@ -469,92 +483,103 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     bottomRow->addStretch();
     root->addLayout(bottomRow);
 
-    // ── Model definitions ──────────────────────────────────────
-    spdlog::debug("AsrSettingWidget: loading ASR presets");
-    for (const auto &preset : loadModelPresets()) {
-        spdlog::debug("AsrSettingWidget: ASR preset {} ({})", preset.name,
+    // ── Load model presets from config ───────────────────────────
+    spdlog::debug("AsrSettingWidget: loading model presets");
+    const auto presets = loadModelPresets();
+    const auto toolPresets = loadToolPresets();
+
+    // Store ALL presets (ASR + tool/punctuation) in m_models
+    for (const auto &preset : presets) {
+        spdlog::debug("AsrSettingWidget: preset {} ({})", preset.name,
                       preset.modelDirName);
-        m_models.append(ModelInfo{
-            .name = displayNameForPreset(preset),
-            .type = displayTypeForPreset(preset),
-            .languages = qs(preset.languages),
-            .modelDirName = qs(preset.modelDirName),
-            .archiveUrl = QUrl(qs(preset.url)),
-            .modelSize = static_cast<qint64>(preset.size),
-            .paramCount = preset.paramCount,
-            .streamingSupport = preset.streamingSupport,
-            .isPunctuationModel = preset.isPunctuationModel,
-        });
+        ModelInfo info;
+        info.name = qs(preset.name);
+        info.type = qs(preset.type);
+        info.languages = qs(preset.languages);
+        info.modelDirName = qs(preset.modelDirName);
+        info.archiveUrl = QUrl(qs(preset.url));
+        info.modelSize = static_cast<qint64>(preset.size);
+        info.paramCount = preset.paramCount;
+        info.streamingSupport = preset.streamingSupport;
+        info.isPunctuationModel = preset.isPunctuationModel;
+
+        // Store punctuation partner dir name if configured
+        if (!preset.postPunctuationModelDirName.empty()) {
+            info.postPunctuationDirName =
+                qs(preset.postPunctuationModelDirName);
+            spdlog::debug("AsrSettingWidget: {} has punctuation partner {}",
+                          info.name, info.postPunctuationDirName);
+        }
+
+        m_models.append(std::move(info));
     }
 
-    spdlog::debug("AsrSettingWidget: loading tool presets");
-    for (const auto &preset : loadToolPresets()) {
+    // Store tool presets too (for punctuation model lookups)
+    for (const auto &preset : toolPresets) {
         spdlog::debug("AsrSettingWidget: tool preset {} ({})", preset.name,
                       preset.modelDirName);
-        m_models.append(ModelInfo{
-            .name = displayNameForPreset(preset),
-            .type = displayTypeForPreset(preset),
-            .languages = qs(preset.languages),
-            .modelDirName = qs(preset.modelDirName),
-            .archiveUrl = QUrl(qs(preset.url)),
-            .modelSize = static_cast<qint64>(preset.size),
-            .paramCount = preset.paramCount,
-            .streamingSupport = preset.streamingSupport,
-            .isPunctuationModel = preset.isPunctuationModel,
-        });
+        ModelInfo info;
+        info.name = qs(preset.name);
+        info.type = qs(preset.type);
+        info.languages = qs(preset.languages);
+        info.modelDirName = qs(preset.modelDirName);
+        info.archiveUrl = QUrl(qs(preset.url));
+        info.modelSize = static_cast<qint64>(preset.size);
+        info.paramCount = preset.paramCount;
+        info.streamingSupport = preset.streamingSupport;
+        info.isPunctuationModel = preset.isPunctuationModel;
+        m_models.append(std::move(info));
     }
 
-    // Mode definitions
-    // Mode 0: offline -> primary SenseVoice, backup FunASR Nano
-    // Mode 1: streaming -> primary Streaming Paraformer
-    m_modes.append({
-        .label = tr("Non-realtime recognition"),
-        .primaryDirName = QStringLiteral(
-            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"),
-        .backupDirName =
-            QStringLiteral("sherpa-onnx-funasr-nano-int8-2025-12-30"),
-        .isStreaming = false,
-    });
-    m_modes.append({
-        .label = tr("Realtime recognition"),
-        .primaryDirName =
-            QStringLiteral("sherpa-onnx-streaming-paraformer-bilingual-zh-en"),
-        .backupDirName = {},
-        .isStreaming = true,
-    });
-
-    // Find punctuation row index
-    m_punctuationRow = -1;
+    // Populate ComboBox with ASR (non-punctuation) models
+    // Format: "Name - 实时/非实时 - 语言"
+    m_asrModelIndices.clear();
+    m_modelCombo->clear();
     for (int i = 0; i < m_models.size(); ++i) {
         if (m_models[i].isPunctuationModel) {
-            m_punctuationRow = i;
-            break;
+            continue; // skip punctuation models in combo
         }
+        const QString label =
+            QStringLiteral("%1 - %2 - %3")
+                .arg(m_models[i].name,
+                     streamingLabel(m_models[i].streamingSupport),
+                     languageDisplay(m_models[i].languages));
+        m_modelCombo->addItem(label);
+        m_asrModelIndices.append(i);
     }
 
-    // Restore saved mode
-    const bool savedStreaming =
-        appConfigBool("settings/model/streamingMode", false);
-    m_modeCombo->setCurrentIndex(savedStreaming ? 1 : 0);
+    // Restore saved model selection (by modelDirName)
+    const QString savedDirName =
+        QFileInfo(appConfigString("settings/model/directory")).fileName();
+    int restoreIndex = -1;
+    if (!savedDirName.isEmpty()) {
+        for (int ci = 0; ci < m_asrModelIndices.size(); ++ci) {
+            const int mi = m_asrModelIndices[ci];
+            if (m_models[mi].modelDirName == savedDirName) {
+                restoreIndex = ci;
+                break;
+            }
+        }
+    }
+    if (restoreIndex >= 0) {
+        m_modelCombo->setCurrentIndex(restoreIndex);
+    }
 
-    connect(m_modeCombo, &QComboBox::currentIndexChanged, this,
-            &AsrSettingWidget::onModeChanged);
+    connect(m_modelCombo, &QComboBox::currentIndexChanged, this,
+            &AsrSettingWidget::onModelChanged);
 
     // Download/delete buttons
     connect(m_dlBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onDownloadCurrent);
     connect(m_delBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onDeleteCurrent);
+    connect(m_useBtn, &QPushButton::clicked, this,
+            &AsrSettingWidget::onUseCurrent);
 
-    // Auto-download punctuation model after UI is ready
-    m_startupTimer = new QTimer(this);
-    m_startupTimer->setSingleShot(true);
-    connect(m_startupTimer, &QTimer::timeout, this,
-            &AsrSettingWidget::ensurePunctuationModel);
-    m_startupTimer->start(1500);
-
-    // Initial status
-    onModeChanged(m_modeCombo->currentIndex());
+    // Initial status update
+    if (m_modelCombo->count() > 0) {
+        onModelChanged(m_modelCombo->currentIndex());
+    }
 
     // Apply icons to bottom buttons
     setButtonIcon(archiveBtn, ":/resources/folder-plus.svg", 22);
@@ -566,35 +591,27 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     spdlog::debug("AsrSettingWidget: constructor end");
 }
 
-AsrSettingWidget::~AsrSettingWidget()
-{
-    if (m_activeDownloadReply) {
-        m_activeDownloadReply->abort();
-        m_activeDownloadReply->deleteLater();
-        m_activeDownloadReply = nullptr;
-    }
-}
+AsrSettingWidget::~AsrSettingWidget() = default;
 
-// ── Mode ───────────────────────────────────────────────────────
+// ── Model selection ──────────────────────────────────────────────
 
-void AsrSettingWidget::onModeChanged(int index)
+void AsrSettingWidget::onModelChanged(int index)
 {
-    if (index < 0 || index >= m_modes.size()) {
+    if (index < 0 || index >= m_asrModelIndices.size()) {
         return;
     }
 
-    const auto &mode = m_modes[index];
-    const int primaryRow = findModelRow(mode.primaryDirName);
-
-    if (primaryRow < 0) {
-        m_statusLabel->setText(tr("Error: model preset not found"));
-        m_dlBtn->setEnabled(false);
-        m_delBtn->setEnabled(false);
+    const int modelRow = m_asrModelIndices[index];
+    if (modelRow < 0 || modelRow >= m_models.size()) {
         return;
     }
 
-    const bool installed = isInstalled(primaryRow);
-    const auto &model = m_models[primaryRow];
+    const bool installed = isInstalled(modelRow);
+    const auto &model = m_models[modelRow];
+
+    m_dlBtn->setEnabled(false);
+    m_delBtn->setEnabled(false);
+    m_useBtn->setEnabled(false);
 
     if (installed) {
         const QString sizeStr =
@@ -602,71 +619,119 @@ void AsrSettingWidget::onModeChanged(int index)
                 ? QString(" (%1)").arg(formatSize(model.modelSize))
                 : QString();
         m_statusLabel->setText(
-            tr("Model installed: %1%2").arg(model.name, sizeStr));
-        m_dlBtn->setEnabled(false);
+            tr("Installed: %1%2 \342\200\224 click \"Use\" to load")
+                .arg(model.name, sizeStr));
         m_delBtn->setEnabled(true);
-
-        // Auto-activate
-        activateModel(primaryRow);
+        m_useBtn->setEnabled(true);
     }
     else {
-        // Check backup model
-        int backupRow = -1;
-        if (!mode.backupDirName.isEmpty()) {
-            backupRow = findModelRow(mode.backupDirName);
-        }
-        if (backupRow >= 0 && isInstalled(backupRow)) {
-            const auto &backup = m_models[backupRow];
-            m_statusLabel->setText(
-                tr("Using backup model: %1").arg(backup.name));
-            m_dlBtn->setEnabled(false);
-            m_delBtn->setEnabled(true);
-            activateModel(backupRow);
-        }
-        else {
-            const QString sizeStr =
-                model.modelSize > 0 ? formatSize(model.modelSize) : QString();
-            m_statusLabel->setText(
-                tr("Model not installed (%1, %2). Click Download.")
-                    .arg(model.name, sizeStr));
-            m_dlBtn->setEnabled(true);
-            m_delBtn->setEnabled(false);
-        }
+        const QString sizeStr =
+            model.modelSize > 0 ? formatSize(model.modelSize) : QString();
+        m_statusLabel->setText(tr("Not installed (%1, %2). Click Download.")
+                                   .arg(model.name, sizeStr));
+        m_dlBtn->setEnabled(true);
     }
-
-    // Save mode preference
-    setAppConfigValue("settings/model/streamingMode", mode.isStreaming);
 }
 
 void AsrSettingWidget::refreshStatus()
 {
-    onModeChanged(m_modeCombo->currentIndex());
-}
-
-int AsrSettingWidget::findModelRow(const QString &modelDirName) const
-{
-    for (int i = 0; i < m_models.size(); ++i) {
-        if (m_models[i].modelDirName == modelDirName) {
-            return i;
-        }
+    if (m_modelCombo->count() > 0) {
+        onModelChanged(m_modelCombo->currentIndex());
     }
-    return -1;
 }
 
-int AsrSettingWidget::currentPrimaryModelRow() const
+int AsrSettingWidget::currentModelRow() const
 {
-    const int idx = m_modeCombo->currentIndex();
-    if (idx < 0 || idx >= m_modes.size()) {
+    const int ci = m_modelCombo->currentIndex();
+    if (ci < 0 || ci >= m_asrModelIndices.size()) {
         return -1;
     }
-    return findModelRow(m_modes[idx].primaryDirName);
+    return m_asrModelIndices[ci];
 }
 
-// ── Actions ────────────────────────────────────────────────────
+// ── Punctuation model auto-load ──────────────────────────────────
+
+void AsrSettingWidget::autoLoadPunctuationModel(int modelRow)
+{
+    if (modelRow < 0 || modelRow >= m_models.size()) {
+        return;
+    }
+
+    const QString punctDirName = m_models[modelRow].postPunctuationDirName;
+    if (punctDirName.isEmpty()) {
+        return;
+    }
+
+    // Find the punctuation model row by dir name
+    int punctRow = -1;
+    for (int i = 0; i < m_models.size(); ++i) {
+        if (m_models[i].modelDirName == punctDirName) {
+            punctRow = i;
+            break;
+        }
+    }
+    if (punctRow < 0) {
+        spdlog::warn("AsrSettingWidget: punctuation model {} not found in "
+                     "presets",
+                     punctDirName);
+        return;
+    }
+
+    // Check if already installed
+    if (isInstalled(punctRow)) {
+        spdlog::debug(
+            "AsrSettingWidget: punctuation model {} already installed",
+            punctDirName);
+        const QString punctDir = QDir(cacheDir()).filePath(punctDirName);
+        emit punctuationModelReady(punctDir);
+        return;
+    }
+
+    if (m_activeDownloadReply) {
+        spdlog::debug("AsrSettingWidget: download already in progress");
+        return;
+    }
+
+    // Auto-download punctuation model
+    const auto &m = m_models[punctRow];
+    spdlog::info("AsrSettingWidget: punctuation model not found, "
+                 "auto-downloading {}...",
+                 punctDirName);
+    emit statusMessage(tr("Downloading punctuation model..."));
+
+    QDir cache(cacheDir());
+    if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) {
+        return;
+    }
+
+    const QString archiveName = QFileInfo(m.archiveUrl.path()).fileName();
+    m_activeDownloadPath = cache.filePath(archiveName);
+    m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
+    m_downloadTargetRow = punctRow;
+
+    QFile::remove(m_activeDownloadTempPath);
+    m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
+    if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) {
+        m_downloadTargetRow = -1;
+        return;
+    }
+
+    QNetworkRequest req(m.archiveUrl);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    m_activeDownloadReply = m_networkManager->get(req);
+    connect(m_activeDownloadReply, &QNetworkReply::readyRead, this, [this]() {
+        if (m_activeDownloadReply && m_activeDownloadFile) {
+            m_activeDownloadFile->write(m_activeDownloadReply->readAll());
+        }
+    });
+}
+
+// ── Actions ──────────────────────────────────────────────────────
 
 void AsrSettingWidget::onDownloadCurrent()
 {
-    const int row = currentPrimaryModelRow();
+    const int row = currentModelRow();
     if (row < 0 || m_activeDownloadReply) {
         return;
     }
@@ -718,7 +783,7 @@ void AsrSettingWidget::onDownloadCurrent()
 
 void AsrSettingWidget::onDeleteCurrent()
 {
-    const int row = currentPrimaryModelRow();
+    const int row = currentModelRow();
     if (row < 0 || row >= m_models.size()) {
         return;
     }
@@ -743,6 +808,31 @@ void AsrSettingWidget::onDeleteCurrent()
     spdlog::info("Deleted model: {} ({})", m.name, dir);
     emit statusMessage(tr("Deleted: %1").arg(m.name));
     refreshStatus();
+}
+
+void AsrSettingWidget::onUseCurrent()
+{
+    const int row = currentModelRow();
+    if (row < 0 || row >= m_models.size()) {
+        return;
+    }
+
+    if (!isInstalled(row)) {
+        emit statusMessage(tr("Model not installed. Download first."));
+        return;
+    }
+
+    const auto &model = m_models[row];
+
+    // Activate this model
+    activateModel(row);
+
+    // Check for punctuation model partner
+    if (!model.postPunctuationDirName.isEmpty()) {
+        autoLoadPunctuationModel(row);
+    }
+
+    emit statusMessage(tr("Model loaded: %1").arg(model.name));
 }
 
 void AsrSettingWidget::activateModel(int modelRow)
@@ -879,7 +969,7 @@ void AsrSettingWidget::onEditHotwords()
     emit hotwordsChanged();
 }
 
-// ── Download finished ───────────────────────────────────────────
+// ── Download finished ────────────────────────────────────────────
 
 void AsrSettingWidget::onDownloadFinished()
 {
@@ -926,21 +1016,23 @@ void AsrSettingWidget::onDownloadFinished()
         const QString modelDir = QDir(cacheDir()).filePath(m.modelDirName);
         if (QFileInfo(modelDir).isDir() || isInstalled(row)) {
             if (m.isPunctuationModel) {
-                emit punctuationModelReady();
+                // Notify that a punctuation model is now ready
+                emit punctuationModelReady(modelDir);
+                emit statusMessage(
+                    tr("Punctuation model ready: %1").arg(m.name));
             }
             else {
-                emit modelSelected(modelDir, m.name);
-                setAppConfigValue("settings/model/directory", modelDir);
-                setAppConfigValue("settings/model/name", m.name);
+                // Don't auto-load — user must click "Use"
+                emit statusMessage(
+                    tr("Downloaded: %1. Click \"Use\" to load.").arg(m.name));
             }
-            emit statusMessage(tr("Downloaded: %1").arg(m.name));
         }
     }
 
     refreshStatus();
 }
 
-// ── Punctuation model helpers ──────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────
 
 bool AsrSettingWidget::isInstalled(int row) const
 {
@@ -950,58 +1042,6 @@ bool AsrSettingWidget::isInstalled(int row) const
     const auto &m = m_models.at(row);
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
     return QFileInfo(path).isDir();
-}
-
-QString AsrSettingWidget::punctuationModelName()
-{
-    return QStringLiteral(
-        "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8");
-}
-
-void AsrSettingWidget::ensurePunctuationModel()
-{
-    if (m_punctuationRow < 0) {
-        return;
-    }
-    if (isInstalled(m_punctuationRow)) {
-        spdlog::debug("Punctuation model already installed");
-        emit punctuationModelReady();
-        return;
-    }
-    if (m_activeDownloadReply) {
-        return;
-    }
-
-    const auto &m = m_models[m_punctuationRow];
-    spdlog::info("Punctuation model not found, starting auto-download...");
-    emit statusMessage(tr("Punctuation model not found, downloading..."));
-
-    QDir cache(cacheDir());
-    if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) {
-        return;
-    }
-
-    const QString archiveName = QFileInfo(m.archiveUrl.path()).fileName();
-    m_activeDownloadPath = cache.filePath(archiveName);
-    m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
-    m_downloadTargetRow = m_punctuationRow;
-
-    QFile::remove(m_activeDownloadTempPath);
-    m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
-    if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) {
-        m_downloadTargetRow = -1;
-        return;
-    }
-
-    QNetworkRequest req(m.archiveUrl);
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                     QNetworkRequest::NoLessSafeRedirectPolicy);
-    m_activeDownloadReply = m_networkManager->get(req);
-    connect(m_activeDownloadReply, &QNetworkReply::readyRead, this, [this]() {
-        if (m_activeDownloadReply && m_activeDownloadFile) {
-            m_activeDownloadFile->write(m_activeDownloadReply->readAll());
-        }
-    });
 }
 
 } // namespace talkinput

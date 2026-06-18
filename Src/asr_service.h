@@ -19,6 +19,7 @@ public:
     ~AsrService() override;
 
     void setModelDirectory(const QString &dir);
+    void setPunctuationModelDir(const QString &dir);
 
     QString modelDirectory() const
     {
@@ -54,9 +55,11 @@ signals:
 
 private:
     SpeechRecognizer::Config detectAndConfigure(const QString &modelDir);
+    QString findPunctuationModelPath(const QString &modelDir) const;
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
     QString m_modelDir;
+    QString m_punctuationModelDir;
     bool m_modelLoaded = false;
     bool m_streamingMode = false;
 };

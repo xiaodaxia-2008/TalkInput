@@ -27,7 +27,7 @@ public:
 signals:
     void modelSelected(const QString &modelDirectory, const QString &modelName);
     void statusMessage(const QString &message);
-    void punctuationModelReady();
+    void punctuationModelReady(const QString &punctuationDir);
     void hotwordsChanged();
 
 private:
@@ -42,40 +42,35 @@ private:
         int paramCount = 0;
         bool streamingSupport = false;
         bool isPunctuationModel = false;
+        QString postPunctuationDirName; // dir name of punctuation model partner
     };
 
-    struct ModeDef
-    {
-        QString label;
-        QString primaryDirName; // modelDirName of primary model
-        QString backupDirName; // modelDirName of fallback model (empty if none)
-        bool isStreaming = false;
-    };
-
-    void onModeChanged(int index);
+    void onModelChanged(int index);
     void refreshStatus();
-    int findModelRow(const QString &modelDirName) const;
     void onDownloadCurrent();
     void onDeleteCurrent();
+    void onUseCurrent();
     void activateModel(int modelRow);
     void onUseArchive();
     void onOpenDir();
     void onEditHotwords();
     void onDownloadFinished();
 
-    void ensurePunctuationModel();
+    void autoLoadPunctuationModel(int modelRow);
     bool isInstalled(int row) const;
-    int currentPrimaryModelRow() const;
-    static QString punctuationModelName();
+    int currentModelRow() const;
 
     QVector<ModelInfo> m_models;
-    QVector<ModeDef> m_modes;
+
+    // Maps combo index → m_models index for ASR (non-punctuation) models
+    QVector<int> m_asrModelIndices;
 
     // UI
-    QComboBox *m_modeCombo = nullptr;
+    QComboBox *m_modelCombo = nullptr;
     QLabel *m_statusLabel = nullptr;
     QPushButton *m_dlBtn = nullptr;
     QPushButton *m_delBtn = nullptr;
+    QPushButton *m_useBtn = nullptr;
 
     // Download
     QNetworkAccessManager *m_networkManager = nullptr;
@@ -84,8 +79,6 @@ private:
     QString m_activeDownloadPath;
     QString m_activeDownloadTempPath;
     int m_downloadTargetRow = -1;
-    int m_punctuationRow = -1;
-    QTimer *m_startupTimer = nullptr;
 };
 
 } // namespace talkinput

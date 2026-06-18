@@ -191,6 +191,16 @@ void AsrService::setModelDirectory(const QString &dir)
     }
 }
 
+void AsrService::setPunctuationModelDir(const QString &dir)
+{
+    m_punctuationModelDir = QDir::fromNativeSeparators(dir.trimmed());
+    if (!m_punctuationModelDir.isEmpty()) {
+        m_punctuationModelDir = QDir::cleanPath(m_punctuationModelDir);
+    }
+    spdlog::debug("AsrService: punctuation model dir set to {}",
+                  m_punctuationModelDir);
+}
+
 SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
 {
     const QDir dir(modelDir);
@@ -332,31 +342,59 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         }
     }
 
-    if (config.type == SpeechRecognizer::Type::StreamingParaformer) {
-        const QString cacheBase =
-            QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-        const QStringList punctCandidates = {
-            QDir(cacheBase).filePath("punctuation/model.onnx"),
-            QDir(cacheBase).filePath(
-                "models/sherpa-onnx-punct-ct-transformer-zh-en-"
-                "vocab272727-2024-04-12-int8/model.onnx"),
-            QDir(cacheBase).filePath("punctuation/model.int8.onnx"),
-            QDir(cacheBase).filePath(
-                "models/sherpa-onnx-punct-ct-transformer-zh-en-"
-                "vocab272727-2024-04-12-int8/model.int8.onnx"),
-        };
-        for (const auto &p : punctCandidates) {
-            if (QFileInfo::exists(p)) {
-                config.punctuationModelPath = p;
-                break;
-            }
-        }
+    // Look for punctuation model if configured
+    const QString punctModelPath = findPunctuationModelPath(modelDir);
+    if (!punctModelPath.isEmpty()) {
+        config.punctuationModelPath = punctModelPath;
+        spdlog::debug("AsrService: using punctuation model: {}",
+                      punctModelPath);
     }
 
     config.hotwordsText = buildHotwordsText(
         appConfigString("settings/model/hotwords"), config.type);
 
     return config;
+}
+
+QString AsrService::findPunctuationModelPath(const QString &modelDir) const
+{
+    // 1. Check if explicitly set via setPunctuationModelDir()
+    if (!m_punctuationModelDir.isEmpty()) {
+        const QDir dir(m_punctuationModelDir);
+        const QStringList onnxFiles =
+            dir.entryList({QStringLiteral("*.onnx")}, QDir::Files, QDir::Name);
+        if (!onnxFiles.isEmpty()) {
+            return dir.absoluteFilePath(onnxFiles.first());
+        }
+        return {};
+    }
+
+    // 2. Check the preset registry for a configured punctuation partner
+    const std::string dirName = QDir(modelDir).dirName().toStdString();
+    for (const auto &preset : loadModelPresets()) {
+        if (preset.modelDirName == dirName &&
+            !preset.postPunctuationModelDirName.empty())
+        {
+            const QString punctDirName =
+                QString::fromStdString(preset.postPunctuationModelDirName);
+            const QString cacheBase =
+                QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+            const QString punctDir =
+                QDir(cacheBase).filePath("models/" + punctDirName);
+            if (!QFileInfo(punctDir).isDir()) {
+                return {};
+            }
+            const QDir pDir(punctDir);
+            const QStringList onnxFiles = pDir.entryList(
+                {QStringLiteral("*.onnx")}, QDir::Files, QDir::Name);
+            if (!onnxFiles.isEmpty()) {
+                return pDir.absoluteFilePath(onnxFiles.first());
+            }
+            break;
+        }
+    }
+
+    return {};
 }
 
 void AsrService::loadModel()
@@ -407,6 +445,7 @@ void AsrService::unloadModel()
     m_recognizer.reset();
     m_modelLoaded = false;
     m_streamingMode = false;
+    // Keep punctuation dir across reloads; cleared by setPunctuationModelDir()
     spdlog::info("AsrService: model unloaded");
 }
 

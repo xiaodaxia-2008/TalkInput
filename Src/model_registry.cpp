@@ -21,6 +21,7 @@ struct RawModelPreset
     bool streamingSupport = false;
     bool isPunctuationModel = false;
     std::map<std::string, std::string> files;
+    nlohmann::json postPunctuationModel;
 };
 
 namespace
@@ -56,6 +57,16 @@ ModelPreset parsePreset(const nlohmann::json &obj)
     preset.paramCount = raw.paramCount;
     preset.streamingSupport = raw.streamingSupport;
     preset.isPunctuationModel = raw.isPunctuationModel;
+
+    // Parse postPunctuationModel (nested punctuation model config)
+    if (raw.postPunctuationModel.is_object()) {
+        auto it = raw.postPunctuationModel.find("modelDirName");
+        if (it != raw.postPunctuationModel.end() && it->is_string()) {
+            preset.postPunctuationModelDirName = it->get<std::string>();
+            spdlog::debug("model_registry: preset {} has punctuation model {}",
+                          preset.name, preset.postPunctuationModelDirName);
+        }
+    }
 
     for (const auto &[key, pattern] : raw.files) {
         FileRule rule;

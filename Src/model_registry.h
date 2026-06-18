@@ -27,6 +27,7 @@ struct ModelPreset
     int paramCount = 0;
     bool streamingSupport = false;
     bool isPunctuationModel = false;
+    std::string postPunctuationModelDirName;
     std::vector<FileRule> files;
 };
 

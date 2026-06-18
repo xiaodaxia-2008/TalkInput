@@ -542,9 +542,6 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     if (!request.receiver) {
         return;
     }
-
-    spdlog::debug("LLM post-process input: {}", request.text);
-
     // ---- System prompt (template replacement) ----
     QString systemPrompt =
         appConfigString("settings/llm/systemPrompt").trimmed();
@@ -564,15 +561,14 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     userPrompt.replace("{{context}}", request.contextText);
     userPrompt.replace("{{hotwords}}", request.hotwords);
 
-    spdlog::debug("LLM system prompt: {}", systemPrompt);
-    spdlog::debug("LLM user prompt: {}", userPrompt);
-
     nlohmann::json payload = {{"messages",
                                {{{"role", "system"}, {"content", systemPrompt}},
                                 {{"role", "user"}, {"content", userPrompt}}}},
                               {"model", configuredModel()},
+                              {"reasoning_effort", "low"},
+                              {"extra_body", {"thinking", {"type", "enabled"}}},
                               {"temperature", 0.1},
-                              {"max_tokens", 512},
+                              {"max_tokens", 2000},
                               {"stream", false}};
     if (usesManagedLocalService()) {
         payload["chat_template_kwargs"] = {{"enable_thinking", false}};
@@ -586,23 +582,25 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
     }
+    spdlog::debug("LLM chat request body:", payload.dump(2));
+
     const std::string requestJson = payload.dump();
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
-    spdlog::debug("LLM chat request JSON: {}", QString::fromUtf8(requestBody));
 
-    auto *reply = m_network.post(networkRequest, requestBody);
+    QNetworkReply *reply = m_network.post(networkRequest, requestBody);
+    const PendingRequest pendingCopy = request;
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, request]() mutable {
-                QString result = request.text;
+            [this, reply, pendingCopy]() mutable {
+                QString result = pendingCopy.text;
                 bool requestFailed = false;
                 if (reply->error() == QNetworkReply::NoError) {
                     const QByteArray responseBody = reply->readAll();
-                    spdlog::debug("LLM chat response JSON: {}",
-                                  QString::fromUtf8(responseBody));
                     try {
                         const nlohmann::json doc = nlohmann::json::parse(
                             responseBody.constData(),
                             responseBody.constData() + responseBody.size());
+                        spdlog::debug("LLM chat response JSON: {}",
+                                      doc.dump(2));
                         const auto &choices =
                             doc.value("choices", nlohmann::json::array());
                         if (!choices.empty()) {
@@ -611,7 +609,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                             const QString content =
                                 message.value("content", QString()).trimmed();
                             if (!content.isEmpty()) {
-                                result = cleanupResponseText(content);
+                                result = this->cleanupResponseText(content);
                             }
                         }
                     }
@@ -627,13 +625,13 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                 }
                 spdlog::debug("LLM post-process output: {}", result);
                 reply->deleteLater();
-                if (request.receiver && request.callback) {
-                    request.callback(result);
+                if (pendingCopy.receiver && pendingCopy.callback) {
+                    pendingCopy.callback(result);
                 }
-                emit statusMessage(requestFailed
-                                       ? tr("LLM post-processing failed; using "
-                                            "original text.")
-                                       : tr("LLM post-processing complete."));
+                emit this->statusMessage(
+                    requestFailed ? tr("LLM post-processing failed; using "
+                                       "original text.")
+                                  : tr("LLM post-processing complete."));
             });
 }
 
