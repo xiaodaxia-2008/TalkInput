@@ -3,7 +3,7 @@
 #include <QMetaObject>
 
 #ifdef Q_OS_WIN
-#include "Windows/ocr_service_windows.h"
+#include "ocr_service_system.h"
 #endif
 
 namespace talkinput
@@ -66,7 +66,7 @@ public:
 OcrService *createOcrService(QObject *parent)
 {
 #ifdef Q_OS_WIN
-    return new WindowsOcrService(parent);
+    return new SystemOcrService(parent);
 #else
     return new NullOcrService(parent);
 #endif

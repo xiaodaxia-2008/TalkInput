@@ -25,11 +25,11 @@ namespace talkinput
 HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     : QWidget(parent), m_history(history)
 {
-    spdlog::debug("HistoryWidget: constructor begin");
+    SPDLOG_DEBUG("HistoryWidget: constructor begin");
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(8, 8, 8, 8);
     root->setSpacing(8);
-    spdlog::debug("HistoryWidget: root layout created");
+    SPDLOG_DEBUG("HistoryWidget: root layout created");
 
     m_realtimeLabel = new QLabel(this);
     m_realtimeLabel->setObjectName("historyRealtimeLabel");
@@ -38,7 +38,7 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     m_realtimeLabel->setMinimumHeight(36);
     m_realtimeLabel->hide();
     root->addWidget(m_realtimeLabel);
-    spdlog::debug("HistoryWidget: realtime label created");
+    SPDLOG_DEBUG("HistoryWidget: realtime label created");
 
     auto *headerLayout = new QHBoxLayout();
     headerLayout->setContentsMargins(0, 4, 0, 0);
@@ -56,7 +56,7 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     headerLayout->addWidget(m_clearButton);
 
     root->addLayout(headerLayout);
-    spdlog::debug("HistoryWidget: header created");
+    SPDLOG_DEBUG("HistoryWidget: header created");
 
     m_table = new QTableWidget(this);
     m_table->setColumnCount(4);
@@ -72,22 +72,22 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     m_table->verticalHeader()->hide();
     m_table->verticalHeader()->setDefaultSectionSize(30);
     root->addWidget(m_table);
-    spdlog::debug("HistoryWidget: table created");
+    SPDLOG_DEBUG("HistoryWidget: table created");
 
     retranslateUi();
-    spdlog::debug("HistoryWidget: constructor end");
+    SPDLOG_DEBUG("HistoryWidget: constructor end");
 }
 
 void HistoryWidget::refreshHistory()
 {
-    spdlog::debug("HistoryWidget::refreshHistory: begin");
+    SPDLOG_DEBUG("HistoryWidget::refreshHistory: begin");
     if (!m_history) {
-        spdlog::debug("HistoryWidget::refreshHistory: no history backend");
+        SPDLOG_DEBUG("HistoryWidget::refreshHistory: no history backend");
         return;
     }
 
     const auto entries = m_history->allEntries();
-    spdlog::debug("HistoryWidget::refreshHistory: {} entries", entries.size());
+    SPDLOG_DEBUG("HistoryWidget::refreshHistory: {} entries", entries.size());
 
     m_table->setUpdatesEnabled(false);
     m_table->setRowCount(entries.size());
@@ -133,7 +133,7 @@ void HistoryWidget::refreshHistory()
     }
 
     m_table->setUpdatesEnabled(true);
-    spdlog::debug("HistoryWidget::refreshHistory: end");
+    SPDLOG_DEBUG("HistoryWidget::refreshHistory: end");
 }
 
 void HistoryWidget::setListening(bool listening)

@@ -44,7 +44,7 @@ bool requireFile(const QString &path)
         return true;
     }
 
-    spdlog::error("Missing file: {}", QDir::toNativeSeparators(path));
+    SPDLOG_ERROR("Missing file: {}", QDir::toNativeSeparators(path));
     return false;
 }
 
@@ -59,7 +59,7 @@ QByteArray decodeAudio(const QString &audioPath)
     ffmpeg.start();
 
     if (!ffmpeg.waitForStarted()) {
-        spdlog::error("Failed to start ffmpeg: {}", ffmpeg.errorString());
+        SPDLOG_ERROR("Failed to start ffmpeg: {}", ffmpeg.errorString());
         return {};
     }
 
@@ -72,7 +72,7 @@ QByteArray decodeAudio(const QString &audioPath)
 
     const QString errorText = QString::fromUtf8(ffmpeg.readAllStandardError());
     if (ffmpeg.exitStatus() != QProcess::NormalExit || ffmpeg.exitCode() != 0) {
-        spdlog::error("ffmpeg failed: {}", errorText.trimmed());
+        SPDLOG_ERROR("ffmpeg failed: {}", errorText.trimmed());
         return {};
     }
 
@@ -100,7 +100,7 @@ QString decodeChunk(const SherpaOnnxOfflineRecognizer *recognizer,
     const SherpaOnnxOfflineStream *stream =
         SherpaOnnxCreateOfflineStream(recognizer);
     if (!stream) {
-        spdlog::error("Failed to create offline stream.");
+        SPDLOG_ERROR("Failed to create offline stream.");
         return {};
     }
 
@@ -115,7 +115,7 @@ QString decodeChunk(const SherpaOnnxOfflineRecognizer *recognizer,
         const QString json =
             QString::fromUtf8(result->json ? result->json : "").trimmed();
         if (!json.isEmpty()) {
-            spdlog::info("[chunk {} json] {}", chunkIndex, json);
+            SPDLOG_INFO("[chunk {} json] {}", chunkIndex, json);
         }
         SherpaOnnxDestroyOfflineRecognizerResult(result);
     }
@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    spdlog::info("SenseVoice model: {}", QDir::toNativeSeparators(modelDir));
-    spdlog::info("Audio: {}", QDir::toNativeSeparators(audioPath));
+    SPDLOG_INFO("SenseVoice model: {}", QDir::toNativeSeparators(modelDir));
+    SPDLOG_INFO("Audio: {}", QDir::toNativeSeparators(audioPath));
 
     const QByteArray modelUtf8 = model.toUtf8();
     const QByteArray tokensUtf8 = tokens.toUtf8();
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     const SherpaOnnxOfflineRecognizer *recognizer =
         SherpaOnnxCreateOfflineRecognizer(&config);
     if (!recognizer) {
-        spdlog::error("Failed to create SenseVoice recognizer.");
+        SPDLOG_ERROR("Failed to create SenseVoice recognizer.");
         return 3;
     }
 
@@ -179,8 +179,8 @@ int main(int argc, char *argv[])
     }
 
     const std::vector<float> samples = pcm16ToFloat(pcm);
-    spdlog::info("Decoded audio: {:.2f} seconds",
-                 static_cast<double>(samples.size()) / sampleRate);
+    SPDLOG_INFO("Decoded audio: {:.2f} seconds",
+                static_cast<double>(samples.size()) / sampleRate);
 
     QStringList transcript;
     int chunkIndex = 0;
@@ -197,14 +197,14 @@ int main(int argc, char *argv[])
             decodeChunk(recognizer, samples.data() + offset, count, chunkIndex);
         if (!text.isEmpty()) {
             transcript.append(text);
-            spdlog::info("[chunk {} text] {}", chunkIndex, text);
+            SPDLOG_INFO("[chunk {} text] {}", chunkIndex, text);
         }
         ++chunkIndex;
     }
 
-    spdlog::info("");
-    spdlog::info("==== SenseVoice Transcript ====");
-    spdlog::info("{}", transcript.join(""));
+    SPDLOG_INFO("");
+    SPDLOG_INFO("==== SenseVoice Transcript ====");
+    SPDLOG_INFO("{}", transcript.join(""));
 
     SherpaOnnxDestroyOfflineRecognizer(recognizer);
     return 0;

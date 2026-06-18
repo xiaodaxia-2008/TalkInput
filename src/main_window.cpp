@@ -55,9 +55,9 @@ namespace talkinput
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>())
 {
-    spdlog::debug("MainWindow: constructor begin");
+    SPDLOG_DEBUG("MainWindow: constructor begin");
     setupUi();
-    spdlog::debug("MainWindow: constructor end");
+    SPDLOG_DEBUG("MainWindow: constructor end");
 }
 
 MainWindow::~MainWindow()
@@ -83,49 +83,49 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::setupUi()
 {
-    spdlog::debug("MainWindow::setupUi: begin");
+    SPDLOG_DEBUG("MainWindow::setupUi: begin");
     m_ui->setupUi(this);
-    spdlog::debug("MainWindow::setupUi: ui setup complete");
+    SPDLOG_DEBUG("MainWindow::setupUi: ui setup complete");
 
     // ── ASR Service (persistent worker thread) ────────────────
-    spdlog::debug("MainWindow::setupUi: creating ASR service thread");
+    SPDLOG_DEBUG("MainWindow::setupUi: creating ASR service thread");
     m_asrService = new AsrService();
     m_asrThread = new QThread(this);
     m_asrService->moveToThread(m_asrThread);
     connect(m_asrThread, &QThread::finished, m_asrService,
             &QObject::deleteLater);
     m_asrThread->start();
-    spdlog::debug("MainWindow::setupUi: ASR service thread started");
+    SPDLOG_DEBUG("MainWindow::setupUi: ASR service thread started");
 
     connect(m_asrService, &AsrService::resultChanged, this,
             &MainWindow::onResult);
     connect(m_asrService, &AsrService::modelLoadResult, this,
             [this](bool success, const QString &error) {
                 if (!success) {
-                    spdlog::error("ASR model load failed: {}", error);
+                    SPDLOG_ERROR("ASR model load failed: {}", error);
                     statusBar()->showMessage(
                         tr("Model load failed: %1").arg(error));
                 }
                 else {
-                    spdlog::info("ASR model loaded successfully");
+                    SPDLOG_INFO("ASR model loaded successfully");
                     statusBar()->showMessage(tr("Model ready."));
                 }
             });
 
     // ── History tab ────────────────────────────────────────────
-    spdlog::debug("MainWindow::setupUi: creating HistoryWidget");
+    SPDLOG_DEBUG("MainWindow::setupUi: creating HistoryWidget");
     m_historyWidget = new HistoryWidget(&m_history, m_ui->historyTab);
     m_ui->historyLayout->addWidget(m_historyWidget);
-    spdlog::debug("MainWindow::setupUi: HistoryWidget added");
+    SPDLOG_DEBUG("MainWindow::setupUi: HistoryWidget added");
     connect(
         m_historyWidget, &HistoryWidget::statusMessage, this,
         [this](const QString &msg) { statusBar()->showMessage(msg, 2000); });
 
     // ── ASR settings tab ────────────────────────────────────────
-    spdlog::debug("MainWindow::setupUi: creating AsrSettingWidget");
+    SPDLOG_DEBUG("MainWindow::setupUi: creating AsrSettingWidget");
     m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
-    spdlog::debug("MainWindow::setupUi: AsrSettingWidget added");
+    SPDLOG_DEBUG("MainWindow::setupUi: AsrSettingWidget added");
     connect(m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
             [this](const QString &dir, const QString &name) {
                 setRecognitionModel(dir, name);
@@ -138,8 +138,8 @@ void MainWindow::setupUi()
                 if (m_currentModelDirectory.isEmpty()) {
                     return;
                 }
-                spdlog::info("Punctuation model ready: {}", punctuationDir);
-                spdlog::info("Punctuation ready, reloading ASR model...");
+                SPDLOG_INFO("Punctuation model ready: {}", punctuationDir);
+                SPDLOG_INFO("Punctuation ready, reloading ASR model...");
                 statusBar()->showMessage(
                     tr("Punctuation ready, reloading model..."));
                 if (m_asrService) {
@@ -153,14 +153,14 @@ void MainWindow::setupUi()
             if (m_currentModelDirectory.isEmpty()) {
                 return;
             }
-            spdlog::info("Hot words changed, reloading ASR model...");
+            SPDLOG_INFO("Hot words changed, reloading ASR model...");
             statusBar()->showMessage(tr("Hot words saved, reloading model..."));
             QMetaObject::invokeMethod(m_asrService, "loadModel",
                                       Qt::QueuedConnection);
         });
 
     // ── Toolbar ────────────────────────────────────────────────
-    spdlog::debug("MainWindow::setupUi: creating toolbar");
+    SPDLOG_DEBUG("MainWindow::setupUi: creating toolbar");
     m_recognitionToolBar = addToolBar(tr("Recognition"));
     m_recognitionToolBar->setObjectName("recognitionToolBar");
     m_recognitionToolBar->setMovable(false);
@@ -186,10 +186,10 @@ void MainWindow::setupUi()
             &MainWindow::onRecognizeFile);
 
     statusBar()->showMessage(tr("Loading model..."));
-    spdlog::info("Starting ASR service");
+    SPDLOG_INFO("Starting ASR service");
 
     // ── VoiceInputController (global hotkey, overlay, text injection) ─
-    spdlog::debug("MainWindow::setupUi: creating VoiceInputController");
+    SPDLOG_DEBUG("MainWindow::setupUi: creating VoiceInputController");
     m_voiceInput = new VoiceInputController(m_asrService, &m_history, this);
     qApp->installNativeEventFilter(m_voiceInput);
 
@@ -206,11 +206,11 @@ void MainWindow::setupUi()
             });
 
     // ── System tray ────────────────────────────────────────────
-    spdlog::debug("MainWindow::setupUi: setting up tray icon");
+    SPDLOG_DEBUG("MainWindow::setupUi: setting up tray icon");
     setupTrayIcon();
 
     // ── Menu bar ────────────────────────────────────────────────
-    spdlog::debug("MainWindow::setupUi: creating menu bar");
+    SPDLOG_DEBUG("MainWindow::setupUi: creating menu bar");
     m_prefMenu = menuBar()->addMenu(tr("Preferences"));
     m_langMenu = m_prefMenu->addMenu(resourceIcon(":/resources/globe.svg"),
                                      tr("Language"));
@@ -283,13 +283,12 @@ void MainWindow::setupUi()
     const QString savedDir = appConfigString("settings/model/directory");
     const QString savedName = appConfigString("settings/model/name");
     if (!savedDir.isEmpty()) {
-        spdlog::debug("MainWindow::setupUi: restoring saved model {}",
-                      savedDir);
+        SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", savedDir);
         setRecognitionModel(savedDir, savedName);
-        spdlog::info("Restored model: {} ({})", savedName, savedDir);
+        SPDLOG_INFO("Restored model: {} ({})", savedName, savedDir);
     }
 
-    spdlog::debug("MainWindow::setupUi: end");
+    SPDLOG_DEBUG("MainWindow::setupUi: end");
 }
 
 void MainWindow::setupTrayIcon()
@@ -398,8 +397,8 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     else {
         statusBar()->showMessage(tr("Loading model..."));
     }
-    spdlog::info("Recognition model set: {} ({})", m_currentModelName,
-                 m_currentModelDirectory);
+    SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
+                m_currentModelDirectory);
 
     setAppConfigValue("settings/model/directory", m_currentModelDirectory);
     setAppConfigValue("settings/model/name", m_currentModelName);
@@ -413,7 +412,7 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
 
 void MainWindow::onResult(const QString &text, bool isFinal)
 {
-    spdlog::info("{} {}", isFinal ? "[final]" : "[partial]", text);
+    SPDLOG_INFO("{} {}", isFinal ? "[final]" : "[partial]", text);
 
     if (!isFinal && !text.trimmed().isEmpty()) {
         m_historyWidget->setRealtimeText(text);
@@ -444,7 +443,7 @@ void MainWindow::onRecognizeFile()
     }
 
     statusBar()->showMessage(tr("Decoding audio..."));
-    spdlog::info("Recognizing file: {}", path);
+    SPDLOG_INFO("Recognizing file: {}", path);
 
     auto *decoder = new QAudioDecoder(this);
     QEventLoop loop;
@@ -464,10 +463,10 @@ void MainWindow::onRecognizeFile()
         else if (decodedSampleRate != format.sampleRate() ||
                  decodedChannels != format.channelCount())
         {
-            spdlog::warn("Audio decoder format changed from {} channels {} "
-                         "to {} channels {}",
-                         decodedSampleRate, decodedChannels,
-                         format.sampleRate(), format.channelCount());
+            SPDLOG_WARN("Audio decoder format changed from {} channels {} "
+                        "to {} channels {}",
+                        decodedSampleRate, decodedChannels, format.sampleRate(),
+                        format.channelCount());
         }
 
         if (format.sampleFormat() == QAudioFormat::Int16) {
@@ -491,8 +490,7 @@ void MainWindow::onRecognizeFile()
             static_cast<void (QAudioDecoder::*)(QAudioDecoder::Error)>(
                 &QAudioDecoder::error),
             this, [&](QAudioDecoder::Error) {
-                spdlog::error("Audio decoder error: {}",
-                              decoder->errorString());
+                SPDLOG_ERROR("Audio decoder error: {}", decoder->errorString());
                 loop.quit();
             });
 
@@ -519,8 +517,8 @@ void MainWindow::onRecognizeFile()
         return;
     }
 
-    spdlog::info("Decoded {} bytes of PCM16 from {} at {} Hz channels {}",
-                 allPcm.size(), path, decodedSampleRate, decodedChannels);
+    SPDLOG_INFO("Decoded {} bytes of PCM16 from {} at {} Hz channels {}",
+                allPcm.size(), path, decodedSampleRate, decodedChannels);
 
     QMetaObject::invokeMethod(
         m_asrService,

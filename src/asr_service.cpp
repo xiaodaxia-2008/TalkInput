@@ -87,9 +87,9 @@ talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir)
         return talkinput::SpeechRecognizer::Type::SenseVoice;
     }
 
-    spdlog::warn("AsrService: unknown model arch in {}; falling back to "
-                 "streaming transducer",
-                 modelDir);
+    SPDLOG_WARN("AsrService: unknown model arch in {}; falling back to "
+                "streaming transducer",
+                modelDir);
     return talkinput::SpeechRecognizer::Type::StreamingTransducer;
 }
 
@@ -197,8 +197,8 @@ void AsrService::setPunctuationModelDir(const QString &dir)
     if (!m_punctuationModelDir.isEmpty()) {
         m_punctuationModelDir = QDir::cleanPath(m_punctuationModelDir);
     }
-    spdlog::debug("AsrService: punctuation model dir set to {}",
-                  m_punctuationModelDir);
+    SPDLOG_DEBUG("AsrService: punctuation model dir set to {}",
+                 m_punctuationModelDir);
 }
 
 SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
@@ -262,7 +262,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
             appConfigString("settings/app/language", "zh");
         config.senseVoiceUseItn = true;
 
-        spdlog::info("AsrService: configured from preset {}", resolved.type);
+        SPDLOG_INFO("AsrService: configured from preset {}", resolved.type);
     }
     else {
         // Fall back to file-probing detection
@@ -346,8 +346,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
     const QString punctModelPath = findPunctuationModelPath(modelDir);
     if (!punctModelPath.isEmpty()) {
         config.punctuationModelPath = punctModelPath;
-        spdlog::debug("AsrService: using punctuation model: {}",
-                      punctModelPath);
+        SPDLOG_DEBUG("AsrService: using punctuation model: {}", punctModelPath);
     }
 
     config.hotwordsText = buildHotwordsText(
@@ -400,7 +399,7 @@ QString AsrService::findPunctuationModelPath(const QString &modelDir) const
 void AsrService::loadModel()
 {
     if (m_modelDir.isEmpty()) {
-        spdlog::warn("AsrService: cannot load model, directory not set");
+        SPDLOG_WARN("AsrService: cannot load model, directory not set");
         emit modelLoadResult(false, tr("Model directory not set."));
         return;
     }
@@ -421,7 +420,7 @@ void AsrService::loadModel()
 
     QString error;
     if (!recognizer->start(config, &error)) {
-        spdlog::error("AsrService: model load failed: {}", error);
+        SPDLOG_ERROR("AsrService: model load failed: {}", error);
         m_modelLoaded = false;
         emit modelLoadResult(false, error);
         return;
@@ -433,7 +432,7 @@ void AsrService::loadModel()
     m_modelLoaded = true;
     m_streamingMode = streamingMode;
     const char *mode = m_streamingMode ? "streaming" : "offline";
-    spdlog::info("AsrService: {} model loaded from {}", mode, m_modelDir);
+    SPDLOG_INFO("AsrService: {} model loaded from {}", mode, m_modelDir);
     emit modelLoadResult(true, {});
 }
 
@@ -446,13 +445,13 @@ void AsrService::unloadModel()
     m_modelLoaded = false;
     m_streamingMode = false;
     // Keep punctuation dir across reloads; cleared by setPunctuationModelDir()
-    spdlog::info("AsrService: model unloaded");
+    SPDLOG_INFO("AsrService: model unloaded");
 }
 
 void AsrService::startSession()
 {
     if (!m_modelLoaded) {
-        spdlog::warn("AsrService: startSession called but model not loaded");
+        SPDLOG_WARN("AsrService: startSession called but model not loaded");
         return;
     }
 

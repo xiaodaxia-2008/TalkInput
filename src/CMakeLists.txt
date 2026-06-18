@@ -23,8 +23,7 @@ add_executable(TalkInput
     llm_post_processor.h
     ocr_service.cpp
     ocr_service.h
-    Windows/ocr_service_windows.cpp
-    Windows/ocr_service_windows.h
+    ocr_service_system.h
     logging.h
     recognition_history.cpp
     recognition_history.h
@@ -97,7 +96,14 @@ target_link_libraries(TalkInput
 
 if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore)
+    target_sources(TalkInput PRIVATE windows/ocr_service_system.cpp)
+elseif(APPLE)
+    target_sources(TalkInput PRIVATE macos/ocr_service_system.cpp)
+elseif(UNIX)
+    target_sources(TalkInput PRIVATE linux/ocr_service_system.cpp)
 endif()
+
+target_compile_definitions(TalkInput PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 add_executable(TalkInputAsrTest
     asr_test.cpp
@@ -125,6 +131,7 @@ target_link_libraries(TalkInputAsrTest
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
+target_compile_definitions(TalkInputAsrTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 target_link_libraries(TalkInputSenseVoiceTest
     PRIVATE
@@ -132,6 +139,7 @@ target_link_libraries(TalkInputSenseVoiceTest
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
+target_compile_definitions(TalkInputSenseVoiceTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 target_link_libraries(TalkInputBenchmark
     PRIVATE
@@ -139,6 +147,7 @@ target_link_libraries(TalkInputBenchmark
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
+target_compile_definitions(TalkInputBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 target_link_libraries(TalkInputOcrCaptureTest
     PRIVATE
@@ -146,31 +155,33 @@ target_link_libraries(TalkInputOcrCaptureTest
     Qt6::Gui
     spdlog::spdlog_header_only
 )
+target_compile_definitions(TalkInputOcrCaptureTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 target_link_libraries(TalkInputOcrRecognitionTest
     PRIVATE
     windowsapp
 )
+target_compile_definitions(TalkInputOcrRecognitionTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 target_include_directories(TalkInput PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputAsrTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputSenseVoiceTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputBenchmark PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputOcrCaptureTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
 target_include_directories(TalkInputOcrRecognitionTest PRIVATE

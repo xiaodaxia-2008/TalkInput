@@ -46,7 +46,7 @@ bool SpeechRecognizer::prepareRecognizer(const Config &config,
 
     const QString punctPath = config.punctuationModelPath;
     if (!QFileInfo::exists(punctPath)) {
-        spdlog::warn("Punctuation model not found: {}", punctPath);
+        SPDLOG_WARN("Punctuation model not found: {}", punctPath);
         return true;
     }
 
@@ -59,10 +59,10 @@ bool SpeechRecognizer::prepareRecognizer(const Config &config,
 
     m_punct = SherpaOnnxCreateOfflinePunctuation(&punctConfig);
     if (!m_punct) {
-        spdlog::warn("Failed to create punctuation processor");
+        SPDLOG_WARN("Failed to create punctuation processor");
     }
     else {
-        spdlog::info("Punctuation model loaded: {}", punctPath);
+        SPDLOG_INFO("Punctuation model loaded: {}", punctPath);
     }
 
     return true;

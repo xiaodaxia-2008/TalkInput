@@ -27,7 +27,7 @@ RecognitionHistory::RecognitionHistory()
     m_db->setDatabaseName(dbPath);
 
     if (!m_db->open()) {
-        spdlog::error("Failed to open history db: {}",
+        SPDLOG_ERROR("Failed to open history db: {}",
                       m_db->lastError().text());
         return;
     }
@@ -38,7 +38,7 @@ RecognitionHistory::RecognitionHistory()
                           "  text TEXT NOT NULL,"
                           "  created_at TEXT NOT NULL"
                           ")"));
-    spdlog::info("History db opened: {}", dbPath);
+    SPDLOG_INFO("History db opened: {}", dbPath);
 }
 
 RecognitionHistory::~RecognitionHistory()
@@ -61,7 +61,7 @@ void RecognitionHistory::addEntry(const QString &text)
     q.addBindValue(text.trimmed());
     q.addBindValue(QDateTime::currentDateTime().toString(Qt::ISODate));
     if (!q.exec()) {
-        spdlog::error("Failed to insert history: {}", q.lastError().text());
+        SPDLOG_ERROR("Failed to insert history: {}", q.lastError().text());
     }
 }
 
@@ -76,8 +76,8 @@ void RecognitionHistory::updateEntry(int id, const QString &text)
     q.addBindValue(text.trimmed());
     q.addBindValue(id);
     if (!q.exec()) {
-        spdlog::error("Failed to update history entry {}: {}", id,
-                      q.lastError().text());
+        SPDLOG_ERROR("Failed to update history entry {}: {}", id,
+                     q.lastError().text());
     }
 }
 
@@ -91,8 +91,8 @@ void RecognitionHistory::deleteEntry(int id)
     q.prepare(QStringLiteral("DELETE FROM recognitions WHERE id = ?"));
     q.addBindValue(id);
     if (!q.exec()) {
-        spdlog::error("Failed to delete history entry {}: {}", id,
-                      q.lastError().text());
+        SPDLOG_ERROR("Failed to delete history entry {}: {}", id,
+                     q.lastError().text());
     }
 }
 
@@ -104,7 +104,7 @@ void RecognitionHistory::clearAll()
 
     QSqlQuery q(*m_db);
     if (!q.exec(QStringLiteral("DELETE FROM recognitions"))) {
-        spdlog::error("Failed to clear history: {}", q.lastError().text());
+        SPDLOG_ERROR("Failed to clear history: {}", q.lastError().text());
     }
 }
 

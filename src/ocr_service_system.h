@@ -5,12 +5,12 @@
 namespace talkinput
 {
 
-class WindowsOcrService final : public OcrService
+class SystemOcrService final : public OcrService
 {
     Q_OBJECT
 
 public:
-    explicit WindowsOcrService(QObject *parent = nullptr);
+    explicit SystemOcrService(QObject *parent = nullptr);
 
     bool isAvailable() const override;
     QRect focusedTextInputRect() const override;

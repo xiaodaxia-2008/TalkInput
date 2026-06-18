@@ -1,4 +1,4 @@
-#include "ocr_service_windows.h"
+#include "ocr_service_system.h"
 
 #include "logging.h"
 
@@ -11,7 +11,6 @@
 #include <QStandardPaths>
 #include <QThreadPool>
 
-#ifdef Q_OS_WIN
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -29,12 +28,10 @@
 #include <winrt/Windows.Media.Ocr.h>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/base.h>
-#endif
 
 namespace
 {
 
-#ifdef Q_OS_WIN
 constexpr int MaxContextWidth = 900;
 constexpr int MaxContextHeight = 360;
 
@@ -104,7 +101,7 @@ QImage captureWindowWithPrintWindow(HWND hwnd)
     DeleteDC(memoryDc);
     ReleaseDC(hwnd, windowDc);
 
-    spdlog::debug("OCR: PrintWindow returned {}", ok ? "true" : "false");
+    SPDLOG_DEBUG("OCR: PrintWindow returned {}", ok ? "true" : "false");
     return image;
 }
 
@@ -134,7 +131,7 @@ QImage captureWindowFromDesktop(HWND hwnd)
     DeleteDC(memoryDc);
     ReleaseDC(nullptr, desktopDc);
 
-    spdlog::debug("OCR: desktop BitBlt returned {}", ok ? "true" : "false");
+    SPDLOG_DEBUG("OCR: desktop BitBlt returned {}", ok ? "true" : "false");
     return image;
 }
 
@@ -150,8 +147,8 @@ void initComApartment()
         initialized = true;
     }
     else {
-        spdlog::warn("OCR: CoInitializeEx failed: 0x{:08x}",
-                     static_cast<unsigned>(hr));
+        SPDLOG_WARN("OCR: CoInitializeEx failed: 0x{:08x}",
+                    static_cast<unsigned>(hr));
     }
 }
 
@@ -173,8 +170,8 @@ HWND focusedWindowFromUiAutomation()
         CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
                          IID_PPV_ARGS(&automation));
     if (FAILED(hr) || !automation) {
-        spdlog::debug("OCR: UI Automation unavailable: 0x{:08x}",
-                      static_cast<unsigned>(hr));
+        SPDLOG_DEBUG("OCR: UI Automation unavailable: 0x{:08x}",
+                     static_cast<unsigned>(hr));
         return nullptr;
     }
 
@@ -182,9 +179,9 @@ HWND focusedWindowFromUiAutomation()
     hr = automation->GetFocusedElement(&element);
     releaseCom(automation);
     if (FAILED(hr) || !element) {
-        spdlog::debug("OCR: UI Automation focused element unavailable: "
-                      "0x{:08x}",
-                      static_cast<unsigned>(hr));
+        SPDLOG_DEBUG("OCR: UI Automation focused element unavailable: "
+                     "0x{:08x}",
+                     static_cast<unsigned>(hr));
         return nullptr;
     }
 
@@ -192,9 +189,9 @@ HWND focusedWindowFromUiAutomation()
     hr = element->get_CurrentNativeWindowHandle(&nativeWindow);
     releaseCom(element);
     if (FAILED(hr) || nativeWindow == 0) {
-        spdlog::debug("OCR: UI Automation focused element has no native "
-                      "window: 0x{:08x}",
-                      static_cast<unsigned>(hr));
+        SPDLOG_DEBUG("OCR: UI Automation focused element has no native "
+                     "window: 0x{:08x}",
+                     static_cast<unsigned>(hr));
         return nullptr;
     }
 
@@ -203,8 +200,8 @@ HWND focusedWindowFromUiAutomation()
     if (root) {
         hwnd = root;
     }
-    spdlog::debug("OCR: using UI Automation focused native window for "
-                  "screenshot");
+    SPDLOG_DEBUG("OCR: using UI Automation focused native window for "
+                 "screenshot");
     return hwnd;
 }
 
@@ -219,8 +216,8 @@ HWND focusedWindowFromWin32()
         if (GetGUIThreadInfo(threadId, &info) && info.hwndFocus) {
             hwnd = GetAncestor(info.hwndFocus, GA_ROOT);
             if (hwnd) {
-                spdlog::debug("OCR: using Win32 focused root window for "
-                              "screenshot");
+                SPDLOG_DEBUG("OCR: using Win32 focused root window for "
+                             "screenshot");
             }
         }
     }
@@ -228,7 +225,7 @@ HWND focusedWindowFromWin32()
     if (!hwnd) {
         hwnd = foreground;
         if (hwnd) {
-            spdlog::debug("OCR: using foreground window for screenshot");
+            SPDLOG_DEBUG("OCR: using foreground window for screenshot");
         }
     }
 
@@ -253,8 +250,8 @@ QRect focusedRectFromUiAutomation()
         CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
                          IID_PPV_ARGS(&automation));
     if (FAILED(hr) || !automation) {
-        spdlog::debug("OCR: UI Automation unavailable: 0x{:08x}",
-                      static_cast<unsigned>(hr));
+        SPDLOG_DEBUG("OCR: UI Automation unavailable: 0x{:08x}",
+                     static_cast<unsigned>(hr));
         return {};
     }
 
@@ -262,9 +259,9 @@ QRect focusedRectFromUiAutomation()
     hr = automation->GetFocusedElement(&element);
     releaseCom(automation);
     if (FAILED(hr) || !element) {
-        spdlog::debug("OCR: UI Automation focused element unavailable: "
-                      "0x{:08x}",
-                      static_cast<unsigned>(hr));
+        SPDLOG_DEBUG("OCR: UI Automation focused element unavailable: "
+                     "0x{:08x}",
+                     static_cast<unsigned>(hr));
         return {};
     }
 
@@ -272,13 +269,13 @@ QRect focusedRectFromUiAutomation()
     hr = element->get_CurrentBoundingRectangle(&rect);
     releaseCom(element);
     if (FAILED(hr) || IsRectEmpty(&rect)) {
-        spdlog::debug("OCR: UI Automation focused element has no bounds: "
-                      "0x{:08x}",
-                      static_cast<unsigned>(hr));
+        SPDLOG_DEBUG("OCR: UI Automation focused element has no bounds: "
+                     "0x{:08x}",
+                     static_cast<unsigned>(hr));
         return {};
     }
 
-    spdlog::debug("OCR: using UI Automation focused element rect for context");
+    SPDLOG_DEBUG("OCR: using UI Automation focused element rect for context");
     return contextRectAround(rectFromWinRect(rect));
 }
 
@@ -303,14 +300,14 @@ void initWinrtApartment()
 QString recognizeWindowsText(QImage image)
 {
     if (image.isNull()) {
-        spdlog::debug("OCR: Windows OCR skipped empty image");
+        SPDLOG_DEBUG("OCR: Windows OCR skipped empty image");
         return {};
     }
 
     initWinrtApartment();
 
-    spdlog::debug("OCR: Windows OCR input image: {}x{} fmt={}", image.width(),
-                  image.height(), static_cast<int>(image.format()));
+    SPDLOG_DEBUG("OCR: Windows OCR input image: {}x{} fmt={}", image.width(),
+                 image.height(), static_cast<int>(image.format()));
     // NOTE: deliberately NOT scaling the image here. The OCR engine handles
     // large images well (~250ms for 2576x1456). Scaling to 900x360 made text
     // unreadable and caused the empty result bug. MaxContextWidth/Height are
@@ -321,7 +318,7 @@ QString recognizeWindowsText(QImage image)
     // and decode matches what the OCR engine expects.
     if (image.format() != QImage::Format_RGB32) {
         image = image.convertToFormat(QImage::Format_RGB32);
-        spdlog::debug("OCR: converted image to Format_RGB32");
+        SPDLOG_DEBUG("OCR: converted image to Format_RGB32");
     }
 
     // Write BMP to a temporary file and open it via StorageFile (same
@@ -332,10 +329,10 @@ QString recognizeWindowsText(QImage image)
         QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation))
             .filePath("talkinput-ocr.bmp");
     if (!image.save(tempPath, "BMP")) {
-        spdlog::warn("OCR: failed to save temp BMP: {}", tempPath);
+        SPDLOG_WARN("OCR: failed to save temp BMP: {}", tempPath);
         return {};
     }
-    spdlog::debug("OCR: temp BMP saved: {}", tempPath);
+    SPDLOG_DEBUG("OCR: temp BMP saved: {}", tempPath);
 
     winrt::Windows::Storage::StorageFile file = nullptr;
     try {
@@ -347,8 +344,8 @@ QString recognizeWindowsText(QImage image)
                    .get();
     }
     catch (const winrt::hresult_error &e) {
-        spdlog::warn("OCR: failed to open temp file: {}",
-                     winrt::to_string(e.message()));
+        SPDLOG_WARN("OCR: failed to open temp file: {}",
+                    winrt::to_string(e.message()));
         QFile::remove(tempPath);
         return {};
     }
@@ -364,10 +361,10 @@ QString recognizeWindowsText(QImage image)
                 winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
                 winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore)
             .get();
-    spdlog::debug("OCR: decoder bitmap: {}x{} fmt={} alpha={}",
-                  bitmap.PixelWidth(), bitmap.PixelHeight(),
-                  static_cast<int>(bitmap.BitmapPixelFormat()),
-                  static_cast<int>(bitmap.BitmapAlphaMode()));
+    SPDLOG_DEBUG("OCR: decoder bitmap: {}x{} fmt={} alpha={}",
+                 bitmap.PixelWidth(), bitmap.PixelHeight(),
+                 static_cast<int>(bitmap.BitmapPixelFormat()),
+                 static_cast<int>(bitmap.BitmapAlphaMode()));
 
     // Clean up temp file
     QFile::remove(tempPath);
@@ -387,18 +384,18 @@ QString recognizeWindowsText(QImage image)
             TryCreateFromUserProfileLanguages();
     }
     if (!engine) {
-        spdlog::warn("OCR: Windows OCR engine is not available");
+        SPDLOG_WARN("OCR: Windows OCR engine is not available");
         return {};
     }
-    spdlog::debug("OCR: engine language={}",
-                  winrt::to_string(engine.RecognizerLanguage().LanguageTag()));
+    SPDLOG_DEBUG("OCR: engine language={}",
+                 winrt::to_string(engine.RecognizerLanguage().LanguageTag()));
 
     const auto result = engine.RecognizeAsync(bitmap).get();
     const auto textHstring = result.Text();
-    spdlog::debug("OCR: result text length={}", textHstring.size());
+    SPDLOG_DEBUG("OCR: result text length={}", textHstring.size());
     const QString text =
         QString::fromStdWString(std::wstring(textHstring)).trimmed();
-    spdlog::debug("OCR: Windows OCR result: {}", text);
+    SPDLOG_DEBUG("OCR: Windows OCR result: {}", text);
 
     if (text.isEmpty()) {
         // Save the temp BMP for debugging when OCR produced empty
@@ -407,34 +404,28 @@ QString recognizeWindowsText(QImage image)
                                       .filePath("ocr/ocr-debug-failed.bmp");
         QDir().mkpath(QFileInfo(debugPath).absolutePath());
         image.save(debugPath, "BMP");
-        spdlog::warn("OCR: empty result; debug image saved: {}", debugPath);
+        SPDLOG_WARN("OCR: empty result; debug image saved: {}", debugPath);
     }
 
     return text;
 }
-#endif
 
 } // namespace
 
 namespace talkinput
 {
 
-WindowsOcrService::WindowsOcrService(QObject *parent) : OcrService(parent)
+SystemOcrService::SystemOcrService(QObject *parent) : OcrService(parent)
 {
 }
 
-bool WindowsOcrService::isAvailable() const
+bool SystemOcrService::isAvailable() const
 {
-#ifdef Q_OS_WIN
     return true;
-#else
-    return false;
-#endif
 }
 
-QRect WindowsOcrService::focusedTextInputRect() const
+QRect SystemOcrService::focusedTextInputRect() const
 {
-#ifdef Q_OS_WIN
     const QRect uiAutomationRect = focusedRectFromUiAutomation();
     if (!uiAutomationRect.isEmpty()) {
         return uiAutomationRect;
@@ -442,7 +433,7 @@ QRect WindowsOcrService::focusedTextInputRect() const
 
     HWND foreground = GetForegroundWindow();
     if (!foreground) {
-        spdlog::debug("OCR: no foreground window");
+        SPDLOG_DEBUG("OCR: no foreground window");
         return {};
     }
 
@@ -454,7 +445,7 @@ QRect WindowsOcrService::focusedTextInputRect() const
             RECT caretRect = info.rcCaret;
             MapWindowPoints(info.hwndCaret, nullptr,
                             reinterpret_cast<POINT *>(&caretRect), 2);
-            spdlog::debug("OCR: using caret rect for focused context");
+            SPDLOG_DEBUG("OCR: using caret rect for focused context");
             return contextRectAround(rectFromWinRect(caretRect));
         }
 
@@ -463,31 +454,25 @@ QRect WindowsOcrService::focusedTextInputRect() const
             if (GetWindowRect(info.hwndFocus, &focusRect) &&
                 !IsRectEmpty(&focusRect))
             {
-                spdlog::debug("OCR: using focused window rect for context");
+                SPDLOG_DEBUG("OCR: using focused window rect for context");
                 return contextRectAround(rectFromWinRect(focusRect));
             }
         }
     }
 
-    spdlog::debug("OCR: no focused text rect; caller should use full-screen "
-                  "fallback");
-#endif
+    SPDLOG_DEBUG("OCR: no focused text rect; caller should use full-screen "
+                 "fallback");
 
     return {};
 }
 
-WId WindowsOcrService::focusedTextInputWindowId() const
+WId SystemOcrService::focusedTextInputWindowId() const
 {
-#ifdef Q_OS_WIN
     return reinterpret_cast<WId>(focusedInputWindow());
-#else
-    return 0;
-#endif
 }
 
-QString WindowsOcrService::focusedTextInputScreenName() const
+QString SystemOcrService::focusedTextInputScreenName() const
 {
-#ifdef Q_OS_WIN
     const HWND hwnd = focusedInputWindow();
     if (!hwnd) {
         return {};
@@ -505,16 +490,12 @@ QString WindowsOcrService::focusedTextInputScreenName() const
     }
 
     const QString name = QString::fromWCharArray(info.szDevice);
-    spdlog::debug("OCR: focused input monitor: {}", name);
+    SPDLOG_DEBUG("OCR: focused input monitor: {}", name);
     return name;
-#else
-    return {};
-#endif
 }
 
-QImage WindowsOcrService::captureFocusedTextInputImage() const
+QImage SystemOcrService::captureFocusedTextInputImage() const
 {
-#ifdef Q_OS_WIN
     const HWND hwnd = focusedInputWindow();
     if (!hwnd) {
         return {};
@@ -524,25 +505,24 @@ QImage WindowsOcrService::captureFocusedTextInputImage() const
     // DirectX-accelerated windows where PrintWindow returns blank).
     QImage image = captureWindowFromDesktop(hwnd);
     if (!image.isNull()) {
-        spdlog::debug("OCR: focused window captured from desktop: {}x{}",
-                      image.width(), image.height());
+        SPDLOG_DEBUG("OCR: focused window captured from desktop: {}x{}",
+                     image.width(), image.height());
         return image;
     }
 
     // Fallback to PrintWindow for off-screen or obscured windows.
     image = captureWindowWithPrintWindow(hwnd);
     if (!image.isNull()) {
-        spdlog::debug("OCR: focused window captured by PrintWindow: {}x{}",
-                      image.width(), image.height());
+        SPDLOG_DEBUG("OCR: focused window captured by PrintWindow: {}x{}",
+                     image.width(), image.height());
         return image;
     }
-#endif
 
     return {};
 }
 
-void WindowsOcrService::recognizeText(const QImage &image, QObject *receiver,
-                                      Callback callback)
+void SystemOcrService::recognizeText(const QImage &image, QObject *receiver,
+                                     Callback callback)
 {
     if (!receiver || !callback) {
         return;
@@ -553,18 +533,16 @@ void WindowsOcrService::recognizeText(const QImage &image, QObject *receiver,
     QThreadPool::globalInstance()->start(
         [imageCopy, context, callback = std::move(callback)]() mutable {
             QString text;
-#ifdef Q_OS_WIN
             try {
                 text = recognizeWindowsText(imageCopy);
             }
             catch (const winrt::hresult_error &e) {
-                spdlog::warn("OCR: Windows OCR failed: {}",
-                             winrt::to_string(e.message()));
+                SPDLOG_WARN("OCR: Windows OCR failed: {}",
+                            winrt::to_string(e.message()));
             }
             catch (const std::exception &e) {
-                spdlog::warn("OCR: Windows OCR failed: {}", e.what());
+                SPDLOG_WARN("OCR: Windows OCR failed: {}", e.what());
             }
-#endif
             if (!context) {
                 return;
             }

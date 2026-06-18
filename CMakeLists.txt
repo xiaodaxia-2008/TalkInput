@@ -38,7 +38,7 @@ if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-add_subdirectory(Src)
+add_subdirectory(src)
 
 target_compile_definitions(TalkInput PRIVATE
     GIT_COMMIT_ID="${GIT_COMMIT_ID}"

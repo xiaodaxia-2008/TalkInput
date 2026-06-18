@@ -12,10 +12,10 @@ int main(int argc, char *argv[])
 {
     spdlog::set_level(spdlog::level::debug);
     spdlog::flush_on(spdlog::level::debug);
-    spdlog::debug("main: starting application");
+    SPDLOG_DEBUG("main: starting application");
 
     QApplication app(argc, argv);
-    spdlog::debug("main: QApplication created");
+    SPDLOG_DEBUG("main: QApplication created");
     QApplication::setApplicationName("TalkInput");
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
@@ -30,10 +30,10 @@ int main(int argc, char *argv[])
         app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));
     }
     else {
-        spdlog::warn("main: failed to load application stylesheet");
+        SPDLOG_WARN("main: failed to load application stylesheet");
     }
 
-    spdlog::debug("main: config path {}", talkinput::appConfigPath());
+    SPDLOG_DEBUG("main: config path {}", talkinput::appConfigPath());
 
     const bool startHidden =
         talkinput::appConfigBool("settings/app/startMinimized", false);
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
         talkinput::appConfigString("settings/app/language", "zh");
 
     if (lang == QStringLiteral("zh")) {
-        spdlog::debug("main: loading Chinese translations");
+        SPDLOG_DEBUG("main: loading Chinese translations");
         auto *appTranslator = new QTranslator(&app);
         if (appTranslator->load(QStringLiteral(":/i18n/TalkInput_zh.qm"))) {
             app.installTranslator(appTranslator);
@@ -62,17 +62,17 @@ int main(int argc, char *argv[])
         }
     }
 
-    spdlog::debug("main: constructing MainWindow");
+    SPDLOG_DEBUG("main: constructing MainWindow");
     talkinput::MainWindow window;
-    spdlog::debug("main: MainWindow constructed");
+    SPDLOG_DEBUG("main: MainWindow constructed");
     if (!startHidden) {
-        spdlog::debug("main: showing MainWindow");
+        SPDLOG_DEBUG("main: showing MainWindow");
         window.show();
     }
     else {
-        spdlog::debug("main: start hidden is enabled");
+        SPDLOG_DEBUG("main: start hidden is enabled");
     }
 
-    spdlog::debug("main: entering event loop");
+    SPDLOG_DEBUG("main: entering event loop");
     return app.exec();
 }

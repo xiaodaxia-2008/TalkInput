@@ -70,10 +70,10 @@ void saveOcrDebugImage(const QImage &image)
 
     if (image.save(path, "PNG")) {
         image.save(latestPath, "PNG");
-        spdlog::debug("OCR context debug screenshot saved: {}", path);
+        SPDLOG_DEBUG("OCR context debug screenshot saved: {}", path);
     }
     else {
-        spdlog::warn("OCR context debug screenshot save failed: {}", path);
+        SPDLOG_WARN("OCR context debug screenshot save failed: {}", path);
     }
 }
 
@@ -267,15 +267,15 @@ bool VoiceInputController::nativeEventFilter(const QByteArray &eventType,
 
 bool VoiceInputController::startListening()
 {
-    spdlog::info("VoiceInputController: start listening");
+    SPDLOG_INFO("VoiceInputController: start listening");
 
     if (m_isListening) {
-        spdlog::warn("Already listening");
+        SPDLOG_WARN("Already listening");
         return false;
     }
 
     if (!m_asrService->isModelLoaded()) {
-        spdlog::warn("ASR model not loaded");
+        SPDLOG_WARN("ASR model not loaded");
         emit statusMessage(
             tr("Model not loaded yet. Please wait or select a model."));
         return false;
@@ -283,7 +283,7 @@ bool VoiceInputController::startListening()
 
     const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
     if (inputDevice.isNull()) {
-        spdlog::error("No audio input device");
+        SPDLOG_ERROR("No audio input device");
         emit statusMessage(tr("No microphone available."));
         return false;
     }
@@ -299,7 +299,7 @@ bool VoiceInputController::startListening()
     }
 
     if (!inputDevice.isFormatSupported(m_audioFormat)) {
-        spdlog::error("Audio format not supported");
+        SPDLOG_ERROR("Audio format not supported");
         emit statusMessage(tr("Microphone format not supported."));
         return false;
     }
@@ -311,7 +311,7 @@ bool VoiceInputController::startListening()
     m_audioSource = std::make_unique<QAudioSource>(inputDevice, m_audioFormat);
     m_audioDevice = m_audioSource->start();
     if (!m_audioDevice) {
-        spdlog::error("Failed to start microphone");
+        SPDLOG_ERROR("Failed to start microphone");
         m_audioSource.reset();
         emit statusMessage(tr("Failed to start microphone."));
         return false;
@@ -336,13 +336,13 @@ bool VoiceInputController::startListening()
     m_lastResult.clear();
     showOverlay();
     emit listeningChanged(true);
-    spdlog::info("Voice input started");
+    SPDLOG_INFO("Voice input started");
     return true;
 }
 
 void VoiceInputController::stopListening()
 {
-    spdlog::info("VoiceInputController: stop listening");
+    SPDLOG_INFO("VoiceInputController: stop listening");
 
     if (m_audioSource) {
         m_audioSource->stop();
@@ -387,14 +387,14 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
     auto submitToLlm = [this, finalText](const QString &ocrContext) {
         if (m_llmPostProcessor->isEnabled()) {
-            spdlog::debug("OCR context sent to LLM: {}", ocrContext.trimmed());
+            SPDLOG_DEBUG("OCR context sent to LLM: {}", ocrContext.trimmed());
             emit statusMessage(tr("Post-processing recognition result..."));
         }
         const QString hotwords = appConfigString("settings/model/hotwords");
         m_llmPostProcessor->postProcess(
             finalText, ocrContext, hotwords, this,
             [this, finalText](const QString &processedText) {
-                spdlog::debug(
+                SPDLOG_DEBUG(
                     "Voice input final text after LLM: input='{}' output='{}'",
                     finalText, processedText);
                 injectFinalText(processedText.trimmed());
@@ -406,40 +406,40 @@ void VoiceInputController::postProcessFinalText(const QString &text)
         appConfigBool("settings/ocr/useFocusedInputContext", false);
     const bool ocrServiceAvailable =
         m_ocrService && m_ocrService->isAvailable();
-    spdlog::debug("OCR context flow: llmEnabled={} ocrEnabled={} "
-                  "ocrServiceAvailable={}",
-                  llmEnabled, ocrEnabled, ocrServiceAvailable);
+    SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "
+                 "ocrServiceAvailable={}",
+                 llmEnabled, ocrEnabled, ocrServiceAvailable);
 
     if (!llmEnabled) {
-        spdlog::debug("OCR context skipped: LLM post-processing is disabled");
+        SPDLOG_DEBUG("OCR context skipped: LLM post-processing is disabled");
         submitToLlm({});
         return;
     }
     if (!ocrEnabled) {
-        spdlog::debug("OCR context skipped: OCR focused context is disabled");
+        SPDLOG_DEBUG("OCR context skipped: OCR focused context is disabled");
         submitToLlm({});
         return;
     }
     if (!ocrServiceAvailable) {
-        spdlog::debug("OCR context skipped: OCR service is unavailable");
+        SPDLOG_DEBUG("OCR context skipped: OCR service is unavailable");
         submitToLlm({});
         return;
     }
 
     const QImage image = captureFocusedContextImage();
     if (image.isNull()) {
-        spdlog::debug("OCR context skipped: no focused screenshot");
+        SPDLOG_DEBUG("OCR context skipped: no focused screenshot");
         submitToLlm({});
         return;
     }
 
-    spdlog::debug("OCR context screenshot captured: {}x{}", image.width(),
-                  image.height());
+    SPDLOG_DEBUG("OCR context screenshot captured: {}x{}", image.width(),
+                 image.height());
     emit statusMessage(tr("Reading focused input context..."));
     m_ocrService->recognizeText(
         image, this, [submitToLlm](const QString &contextText) mutable {
             const QString result = contextText.trimmed();
-            spdlog::debug("OCR context result received: {}", result);
+            SPDLOG_DEBUG("OCR context result received: {}", result);
             submitToLlm(result);
         });
 }
@@ -450,23 +450,22 @@ QImage VoiceInputController::captureFocusedContextImage() const
         const QImage focusedWindowImage =
             m_ocrService->captureFocusedTextInputImage();
         if (!focusedWindowImage.isNull()) {
-            spdlog::debug("OCR context focused window screenshot captured: "
-                          "{}x{}",
-                          focusedWindowImage.width(),
-                          focusedWindowImage.height());
+            SPDLOG_DEBUG("OCR context focused window screenshot captured: "
+                         "{}x{}",
+                         focusedWindowImage.width(),
+                         focusedWindowImage.height());
             saveOcrDebugImage(focusedWindowImage);
             return focusedWindowImage;
         }
-        spdlog::debug("OCR context focused window screenshot failed; falling "
-                      "back to full screen");
+        SPDLOG_DEBUG("OCR context focused window screenshot failed; falling "
+                     "back to full screen");
     }
 
     const QString screenName =
         m_ocrService ? m_ocrService->focusedTextInputScreenName() : QString();
     QScreen *screen = screenByName(screenName);
     if (screen) {
-        spdlog::debug("OCR context matched focused screen '{}'",
-                      screen->name());
+        SPDLOG_DEBUG("OCR context matched focused screen '{}'", screen->name());
     }
     if (!screen) {
         screen = QGuiApplication::screenAt(QCursor::pos());
@@ -475,16 +474,16 @@ QImage VoiceInputController::captureFocusedContextImage() const
         screen = QGuiApplication::primaryScreen();
     }
     if (!screen) {
-        spdlog::debug("OCR context screenshot skipped: no screen");
+        SPDLOG_DEBUG("OCR context screenshot skipped: no screen");
         return {};
     }
 
     const QPixmap pixmap = screen->grabWindow(0);
     const QImage image = pixmap.toImage();
-    spdlog::debug("OCR context using full-screen fallback on screen '{}': "
-                  "{}x{} dpr={}",
-                  screen->name(), pixmap.width(), pixmap.height(),
-                  pixmap.devicePixelRatio());
+    SPDLOG_DEBUG("OCR context using full-screen fallback on screen '{}': "
+                 "{}x{} dpr={}",
+                 screen->name(), pixmap.width(), pixmap.height(),
+                 pixmap.devicePixelRatio());
     saveOcrDebugImage(image);
     return image;
 }
@@ -500,7 +499,7 @@ void VoiceInputController::injectFinalText(const QString &text)
         m_history->addEntry(text);
     }
     emit finalTextCommitted(text);
-    spdlog::info("VoiceInputController injected and saved: {}", text);
+    SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
 }
 
 // ── Clipboard paste helper ────────────────────────────────────
@@ -639,7 +638,7 @@ void VoiceInputController::sendText(const QString &text)
         return;
     }
 
-    spdlog::info("Sending text to foreground app: {}", text);
+    SPDLOG_INFO("Sending text to foreground app: {}", text);
 
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) {
@@ -648,7 +647,7 @@ void VoiceInputController::sendText(const QString &text)
 
     if (isTerminalWindow(hwnd)) {
         // 终端窗口：剪切板 + Ctrl+V（绕过英文丢字问题）
-        spdlog::debug("Terminal window, using clipboard paste");
+        SPDLOG_DEBUG("Terminal window, using clipboard paste");
         if (!tryClipboardPaste(text)) {
             sendViaSendInput(text);
         }
@@ -679,10 +678,10 @@ void VoiceInputController::registerHotKey()
     if (!RegisterHotKey(nullptr, m_hotKeyId,
                         MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'L'))
     {
-        spdlog::warn("Failed to register global hotkey (Ctrl+Alt+L)");
+        SPDLOG_WARN("Failed to register global hotkey (Ctrl+Alt+L)");
     }
     else {
-        spdlog::info("Global hotkey registered: Ctrl+Alt+L");
+        SPDLOG_INFO("Global hotkey registered: Ctrl+Alt+L");
     }
 }
 

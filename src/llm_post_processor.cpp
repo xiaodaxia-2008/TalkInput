@@ -60,14 +60,14 @@ void stopProcessListeningOnPort(quint16 port)
 
     HMODULE module = LoadLibraryW(L"iphlpapi.dll");
     if (!module) {
-        spdlog::warn("Cannot load iphlpapi.dll to inspect LLM server port");
+        SPDLOG_WARN("Cannot load iphlpapi.dll to inspect LLM server port");
         return;
     }
 
     auto *getExtendedTcpTable = reinterpret_cast<GetExtendedTcpTableFn>(
         GetProcAddress(module, "GetExtendedTcpTable"));
     if (!getExtendedTcpTable) {
-        spdlog::warn("Cannot resolve GetExtendedTcpTable");
+        SPDLOG_WARN("Cannot resolve GetExtendedTcpTable");
         FreeLibrary(module);
         return;
     }
@@ -86,7 +86,7 @@ void stopProcessListeningOnPort(quint16 port)
     ret = getExtendedTcpTable(table, &size, FALSE, AF_INET,
                               TCP_TABLE_OWNER_PID_LISTENER, 0);
     if (ret != NO_ERROR) {
-        spdlog::warn("GetExtendedTcpTable failed: {}", ret);
+        SPDLOG_WARN("GetExtendedTcpTable failed: {}", ret);
         FreeLibrary(module);
         return;
     }
@@ -107,18 +107,18 @@ void stopProcessListeningOnPort(quint16 port)
         HANDLE process =
             OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
         if (!process) {
-            spdlog::warn("Cannot open process {} listening on LLM port {}", pid,
-                         port);
+            SPDLOG_WARN("Cannot open process {} listening on LLM port {}", pid,
+                        port);
             continue;
         }
 
-        spdlog::warn("Terminating existing process {} listening on LLM port {}",
-                     pid, port);
+        SPDLOG_WARN("Terminating existing process {} listening on LLM port {}",
+                    pid, port);
         if (TerminateProcess(process, 0)) {
             WaitForSingleObject(process, 3000);
         }
         else {
-            spdlog::warn("TerminateProcess failed for pid {}", pid);
+            SPDLOG_WARN("TerminateProcess failed for pid {}", pid);
         }
         CloseHandle(process);
     }
@@ -153,14 +153,14 @@ LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
         const QString text =
             QString::fromLocal8Bit(m_server.readAllStandardError());
         if (!text.trimmed().isEmpty()) {
-            spdlog::debug("llama-server stderr: {}", text.trimmed());
+            SPDLOG_DEBUG("llama-server stderr: {}", text.trimmed());
         }
     });
     connect(&m_server, &QProcess::readyReadStandardOutput, this, [this]() {
         const QString text =
             QString::fromLocal8Bit(m_server.readAllStandardOutput());
         if (!text.trimmed().isEmpty()) {
-            spdlog::debug("llama-server stdout: {}", text.trimmed());
+            SPDLOG_DEBUG("llama-server stdout: {}", text.trimmed());
         }
     });
     connect(&m_server, &QProcess::errorOccurred, this,
@@ -178,8 +178,8 @@ LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
                 if (m_stopping) {
                     return;
                 }
-                spdlog::warn("llama-server exited: code {} status {}", exitCode,
-                             static_cast<int>(exitStatus));
+                SPDLOG_WARN("llama-server exited: code {} status {}", exitCode,
+                            static_cast<int>(exitStatus));
                 m_serverReady = false;
                 m_healthTimer.stop();
                 if (!m_pending.isEmpty()) {
@@ -232,7 +232,7 @@ void LlmPostProcessor::postProcess(const QString &text,
     }
 
     const QString inputText = text.trimmed();
-    spdlog::debug("LLM post-process queued input: {}", inputText);
+    SPDLOG_DEBUG("LLM post-process queued input: {}", inputText);
     m_pending.enqueue({inputText, contextText.trimmed(), hotwords.trimmed(),
                        receiver, std::move(callback)});
     ensureReady();
@@ -422,7 +422,7 @@ void LlmPostProcessor::beginDownload(DownloadKind kind, const QUrl &url,
                 emit statusMessage(
                     tr("Downloading LLM component %1%...").arg(percent));
             });
-    spdlog::info("LLM download started: {}", url.toString());
+    SPDLOG_INFO("LLM download started: {}", url.toString());
 }
 
 void LlmPostProcessor::onDownloadFinished(QNetworkReply *reply)
@@ -497,7 +497,7 @@ void LlmPostProcessor::startServer()
                            QString::number(ServerPort), "-c", "1024"});
 
     emit statusMessage(tr("Starting LLM service..."));
-    spdlog::info("Starting llama-server: {}", executable);
+    SPDLOG_INFO("Starting llama-server: {}", executable);
     m_server.start();
     m_healthAttempts = 0;
     m_healthTimer.start();
@@ -582,7 +582,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
     }
-    spdlog::debug("LLM chat request body:", payload.dump(2));
+    SPDLOG_DEBUG("LLM chat request body:", payload.dump(2));
 
     const std::string requestJson = payload.dump();
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
@@ -599,8 +599,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                         const nlohmann::json doc = nlohmann::json::parse(
                             responseBody.constData(),
                             responseBody.constData() + responseBody.size());
-                        spdlog::debug("LLM chat response JSON: {}",
-                                      doc.dump(2));
+                        SPDLOG_DEBUG("LLM chat response JSON: {}", doc.dump(2));
                         const auto &choices =
                             doc.value("choices", nlohmann::json::array());
                         if (!choices.empty()) {
@@ -614,16 +613,16 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                         }
                     }
                     catch (const nlohmann::json::exception &e) {
-                        spdlog::warn("LLM response parse failed: {}", e.what());
+                        SPDLOG_WARN("LLM response parse failed: {}", e.what());
                         requestFailed = true;
                     }
                 }
                 else {
-                    spdlog::warn("LLM post-process failed: {}",
-                                 reply->errorString());
+                    SPDLOG_WARN("LLM post-process failed: {}",
+                                reply->errorString());
                     requestFailed = true;
                 }
-                spdlog::debug("LLM post-process output: {}", result);
+                SPDLOG_DEBUG("LLM post-process output: {}", result);
                 reply->deleteLater();
                 if (pendingCopy.receiver && pendingCopy.callback) {
                     pendingCopy.callback(result);
@@ -637,7 +636,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
 
 void LlmPostProcessor::failPending(const QString &reason)
 {
-    spdlog::warn("LLM post-processor fallback: {}", reason);
+    SPDLOG_WARN("LLM post-processor fallback: {}", reason);
     emit statusMessage(reason);
     m_preparing = false;
     m_serverReady = false;

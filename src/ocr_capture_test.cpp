@@ -56,18 +56,18 @@ QString outputDir()
 QString saveImage(const QImage &image, const QString &dir, const QString &name)
 {
     if (image.isNull()) {
-        spdlog::warn("{}: image is null", name);
+        SPDLOG_WARN("{}: image is null", name);
         return {};
     }
 
     const QString path = QDir(dir).filePath(name);
     if (!image.save(path, "PNG")) {
-        spdlog::warn("{}: failed to save {}", name, path);
+        SPDLOG_WARN("{}: failed to save {}", name, path);
         return {};
     }
 
-    spdlog::info("{}: saved {} ({}x{})", name, path, image.width(),
-                 image.height());
+    SPDLOG_INFO("{}: saved {} ({}x{})", name, path, image.width(),
+                image.height());
     return path;
 }
 
@@ -146,7 +146,7 @@ QImage captureWithPrintWindow(HWND hwnd)
     DeleteObject(bitmap);
     DeleteDC(memoryDc);
     ReleaseDC(hwnd, windowDc);
-    spdlog::info("PrintWindow returned {}", ok ? "true" : "false");
+    SPDLOG_INFO("PrintWindow returned {}", ok ? "true" : "false");
     return image;
 }
 
@@ -170,7 +170,7 @@ QImage captureWindowFromDesktop(const RECT &rect)
     DeleteObject(bitmap);
     DeleteDC(memoryDc);
     ReleaseDC(nullptr, desktopDc);
-    spdlog::info("Desktop BitBlt returned {}", ok ? "true" : "false");
+    SPDLOG_INFO("Desktop BitBlt returned {}", ok ? "true" : "false");
     return image;
 }
 
@@ -192,7 +192,7 @@ QScreen *screenForWindow(HWND hwnd)
                 return screen;
             }
         }
-        spdlog::warn("No Qt screen matched monitor {}", name);
+        SPDLOG_WARN("No Qt screen matched monitor {}", name);
     }
 
     return QGuiApplication::screenAt(QCursor::pos())
@@ -208,34 +208,33 @@ int main(int argc, char *argv[])
     spdlog::set_level(spdlog::level::debug);
 
     const int delaySeconds = parseDelaySeconds(app.arguments());
-    spdlog::info("OCR capture test will capture foreground window in {} "
-                 "seconds. Focus the target window now.",
-                 delaySeconds);
+    SPDLOG_INFO("OCR capture test will capture foreground window in {} "
+                "seconds. Focus the target window now.",
+                delaySeconds);
     QThread::sleep(static_cast<unsigned long>(delaySeconds));
 
     const CaptureTarget target = foregroundTarget();
     if (!target.hwnd) {
-        spdlog::error("No foreground window");
+        SPDLOG_ERROR("No foreground window");
         return 1;
     }
 
     const int width = target.windowRect.right - target.windowRect.left;
     const int height = target.windowRect.bottom - target.windowRect.top;
-    spdlog::info(
-        "Foreground hwnd={} class='{}' title='{}' rect=({}, {}, {}x{})",
-        reinterpret_cast<void *>(target.hwnd), target.className,
-        target.windowTitle, target.windowRect.left, target.windowRect.top,
-        width, height);
+    SPDLOG_INFO("Foreground hwnd={} class='{}' title='{}' rect=({}, {}, {}x{})",
+                reinterpret_cast<void *>(target.hwnd), target.className,
+                target.windowTitle, target.windowRect.left,
+                target.windowRect.top, width, height);
 
     QScreen *screen = screenForWindow(target.hwnd);
     if (!screen) {
-        spdlog::error("No screen available");
+        SPDLOG_ERROR("No screen available");
         return 1;
     }
-    spdlog::info("Qt screen='{}' geometry=({}, {}, {}x{}) dpr={}",
-                 screen->name(), screen->geometry().x(), screen->geometry().y(),
-                 screen->geometry().width(), screen->geometry().height(),
-                 screen->devicePixelRatio());
+    SPDLOG_INFO("Qt screen='{}' geometry=({}, {}, {}x{}) dpr={}",
+                screen->name(), screen->geometry().x(), screen->geometry().y(),
+                screen->geometry().width(), screen->geometry().height(),
+                screen->devicePixelRatio());
 
     const QString dir = outputDir();
     const QString stamp =
@@ -250,6 +249,6 @@ int main(int argc, char *argv[])
     saveImage(captureWindowFromDesktop(target.windowRect), dir,
               QString("win32-desktop-crop-%1.png").arg(stamp));
 
-    spdlog::info("Capture test output dir: {}", dir);
+    SPDLOG_INFO("Capture test output dir: {}", dir);
     return 0;
 }

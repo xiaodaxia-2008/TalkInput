@@ -98,9 +98,9 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
         m_inputSampleRate = sampleRate;
     }
     else if (m_inputSampleRate != sampleRate) {
-        spdlog::warn("Offline ASR input sample rate changed from {} to {}; "
-                     "keeping the first rate for this utterance",
-                     m_inputSampleRate, sampleRate);
+        SPDLOG_WARN("Offline ASR input sample rate changed from {} to {}; "
+                    "keeping the first rate for this utterance",
+                    m_inputSampleRate, sampleRate);
     }
 
     appendPcm16AsMonoFloat(audioData, channelCount, &m_samples);

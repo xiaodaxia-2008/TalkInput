@@ -63,8 +63,8 @@ ModelPreset parsePreset(const nlohmann::json &obj)
         auto it = raw.postPunctuationModel.find("modelDirName");
         if (it != raw.postPunctuationModel.end() && it->is_string()) {
             preset.postPunctuationModelDirName = it->get<std::string>();
-            spdlog::debug("model_registry: preset {} has punctuation model {}",
-                          preset.name, preset.postPunctuationModelDirName);
+            SPDLOG_DEBUG("model_registry: preset {} has punctuation model {}",
+                         preset.name, preset.postPunctuationModelDirName);
         }
     }
 
@@ -82,8 +82,8 @@ ModelPreset parsePreset(const nlohmann::json &obj)
         preset.files.push_back(std::move(rule));
     }
 
-    spdlog::debug("model_registry: parsing preset {} ({})", preset.name,
-                  preset.modelDirName);
+    SPDLOG_DEBUG("model_registry: parsing preset {} ({})", preset.name,
+                 preset.modelDirName);
     return preset;
 }
 
@@ -92,7 +92,7 @@ std::vector<ModelPreset> parsePresetArray(const nlohmann::json &root,
 {
     std::vector<ModelPreset> presets;
     const nlohmann::json arr = root.value(key, nlohmann::json::array());
-    spdlog::debug("model_registry: parsing {} with {} items", key, arr.size());
+    SPDLOG_DEBUG("model_registry: parsing {} with {} items", key, arr.size());
     presets.reserve(arr.size());
     for (const auto &val : arr) {
         presets.push_back(parsePreset(val));
@@ -107,8 +107,8 @@ LlmLocalModel parseLlmLocalModel(const nlohmann::json &root)
     const nlohmann::json localModelObj =
         llmObj.value("localModel", nlohmann::json::object());
     LlmLocalModel model = localModelObj.get<LlmLocalModel>();
-    spdlog::debug("model_registry: loaded LLM local model {} ({})", model.name,
-                  model.fileName);
+    SPDLOG_DEBUG("model_registry: loaded LLM local model {} ({})", model.name,
+                 model.fileName);
     return model;
 }
 
@@ -129,8 +129,8 @@ parseLlmProviderPresets(const nlohmann::json &root)
         }
         if (!provider.id.empty()) {
             providers.push_back(std::move(provider));
-            spdlog::debug("model_registry: loaded LLM provider {} ({})",
-                          providers.back().id, providers.back().endpoint);
+            SPDLOG_DEBUG("model_registry: loaded LLM provider {} ({})",
+                         providers.back().id, providers.back().endpoint);
         }
     }
 
@@ -177,10 +177,10 @@ void ensureLoaded()
     s_llmSystemPrompt = parseLlmSystemPrompt(root);
     s_llmUserPrompt = parseLlmUserPrompt(root);
 
-    spdlog::info("model_registry: loaded {} ASR presets, {} tool presets, {} "
-                 "LLM providers, LLM model {}",
-                 s_asrPresets.size(), s_toolPresets.size(),
-                 s_llmProviderPresets.size(), s_llmLocalModel.fileName);
+    SPDLOG_INFO("model_registry: loaded {} ASR presets, {} tool presets, {} "
+                "LLM providers, LLM model {}",
+                s_asrPresets.size(), s_toolPresets.size(),
+                s_llmProviderPresets.size(), s_llmLocalModel.fileName);
 }
 
 QStringList toQStringList(const std::vector<std::string> &values)
@@ -311,9 +311,9 @@ ModelFileSet resolveModelFiles(const QString &modelDir)
 
     ModelFileSet result;
     if (!preset) {
-        spdlog::debug("model_registry: no preset for {}; caller should fall "
-                      "back to probing",
-                      dirName);
+        SPDLOG_DEBUG("model_registry: no preset for {}; caller should fall "
+                     "back to probing",
+                     dirName);
         result.modelDirName = dirName;
         return result;
     }
@@ -326,8 +326,8 @@ ModelFileSet resolveModelFiles(const QString &modelDir)
         const QStringList found =
             findFiles(dir, toQStringList(rule.globPatterns), rule.isDir);
         if (found.isEmpty()) {
-            spdlog::warn("model_registry: no match for {} in {}",
-                         rule.configField, dirName);
+            SPDLOG_WARN("model_registry: no match for {} in {}",
+                        rule.configField, dirName);
             continue;
         }
         result.resolvedFiles.insert(

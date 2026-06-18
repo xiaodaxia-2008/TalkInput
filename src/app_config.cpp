@@ -46,7 +46,7 @@ nlohmann::json readConfigObject(const QString &path)
         return parsed.is_object() ? parsed : nlohmann::json::object();
     }
     catch (const nlohmann::json::exception &e) {
-        spdlog::warn("config: failed to parse {}: {}", path, e.what());
+        SPDLOG_WARN("config: failed to parse {}: {}", path, e.what());
         return nlohmann::json::object();
     }
 }
@@ -82,11 +82,11 @@ void ensureLoaded()
                        ? s_defaultConfig
                        : mergeDefaults(s_defaultConfig, userConfig);
 
-        spdlog::info("config: loaded {}",
-                     userConfig.empty() ? "defaults" : appConfigPath());
+        SPDLOG_INFO("config: loaded {}",
+                    userConfig.empty() ? "defaults" : appConfigPath());
     }
     catch (const nlohmann::json::exception &e) {
-        spdlog::warn("config: failed to load merged config: {}", e.what());
+        SPDLOG_WARN("config: failed to load merged config: {}", e.what());
         s_config = s_defaultConfig.empty() ? nlohmann::json::object()
                                            : s_defaultConfig;
     }
@@ -97,19 +97,19 @@ bool writeConfigNow()
     const QString path = appConfigPath();
     QDir dir = QFileInfo(path).absoluteDir();
     if (!dir.exists() && !dir.mkpath(".")) {
-        spdlog::warn("config: cannot create directory {}", dir.absolutePath());
+        SPDLOG_WARN("config: cannot create directory {}", dir.absolutePath());
         return false;
     }
 
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        spdlog::warn("config: cannot write {}", path);
+        SPDLOG_WARN("config: cannot write {}", path);
         return false;
     }
     const std::string text = s_config.dump(2);
     file.write(text.data(), static_cast<qint64>(text.size()));
     s_dirty = false;
-    spdlog::debug("config: saved {}", path);
+    SPDLOG_DEBUG("config: saved {}", path);
     return true;
 }
 

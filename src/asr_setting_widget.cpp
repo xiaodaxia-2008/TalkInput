@@ -115,7 +115,7 @@ namespace talkinput
 AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_networkManager(new QNetworkAccessManager(this))
 {
-    spdlog::debug("AsrSettingWidget: constructor begin");
+    SPDLOG_DEBUG("AsrSettingWidget: constructor begin");
 
     connect(m_networkManager, &QNetworkAccessManager::finished, this,
             &AsrSettingWidget::onDownloadFinished);
@@ -484,14 +484,14 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     root->addLayout(bottomRow);
 
     // ── Load model presets from config ───────────────────────────
-    spdlog::debug("AsrSettingWidget: loading model presets");
+    SPDLOG_DEBUG("AsrSettingWidget: loading model presets");
     const auto presets = loadModelPresets();
     const auto toolPresets = loadToolPresets();
 
     // Store ALL presets (ASR + tool/punctuation) in m_models
     for (const auto &preset : presets) {
-        spdlog::debug("AsrSettingWidget: preset {} ({})", preset.name,
-                      preset.modelDirName);
+        SPDLOG_DEBUG("AsrSettingWidget: preset {} ({})", preset.name,
+                     preset.modelDirName);
         ModelInfo info;
         info.name = qs(preset.name);
         info.type = qs(preset.type);
@@ -507,8 +507,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         if (!preset.postPunctuationModelDirName.empty()) {
             info.postPunctuationDirName =
                 qs(preset.postPunctuationModelDirName);
-            spdlog::debug("AsrSettingWidget: {} has punctuation partner {}",
-                          info.name, info.postPunctuationDirName);
+            SPDLOG_DEBUG("AsrSettingWidget: {} has punctuation partner {}",
+                         info.name, info.postPunctuationDirName);
         }
 
         m_models.append(std::move(info));
@@ -516,8 +516,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // Store tool presets too (for punctuation model lookups)
     for (const auto &preset : toolPresets) {
-        spdlog::debug("AsrSettingWidget: tool preset {} ({})", preset.name,
-                      preset.modelDirName);
+        SPDLOG_DEBUG("AsrSettingWidget: tool preset {} ({})", preset.name,
+                     preset.modelDirName);
         ModelInfo info;
         info.name = qs(preset.name);
         info.type = qs(preset.type);
@@ -588,7 +588,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     archiveBtn->setProperty("buttonRole", "icon");
     openBtn->setProperty("buttonRole", "icon");
     hotwordsBtn->setProperty("buttonRole", "icon");
-    spdlog::debug("AsrSettingWidget: constructor end");
+    SPDLOG_DEBUG("AsrSettingWidget: constructor end");
 }
 
 AsrSettingWidget::~AsrSettingWidget() = default;
@@ -671,32 +671,31 @@ void AsrSettingWidget::autoLoadPunctuationModel(int modelRow)
         }
     }
     if (punctRow < 0) {
-        spdlog::warn("AsrSettingWidget: punctuation model {} not found in "
-                     "presets",
-                     punctDirName);
+        SPDLOG_WARN("AsrSettingWidget: punctuation model {} not found in "
+                    "presets",
+                    punctDirName);
         return;
     }
 
     // Check if already installed
     if (isInstalled(punctRow)) {
-        spdlog::debug(
-            "AsrSettingWidget: punctuation model {} already installed",
-            punctDirName);
+        SPDLOG_DEBUG("AsrSettingWidget: punctuation model {} already installed",
+                     punctDirName);
         const QString punctDir = QDir(cacheDir()).filePath(punctDirName);
         emit punctuationModelReady(punctDir);
         return;
     }
 
     if (m_activeDownloadReply) {
-        spdlog::debug("AsrSettingWidget: download already in progress");
+        SPDLOG_DEBUG("AsrSettingWidget: download already in progress");
         return;
     }
 
     // Auto-download punctuation model
     const auto &m = m_models[punctRow];
-    spdlog::info("AsrSettingWidget: punctuation model not found, "
-                 "auto-downloading {}...",
-                 punctDirName);
+    SPDLOG_INFO("AsrSettingWidget: punctuation model not found, "
+                "auto-downloading {}...",
+                punctDirName);
     emit statusMessage(tr("Downloading punctuation model..."));
 
     QDir cache(cacheDir());
@@ -805,7 +804,7 @@ void AsrSettingWidget::onDeleteCurrent()
     }
 
     QDir(dir).removeRecursively();
-    spdlog::info("Deleted model: {} ({})", m.name, dir);
+    SPDLOG_INFO("Deleted model: {} ({})", m.name, dir);
     emit statusMessage(tr("Deleted: %1").arg(m.name));
     refreshStatus();
 }
@@ -852,7 +851,7 @@ void AsrSettingWidget::activateModel(int modelRow)
         m_downloadTargetRow = -1;
     }
 
-    spdlog::info("Recognition model set: {} ({})", m.name, dir);
+    SPDLOG_INFO("Recognition model set: {} ({})", m.name, dir);
     setAppConfigValue("settings/model/directory", dir);
     setAppConfigValue("settings/model/name", m.name);
     emit modelSelected(dir, m.name);
@@ -899,7 +898,7 @@ void AsrSettingWidget::onUseArchive()
 
     const QString modelDir = dest.filePath(base);
     if (QFileInfo(modelDir).isDir()) {
-        spdlog::info("Extracted model: {}", modelDir);
+        SPDLOG_INFO("Extracted model: {}", modelDir);
         emit modelSelected(modelDir, base);
         emit statusMessage(
             tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));
