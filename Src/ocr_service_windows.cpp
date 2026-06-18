@@ -305,8 +305,8 @@ QString recognizeWindowsText(QImage image)
 
     initWinrtApartment();
 
-    spdlog::debug("OCR: Windows OCR input image: {}x{}", image.width(),
-                  image.height());
+    spdlog::debug("OCR: Windows OCR input image: {}x{} fmt={}", image.width(),
+                  image.height(), static_cast<int>(image.format()));
     if (image.width() > MaxContextWidth || image.height() > MaxContextHeight) {
         image = image.scaled(MaxContextWidth, MaxContextHeight,
                              Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -314,19 +314,28 @@ QString recognizeWindowsText(QImage image)
                       image.height());
     }
 
-    QByteArray png;
-    QBuffer buffer(&png);
-    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) {
-        spdlog::warn("OCR: failed to encode screenshot as PNG");
+    // Ensure we have a consistent pixel layout: convert to Format_RGB32
+    // (byte-aligned 32-bit BGRA with unused alpha) so the BMP we write
+    // and decode matches what the OCR engine expects.
+    if (image.format() != QImage::Format_RGB32) {
+        image = image.convertToFormat(QImage::Format_RGB32);
+        spdlog::debug("OCR: converted image to Format_RGB32");
+    }
+
+    QByteArray bmp;
+    QBuffer buffer(&bmp);
+    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "BMP")) {
+        spdlog::warn("OCR: failed to encode screenshot as BMP");
         return {};
     }
+    spdlog::debug("OCR: encoded BMP size={}", bmp.size());
 
     auto stream =
         winrt::Windows::Storage::Streams::InMemoryRandomAccessStream();
     auto writer = winrt::Windows::Storage::Streams::DataWriter(stream);
-    const auto *begin = reinterpret_cast<const uint8_t *>(png.constData());
+    const auto *begin = reinterpret_cast<const uint8_t *>(bmp.constData());
     writer.WriteBytes(winrt::array_view<const uint8_t>(
-        begin, begin + static_cast<std::ptrdiff_t>(png.size())));
+        begin, begin + static_cast<std::ptrdiff_t>(bmp.size())));
     writer.StoreAsync().get();
     writer.FlushAsync().get();
     stream.Seek(0);
@@ -334,22 +343,38 @@ QString recognizeWindowsText(QImage image)
     const auto decoder =
         winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream)
             .get();
+    const auto softwareBitmap = decoder.GetSoftwareBitmapAsync().get();
+    spdlog::debug("OCR: decoder bitmap: {}x{} fmt={} alpha={}",
+                  softwareBitmap.PixelWidth(), softwareBitmap.PixelHeight(),
+                  static_cast<int>(softwareBitmap.BitmapPixelFormat()),
+                  static_cast<int>(softwareBitmap.BitmapAlphaMode()));
+
+    // Convert to the exact format the OCR engine needs (Bgra8 + Ignore),
+    // matching Microsoft's sample code pattern.
     const auto bitmap =
-        decoder
-            .GetSoftwareBitmapAsync(
-                winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
-                winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore)
-            .get();
+        winrt::Windows::Graphics::Imaging::SoftwareBitmap::Convert(
+            softwareBitmap,
+            winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
+            winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore);
+    spdlog::debug("OCR: converted bitmap: {}x{} fmt={} alpha={}",
+                  bitmap.PixelWidth(), bitmap.PixelHeight(),
+                  static_cast<int>(bitmap.BitmapPixelFormat()),
+                  static_cast<int>(bitmap.BitmapAlphaMode()));
+
     const auto engine = winrt::Windows::Media::Ocr::OcrEngine::
         TryCreateFromUserProfileLanguages();
     if (!engine) {
         spdlog::warn("OCR: Windows OCR engine is not available");
         return {};
     }
+    spdlog::debug("OCR: engine language={}",
+                  winrt::to_string(engine.RecognizerLanguage().LanguageTag()));
 
     const auto result = engine.RecognizeAsync(bitmap).get();
+    const auto textHstring = result.Text();
+    spdlog::debug("OCR: result text length={}", textHstring.size());
     const QString text =
-        QString::fromStdWString(std::wstring(result.Text())).trimmed();
+        QString::fromStdWString(std::wstring(textHstring)).trimmed();
     spdlog::debug("OCR: Windows OCR result: {}", text);
     return text;
 }
