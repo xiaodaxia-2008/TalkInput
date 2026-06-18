@@ -23,8 +23,8 @@ add_executable(TalkInput
     llm_post_processor.h
     ocr_service.cpp
     ocr_service.h
-    ocr_service_windows.cpp
-    ocr_service_windows.h
+    Windows/ocr_service_windows.cpp
+    Windows/ocr_service_windows.h
     logging.h
     recognition_history.cpp
     recognition_history.h

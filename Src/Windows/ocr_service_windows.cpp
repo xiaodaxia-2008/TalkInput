@@ -372,8 +372,20 @@ QString recognizeWindowsText(QImage image)
     // Clean up temp file
     QFile::remove(tempPath);
 
-    const auto engine = winrt::Windows::Media::Ocr::OcrEngine::
-        TryCreateFromUserProfileLanguages();
+    // Try Chinese OCR first (zh-Hans-CN), then fall back to user profile
+    // languages. The user's screenshot mostly contains Chinese text; with en-US
+    // the OCR returns empty results because the language pack doesn't match the
+    // text.
+    auto engine = winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(
+        winrt::Windows::Globalization::Language(L"zh-Hans-CN"));
+    if (!engine) {
+        engine = winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromLanguage(
+            winrt::Windows::Globalization::Language(L"zh-Hans"));
+    }
+    if (!engine) {
+        engine = winrt::Windows::Media::Ocr::OcrEngine::
+            TryCreateFromUserProfileLanguages();
+    }
     if (!engine) {
         spdlog::warn("OCR: Windows OCR engine is not available");
         return {};
