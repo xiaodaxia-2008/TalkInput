@@ -329,7 +329,6 @@ QString recognizeWindowsText(QImage image)
         begin, begin + static_cast<std::ptrdiff_t>(png.size())));
     writer.StoreAsync().get();
     writer.FlushAsync().get();
-    writer.DetachStream();
     stream.Seek(0);
 
     const auto decoder =
@@ -339,8 +338,7 @@ QString recognizeWindowsText(QImage image)
         decoder
             .GetSoftwareBitmapAsync(
                 winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
-                winrt::Windows::Graphics::Imaging::BitmapAlphaMode::
-                    Premultiplied)
+                winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore)
             .get();
     const auto engine = winrt::Windows::Media::Ocr::OcrEngine::
         TryCreateFromUserProfileLanguages();

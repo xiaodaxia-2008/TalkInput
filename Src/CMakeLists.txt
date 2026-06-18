@@ -115,6 +115,10 @@ add_executable(TalkInputOcrCaptureTest
     ocr_capture_test.cpp
 )
 
+add_executable(TalkInputOcrRecognitionTest
+    ocr_recognition_test.cpp
+)
+
 target_link_libraries(TalkInputAsrTest
     PRIVATE
     Qt6::Core
@@ -143,6 +147,11 @@ target_link_libraries(TalkInputOcrCaptureTest
     spdlog::spdlog_header_only
 )
 
+target_link_libraries(TalkInputOcrRecognitionTest
+    PRIVATE
+    windowsapp
+)
+
 target_include_directories(TalkInput PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
@@ -164,6 +173,10 @@ target_include_directories(TalkInputOcrCaptureTest PRIVATE
     ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
 )
 
+target_include_directories(TalkInputOcrRecognitionTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 target_compile_definitions(TalkInput PRIVATE
     PROJECT_VERSION_STR="${PROJECT_VERSION}"
 )
@@ -183,6 +196,10 @@ install(TARGETS TalkInputSenseVoiceTest
 )
 
 install(TARGETS TalkInputOcrCaptureTest
+    COMPONENT Runtime
+)
+
+install(TARGETS TalkInputOcrRecognitionTest
     COMPONENT Runtime
 )
 
