@@ -2,7 +2,6 @@
 #include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
-#include "model_registry.h"
 #include "utils.h"
 
 #include <QCheckBox>
@@ -43,6 +42,44 @@ QString qs(const std::string &value)
 QString cacheDir()
 {
     return QDir(talkinput::appDataDir()).filePath(QStringLiteral("models"));
+}
+
+// ---- LLM defaults read directly from appConfig (single source of truth) ----
+
+const nlohmann::json llmProvidersJson()
+{
+    return talkinput::appConfigValue("llmPostProcessing/providers");
+}
+
+const nlohmann::json defaultLlmProviderJson()
+{
+    const nlohmann::json providers = llmProvidersJson();
+    if (providers.is_array() && !providers.empty()) {
+        return providers.front();
+    }
+    return nlohmann::json::object();
+}
+
+QString defaultLlmProviderId()
+{
+    const nlohmann::json provider = defaultLlmProviderJson();
+    return qs(provider.value("id", std::string("llama.cpp")));
+}
+
+QString defaultLlmEndpoint()
+{
+    const nlohmann::json provider = defaultLlmProviderJson();
+    return qs(provider.value("endpoint", std::string()));
+}
+
+QString defaultLlmSystemPrompt()
+{
+    return talkinput::appConfigString("llmPostProcessing/systemPrompt");
+}
+
+QString defaultLlmUserPrompt()
+{
+    return talkinput::appConfigString("llmPostProcessing/userPrompt");
 }
 
 QString formatSize(qint64 bytes)
@@ -101,7 +138,7 @@ QString currentLlmSystemPrompt()
     QString prompt =
         talkinput::appConfigString("settings/llm/systemPrompt").trimmed();
     if (prompt.isEmpty()) {
-        prompt = qs(talkinput::defaultLlmSystemPrompt());
+        prompt = defaultLlmSystemPrompt();
     }
     return prompt;
 }
@@ -111,7 +148,7 @@ QString currentLlmUserPrompt()
     QString prompt =
         talkinput::appConfigString("settings/llm/userPrompt").trimmed();
     if (prompt.isEmpty()) {
-        prompt = qs(talkinput::defaultLlmUserPrompt());
+        prompt = defaultLlmUserPrompt();
     }
     return prompt;
 }
@@ -209,11 +246,14 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     llmForm->setContentsMargins(10, 10, 10, 10);
     llmForm->setSpacing(8);
 
-    const std::vector<LlmProviderPreset> llmProviders =
-        loadLlmProviderPresets();
+    const nlohmann::json llmProviders = llmProvidersJson();
     auto *providerCombo = new QComboBox(llmGroup);
     for (const auto &provider : llmProviders) {
-        providerCombo->addItem(qs(provider.name), qs(provider.id));
+        if (!provider.is_object()) {
+            continue;
+        }
+        providerCombo->addItem(qs(provider.value("name", std::string())),
+                               qs(provider.value("id", std::string())));
     }
 
     auto *endpointEdit = new QLineEdit(llmGroup);
@@ -251,33 +291,38 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     };
     refreshPromptLabel();
 
-    auto providerAt = [llmProviders](int index) {
+    auto providerAt = [&llmProviders](int index) -> nlohmann::json {
         if (index >= 0 && static_cast<std::size_t>(index) < llmProviders.size())
         {
             return llmProviders[static_cast<std::size_t>(index)];
         }
-        return defaultLlmProvider();
+        return defaultLlmProviderJson();
     };
     auto applyProvider = [providerCombo, endpointEdit, modelCombo](
-                             const LlmProviderPreset &provider, bool persist) {
-        const bool custom = provider.custom;
+                             const nlohmann::json &provider, bool persist) {
+        const bool custom = provider.value("custom", false);
+        const QString providerId = qs(provider.value("id", std::string()));
         const QString endpoint =
             custom ? appConfigString("settings/llm/customEndpoint",
                                      appConfigString("settings/llm/endpoint"))
-                   : qs(provider.endpoint);
+                   : qs(provider.value("endpoint", std::string()));
         const QString model =
             custom ? appConfigString("settings/llm/customModel",
                                      appConfigString("settings/llm/model"))
-                   : appConfigString(llmProviderModelKey(qs(provider.id)),
-                                     qs(provider.model));
+                   : appConfigString(llmProviderModelKey(providerId),
+                                     qs(provider.value("model", std::string())));
 
         {
             const QSignalBlocker endpointBlocker(endpointEdit);
             const QSignalBlocker modelBlocker(modelCombo);
             endpointEdit->setText(endpoint);
             modelCombo->clear();
-            for (const std::string &presetModel : provider.models) {
-                modelCombo->addItem(qs(presetModel));
+            const nlohmann::json models =
+                provider.value("models", nlohmann::json::array());
+            for (const auto &presetModel : models) {
+                if (presetModel.is_string()) {
+                    modelCombo->addItem(qs(presetModel.get<std::string>()));
+                }
             }
             if (!model.isEmpty() && modelCombo->findText(model) < 0) {
                 modelCombo->addItem(model);
@@ -290,32 +335,32 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             return;
         }
 
-        setAppConfigValue("settings/llm/providerId", provider.id);
+        setAppConfigValue("settings/llm/providerId",
+                          provider.value("id", std::string()));
         setAppConfigValue("settings/llm/endpoint", endpoint);
         setAppConfigValue("settings/llm/model", model);
-        setAppConfigValue(llmProviderModelKey(qs(provider.id)), model);
+        setAppConfigValue(llmProviderModelKey(providerId), model);
         if (custom) {
             setAppConfigValue("settings/llm/customEndpoint", endpoint);
             setAppConfigValue("settings/llm/customModel", model);
         }
-        providerCombo->setCurrentIndex(
-            providerCombo->findData(qs(provider.id)));
+        providerCombo->setCurrentIndex(providerCombo->findData(providerId));
     };
 
     {
-        QString providerId = appConfigString("settings/llm/providerId",
-                                             qs(defaultLlmProviderId()));
+        QString providerId =
+            appConfigString("settings/llm/providerId", defaultLlmProviderId());
         const QString savedEndpoint =
             appConfigString("settings/llm/endpoint").trimmed();
         if (!appConfigContains("settings/llm/providerId") &&
             !savedEndpoint.isEmpty() &&
-            savedEndpoint != qs(defaultLlmEndpoint()))
+            savedEndpoint != defaultLlmEndpoint())
         {
             providerId = "custom";
         }
         int providerIndex = providerCombo->findData(providerId);
         if (providerIndex < 0) {
-            providerIndex = providerCombo->findData(qs(defaultLlmProviderId()));
+            providerIndex = providerCombo->findData(defaultLlmProviderId());
         }
         if (providerIndex < 0 && providerCombo->count() > 0) {
             providerIndex = 0;
@@ -440,8 +485,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             auto *resetBtn = new QPushButton(tr("Reset"));
             connect(resetBtn, &QPushButton::clicked, &dialog,
                     [sysEditor, usrEditor]() {
-                        sysEditor->setPlainText(qs(defaultLlmSystemPrompt()));
-                        usrEditor->setPlainText(qs(defaultLlmUserPrompt()));
+                        sysEditor->setPlainText(defaultLlmSystemPrompt());
+                        usrEditor->setPlainText(defaultLlmUserPrompt());
                     });
 
             auto *buttons = new QDialogButtonBox(&dialog);
@@ -522,30 +567,36 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // ── Load model presets from config ───────────────────────────
     SPDLOG_DEBUG("AsrSettingWidget: loading model presets");
-    const auto presets = loadModelPresetJsons();
-    const auto toolPresets = loadToolPresetJsons();
+    const nlohmann::json asrPresets = talkinput::appConfigValue("asrPresets");
 
-    // Store ALL presets (ASR + tool/punctuation) in m_models
-    for (const auto &preset : presets) {
+    // Store ALL presets (ASR + nested punctuation tool presets) in m_models
+    for (const auto &preset : asrPresets) {
+        if (!preset.is_object()) {
+            continue;
+        }
         const QString name = modelJsonString(preset, "name");
         const QString dirName = modelJsonString(preset, "modelDirName");
         SPDLOG_DEBUG("AsrSettingWidget: preset {} ({})", name, dirName);
 
-        const QString punctDirName = postPunctuationDirName(preset);
-        if (!punctDirName.isEmpty()) {
+        m_models.append(preset);
+
+        // Derive a punctuation tool preset from the nested
+        // postPunctuationModel block so it can be downloaded/installed
+        // alongside its ASR partner.
+        const nlohmann::json punct =
+            preset.value("postPunctuationModel", nlohmann::json::object());
+        if (punct.is_object() && !punct.empty()) {
+            const QString punctDirName = modelJsonString(punct, "modelDirName");
             SPDLOG_DEBUG("AsrSettingWidget: {} has punctuation partner {}",
                          name, punctDirName);
+            nlohmann::json toolPreset = punct;
+            toolPreset["isPunctuationModel"] = true;
+            const std::string toolType = toolPreset.value("type", std::string());
+            if (toolType.empty()) {
+                toolPreset["type"] = "Tool";
+            }
+            m_models.append(std::move(toolPreset));
         }
-
-        m_models.append(preset);
-    }
-
-    // Store tool presets too (for punctuation model lookups)
-    for (const auto &preset : toolPresets) {
-        const QString name = modelJsonString(preset, "name");
-        const QString dirName = modelJsonString(preset, "modelDirName");
-        SPDLOG_DEBUG("AsrSettingWidget: tool preset {} ({})", name, dirName);
-        m_models.append(preset);
     }
 
     // Populate ComboBox with ASR (non-punctuation) models

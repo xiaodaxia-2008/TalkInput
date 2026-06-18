@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model_registry.h"
+#include "json_utils.h"
 #include "spawn_llama_server.h"
 
 #include <QNetworkAccessManager>
@@ -44,7 +44,7 @@ private:
         Callback callback;
     };
 
-    LlmProviderPreset configuredProvider() const;
+    nlohmann::json configuredProvider() const;
     QString configuredEndpoint() const;
     QString configuredModel() const;
     QString configuredApiKey() const;

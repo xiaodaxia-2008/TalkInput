@@ -1,7 +1,6 @@
 #include "llm_post_processor.h"
 #include "app_config.h"
 #include "logging.h"
-#include "model_registry.h"
 
 #include <QByteArray>
 #include <QCoreApplication>
@@ -46,6 +45,63 @@ QNetworkRequest makeRequest(const QUrl &url)
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     return request;
+}
+
+// ---- LLM defaults read directly from appConfig (single source of truth) ----
+
+const nlohmann::json llmProvidersJson()
+{
+    return talkinput::appConfigValue("llmPostProcessing/providers");
+}
+
+const nlohmann::json defaultLlmProviderJson()
+{
+    const nlohmann::json providers = llmProvidersJson();
+    if (providers.is_array() && !providers.empty()) {
+        return providers.front();
+    }
+    return nlohmann::json::object();
+}
+
+QString defaultLlmProviderId()
+{
+    return qs(defaultLlmProviderJson().value("id", std::string("llama.cpp")));
+}
+
+QString defaultLlmEndpoint()
+{
+    return qs(defaultLlmProviderJson().value("endpoint", std::string()));
+}
+
+QString defaultLlmModel()
+{
+    return qs(defaultLlmProviderJson().value("model", std::string()));
+}
+
+QString defaultLlmSystemPrompt()
+{
+    return talkinput::appConfigString("llmPostProcessing/systemPrompt");
+}
+
+QString defaultLlmUserPrompt()
+{
+    return talkinput::appConfigString("llmPostProcessing/userPrompt");
+}
+
+// Find a provider by id in the live appConfig; falls back to the first one.
+nlohmann::json findLlmProviderJson(const QString &id)
+{
+    const nlohmann::json providers = llmProvidersJson();
+    if (providers.is_array()) {
+        for (const auto &provider : providers) {
+            if (provider.is_object() &&
+                provider.value("id", std::string()) == id.toStdString())
+            {
+                return provider;
+            }
+        }
+    }
+    return defaultLlmProviderJson();
 }
 
 } // namespace
@@ -106,27 +162,28 @@ void LlmPostProcessor::postProcess(const QString &text,
     ensureReady();
 }
 
-LlmProviderPreset LlmPostProcessor::configuredProvider() const
+nlohmann::json LlmPostProcessor::configuredProvider() const
 {
     QString providerId =
-        appConfigString("settings/llm/providerId", qs(defaultLlmProviderId()))
+        appConfigString("settings/llm/providerId", defaultLlmProviderId())
             .trimmed();
     const QString savedEndpoint =
         appConfigString("settings/llm/endpoint").trimmed();
     if (!appConfigContains("settings/llm/providerId") &&
-        !savedEndpoint.isEmpty() && savedEndpoint != qs(defaultLlmEndpoint()))
+        !savedEndpoint.isEmpty() && savedEndpoint != defaultLlmEndpoint())
     {
         providerId = "custom";
     }
-    return findLlmProviderPreset(providerId.toStdString());
+    return findLlmProviderJson(providerId);
 }
 
 QString LlmPostProcessor::configuredEndpoint() const
 {
-    const LlmProviderPreset provider = configuredProvider();
-    if (!provider.custom) {
-        const QString endpoint = qs(provider.endpoint).trimmed();
-        return endpoint.isEmpty() ? qs(defaultLlmEndpoint()) : endpoint;
+    const nlohmann::json provider = configuredProvider();
+    if (!provider.value("custom", false)) {
+        const QString endpoint =
+            qs(provider.value("endpoint", std::string())).trimmed();
+        return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
     }
 
     return appConfigString("settings/llm/endpoint").trimmed();
@@ -134,9 +191,10 @@ QString LlmPostProcessor::configuredEndpoint() const
 
 QString LlmPostProcessor::configuredModel() const
 {
-    const LlmProviderPreset provider = configuredProvider();
+    const nlohmann::json provider = configuredProvider();
+    const QString providerId = qs(provider.value("id", std::string()));
     const QString providerModel =
-        appConfigString(llmProviderModelKey(qs(provider.id))).trimmed();
+        appConfigString(llmProviderModelKey(providerId)).trimmed();
     if (!providerModel.isEmpty()) {
         return providerModel;
     }
@@ -145,8 +203,8 @@ QString LlmPostProcessor::configuredModel() const
     if (!configuredModel.isEmpty()) {
         return configuredModel;
     }
-    const QString model = qs(provider.model).trimmed();
-    return model.isEmpty() ? qs(defaultLlmModel()) : model;
+    const QString model = qs(provider.value("model", std::string())).trimmed();
+    return model.isEmpty() ? defaultLlmModel() : model;
 }
 
 QString LlmPostProcessor::configuredApiKey() const
@@ -156,7 +214,7 @@ QString LlmPostProcessor::configuredApiKey() const
 
 bool LlmPostProcessor::usesManagedLocalService() const
 {
-    return configuredProvider().managedLocalService;
+    return configuredProvider().value("managedLocalService", false);
 }
 
 void LlmPostProcessor::ensureReady()
@@ -197,7 +255,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     QString systemPrompt =
         appConfigString("settings/llm/systemPrompt").trimmed();
     if (systemPrompt.isEmpty()) {
-        systemPrompt = qs(defaultLlmSystemPrompt()).trimmed();
+        systemPrompt = defaultLlmSystemPrompt().trimmed();
     }
     systemPrompt.replace("{{input}}", formattedInput);
     systemPrompt.replace("{{context}}", cleanedContext);
@@ -206,7 +264,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     // ---- User prompt (template replacement) ----
     QString userPrompt = appConfigString("settings/llm/userPrompt").trimmed();
     if (userPrompt.isEmpty()) {
-        userPrompt = qs(defaultLlmUserPrompt()).trimmed();
+        userPrompt = defaultLlmUserPrompt().trimmed();
     }
     userPrompt.replace("{{input}}", formattedInput);
     userPrompt.replace("{{context}}", cleanedContext);
@@ -239,17 +297,25 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
 
     const std::string modelName = configuredModel().toStdString();
-    const auto provider = configuredProvider();
-    auto pricingIt = provider.modelPricing.find(modelName);
-    const LlmPricing pricing = pricingIt != provider.modelPricing.end()
-                                   ? pricingIt->second
-                                   : LlmPricing();
+    const nlohmann::json provider = configuredProvider();
+    const nlohmann::json providerPricing =
+        provider.value("pricing", nlohmann::json::object());
+    const nlohmann::json pricing =
+        providerPricing.contains(modelName) &&
+                providerPricing[modelName].is_object()
+            ? providerPricing[modelName]
+            : nlohmann::json::object();
+    const double inputPer1M = pricing.value("inputPer1M", 0.0);
+    const double cacheHitInputPer1M = pricing.value("cacheHitInputPer1M", 0.0);
+    const double cacheMissInputPer1M = pricing.value("cacheMissInputPer1M", 0.0);
+    const double outputPer1M = pricing.value("outputPer1M", 0.0);
 
     QNetworkReply *reply = m_network.post(networkRequest, requestBody);
     const PendingRequest pendingCopy = request;
     connect(
         reply, &QNetworkReply::finished, this,
-        [this, reply, pendingCopy, pricing]() mutable {
+        [this, reply, pendingCopy, inputPer1M, cacheHitInputPer1M,
+         cacheMissInputPer1M, outputPer1M]() mutable {
             QString result = pendingCopy.text;
             bool requestFailed = false;
             if (reply->error() == QNetworkReply::NoError) {
@@ -276,7 +342,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                     // ---- Token usage & cost calculation ----
                     const auto &usage =
                         doc.value("usage", nlohmann::json::object());
-                    if (!usage.empty() && pricing.inputPer1M > 0) {
+                    if (!usage.empty() && inputPer1M > 0) {
                         const double promptCacheHit =
                             usage.value("prompt_cache_hit_tokens", 0.0);
                         const double promptCacheMiss =
@@ -287,10 +353,10 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                             usage.value("total_tokens", 0.0);
 
                         const double inputCost =
-                            promptCacheHit * pricing.cacheHitInputPer1M / 1e6 +
-                            promptCacheMiss * pricing.cacheMissInputPer1M / 1e6;
+                            promptCacheHit * cacheHitInputPer1M / 1e6 +
+                            promptCacheMiss * cacheMissInputPer1M / 1e6;
                         const double outputCost =
-                            outputTokens * pricing.outputPer1M / 1e6;
+                            outputTokens * outputPer1M / 1e6;
                         const double totalCost = inputCost + outputCost;
 
                         SPDLOG_INFO("LLM cost: {} tokens, $"
@@ -300,9 +366,9 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                                     "output: {:.0f} * "
                                     "${:.4f}/M)",
                                     totalTokens, totalCost, promptCacheHit,
-                                    pricing.cacheHitInputPer1M, promptCacheMiss,
-                                    pricing.cacheMissInputPer1M, outputTokens,
-                                    pricing.outputPer1M);
+                                    cacheHitInputPer1M, promptCacheMiss,
+                                    cacheMissInputPer1M, outputTokens,
+                                    outputPer1M);
                     }
                 }
                 catch (const nlohmann::json::exception &e) {

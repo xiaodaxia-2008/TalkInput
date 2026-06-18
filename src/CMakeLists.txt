@@ -32,8 +32,6 @@ add_executable(TalkInput
     logging.h
     recognition_history.cpp
     recognition_history.h
-    model_registry.h
-    model_registry.cpp
     recognizers/online_speech_recognizer.cpp
     recognizers/online_speech_recognizer.h
     recognizers/offline_speech_recognizer.cpp

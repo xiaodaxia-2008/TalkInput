@@ -5,6 +5,7 @@
 #include "recognizers/sense_voice_speech_recognizer.h"
 #include "recognizers/streaming_paraformer_speech_recognizer.h"
 #include "system_speech_recognizer.h"
+#include "utils.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
@@ -20,9 +21,33 @@ namespace talkinput
 namespace
 {
 
+// Resolve the punctuation model path from the nested postPunctuationModel
+// config block that lives inside the recognizer's own preset. The punctuation
+// model is downloaded under appDataDir()/models/<modelDirName>/<file>.
 QString configuredPunctuationModelPath(const nlohmann::json &config)
 {
-    return jsonString(config, "punctuationModelFile");
+    const nlohmann::json punct =
+        config.value("postPunctuationModel", nlohmann::json::object());
+    if (!punct.is_object() || punct.empty()) {
+        return {};
+    }
+
+    const QString punctDirName = jsonString(punct, "modelDirName");
+    if (punctDirName.isEmpty()) {
+        return {};
+    }
+
+    const nlohmann::json punctFiles =
+        punct.value("files", nlohmann::json::object());
+    const QString punctFile = jsonString(punctFiles, "punctuationModelFile");
+    if (punctFile.isEmpty()) {
+        return {};
+    }
+
+    const QString punctDir =
+        QDir(QDir(appDataDir()).filePath(QStringLiteral("models")))
+            .filePath(punctDirName);
+    return QDir(punctDir).filePath(punctFile);
 }
 
 } // namespace

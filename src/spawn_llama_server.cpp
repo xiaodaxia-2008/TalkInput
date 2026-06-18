@@ -1,7 +1,7 @@
 #include "spawn_llama_server.h"
+#include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
-#include "model_registry.h"
 #include "utils.h"
 
 #include <QByteArray>
@@ -45,6 +45,80 @@ QNetworkRequest makeRequest(const QUrl &url)
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     return request;
+}
+
+// Resolve the local GGUF model info (fileName + url) for the configured
+// managed-local LLM provider, reading directly from appConfig so there is a
+// single source of truth. Returns empty fields if not configured.
+struct LocalModelInfo
+{
+    QString fileName;
+    QString url;
+};
+
+LocalModelInfo localModelInfo()
+{
+    const nlohmann::json providers =
+        talkinput::appConfigValue("llmPostProcessing/providers");
+    if (!providers.is_array()) {
+        return {};
+    }
+
+    QString providerId =
+        talkinput::appConfigString("settings/llm/providerId").trimmed();
+
+    nlohmann::json provider = nlohmann::json::object();
+    bool found = false;
+    for (const auto &p : providers) {
+        if (!p.is_object()) {
+            continue;
+        }
+        if (providerId.isEmpty() ||
+            p.value("id", std::string()) == providerId.toStdString())
+        {
+            provider = p;
+            found = true;
+            break;
+        }
+    }
+    if (!found && !providers.empty() && providers.front().is_object()) {
+        provider = providers.front();
+        providerId = qs(provider.value("id", std::string()));
+    }
+
+    if (!provider.is_object() || provider.empty()) {
+        return {};
+    }
+
+    // Determine the configured model name (same precedence as the
+    // post-processor): per-provider override > global model > provider default.
+    QString model;
+    if (!providerId.isEmpty()) {
+        model = talkinput::appConfigString(
+                    "settings/llm/providerModels/" + providerId).trimmed();
+    }
+    if (model.isEmpty()) {
+        model = talkinput::appConfigString("settings/llm/model").trimmed();
+    }
+    if (model.isEmpty()) {
+        model = qs(provider.value("model", std::string()));
+    }
+    if (model.isEmpty()) {
+        return {};
+    }
+
+    const nlohmann::json modelsInfo =
+        provider.value("modelsInfo", nlohmann::json::object());
+    if (!modelsInfo.is_object() || !modelsInfo.contains(model.toStdString())) {
+        return {};
+    }
+    const nlohmann::json info = modelsInfo[model.toStdString()];
+    if (!info.is_object()) {
+        return {};
+    }
+
+    return {qs(info.value("fileName", std::string())),
+            qs(info.value("url", std::string()))};
 }
 
 #ifdef Q_OS_WIN
@@ -243,11 +317,11 @@ QString LlamaServerManager::llamaArchivePath() const
 
 QString LlamaServerManager::modelPath() const
 {
-    const LlmLocalModel model = loadLlmLocalModel();
-    if (model.fileName.empty()) {
+    const LocalModelInfo info = localModelInfo();
+    if (info.fileName.isEmpty()) {
         return {};
     }
-    return QDir(modelDir()).filePath(qs(model.fileName));
+    return QDir(modelDir()).filePath(info.fileName);
 }
 
 QString LlamaServerManager::serverExecutablePath() const
@@ -287,12 +361,12 @@ void LlamaServerManager::prepare()
 
     if (!QFileInfo(localModelPath).isFile()) {
         emit statusMessage(tr("Downloading LLM model..."));
-        const LlmLocalModel model = loadLlmLocalModel();
-        if (model.url.empty()) {
+        const LocalModelInfo info = localModelInfo();
+        if (info.url.isEmpty()) {
             emit failed(tr("LLM local model URL is not configured."));
             return;
         }
-        beginDownload(DownloadKind::Model, QUrl(qs(model.url)), modelPath());
+        beginDownload(DownloadKind::Model, QUrl(info.url), modelPath());
         return;
     }
 

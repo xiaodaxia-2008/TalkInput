@@ -1,11 +1,9 @@
 #include "asr_service.h"
 #include "app_config.h"
 #include "logging.h"
-#include "model_registry.h"
 #include "utils.h"
 
 #include <QDir>
-#include <QFileInfo>
 #include <QStringList>
 #include <QThread>
 
@@ -55,6 +53,25 @@ typeFromString(const QString &str)
     return std::nullopt;
 }
 
+// Look up an ASR preset in the live appConfig by its model directory name.
+std::optional<nlohmann::json>
+findAsrPresetJsonByDirectory(const QString &modelDir)
+{
+    const QString dirName = QDir(modelDir).dirName();
+    const nlohmann::json presets = talkinput::appConfigValue("asrPresets");
+    if (!presets.is_array()) {
+        return std::nullopt;
+    }
+    for (const auto &preset : presets) {
+        if (preset.is_object() &&
+            preset.value("modelDirName", std::string()) == dirName.toStdString())
+        {
+            return std::optional<nlohmann::json>{preset};
+        }
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 namespace talkinput
@@ -95,7 +112,8 @@ void AsrService::loadModel()
         return;
     }
 
-    const auto modelPresetJson = findModelPresetJsonByDirectory(m_modelDir);
+    const auto modelPresetJson =
+        findAsrPresetJsonByDirectory(m_modelDir);
     if (!modelPresetJson) {
         SPDLOG_WARN("AsrService: no preset found for {}", m_modelDir);
         emit modelLoadResult(false, tr("No preset found for the selected model."));
@@ -128,33 +146,8 @@ void AsrService::loadModel()
     }
     config["files"] = resolvedFiles;
 
-    // Resolve punctuation model file if a partner is configured
-    const QString punctDirName =
-        QString::fromStdString(
-            config.value("postPunctuationModel", nlohmann::json::object())
-                .value("modelDirName", std::string()));
-    if (!punctDirName.isEmpty()) {
-        const QString punctDir =
-            QDir(QDir(appDataDir()).filePath(QStringLiteral("models")))
-                .filePath(punctDirName);
-        const auto punctPresetJson = findToolPresetJsonByDirName(
-            punctDirName.toStdString());
-        if (punctPresetJson) {
-            const nlohmann::json punctFiles =
-                punctPresetJson->value("files", nlohmann::json::object());
-            auto it = punctFiles.find("punctuationModelFile");
-            if (it != punctFiles.end() && it->is_string()) {
-                const QString punctModelRelative =
-                    QString::fromStdString(it->get<std::string>());
-                const QString punctModelAbsolute =
-                    QDir(punctDir).filePath(punctModelRelative);
-                if (QFileInfo(punctModelAbsolute).exists()) {
-                    config["punctuationModelFile"] =
-                        punctModelAbsolute.toStdString();
-                }
-            }
-        }
-    }
+    // The nested postPunctuationModel block (if any) is forwarded as-is; the
+    // recognizer resolves its model path internally after ASR results.
 
     const bool hotwordsSupport =
         config.value("hotwordsSupport", false);
