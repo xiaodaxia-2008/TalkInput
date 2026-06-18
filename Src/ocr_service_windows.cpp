@@ -341,8 +341,11 @@ QString recognizeWindowsText(QImage image)
 
     winrt::Windows::Storage::StorageFile file = nullptr;
     try {
+        // StorageFile::GetFileFromPathAsync needs Windows backslashes
+        const auto nativePath =
+            QDir::toNativeSeparators(tempPath).toStdWString();
         file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
-                   tempPath.toStdWString())
+                   nativePath)
                    .get();
     }
     catch (const winrt::hresult_error &e) {
