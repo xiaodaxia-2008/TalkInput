@@ -54,14 +54,10 @@ QString displayTypeForPreset(const talkinput::ModelPreset &preset)
     }
     if (preset.streamingSupport) {
         return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                           "Online");
-    }
-    if (preset.typeStr == "FunASRNano" || preset.typeStr == "Qwen3ASR") {
-        return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                           "Offline (LLM)");
+                                           "Realtime recognition");
     }
     return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                       "Offline");
+                                       "Non-realtime recognition");
 }
 
 QString displayNameForPreset(const talkinput::ModelPreset &preset)

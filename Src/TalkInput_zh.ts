@@ -219,8 +219,8 @@
     </message>
     <message>
         <location filename="asr_setting_widget.cpp" line="209"/>
-        <source>Offline</source>
-        <translation type="unfinished">离线</translation>
+        <source>Non-realtime recognition</source>
+        <translation type="unfinished">非实时识别</translation>
     </message>
     <message>
         <location filename="asr_setting_widget.cpp" line="218"/>
@@ -247,8 +247,8 @@
         <location filename="asr_setting_widget.cpp" line="234"/>
         <location filename="asr_setting_widget.cpp" line="242"/>
         <location filename="asr_setting_widget.cpp" line="252"/>
-        <source>Online</source>
-        <translation type="unfinished">在线</translation>
+        <source>Realtime recognition</source>
+        <translation type="unfinished">实时识别</translation>
     </message>
     <message>
         <location filename="asr_setting_widget.cpp" line="242"/>
