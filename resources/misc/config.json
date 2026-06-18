@@ -9,6 +9,7 @@
       "size": 0,
       "paramCount": 0,
       "streamingSupport": true,
+      "hotwordsSupport": false,
       "files": {}
     },
     {
@@ -20,6 +21,7 @@
       "size": 241172480,
       "paramCount": 40,
       "streamingSupport": false,
+      "hotwordsSupport": false,
       "files": {
         "senseVoiceModelFile": "model.int8.onnx",
         "tokensFile": "tokens.txt"
@@ -34,6 +36,7 @@
       "size": 996147200,
       "paramCount": 600,
       "streamingSupport": false,
+      "hotwordsSupport": true,
       "files": {
         "funasrEncoderAdaptorFile": "encoder_adaptor.int8.onnx",
         "funasrLlmFile": "llm.int8.onnx",
@@ -50,6 +53,7 @@
       "size": 62914560,
       "paramCount": 0,
       "streamingSupport": true,
+      "hotwordsSupport": false,
       "files": {
         "encoderFile": "encoder.int8.onnx",
         "decoderFile": "decoder.int8.onnx",
@@ -64,6 +68,7 @@
         "size": 65011712,
         "paramCount": 0,
         "streamingSupport": false,
+        "hotwordsSupport": false,
         "isPunctuationModel": true,
         "files": {
           "punctuationModelFile": "model.onnx"

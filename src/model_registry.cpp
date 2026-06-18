@@ -19,6 +19,7 @@ struct RawModelPreset
     std::int64_t size = 0;
     int paramCount = 0;
     bool streamingSupport = false;
+    bool hotwordsSupport = false;
     bool isPunctuationModel = false;
     std::map<std::string, std::string> files;
     nlohmann::json postPunctuationModel;
@@ -44,6 +45,11 @@ QString qs(const std::string &value)
     return QString::fromStdString(value);
 }
 
+bool defaultHotwordsSupportForType(const std::string &type)
+{
+    return type == "FunASRNano" || type == "StreamingParaformer";
+}
+
 ModelPreset parsePreset(const nlohmann::json &obj)
 {
     const RawModelPreset raw = obj.get<RawModelPreset>();
@@ -56,6 +62,9 @@ ModelPreset parsePreset(const nlohmann::json &obj)
     preset.size = raw.size;
     preset.paramCount = raw.paramCount;
     preset.streamingSupport = raw.streamingSupport;
+    preset.hotwordsSupport = obj.contains("hotwordsSupport")
+                                 ? raw.hotwordsSupport
+                                 : defaultHotwordsSupportForType(raw.type);
     preset.isPunctuationModel = raw.isPunctuationModel;
 
     // Parse postPunctuationModel (nested punctuation model config)

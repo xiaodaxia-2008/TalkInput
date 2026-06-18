@@ -25,21 +25,14 @@ QStringList hotwordLines(const QString &raw)
     return lines;
 }
 
-QString buildHotwordsText(const QString &raw,
-                          talkinput::SpeechRecognizer::Type type)
+QString buildHotwordsText(const QString &raw, bool hotwordsSupport)
 {
     const QStringList lines = hotwordLines(raw);
-    if (lines.isEmpty()) {
+    if (lines.isEmpty() || !hotwordsSupport) {
         return {};
     }
 
-    if (type == talkinput::SpeechRecognizer::Type::FunASRNano ||
-        type == talkinput::SpeechRecognizer::Type::StreamingParaformer)
-    {
-        return lines.join(QLatin1Char('\n'));
-    }
-
-    return {};
+    return lines.join(QLatin1Char('\n'));
 }
 
 std::optional<talkinput::SpeechRecognizer::Type>
@@ -103,9 +96,11 @@ void AsrService::loadModel()
     config.modelDir = m_modelDir;
 
     QString typeName = m_modelType;
+    std::optional<ModelPreset> modelPreset;
     if (typeName.isEmpty() && !m_modelDir.isEmpty()) {
-        if (const auto preset = findModelPresetByDirectory(m_modelDir)) {
-            typeName = QString::fromStdString(preset->type);
+        modelPreset = findModelPresetByDirectory(m_modelDir);
+        if (modelPreset) {
+            typeName = QString::fromStdString(modelPreset->type);
         }
     }
 
@@ -128,8 +123,13 @@ void AsrService::loadModel()
     config.language = appConfigString("settings/app/language", "zh");
     config.senseVoiceUseItn = true;
     config.punctuationModelDir = m_punctuationModelDir;
+    if (!modelPreset && !m_modelDir.isEmpty()) {
+        modelPreset = findModelPresetByDirectory(m_modelDir);
+    }
+    const bool hotwordsSupport =
+        modelPreset ? modelPreset->hotwordsSupport : false;
     config.hotwordsText = buildHotwordsText(
-        appConfigString("settings/model/hotwords"), config.type);
+        appConfigString("settings/model/hotwords"), hotwordsSupport);
 
     SPDLOG_INFO("AsrService: configured recognizer {}", typeName);
 
