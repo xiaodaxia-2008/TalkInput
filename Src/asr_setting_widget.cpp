@@ -767,7 +767,6 @@ void AsrSettingWidget::activateModel(int modelRow)
     setAppConfigValue("settings/model/name", m.name);
     emit modelSelected(dir, m.name);
     emit statusMessage(tr("Model selected: %1").arg(m.name));
-    refreshStatus();
 }
 
 void AsrSettingWidget::onUseArchive()
