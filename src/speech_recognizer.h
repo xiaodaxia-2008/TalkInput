@@ -23,6 +23,7 @@ public:
         StreamingParaformer,
         SenseVoice,
         FunASRNano,
+        System,
     };
 
     struct Config
@@ -33,38 +34,26 @@ public:
         int sampleRate = 16000;
         int featureDim = 80;
         int numThreads = 2;
-
-        // Streaming (paraformer)
-        QString encoderFile;
-        QString decoderFile;
+        QString language = "zh";
         QString modelingUnit = "cjkchar";
 
-        // Common
-        QString tokensFile = "tokens.txt";
         QString hotwordsText;
         float hotwordsScore = 1.5F;
 
         // SenseVoice
-        QString senseVoiceModelFile;
-        QString senseVoiceLanguage = "auto";
         bool senseVoiceUseItn = true;
 
         // FunASR Nano
-        QString funasrEncoderAdaptorFile;
-        QString funasrLlmFile;
-        QString funasrEmbeddingFile;
-        QString funasrTokenizerFile;
         QString funasrSystemPrompt = "You are a helpful assistant.";
         QString funasrUserPrompt = "\u8BED\u97F3\u8F6C\u5199\uFF1A";
         int funasrMaxNewTokens = 128;
         float funasrTemperature = 1e-6F;
         float funasrTopP = 0.8F;
         int funasrSeed = 42;
-        QString funasrLanguage;
         bool funasrItn = true;
 
         // Punctuation restoration (offline model, e.g. ct-transformer)
-        QString punctuationModelPath;
+        QString punctuationModelDir;
     };
 
     explicit SpeechRecognizer(QObject *parent = nullptr);
@@ -79,6 +68,7 @@ public:
                              int channelCount) = 0;
     virtual void finish() = 0;
     virtual void resetStream() = 0;
+    virtual bool acceptsExternalAudio() const;
 
 signals:
     void logMessage(const QString &message);
@@ -90,6 +80,9 @@ protected:
     QString addPunctuation(const QString &text) const;
 
     static QString modelPath(const QString &modelDir, const QString &fileName);
+    static bool configuredModelPath(const Config &config,
+                                    const char *configField, QString *path,
+                                    QString *errorMessage);
     static bool fileExists(const QString &path, QString *errorMessage);
     static bool pathExists(const QString &path, QString *errorMessage);
     static QString decodeSherpaText(const char *text);

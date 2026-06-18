@@ -94,6 +94,10 @@ QString languageDisplay(const QString &lang)
         return QCoreApplication::translate("talkinput::AsrSettingWidget",
                                            "\344\270\255\350\213\261");
     }
+    if (lang == QStringLiteral("system")) {
+        return QCoreApplication::translate("talkinput::AsrSettingWidget",
+                                           "System");
+    }
     return lang;
 }
 
@@ -551,8 +555,18 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     // Restore saved model selection (by modelDirName)
     const QString savedDirName =
         QFileInfo(appConfigString("settings/model/directory")).fileName();
+    const QString savedType = appConfigString("settings/model/type");
     int restoreIndex = -1;
-    if (!savedDirName.isEmpty()) {
+    if (savedType == QStringLiteral("System")) {
+        for (int ci = 0; ci < m_asrModelIndices.size(); ++ci) {
+            const int mi = m_asrModelIndices[ci];
+            if (m_models[mi].type == savedType) {
+                restoreIndex = ci;
+                break;
+            }
+        }
+    }
+    else if (!savedDirName.isEmpty()) {
         for (int ci = 0; ci < m_asrModelIndices.size(); ++ci) {
             const int mi = m_asrModelIndices[ci];
             if (m_models[mi].modelDirName == savedDirName) {
@@ -608,12 +622,18 @@ void AsrSettingWidget::onModelChanged(int index)
 
     const bool installed = isInstalled(modelRow);
     const auto &model = m_models[modelRow];
+    const bool systemModel = model.type == QStringLiteral("System");
 
     m_dlBtn->setEnabled(false);
     m_delBtn->setEnabled(false);
     m_useBtn->setEnabled(false);
 
-    if (installed) {
+    if (systemModel) {
+        m_statusLabel->setText(
+            tr("Uses the operating system speech recognizer."));
+        m_useBtn->setEnabled(true);
+    }
+    else if (installed) {
         const QString sizeStr =
             model.modelSize > 0
                 ? QString(" (%1)").arg(formatSize(model.modelSize))
@@ -841,9 +861,11 @@ void AsrSettingWidget::activateModel(int modelRow)
     }
 
     const auto &m = m_models[modelRow];
-    const QString dir = QDir(cacheDir()).filePath(m.modelDirName);
+    const bool systemModel = m.type == QStringLiteral("System");
+    const QString dir =
+        systemModel ? QString() : QDir(cacheDir()).filePath(m.modelDirName);
 
-    if (!QFileInfo(dir).isDir()) {
+    if (!systemModel && !QFileInfo(dir).isDir()) {
         return;
     }
 
@@ -854,7 +876,8 @@ void AsrSettingWidget::activateModel(int modelRow)
     SPDLOG_INFO("Recognition model set: {} ({})", m.name, dir);
     setAppConfigValue("settings/model/directory", dir);
     setAppConfigValue("settings/model/name", m.name);
-    emit modelSelected(dir, m.name);
+    setAppConfigValue("settings/model/type", m.type);
+    emit modelSelected(dir, m.name, m.type);
     emit statusMessage(tr("Model selected: %1").arg(m.name));
 }
 
@@ -899,7 +922,7 @@ void AsrSettingWidget::onUseArchive()
     const QString modelDir = dest.filePath(base);
     if (QFileInfo(modelDir).isDir()) {
         SPDLOG_INFO("Extracted model: {}", modelDir);
-        emit modelSelected(modelDir, base);
+        emit modelSelected(modelDir, base, {});
         emit statusMessage(
             tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));
     }
@@ -1039,6 +1062,9 @@ bool AsrSettingWidget::isInstalled(int row) const
         return false;
     }
     const auto &m = m_models.at(row);
+    if (m.type == QStringLiteral("System") || m.modelDirName.isEmpty()) {
+        return true;
+    }
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
     return QFileInfo(path).isDir();
 }

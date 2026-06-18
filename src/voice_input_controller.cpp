@@ -281,6 +281,18 @@ bool VoiceInputController::startListening()
         return false;
     }
 
+    QMetaObject::invokeMethod(m_asrService, "startSession",
+                              Qt::QueuedConnection);
+
+    if (!m_asrService->acceptsExternalAudio()) {
+        m_isListening = true;
+        m_lastResult.clear();
+        showOverlay();
+        emit listeningChanged(true);
+        SPDLOG_INFO("Voice input started with recognizer-owned audio source");
+        return true;
+    }
+
     const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
     if (inputDevice.isNull()) {
         SPDLOG_ERROR("No audio input device");
@@ -303,10 +315,6 @@ bool VoiceInputController::startListening()
         emit statusMessage(tr("Microphone format not supported."));
         return false;
     }
-
-    // Start a new session on the ASR worker thread
-    QMetaObject::invokeMethod(m_asrService, "startSession",
-                              Qt::QueuedConnection);
 
     m_audioSource = std::make_unique<QAudioSource>(inputDevice, m_audioFormat);
     m_audioDevice = m_audioSource->start();

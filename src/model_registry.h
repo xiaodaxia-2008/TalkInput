@@ -3,6 +3,7 @@
 #include <QString>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -12,7 +13,7 @@ namespace talkinput
 struct FileRule
 {
     std::string configField;
-    std::vector<std::string> globPatterns;
+    std::string relativePath;
     bool isDir = false;
 };
 
@@ -29,14 +30,6 @@ struct ModelPreset
     bool isPunctuationModel = false;
     std::string postPunctuationModelDirName;
     std::vector<FileRule> files;
-};
-
-struct ModelFileSet
-{
-    std::string type;
-    std::string modelDirName;
-    std::map<std::string, std::string> resolvedFiles;
-    bool matched = false;
 };
 
 struct LlmLocalModel
@@ -69,6 +62,9 @@ struct LlmProviderPreset
 
 std::vector<ModelPreset> loadModelPresets();
 std::vector<ModelPreset> loadToolPresets();
+std::optional<ModelPreset> findModelPresetByDirName(const std::string &dirName);
+std::optional<ModelPreset> findModelPresetByDirectory(const QString &modelDir);
+std::optional<ModelPreset> findToolPresetByDirName(const std::string &dirName);
 LlmLocalModel loadLlmLocalModel();
 std::vector<LlmProviderPreset> loadLlmProviderPresets();
 LlmProviderPreset defaultLlmProvider();
@@ -78,6 +74,5 @@ std::string defaultLlmEndpoint();
 std::string defaultLlmModel();
 std::string defaultLlmSystemPrompt();
 std::string defaultLlmUserPrompt();
-ModelFileSet resolveModelFiles(const QString &modelDir);
 
 } // namespace talkinput

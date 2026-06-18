@@ -1,21 +1,91 @@
 #include "speech_recognizer.h"
 
 #include "logging.h"
+#include "model_registry.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
 #include "recognizers/streaming_paraformer_speech_recognizer.h"
+#include "system_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
 #include <QtEndian>
 
 #include <algorithm>
 #include <cstring>
+#include <optional>
 
 namespace talkinput
 {
+namespace
+{
+
+const FileRule *findFileRule(const ModelPreset &preset, const char *configField)
+{
+    for (const FileRule &rule : preset.files) {
+        if (rule.configField == configField) {
+            return &rule;
+        }
+    }
+    return nullptr;
+}
+
+QString modelsCacheDir()
+{
+    QString base =
+        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    if (base.isEmpty()) {
+        base = QDir::current().filePath(QStringLiteral("cache"));
+    }
+    return QDir(base).filePath(QStringLiteral("models"));
+}
+
+QString configuredToolPath(const QString &toolDir, const char *configField)
+{
+    if (toolDir.trimmed().isEmpty()) {
+        return {};
+    }
+
+    const QDir dir(toolDir);
+    const auto preset = findToolPresetByDirName(dir.dirName().toStdString());
+    if (!preset) {
+        return {};
+    }
+
+    const FileRule *rule = findFileRule(*preset, configField);
+    if (!rule || rule->relativePath.empty()) {
+        return {};
+    }
+
+    return dir.filePath(QString::fromStdString(rule->relativePath));
+}
+
+QString configuredPunctuationModelPath(const SpeechRecognizer::Config &config)
+{
+    if (!config.punctuationModelDir.trimmed().isEmpty()) {
+        return configuredToolPath(config.punctuationModelDir,
+                                  "punctuationModelFile");
+    }
+
+    if (config.modelDir.trimmed().isEmpty()) {
+        return {};
+    }
+
+    const auto preset = findModelPresetByDirectory(config.modelDir);
+    if (!preset || preset->postPunctuationModelDirName.empty()) {
+        return {};
+    }
+
+    const QString punctDir = QDir(modelsCacheDir())
+                                 .filePath(QString::fromStdString(
+                                     preset->postPunctuationModelDirName));
+    return configuredToolPath(punctDir, "punctuationModelFile");
+}
+
+} // namespace
 
 SpeechRecognizer::SpeechRecognizer(QObject *parent) : QObject(parent)
 {
@@ -38,11 +108,11 @@ bool SpeechRecognizer::prepareRecognizer(const Config &config,
         return false;
     }
 
-    if (config.punctuationModelPath.isEmpty()) {
+    const QString punctPath = configuredPunctuationModelPath(config);
+    if (punctPath.isEmpty()) {
         return true;
     }
 
-    const QString punctPath = config.punctuationModelPath;
     if (!QFileInfo::exists(punctPath)) {
         SPDLOG_WARN("Punctuation model not found: {}", punctPath);
         return true;
@@ -96,6 +166,43 @@ QString SpeechRecognizer::modelPath(const QString &modelDir,
                                     const QString &fileName)
 {
     return QDir(modelDir).filePath(fileName);
+}
+
+bool SpeechRecognizer::configuredModelPath(const Config &config,
+                                           const char *configField,
+                                           QString *path, QString *errorMessage)
+{
+    const auto preset = findModelPresetByDirectory(config.modelDir);
+    if (!preset) {
+        if (errorMessage) {
+            *errorMessage =
+                QStringLiteral("No preset found for the selected model.");
+        }
+        return false;
+    }
+
+    const FileRule *rule = findFileRule(*preset, configField);
+    if (!rule || rule->relativePath.empty()) {
+        if (errorMessage) {
+            *errorMessage =
+                QStringLiteral("Model preset does not configure %1.")
+                    .arg(QString::fromLatin1(configField));
+        }
+        return false;
+    }
+
+    const QString resolved =
+        modelPath(config.modelDir, QString::fromStdString(rule->relativePath));
+    const bool exists = rule->isDir ? pathExists(resolved, errorMessage)
+                                    : fileExists(resolved, errorMessage);
+    if (!exists) {
+        return false;
+    }
+
+    if (path) {
+        *path = resolved;
+    }
+    return true;
 }
 
 bool SpeechRecognizer::fileExists(const QString &path, QString *errorMessage)
@@ -164,6 +271,11 @@ int SpeechRecognizer::appendPcm16AsMonoFloat(const QByteArray &audioData,
     return frameCount;
 }
 
+bool SpeechRecognizer::acceptsExternalAudio() const
+{
+    return true;
+}
+
 std::unique_ptr<SpeechRecognizer>
 createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent)
 {
@@ -174,6 +286,8 @@ createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent)
         return std::make_unique<SenseVoiceSpeechRecognizer>(parent);
     case SpeechRecognizer::Type::FunASRNano:
         return std::make_unique<FunASRNanoSpeechRecognizer>(parent);
+    case SpeechRecognizer::Type::System:
+        return std::make_unique<SystemSpeechRecognizer>(parent);
     }
 
     return nullptr;

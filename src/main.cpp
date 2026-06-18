@@ -1,10 +1,10 @@
 #include "app_config.h"
 #include "logging.h"
 #include "main_window.h"
-#include "utils.h"
 
 #include <QApplication>
 #include <QFile>
+#include <QIcon>
 #include <QLibraryInfo>
 #include <QTranslator>
 
@@ -20,8 +20,7 @@ int main(int argc, char *argv[])
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
     QApplication::setOrganizationName("TalkInput");
-    QApplication::setWindowIcon(
-        talkinput::resourceIcon(":/resources/icon.png"));
+    QApplication::setWindowIcon(QIcon(":/resources/icon.png"));
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      &talkinput::saveAppConfig);
 

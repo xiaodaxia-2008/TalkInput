@@ -41,6 +41,17 @@ void initWinrtApartment()
     initialized = true;
 }
 
+QString windowsLanguageTag(const QString &language)
+{
+    if (language == QStringLiteral("zh")) {
+        return QStringLiteral("zh-CN");
+    }
+    if (language == QStringLiteral("en")) {
+        return QStringLiteral("en-US");
+    }
+    return language;
+}
+
 } // namespace
 
 namespace talkinput
@@ -66,12 +77,12 @@ public:
             initWinrtApartment();
 
             // Create recognizer
-            if (!config.funasrLanguage.isEmpty()) {
+            const QString language = windowsLanguageTag(config.language);
+            if (!language.isEmpty()) {
                 m_recognizer = Speech::SpeechRecognizer(
                     winrt::Windows::Globalization::Language(
-                        config.funasrLanguage.toStdWString()));
-                SPDLOG_DEBUG("System recognizer language: {}",
-                             config.funasrLanguage);
+                        language.toStdWString()));
+                SPDLOG_DEBUG("System recognizer language: {}", language);
             }
             else {
                 m_recognizer = Speech::SpeechRecognizer();
@@ -212,7 +223,9 @@ SystemSpeechRecognizer::~SystemSpeechRecognizer() = default;
 
 bool SystemSpeechRecognizer::start(const Config &config, QString *errorMessage)
 {
-    return m_impl->start(config, errorMessage, this);
+    Q_UNUSED(errorMessage);
+    m_config = config;
+    return true;
 }
 
 void SystemSpeechRecognizer::stop()
@@ -227,7 +240,7 @@ bool SystemSpeechRecognizer::isRunning() const
 
 bool SystemSpeechRecognizer::isStreaming() const
 {
-    return m_impl->isStreaming();
+    return true;
 }
 
 void SystemSpeechRecognizer::acceptPcm16(const QByteArray &, int, int)
@@ -242,7 +255,19 @@ void SystemSpeechRecognizer::finish()
 
 void SystemSpeechRecognizer::resetStream()
 {
-    // No-op for system recognizer.
+    if (m_impl->isRunning()) {
+        return;
+    }
+
+    QString error;
+    if (!m_impl->start(m_config, &error, this)) {
+        SPDLOG_WARN("System recognizer session start failed: {}", error);
+    }
+}
+
+bool SystemSpeechRecognizer::acceptsExternalAudio() const
+{
+    return false;
 }
 
 } // namespace talkinput

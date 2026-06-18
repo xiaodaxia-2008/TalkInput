@@ -25,7 +25,8 @@ public:
     ~AsrSettingWidget() override;
 
 signals:
-    void modelSelected(const QString &modelDirectory, const QString &modelName);
+    void modelSelected(const QString &modelDirectory, const QString &modelName,
+                       const QString &modelType);
     void statusMessage(const QString &message);
     void punctuationModelReady(const QString &punctuationDir);
     void hotwordsChanged();

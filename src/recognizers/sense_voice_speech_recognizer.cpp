@@ -9,17 +9,18 @@ bool SenseVoiceSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOfflineRecognizerConfig *recognizer,
     QString *errorMessage)
 {
-    const QString model =
-        modelPath(config.modelDir, config.senseVoiceModelFile);
-    const QString tokens = modelPath(config.modelDir, config.tokensFile);
-
-    if (!fileExists(model, errorMessage) || !fileExists(tokens, errorMessage)) {
+    QString model;
+    QString tokens;
+    if (!configuredModelPath(config, "senseVoiceModelFile", &model,
+                             errorMessage) ||
+        !configuredModelPath(config, "tokensFile", &tokens, errorMessage))
+    {
         return false;
     }
 
     m_modelPath = model.toUtf8().toStdString();
     m_tokensPath = tokens.toUtf8().toStdString();
-    m_language = config.senseVoiceLanguage.toUtf8().toStdString();
+    m_language = config.language.toUtf8().toStdString();
 
     recognizer->model_config.sense_voice.model = m_modelPath.c_str();
     recognizer->model_config.sense_voice.language = m_language.c_str();

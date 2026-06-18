@@ -9,12 +9,12 @@ bool StreamingParaformerSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOnlineRecognizerConfig *recognizer,
     QString *errorMessage)
 {
-    const QString encoder = modelPath(config.modelDir, config.encoderFile);
-    const QString decoder = modelPath(config.modelDir, config.decoderFile);
-    const QString tokens = modelPath(config.modelDir, config.tokensFile);
-
-    if (!fileExists(encoder, errorMessage) ||
-        !fileExists(decoder, errorMessage) || !fileExists(tokens, errorMessage))
+    QString encoder;
+    QString decoder;
+    QString tokens;
+    if (!configuredModelPath(config, "encoderFile", &encoder, errorMessage) ||
+        !configuredModelPath(config, "decoderFile", &decoder, errorMessage) ||
+        !configuredModelPath(config, "tokensFile", &tokens, errorMessage))
     {
         return false;
     }

@@ -4,7 +4,6 @@
 #include "history_widget.h"
 #include "logging.h"
 #include "ui_main_window.h"
-#include "utils.h"
 
 #include <QAction>
 #include <QApplication>
@@ -14,6 +13,7 @@
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QIcon>
 #include <QKeySequence>
 #include <QLibraryInfo>
 #include <QMenu>
@@ -126,11 +126,12 @@ void MainWindow::setupUi()
     m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
     SPDLOG_DEBUG("MainWindow::setupUi: AsrSettingWidget added");
-    connect(m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
-            [this](const QString &dir, const QString &name) {
-                setRecognitionModel(dir, name);
-                m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
-            });
+    connect(
+        m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
+        [this](const QString &dir, const QString &name, const QString &type) {
+            setRecognitionModel(dir, name, type);
+            m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
+        });
     connect(m_asrSettingWidget, &AsrSettingWidget::statusMessage, this,
             [this](const QString &msg) { statusBar()->showMessage(msg); });
     connect(m_asrSettingWidget, &AsrSettingWidget::punctuationModelReady, this,
@@ -168,7 +169,7 @@ void MainWindow::setupUi()
     m_recognitionToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
     m_startAction = m_recognitionToolBar->addAction(
-        resourceIcon(":/resources/mic.svg"), tr("Start recognition"));
+        QIcon(":/resources/mic.svg"), tr("Start recognition"));
     m_startAction->setToolTip(tr("Start recognition"));
     connect(m_startAction, &QAction::triggered, this, [this]() {
         if (m_voiceInput && m_voiceInput->isListening()) {
@@ -180,7 +181,7 @@ void MainWindow::setupUi()
     });
 
     m_fileAction = m_recognitionToolBar->addAction(
-        resourceIcon(":/resources/folder-plus.svg"), tr("Recognize file"));
+        QIcon(":/resources/folder-plus.svg"), tr("Recognize file"));
     m_fileAction->setToolTip(tr("Import an audio file for recognition"));
     connect(m_fileAction, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
@@ -212,14 +213,14 @@ void MainWindow::setupUi()
     // ── Menu bar ────────────────────────────────────────────────
     SPDLOG_DEBUG("MainWindow::setupUi: creating menu bar");
     m_prefMenu = menuBar()->addMenu(tr("Preferences"));
-    m_langMenu = m_prefMenu->addMenu(resourceIcon(":/resources/globe.svg"),
-                                     tr("Language"));
+    m_langMenu =
+        m_prefMenu->addMenu(QIcon(":/resources/globe.svg"), tr("Language"));
 
-    m_zhAction = m_langMenu->addAction(resourceIcon(":/resources/zh.svg"),
-                                       tr("Chinese"));
+    m_zhAction =
+        m_langMenu->addAction(QIcon(":/resources/zh.svg"), tr("Chinese"));
     m_zhAction->setCheckable(true);
-    m_enAction = m_langMenu->addAction(resourceIcon(":/resources/en.svg"),
-                                       tr("English"));
+    m_enAction =
+        m_langMenu->addAction(QIcon(":/resources/en.svg"), tr("English"));
     m_enAction->setCheckable(true);
 
     m_currentLanguage = appConfigString("settings/app/language", "zh");
@@ -282,9 +283,10 @@ void MainWindow::setupUi()
     // ── Restore persisted state & load model ────────────────────
     const QString savedDir = appConfigString("settings/model/directory");
     const QString savedName = appConfigString("settings/model/name");
-    if (!savedDir.isEmpty()) {
+    const QString savedType = appConfigString("settings/model/type");
+    if (!savedDir.isEmpty() || savedType == QStringLiteral("System")) {
         SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", savedDir);
-        setRecognitionModel(savedDir, savedName);
+        setRecognitionModel(savedDir, savedName, savedType);
         SPDLOG_INFO("Restored model: {} ({})", savedName, savedDir);
     }
 
@@ -293,8 +295,7 @@ void MainWindow::setupUi()
 
 void MainWindow::setupTrayIcon()
 {
-    m_trayIcon =
-        new QSystemTrayIcon(resourceIcon(":/resources/icon.png"), this);
+    m_trayIcon = new QSystemTrayIcon(QIcon(":/resources/icon.png"), this);
     m_trayIcon->setToolTip(QStringLiteral("TalkInput"));
 
     auto *trayMenu = new QMenu(this);
@@ -347,7 +348,7 @@ void MainWindow::updateControls(bool listening)
 {
     if (listening) {
         if (m_startAction) {
-            m_startAction->setIcon(resourceIcon(":/resources/stop.svg"));
+            m_startAction->setIcon(QIcon(":/resources/stop.svg"));
             m_startAction->setText(tr("Stop recognition"));
             m_startAction->setToolTip(tr("Stop recognition"));
         }
@@ -361,11 +362,13 @@ void MainWindow::updateControls(bool listening)
     }
     else {
         if (m_startAction) {
-            m_startAction->setIcon(resourceIcon(":/resources/mic.svg"));
+            m_startAction->setIcon(QIcon(":/resources/mic.svg"));
             m_startAction->setText(tr("Start recognition"));
             m_startAction->setToolTip(tr("Start recognition"));
         }
-        if (m_currentModelDirectory.isEmpty()) {
+        if (m_currentModelDirectory.isEmpty() &&
+            m_currentModelType != QStringLiteral("System"))
+        {
             statusBar()->showMessage(tr("No model selected"));
         }
         else {
@@ -378,7 +381,8 @@ void MainWindow::updateControls(bool listening)
 }
 
 void MainWindow::setRecognitionModel(const QString &modelDirectory,
-                                     const QString &modelName)
+                                     const QString &modelName,
+                                     const QString &modelType)
 {
     const QString normalizedDirectory =
         QDir::fromNativeSeparators(modelDirectory.trimmed());
@@ -386,12 +390,18 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
                                   ? QString()
                                   : QDir::cleanPath(normalizedDirectory);
     m_currentModelName = modelName.trimmed();
+    m_currentModelType = modelType.trimmed();
 
     if (m_currentModelName.isEmpty()) {
-        m_currentModelName = QFileInfo(m_currentModelDirectory).fileName();
+        m_currentModelName =
+            m_currentModelType == QStringLiteral("System")
+                ? tr("System Speech")
+                : QFileInfo(m_currentModelDirectory).fileName();
     }
 
-    if (m_currentModelDirectory.isEmpty()) {
+    if (m_currentModelDirectory.isEmpty() &&
+        m_currentModelType != QStringLiteral("System"))
+    {
         statusBar()->showMessage(tr("No model selected"));
     }
     else {
@@ -402,9 +412,11 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
 
     setAppConfigValue("settings/model/directory", m_currentModelDirectory);
     setAppConfigValue("settings/model/name", m_currentModelName);
+    setAppConfigValue("settings/model/type", m_currentModelType);
 
     if (m_asrService) {
         m_asrService->setModelDirectory(m_currentModelDirectory);
+        m_asrService->setModelType(m_currentModelType);
         QMetaObject::invokeMethod(m_asrService, "loadModel",
                                   Qt::QueuedConnection);
     }
@@ -436,6 +448,13 @@ void MainWindow::onResult(const QString &text, bool isFinal)
 
 void MainWindow::onRecognizeFile()
 {
+    if (m_asrService && !m_asrService->acceptsExternalAudio()) {
+        statusBar()->showMessage(
+            tr("Selected recognizer does not support audio file recognition."),
+            5000);
+        return;
+    }
+
     const QString path =
         QFileDialog::getOpenFileName(this, tr("Select Audio File"), QString(),
                                      tr("Audio Files (*.wav *.mp3 *.ogg *.flac "
@@ -567,7 +586,8 @@ void MainWindow::retranslateUi()
     m_startHiddenAction->setText(tr("Start minimized"));
     m_helpMenu->setTitle(tr("Help"));
 
-    statusBar()->showMessage(m_currentModelDirectory.isEmpty()
+    statusBar()->showMessage((m_currentModelDirectory.isEmpty() &&
+                              m_currentModelType != QStringLiteral("System"))
                                  ? tr("No model selected")
                                  : tr("Model: %1").arg(m_currentModelName));
 }

@@ -1,6 +1,17 @@
 {
   "asrPresets": [
     {
+      "name": "System Speech",
+      "type": "System",
+      "languages": "system",
+      "modelDirName": "",
+      "url": "",
+      "size": 0,
+      "paramCount": 0,
+      "streamingSupport": true,
+      "files": {}
+    },
+    {
       "name": "SenseVoice",
       "type": "SenseVoice",
       "languages": "multilingual",
@@ -53,7 +64,10 @@
         "size": 65011712,
         "paramCount": 0,
         "streamingSupport": false,
-        "isPunctuationModel": true
+        "isPunctuationModel": true,
+        "files": {
+          "punctuationModelFile": "model.onnx"
+        }
       }
     }
   ],
@@ -114,6 +128,7 @@
     "model": {
       "directory": "",
       "name": "",
+      "type": "",
       "hotwords": ""
     },
     "llm": {

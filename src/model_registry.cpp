@@ -3,8 +3,8 @@
 #include "logging.h"
 
 #include <QDir>
-#include <QFileInfo>
-#include <QStringList>
+
+#include <iterator>
 
 namespace talkinput
 {
@@ -68,7 +68,7 @@ ModelPreset parsePreset(const nlohmann::json &obj)
         }
     }
 
-    for (const auto &[key, pattern] : raw.files) {
+    for (const auto &[key, relativePath] : raw.files) {
         FileRule rule;
         if (key.ends_with(">dir")) {
             rule.configField = key.substr(0, key.size() - 5);
@@ -78,7 +78,7 @@ ModelPreset parsePreset(const nlohmann::json &obj)
             rule.configField = key;
             rule.isDir = false;
         }
-        rule.globPatterns.push_back(pattern);
+        rule.relativePath = relativePath;
         preset.files.push_back(std::move(rule));
     }
 
@@ -96,6 +96,27 @@ std::vector<ModelPreset> parsePresetArray(const nlohmann::json &root,
     presets.reserve(arr.size());
     for (const auto &val : arr) {
         presets.push_back(parsePreset(val));
+    }
+    return presets;
+}
+
+std::vector<ModelPreset> parseNestedToolPresets(const nlohmann::json &root)
+{
+    std::vector<ModelPreset> presets;
+    const nlohmann::json arr =
+        root.value("asrPresets", nlohmann::json::array());
+    for (const auto &value : arr) {
+        const nlohmann::json tool =
+            value.value("postPunctuationModel", nlohmann::json::object());
+        if (!tool.is_object() || tool.empty()) {
+            continue;
+        }
+        ModelPreset preset = parsePreset(tool);
+        if (preset.type.empty()) {
+            preset.type = "Tool";
+        }
+        preset.isPunctuationModel = true;
+        presets.push_back(std::move(preset));
     }
     return presets;
 }
@@ -180,6 +201,10 @@ void ensureLoaded()
     const nlohmann::json root = appConfigRoot();
     s_asrPresets = parsePresetArray(root, "asrPresets");
     s_toolPresets = parsePresetArray(root, "toolPresets");
+    std::vector<ModelPreset> nestedTools = parseNestedToolPresets(root);
+    s_toolPresets.insert(s_toolPresets.end(),
+                         std::make_move_iterator(nestedTools.begin()),
+                         std::make_move_iterator(nestedTools.end()));
     s_llmLocalModel = parseLlmLocalModel(root);
     s_llmProviderPresets = parseLlmProviderPresets(root);
     s_llmSystemPrompt = parseLlmSystemPrompt(root);
@@ -190,35 +215,6 @@ void ensureLoaded()
                 s_asrPresets.size(), s_toolPresets.size(),
                 s_llmProviderPresets.size(), s_llmLocalModel.fileName);
 }
-
-QStringList toQStringList(const std::vector<std::string> &values)
-{
-    QStringList result;
-    result.reserve(static_cast<qsizetype>(values.size()));
-    for (const auto &value : values) {
-        result.append(qs(value));
-    }
-    return result;
-}
-
-QStringList findFiles(const QDir &dir, const QStringList &names, bool isDir)
-{
-    for (const QString &name : names) {
-        const QString full = dir.absoluteFilePath(name);
-        if (isDir) {
-            if (QFileInfo(full).isDir()) {
-                return {full};
-            }
-        }
-        else {
-            if (QFileInfo::exists(full) && QFileInfo(full).isFile()) {
-                return {full};
-            }
-        }
-    }
-    return {};
-}
-
 } // namespace
 
 std::vector<ModelPreset> loadModelPresets()
@@ -231,6 +227,33 @@ std::vector<ModelPreset> loadToolPresets()
 {
     ensureLoaded();
     return s_toolPresets;
+}
+
+std::optional<ModelPreset> findModelPresetByDirName(const std::string &dirName)
+{
+    ensureLoaded();
+    for (const auto &preset : s_asrPresets) {
+        if (preset.modelDirName == dirName) {
+            return preset;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<ModelPreset> findModelPresetByDirectory(const QString &modelDir)
+{
+    return findModelPresetByDirName(QDir(modelDir).dirName().toStdString());
+}
+
+std::optional<ModelPreset> findToolPresetByDirName(const std::string &dirName)
+{
+    ensureLoaded();
+    for (const auto &preset : s_toolPresets) {
+        if (preset.modelDirName == dirName) {
+            return preset;
+        }
+    }
+    return std::nullopt;
 }
 
 LlmLocalModel loadLlmLocalModel()
@@ -300,49 +323,6 @@ std::string defaultLlmUserPrompt()
 {
     ensureLoaded();
     return s_llmUserPrompt;
-}
-
-ModelFileSet resolveModelFiles(const QString &modelDir)
-{
-    ensureLoaded();
-
-    const QDir dir(modelDir);
-    const std::string dirName = dir.dirName().toStdString();
-
-    const ModelPreset *preset = nullptr;
-    for (const auto &p : s_asrPresets) {
-        if (p.modelDirName == dirName) {
-            preset = &p;
-            break;
-        }
-    }
-
-    ModelFileSet result;
-    if (!preset) {
-        SPDLOG_DEBUG("model_registry: no preset for {}; caller should fall "
-                     "back to probing",
-                     dirName);
-        result.modelDirName = dirName;
-        return result;
-    }
-
-    result.type = preset->type;
-    result.modelDirName = preset->modelDirName;
-    result.matched = true;
-
-    for (const auto &rule : preset->files) {
-        const QStringList found =
-            findFiles(dir, toQStringList(rule.globPatterns), rule.isDir);
-        if (found.isEmpty()) {
-            SPDLOG_WARN("model_registry: no match for {} in {}",
-                        rule.configField, dirName);
-            continue;
-        }
-        result.resolvedFiles.insert(
-            {rule.configField, found.first().toStdString()});
-    }
-
-    return result;
 }
 
 } // namespace talkinput

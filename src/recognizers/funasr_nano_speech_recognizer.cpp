@@ -9,17 +9,17 @@ bool FunASRNanoSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOfflineRecognizerConfig *recognizer,
     QString *errorMessage)
 {
-    const QString adaptor =
-        modelPath(config.modelDir, config.funasrEncoderAdaptorFile);
-    const QString llm = modelPath(config.modelDir, config.funasrLlmFile);
-    const QString embedding =
-        modelPath(config.modelDir, config.funasrEmbeddingFile);
-    const QString tokenizer =
-        modelPath(config.modelDir, config.funasrTokenizerFile);
-
-    if (!fileExists(adaptor, errorMessage) || !fileExists(llm, errorMessage) ||
-        !fileExists(embedding, errorMessage) ||
-        !pathExists(tokenizer, errorMessage))
+    QString adaptor;
+    QString llm;
+    QString embedding;
+    QString tokenizer;
+    if (!configuredModelPath(config, "funasrEncoderAdaptorFile", &adaptor,
+                             errorMessage) ||
+        !configuredModelPath(config, "funasrLlmFile", &llm, errorMessage) ||
+        !configuredModelPath(config, "funasrEmbeddingFile", &embedding,
+                             errorMessage) ||
+        !configuredModelPath(config, "funasrTokenizerFile", &tokenizer,
+                             errorMessage))
     {
         return false;
     }
@@ -30,7 +30,7 @@ bool FunASRNanoSpeechRecognizer::configureModel(
     m_tokenizerPath = tokenizer.toUtf8().toStdString();
     m_systemPrompt = config.funasrSystemPrompt.toUtf8().toStdString();
     m_userPrompt = config.funasrUserPrompt.toUtf8().toStdString();
-    m_language = config.funasrLanguage.toUtf8().toStdString();
+    m_language = config.language.toUtf8().toStdString();
     m_hotwords = config.hotwordsText.toUtf8().toStdString();
 
     recognizer->model_config.funasr_nano.encoder_adaptor =

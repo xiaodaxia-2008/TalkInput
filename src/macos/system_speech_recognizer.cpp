@@ -91,4 +91,9 @@ void SystemSpeechRecognizer::resetStream()
     // No-op for system recognizer.
 }
 
+bool SystemSpeechRecognizer::acceptsExternalAudio() const
+{
+    return false;
+}
+
 } // namespace talkinput

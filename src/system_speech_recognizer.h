@@ -29,10 +29,12 @@ public:
                      int channelCount) override;
     void finish() override;
     void resetStream() override;
+    bool acceptsExternalAudio() const override;
 
 private:
     class Impl;
     std::unique_ptr<Impl> m_impl;
+    Config m_config;
 };
 
 } // namespace talkinput

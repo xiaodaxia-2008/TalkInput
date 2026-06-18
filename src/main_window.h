@@ -44,7 +44,8 @@ private:
     void stopListening();
     void updateControls(bool listening);
     void setRecognitionModel(const QString &modelDirectory,
-                             const QString &modelName = QString());
+                             const QString &modelName = QString(),
+                             const QString &modelType = QString());
     void onResult(const QString &text, bool isFinal);
     void onRecognizeFile();
     void quitApplication();
@@ -61,6 +62,7 @@ private:
 
     QString m_currentModelDirectory;
     QString m_currentModelName;
+    QString m_currentModelType;
     QString m_currentLanguage;
 
     QSystemTrayIcon *m_trayIcon = nullptr;
