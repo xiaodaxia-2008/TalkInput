@@ -144,7 +144,7 @@ nlohmann::json appConfigRoot()
 QString appConfigPath()
 {
     QString dir =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (dir.isEmpty()) {
         dir = QDir::home().filePath(".config/TalkInput");
     }

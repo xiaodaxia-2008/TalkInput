@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     QApplication::setApplicationName("TalkInput");
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
-    QApplication::setOrganizationName("TalkInput");
+    QApplication::setOrganizationName("ZenShawn");
     QApplication::setWindowIcon(QIcon(":/resources/icons/icon.png"));
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      &talkinput::saveAppConfig);
