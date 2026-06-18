@@ -187,6 +187,19 @@ void setAppConfigValue(const QString &path, const nlohmann::json &value)
     scheduleSave();
 }
 
+bool resetAppConfigToDefaults()
+{
+    ensureLoaded();
+    s_config =
+        s_defaultConfig.empty() ? nlohmann::json::object() : s_defaultConfig;
+    s_dirty = true;
+    if (s_saveTimer) {
+        s_saveTimer->stop();
+    }
+    SPDLOG_INFO("config: resetting user config to defaults");
+    return writeConfigNow();
+}
+
 bool saveAppConfig()
 {
     ensureLoaded();

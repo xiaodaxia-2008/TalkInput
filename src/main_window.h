@@ -39,6 +39,7 @@ protected:
 
 private:
     void setupUi();
+    void setupAsrSettingWidget();
     void setupTrayIcon();
     void startListening();
     void stopListening();
@@ -51,6 +52,7 @@ private:
     void quitApplication();
     void retranslateUi();
     void doSwitchLanguage(const QString &lang);
+    void resetUserSettings();
 
     std::unique_ptr<Ui::MainWindow> m_ui;
     AsrSettingWidget *m_asrSettingWidget = nullptr;
@@ -79,6 +81,7 @@ private:
     QAction *m_zhAction = nullptr;
     QAction *m_enAction = nullptr;
     QAction *m_startHiddenAction = nullptr;
+    QAction *m_resetSettingsAction = nullptr;
     QMenu *m_helpMenu = nullptr;
     bool m_forceQuit = false;
 };

@@ -19,6 +19,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
@@ -122,43 +123,7 @@ void MainWindow::setupUi()
         [this](const QString &msg) { statusBar()->showMessage(msg, 2000); });
 
     // ── ASR settings tab ────────────────────────────────────────
-    SPDLOG_DEBUG("MainWindow::setupUi: creating AsrSettingWidget");
-    m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
-    m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
-    SPDLOG_DEBUG("MainWindow::setupUi: AsrSettingWidget added");
-    connect(
-        m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
-        [this](const QString &dir, const QString &name, const QString &type) {
-            setRecognitionModel(dir, name, type);
-            m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
-        });
-    connect(m_asrSettingWidget, &AsrSettingWidget::statusMessage, this,
-            [this](const QString &msg) { statusBar()->showMessage(msg); });
-    connect(m_asrSettingWidget, &AsrSettingWidget::punctuationModelReady, this,
-            [this](const QString &punctuationDir) {
-                if (m_currentModelDirectory.isEmpty()) {
-                    return;
-                }
-                SPDLOG_INFO("Punctuation model ready: {}", punctuationDir);
-                SPDLOG_INFO("Punctuation ready, reloading ASR model...");
-                statusBar()->showMessage(
-                    tr("Punctuation ready, reloading model..."));
-                if (m_asrService) {
-                    m_asrService->setPunctuationModelDir(punctuationDir);
-                    QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                              Qt::QueuedConnection);
-                }
-            });
-    connect(
-        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
-            if (m_currentModelDirectory.isEmpty()) {
-                return;
-            }
-            SPDLOG_INFO("Hot words changed, reloading ASR model...");
-            statusBar()->showMessage(tr("Hot words saved, reloading model..."));
-            QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                      Qt::QueuedConnection);
-        });
+    setupAsrSettingWidget();
 
     // ── Toolbar ────────────────────────────────────────────────
     SPDLOG_DEBUG("MainWindow::setupUi: creating toolbar");
@@ -213,8 +178,8 @@ void MainWindow::setupUi()
     // ── Menu bar ────────────────────────────────────────────────
     SPDLOG_DEBUG("MainWindow::setupUi: creating menu bar");
     m_prefMenu = menuBar()->addMenu(tr("Preferences"));
-    m_langMenu =
-        m_prefMenu->addMenu(QIcon(":/resources/icons/globe.svg"), tr("Language"));
+    m_langMenu = m_prefMenu->addMenu(QIcon(":/resources/icons/globe.svg"),
+                                     tr("Language"));
 
     m_zhAction =
         m_langMenu->addAction(QIcon(":/resources/icons/zh.svg"), tr("Chinese"));
@@ -254,6 +219,11 @@ void MainWindow::setupUi()
         setAppConfigValue("settings/app/startMinimized", checked);
     });
 
+    m_prefMenu->addSeparator();
+    m_resetSettingsAction = m_prefMenu->addAction(tr("Reset Settings"));
+    connect(m_resetSettingsAction, &QAction::triggered, this,
+            &MainWindow::resetUserSettings);
+
     m_helpMenu = menuBar()->addMenu(tr("Help"));
     auto *modelsAction = m_helpMenu->addAction(QStringLiteral("More Models"));
     connect(modelsAction, &QAction::triggered, this, []() {
@@ -291,6 +261,55 @@ void MainWindow::setupUi()
     }
 
     SPDLOG_DEBUG("MainWindow::setupUi: end");
+}
+
+void MainWindow::setupAsrSettingWidget()
+{
+    if (m_asrSettingWidget) {
+        m_ui->asrSettingsLayout->removeWidget(m_asrSettingWidget);
+        m_asrSettingWidget->hide();
+        m_asrSettingWidget->deleteLater();
+        m_asrSettingWidget = nullptr;
+    }
+
+    SPDLOG_DEBUG("MainWindow::setupAsrSettingWidget: creating widget");
+    m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
+    m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
+    SPDLOG_DEBUG("MainWindow::setupAsrSettingWidget: widget added");
+
+    connect(
+        m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
+        [this](const QString &dir, const QString &name, const QString &type) {
+            setRecognitionModel(dir, name, type);
+            m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
+        });
+    connect(m_asrSettingWidget, &AsrSettingWidget::statusMessage, this,
+            [this](const QString &msg) { statusBar()->showMessage(msg); });
+    connect(m_asrSettingWidget, &AsrSettingWidget::punctuationModelReady, this,
+            [this](const QString &punctuationDir) {
+                if (m_currentModelDirectory.isEmpty()) {
+                    return;
+                }
+                SPDLOG_INFO("Punctuation model ready: {}", punctuationDir);
+                SPDLOG_INFO("Punctuation ready, reloading ASR model...");
+                statusBar()->showMessage(
+                    tr("Punctuation ready, reloading model..."));
+                if (m_asrService) {
+                    m_asrService->setPunctuationModelDir(punctuationDir);
+                    QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                              Qt::QueuedConnection);
+                }
+            });
+    connect(
+        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
+            if (m_currentModelDirectory.isEmpty()) {
+                return;
+            }
+            SPDLOG_INFO("Hot words changed, reloading ASR model...");
+            statusBar()->showMessage(tr("Hot words saved, reloading model..."));
+            QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                      Qt::QueuedConnection);
+        });
 }
 
 void MainWindow::setupTrayIcon()
@@ -584,6 +603,9 @@ void MainWindow::retranslateUi()
     m_zhAction->setText(tr("Chinese"));
     m_enAction->setText(tr("English"));
     m_startHiddenAction->setText(tr("Start minimized"));
+    if (m_resetSettingsAction) {
+        m_resetSettingsAction->setText(tr("Reset Settings"));
+    }
     m_helpMenu->setTitle(tr("Help"));
 
     statusBar()->showMessage((m_currentModelDirectory.isEmpty() &&
@@ -632,6 +654,66 @@ void MainWindow::doSwitchLanguage(const QString &lang)
     }
 
     retranslateUi();
+}
+
+void MainWindow::resetUserSettings()
+{
+    const QString configPath = QDir::toNativeSeparators(appConfigPath());
+    const QMessageBox::StandardButton result = QMessageBox::warning(
+        this, tr("Reset Settings"),
+        tr("Reset all user settings in this file to bundled defaults?\n\n%1\n\n"
+           "Model downloads and recognition history will not be deleted.")
+            .arg(configPath),
+        QMessageBox::Reset | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (result != QMessageBox::Reset) {
+        return;
+    }
+
+    if (!resetAppConfigToDefaults()) {
+        QMessageBox::warning(this, tr("Reset Settings"),
+                             tr("Failed to reset settings."));
+        return;
+    }
+
+    const QString resetLanguage =
+        appConfigString("settings/app/language", "zh");
+    if (m_currentLanguage != resetLanguage) {
+        doSwitchLanguage(resetLanguage);
+    }
+
+    {
+        const QSignalBlocker zhBlocker(m_zhAction);
+        const QSignalBlocker enBlocker(m_enAction);
+        const QSignalBlocker startHiddenBlocker(m_startHiddenAction);
+        m_zhAction->setChecked(resetLanguage != QStringLiteral("en"));
+        m_enAction->setChecked(resetLanguage == QStringLiteral("en"));
+        m_startHiddenAction->setChecked(
+            appConfigBool("settings/app/startMinimized", false));
+    }
+
+    setupAsrSettingWidget();
+
+    const QString savedDir = appConfigString("settings/model/directory");
+    const QString savedName = appConfigString("settings/model/name");
+    const QString savedType = appConfigString("settings/model/type");
+    if (!savedDir.isEmpty() || savedType == QStringLiteral("System")) {
+        setRecognitionModel(savedDir, savedName, savedType);
+    }
+    else {
+        m_currentModelDirectory.clear();
+        m_currentModelName.clear();
+        m_currentModelType.clear();
+        if (m_asrService) {
+            m_asrService->setModelDirectory({});
+            m_asrService->setModelType({});
+            m_asrService->setPunctuationModelDir({});
+            QMetaObject::invokeMethod(m_asrService, "unloadModel",
+                                      Qt::QueuedConnection);
+        }
+        statusBar()->showMessage(tr("No model selected"));
+    }
+
+    statusBar()->showMessage(tr("Settings reset to defaults."), 3000);
 }
 
 } // namespace talkinput

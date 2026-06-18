@@ -15,6 +15,7 @@ nlohmann::json appConfigValue(const QString &path,
 QString appConfigString(const QString &path, const QString &fallback = {});
 bool appConfigBool(const QString &path, bool fallback = false);
 void setAppConfigValue(const QString &path, const nlohmann::json &value);
+bool resetAppConfigToDefaults();
 bool saveAppConfig();
 
 } // namespace talkinput

@@ -613,6 +613,30 @@
         <translation>启动时最小化</translation>
     </message>
     <message>
+        <source>Reset Settings</source>
+        <translation>重置设置</translation>
+    </message>
+    <message>
+        <source>Reset all user settings in this file to bundled defaults?
+
+%1
+
+Model downloads and recognition history will not be deleted.</source>
+        <translation>是否将此文件中的所有用户设置重置为内置默认值？
+
+%1
+
+不会删除已下载的模型和识别历史。</translation>
+    </message>
+    <message>
+        <source>Failed to reset settings.</source>
+        <translation>重置设置失败。</translation>
+    </message>
+    <message>
+        <source>Settings reset to defaults.</source>
+        <translation>设置已重置为默认值。</translation>
+    </message>
+    <message>
         <location filename="main_window.cpp" line="232"/>
         <location filename="main_window.cpp" line="543"/>
         <source>Help</source>
