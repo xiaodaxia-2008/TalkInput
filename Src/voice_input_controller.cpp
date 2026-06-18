@@ -322,7 +322,12 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
                 emit statusMessage(tr("Post-processing recognition result..."));
             }
             m_llmPostProcessor->postProcess(
-                finalText, this, [this](const QString &processedText) {
+                finalText, this,
+                [this, finalText](const QString &processedText) {
+                    spdlog::debug(
+                        "Voice input final text after LLM: input='{}' "
+                        "output='{}'",
+                        finalText, processedText);
                     injectFinalText(processedText.trimmed());
                 });
         }

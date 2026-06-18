@@ -115,7 +115,9 @@ void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
         return;
     }
 
-    m_pending.enqueue({text.trimmed(), receiver, std::move(callback)});
+    const QString inputText = text.trimmed();
+    spdlog::debug("LLM post-process queued input: {}", inputText);
+    m_pending.enqueue({inputText, receiver, std::move(callback)});
     ensureReady();
 }
 
@@ -339,16 +341,21 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         return;
     }
 
+    spdlog::debug("LLM post-process input: {}", request.text);
+
+    const QString systemPrompt =
+        "你是语音识别文本后处理器。修正错别字、同音误识别、"
+        "标点和自然断句。不要解释，不要添加原文没有的信息，只"
+        "返回修正后的文本。";
+    const QString userPrompt =
+        QString("请后处理这段语音识别文本：\n%1").arg(request.text);
+
+    spdlog::debug("LLM system prompt: {}", systemPrompt);
+    spdlog::debug("LLM user prompt: {}", userPrompt);
+
     QJsonArray messages;
-    messages.append(QJsonObject{
-        {"role", "system"},
-        {"content", "你是语音识别文本后处理器。修正错别字、同音误识别、"
-                    "标点和自然断句。不要解释，不要添加原文没有的信息，只"
-                    "返回修正后的文本。"}});
-    messages.append(QJsonObject{
-        {"role", "user"},
-        {"content",
-         QString("请后处理这段语音识别文本：\n%1").arg(request.text)}});
+    messages.append(QJsonObject{{"role", "system"}, {"content", systemPrompt}});
+    messages.append(QJsonObject{{"role", "user"}, {"content", userPrompt}});
 
     const QJsonObject payload{{"messages", messages},
                               {"temperature", 0.1},
@@ -359,12 +366,18 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         QString("http://127.0.0.1:%1/v1/chat/completions").arg(ServerPort)));
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,
                              "application/json");
-    auto *reply = m_network.post(
-        networkRequest, QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    const QByteArray requestBody =
+        QJsonDocument(payload).toJson(QJsonDocument::Compact);
+    spdlog::debug("LLM chat request JSON: {}", QString::fromUtf8(requestBody));
+
+    auto *reply = m_network.post(networkRequest, requestBody);
     connect(reply, &QNetworkReply::finished, this, [reply, request]() mutable {
         QString result = request.text;
         if (reply->error() == QNetworkReply::NoError) {
-            const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            const QByteArray responseBody = reply->readAll();
+            spdlog::debug("LLM chat response JSON: {}",
+                          QString::fromUtf8(responseBody));
+            const QJsonDocument doc = QJsonDocument::fromJson(responseBody);
             const QJsonArray choices = doc.object().value("choices").toArray();
             if (!choices.isEmpty()) {
                 const QJsonObject message =
@@ -379,6 +392,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         else {
             spdlog::warn("LLM post-process failed: {}", reply->errorString());
         }
+        spdlog::debug("LLM post-process output: {}", result);
         reply->deleteLater();
         if (request.receiver && request.callback) {
             request.callback(result);
