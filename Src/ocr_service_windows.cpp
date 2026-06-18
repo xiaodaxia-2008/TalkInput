@@ -78,6 +78,86 @@ void releaseCom(T *&ptr)
     }
 }
 
+HWND focusedWindowFromUiAutomation()
+{
+    initComApartment();
+
+    IUIAutomation *automation = nullptr;
+    HRESULT hr =
+        CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
+                         IID_PPV_ARGS(&automation));
+    if (FAILED(hr) || !automation) {
+        spdlog::debug("OCR: UI Automation unavailable: 0x{:08x}",
+                      static_cast<unsigned>(hr));
+        return nullptr;
+    }
+
+    IUIAutomationElement *element = nullptr;
+    hr = automation->GetFocusedElement(&element);
+    releaseCom(automation);
+    if (FAILED(hr) || !element) {
+        spdlog::debug("OCR: UI Automation focused element unavailable: "
+                      "0x{:08x}",
+                      static_cast<unsigned>(hr));
+        return nullptr;
+    }
+
+    UIA_HWND nativeWindow = 0;
+    hr = element->get_CurrentNativeWindowHandle(&nativeWindow);
+    releaseCom(element);
+    if (FAILED(hr) || nativeWindow == 0) {
+        spdlog::debug("OCR: UI Automation focused element has no native "
+                      "window: 0x{:08x}",
+                      static_cast<unsigned>(hr));
+        return nullptr;
+    }
+
+    HWND hwnd = reinterpret_cast<HWND>(nativeWindow);
+    HWND root = GetAncestor(hwnd, GA_ROOT);
+    if (root) {
+        hwnd = root;
+    }
+    spdlog::debug("OCR: using UI Automation focused native window for "
+                  "screenshot");
+    return hwnd;
+}
+
+HWND focusedWindowFromWin32()
+{
+    HWND hwnd = nullptr;
+    const HWND foreground = GetForegroundWindow();
+    if (foreground) {
+        const DWORD threadId = GetWindowThreadProcessId(foreground, nullptr);
+        GUITHREADINFO info = {};
+        info.cbSize = sizeof(info);
+        if (GetGUIThreadInfo(threadId, &info) && info.hwndFocus) {
+            hwnd = GetAncestor(info.hwndFocus, GA_ROOT);
+            if (hwnd) {
+                spdlog::debug("OCR: using Win32 focused root window for "
+                              "screenshot");
+            }
+        }
+    }
+
+    if (!hwnd) {
+        hwnd = foreground;
+        if (hwnd) {
+            spdlog::debug("OCR: using foreground window for screenshot");
+        }
+    }
+
+    return hwnd;
+}
+
+HWND focusedInputWindow()
+{
+    HWND hwnd = focusedWindowFromUiAutomation();
+    if (!hwnd) {
+        hwnd = focusedWindowFromWin32();
+    }
+    return hwnd;
+}
+
 QRect focusedRectFromUiAutomation()
 {
     initComApartment();
@@ -255,6 +335,42 @@ QRect WindowsOcrService::focusedTextInputRect() const
 #endif
 
     return {};
+}
+
+WId WindowsOcrService::focusedTextInputWindowId() const
+{
+#ifdef Q_OS_WIN
+    return reinterpret_cast<WId>(focusedInputWindow());
+#else
+    return 0;
+#endif
+}
+
+QString WindowsOcrService::focusedTextInputScreenName() const
+{
+#ifdef Q_OS_WIN
+    const HWND hwnd = focusedInputWindow();
+    if (!hwnd) {
+        return {};
+    }
+
+    const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (!monitor) {
+        return {};
+    }
+
+    MONITORINFOEXW info = {};
+    info.cbSize = sizeof(info);
+    if (!GetMonitorInfoW(monitor, &info)) {
+        return {};
+    }
+
+    const QString name = QString::fromWCharArray(info.szDevice);
+    spdlog::debug("OCR: focused input monitor: {}", name);
+    return name;
+#else
+    return {};
+#endif
 }
 
 void WindowsOcrService::recognizeText(const QImage &image, QObject *receiver,

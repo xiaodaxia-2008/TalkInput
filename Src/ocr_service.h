@@ -5,6 +5,7 @@
 #include <QRect>
 #include <QString>
 #include <functional>
+#include <qwindowdefs.h>
 
 namespace talkinput
 {
@@ -21,6 +22,8 @@ public:
 
     virtual bool isAvailable() const = 0;
     virtual QRect focusedTextInputRect() const;
+    virtual WId focusedTextInputWindowId() const;
+    virtual QString focusedTextInputScreenName() const;
     virtual void recognizeText(const QImage &image, QObject *receiver,
                                Callback callback) = 0;
 };

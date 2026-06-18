@@ -14,6 +14,8 @@ public:
 
     bool isAvailable() const override;
     QRect focusedTextInputRect() const override;
+    WId focusedTextInputWindowId() const override;
+    QString focusedTextInputScreenName() const override;
     void recognizeText(const QImage &image, QObject *receiver,
                        Callback callback) override;
 };

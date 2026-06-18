@@ -15,6 +15,7 @@
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QList>
 #include <QMediaDevices>
 #include <QPixmap>
 #include <QPropertyAnimation>
@@ -75,6 +76,55 @@ void saveOcrDebugImage(const QImage &image)
     else {
         spdlog::warn("OCR context debug screenshot save failed: {}", path);
     }
+}
+
+QScreen *screenByName(const QString &name)
+{
+    if (name.isEmpty()) {
+        return nullptr;
+    }
+
+    for (QScreen *screen : QGuiApplication::screens()) {
+        if (screen && screen->name().compare(name, Qt::CaseInsensitive) == 0) {
+            return screen;
+        }
+    }
+    return nullptr;
+}
+
+QImage grabWindowFromScreens(WId windowId, QScreen *preferredScreen)
+{
+    if (windowId == 0) {
+        return {};
+    }
+
+    QList<QScreen *> screens;
+    if (preferredScreen) {
+        screens.append(preferredScreen);
+    }
+    for (QScreen *screen : QGuiApplication::screens()) {
+        if (screen && screen != preferredScreen) {
+            screens.append(screen);
+        }
+    }
+
+    for (QScreen *screen : screens) {
+        if (!screen) {
+            continue;
+        }
+        const QPixmap pixmap = screen->grabWindow(windowId);
+        if (!pixmap.isNull() && pixmap.width() > 0 && pixmap.height() > 0) {
+            spdlog::debug("OCR context window screenshot captured from screen "
+                          "'{}': {}x{} dpr={}",
+                          screen->name(), pixmap.width(), pixmap.height(),
+                          pixmap.devicePixelRatio());
+            return pixmap.toImage();
+        }
+    }
+
+    spdlog::debug("OCR context window screenshot failed for window id {}",
+                  reinterpret_cast<void *>(windowId));
+    return {};
 }
 
 // ── Win32 acrylic blur helper ──────────────────────────────────
@@ -431,18 +481,16 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
 QImage VoiceInputController::captureFocusedContextImage() const
 {
-    QPoint anchor = QCursor::pos();
-    QRect rect;
-    if (m_ocrService) {
-        rect = m_ocrService->focusedTextInputRect();
+    const QString screenName =
+        m_ocrService ? m_ocrService->focusedTextInputScreenName() : QString();
+    QScreen *screen = screenByName(screenName);
+    if (screen) {
+        spdlog::debug("OCR context matched focused screen '{}'",
+                      screen->name());
     }
-    if (!rect.isEmpty()) {
-        spdlog::debug("OCR context focused rect: x={} y={} w={} h={}", rect.x(),
-                      rect.y(), rect.width(), rect.height());
-        anchor = rect.center();
+    if (!screen) {
+        screen = QGuiApplication::screenAt(QCursor::pos());
     }
-
-    QScreen *screen = QGuiApplication::screenAt(anchor);
     if (!screen) {
         screen = QGuiApplication::primaryScreen();
     }
@@ -451,26 +499,20 @@ QImage VoiceInputController::captureFocusedContextImage() const
         return {};
     }
 
-    if (rect.isEmpty()) {
-        rect = screen->geometry();
-        spdlog::debug("OCR context using full-screen fallback rect: x={} y={} "
-                      "w={} h={}",
-                      rect.x(), rect.y(), rect.width(), rect.height());
-    }
-    else {
-        rect = rect.intersected(screen->geometry());
+    const WId windowId =
+        m_ocrService ? m_ocrService->focusedTextInputWindowId() : 0;
+    QImage image = grabWindowFromScreens(windowId, screen);
+    if (!image.isNull()) {
+        saveOcrDebugImage(image);
+        return image;
     }
 
-    if (rect.width() <= 0 || rect.height() <= 0) {
-        rect = screen->geometry();
-        spdlog::debug("OCR context rect outside screen; using full-screen "
-                      "fallback rect: x={} y={} w={} h={}",
-                      rect.x(), rect.y(), rect.width(), rect.height());
-    }
-
-    const QPixmap pixmap =
-        screen->grabWindow(0, rect.x(), rect.y(), rect.width(), rect.height());
-    const QImage image = pixmap.toImage();
+    const QPixmap pixmap = screen->grabWindow(0);
+    image = pixmap.toImage();
+    spdlog::debug("OCR context using full-screen fallback on screen '{}': "
+                  "{}x{} dpr={}",
+                  screen->name(), pixmap.width(), pixmap.height(),
+                  pixmap.devicePixelRatio());
     saveOcrDebugImage(image);
     return image;
 }

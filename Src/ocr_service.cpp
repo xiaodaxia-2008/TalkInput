@@ -20,6 +20,16 @@ QRect OcrService::focusedTextInputRect() const
     return {};
 }
 
+WId OcrService::focusedTextInputWindowId() const
+{
+    return 0;
+}
+
+QString OcrService::focusedTextInputScreenName() const
+{
+    return {};
+}
+
 namespace
 {
 
