@@ -111,6 +111,10 @@ add_executable(TalkInputBenchmark
     benchmark.cpp
 )
 
+add_executable(TalkInputOcrCaptureTest
+    ocr_capture_test.cpp
+)
+
 target_link_libraries(TalkInputAsrTest
     PRIVATE
     Qt6::Core
@@ -132,6 +136,13 @@ target_link_libraries(TalkInputBenchmark
     spdlog::spdlog_header_only
 )
 
+target_link_libraries(TalkInputOcrCaptureTest
+    PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    spdlog::spdlog_header_only
+)
+
 target_include_directories(TalkInput PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
@@ -145,6 +156,10 @@ target_include_directories(TalkInputSenseVoiceTest PRIVATE
     ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
 )
 target_include_directories(TalkInputBenchmark PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
+)
+target_include_directories(TalkInputOcrCaptureTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/ThirdParties/KDToolBox
 )
@@ -164,6 +179,10 @@ install(TARGETS TalkInputAsrTest
 )
 
 install(TARGETS TalkInputSenseVoiceTest
+    COMPONENT Runtime
+)
+
+install(TARGETS TalkInputOcrCaptureTest
     COMPONENT Runtime
 )
 

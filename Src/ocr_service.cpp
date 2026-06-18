@@ -30,6 +30,11 @@ QString OcrService::focusedTextInputScreenName() const
     return {};
 }
 
+QImage OcrService::captureFocusedTextInputImage() const
+{
+    return {};
+}
+
 namespace
 {
 

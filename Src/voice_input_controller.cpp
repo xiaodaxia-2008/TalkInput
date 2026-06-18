@@ -15,7 +15,6 @@
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QList>
 #include <QMediaDevices>
 #include <QPixmap>
 #include <QPropertyAnimation>
@@ -90,41 +89,6 @@ QScreen *screenByName(const QString &name)
         }
     }
     return nullptr;
-}
-
-QImage grabWindowFromScreens(WId windowId, QScreen *preferredScreen)
-{
-    if (windowId == 0) {
-        return {};
-    }
-
-    QList<QScreen *> screens;
-    if (preferredScreen) {
-        screens.append(preferredScreen);
-    }
-    for (QScreen *screen : QGuiApplication::screens()) {
-        if (screen && screen != preferredScreen) {
-            screens.append(screen);
-        }
-    }
-
-    for (QScreen *screen : screens) {
-        if (!screen) {
-            continue;
-        }
-        const QPixmap pixmap = screen->grabWindow(windowId);
-        if (!pixmap.isNull() && pixmap.width() > 0 && pixmap.height() > 0) {
-            spdlog::debug("OCR context window screenshot captured from screen "
-                          "'{}': {}x{} dpr={}",
-                          screen->name(), pixmap.width(), pixmap.height(),
-                          pixmap.devicePixelRatio());
-            return pixmap.toImage();
-        }
-    }
-
-    spdlog::debug("OCR context window screenshot failed for window id {}",
-                  reinterpret_cast<void *>(windowId));
-    return {};
 }
 
 // ── Win32 acrylic blur helper ──────────────────────────────────
@@ -481,6 +445,21 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
 QImage VoiceInputController::captureFocusedContextImage() const
 {
+    if (m_ocrService) {
+        const QImage focusedWindowImage =
+            m_ocrService->captureFocusedTextInputImage();
+        if (!focusedWindowImage.isNull()) {
+            spdlog::debug("OCR context focused window screenshot captured: "
+                          "{}x{}",
+                          focusedWindowImage.width(),
+                          focusedWindowImage.height());
+            saveOcrDebugImage(focusedWindowImage);
+            return focusedWindowImage;
+        }
+        spdlog::debug("OCR context focused window screenshot failed; falling "
+                      "back to full screen");
+    }
+
     const QString screenName =
         m_ocrService ? m_ocrService->focusedTextInputScreenName() : QString();
     QScreen *screen = screenByName(screenName);
@@ -499,16 +478,8 @@ QImage VoiceInputController::captureFocusedContextImage() const
         return {};
     }
 
-    const WId windowId =
-        m_ocrService ? m_ocrService->focusedTextInputWindowId() : 0;
-    QImage image = grabWindowFromScreens(windowId, screen);
-    if (!image.isNull()) {
-        saveOcrDebugImage(image);
-        return image;
-    }
-
     const QPixmap pixmap = screen->grabWindow(0);
-    image = pixmap.toImage();
+    const QImage image = pixmap.toImage();
     spdlog::debug("OCR context using full-screen fallback on screen '{}': "
                   "{}x{} dpr={}",
                   screen->name(), pixmap.width(), pixmap.height(),

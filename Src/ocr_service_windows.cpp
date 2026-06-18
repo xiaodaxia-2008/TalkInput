@@ -52,6 +52,88 @@ QRect contextRectAround(const QRect &rect)
                  MaxContextHeight);
 }
 
+QImage imageFromHbitmap(HBITMAP bitmap, int width, int height)
+{
+    if (!bitmap || width <= 0 || height <= 0) {
+        return {};
+    }
+
+    BITMAPINFO info = {};
+    info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    info.bmiHeader.biWidth = width;
+    info.bmiHeader.biHeight = -height;
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+
+    QImage image(width, height, QImage::Format_ARGB32);
+    HDC screenDc = GetDC(nullptr);
+    const int lines = GetDIBits(screenDc, bitmap, 0, static_cast<UINT>(height),
+                                image.bits(), &info, DIB_RGB_COLORS);
+    ReleaseDC(nullptr, screenDc);
+
+    if (lines == 0) {
+        return {};
+    }
+    return image;
+}
+
+QImage captureWindowWithPrintWindow(HWND hwnd)
+{
+    RECT rect = {};
+    if (!hwnd || !GetWindowRect(hwnd, &rect)) {
+        return {};
+    }
+
+    const int width = rect.right - rect.left;
+    const int height = rect.bottom - rect.top;
+    HDC windowDc = GetWindowDC(hwnd);
+    HDC memoryDc = CreateCompatibleDC(windowDc);
+    HBITMAP bitmap = CreateCompatibleBitmap(windowDc, width, height);
+    HGDIOBJ old = SelectObject(memoryDc, bitmap);
+
+    const BOOL ok = PrintWindow(hwnd, memoryDc, PW_RENDERFULLCONTENT);
+    QImage image = ok ? imageFromHbitmap(bitmap, width, height) : QImage();
+
+    SelectObject(memoryDc, old);
+    DeleteObject(bitmap);
+    DeleteDC(memoryDc);
+    ReleaseDC(hwnd, windowDc);
+
+    spdlog::debug("OCR: PrintWindow returned {}", ok ? "true" : "false");
+    return image;
+}
+
+QImage captureWindowFromDesktop(HWND hwnd)
+{
+    RECT rect = {};
+    if (!hwnd || !GetWindowRect(hwnd, &rect)) {
+        return {};
+    }
+
+    const int width = rect.right - rect.left;
+    const int height = rect.bottom - rect.top;
+    if (width <= 0 || height <= 0) {
+        return {};
+    }
+
+    HDC desktopDc = GetDC(nullptr);
+    HDC memoryDc = CreateCompatibleDC(desktopDc);
+    HBITMAP bitmap = CreateCompatibleBitmap(desktopDc, width, height);
+    HGDIOBJ old = SelectObject(memoryDc, bitmap);
+    const BOOL ok = BitBlt(memoryDc, 0, 0, width, height, desktopDc, rect.left,
+                           rect.top, SRCCOPY | CAPTUREBLT);
+    QImage image = ok ? imageFromHbitmap(bitmap, width, height) : QImage();
+
+    SelectObject(memoryDc, old);
+    DeleteObject(bitmap);
+    DeleteDC(memoryDc);
+    ReleaseDC(nullptr, desktopDc);
+
+    spdlog::debug("OCR: desktop BitBlt returned {}", ok ? "true" : "false");
+    return image;
+}
+
 void initComApartment()
 {
     thread_local bool initialized = false;
@@ -371,6 +453,32 @@ QString WindowsOcrService::focusedTextInputScreenName() const
 #else
     return {};
 #endif
+}
+
+QImage WindowsOcrService::captureFocusedTextInputImage() const
+{
+#ifdef Q_OS_WIN
+    const HWND hwnd = focusedInputWindow();
+    if (!hwnd) {
+        return {};
+    }
+
+    QImage image = captureWindowWithPrintWindow(hwnd);
+    if (!image.isNull()) {
+        spdlog::debug("OCR: focused window captured by PrintWindow: {}x{}",
+                      image.width(), image.height());
+        return image;
+    }
+
+    image = captureWindowFromDesktop(hwnd);
+    if (!image.isNull()) {
+        spdlog::debug("OCR: focused window captured from desktop: {}x{}",
+                      image.width(), image.height());
+        return image;
+    }
+#endif
+
+    return {};
 }
 
 void WindowsOcrService::recognizeText(const QImage &image, QObject *receiver,

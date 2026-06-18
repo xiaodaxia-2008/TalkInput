@@ -16,6 +16,7 @@ public:
     QRect focusedTextInputRect() const override;
     WId focusedTextInputWindowId() const override;
     QString focusedTextInputScreenName() const override;
+    QImage captureFocusedTextInputImage() const override;
     void recognizeText(const QImage &image, QObject *receiver,
                        Callback callback) override;
 };

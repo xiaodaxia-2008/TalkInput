@@ -24,6 +24,7 @@ public:
     virtual QRect focusedTextInputRect() const;
     virtual WId focusedTextInputWindowId() const;
     virtual QString focusedTextInputScreenName() const;
+    virtual QImage captureFocusedTextInputImage() const;
     virtual void recognizeText(const QImage &image, QObject *receiver,
                                Callback callback) = 0;
 };
