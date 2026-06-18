@@ -21,10 +21,10 @@ constexpr int MaxHealthAttempts = 120;
 const QUrl LlamaArchiveUrl(
     "https://github.com/ggml-org/llama.cpp/releases/download/b9685/"
     "llama-b9685-bin-win-cpu-x64.zip");
-const QUrl ModelUrl(
-    "https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/"
-    "main/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf");
-const char *ModelFileName = "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf";
+const QUrl ModelUrl{
+    "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/"
+    "Qwen3.5-2B-Q4_K_M.gguf"};
+const char *ModelFileName = "Qwen3.5-2B-Q4_K_M.gguf";
 
 QNetworkRequest makeRequest(const QUrl &url)
 {
@@ -418,6 +418,11 @@ void LlmPostProcessor::failPending(const QString &reason)
 QString LlmPostProcessor::cleanupResponseText(const QString &text)
 {
     QString result = text.trimmed();
+    const QString thinkEnd = "</think>";
+    const qsizetype thinkEndIndex = result.indexOf(thinkEnd);
+    if (thinkEndIndex >= 0) {
+        result = result.mid(thinkEndIndex + thinkEnd.size()).trimmed();
+    }
     if (result.startsWith('"') && result.endsWith('"') && result.size() >= 2) {
         result = result.mid(1, result.size() - 2).trimmed();
     }
