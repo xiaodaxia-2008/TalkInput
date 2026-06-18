@@ -303,81 +303,88 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                                   apiKeyEdit->text().trimmed());
                 emit statusMessage(tr("LLM API key saved."));
             });
-    connect(promptEditBtn, &QPushButton::clicked, this,
-            [this, refreshPromptLabel]() {
-                QDialog dialog(this);
-                dialog.setWindowTitle(tr("LLM Prompts"));
-                dialog.resize(580, 520);
+    connect(
+        promptEditBtn, &QPushButton::clicked, this,
+        [this, refreshPromptLabel]() {
+            QDialog dialog(this);
+            dialog.setWindowTitle(tr("LLM Prompts"));
+            dialog.resize(580, 520);
 
-                auto *layout = new QVBoxLayout(&dialog);
-                layout->setContentsMargins(16, 16, 16, 16);
-                layout->setSpacing(10);
+            auto *layout = new QVBoxLayout(&dialog);
+            layout->setContentsMargins(16, 16, 16, 16);
+            layout->setSpacing(10);
 
-                const QString hint =
-                    tr("Available variables: {{input}}, {{context}}, "
-                       "{{hotwords}}");
+            const QString hint =
+                tr("Available variables: {{input}}, {{context}}, "
+                   "{{hotwords}}");
 
-                // -- System Prompt --
-                auto *sysLabel =
-                    new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                                   .arg(tr("System Prompt"), hint),
-                               &dialog);
-                sysLabel->setWordWrap(true);
-                layout->addWidget(sysLabel);
+            // -- System Prompt --
+            auto *sysLabel =
+                new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                               .arg(tr("System Prompt"), hint),
+                           &dialog);
+            sysLabel->setWordWrap(true);
+            layout->addWidget(sysLabel);
 
-                auto *sysEditor = new QTextEdit(&dialog);
-                sysEditor->setAcceptRichText(false);
-                sysEditor->setPlaceholderText(tr("例如：你是一个有帮助的助手"));
-                sysEditor->setPlainText(currentLlmSystemPrompt());
-                sysEditor->setMaximumHeight(150);
-                layout->addWidget(sysEditor);
+            auto *sysEditor = new QTextEdit(&dialog);
+            sysEditor->setAcceptRichText(false);
+            sysEditor->setPlaceholderText(tr("例如：你是一个有帮助的助手"));
+            sysEditor->setPlainText(currentLlmSystemPrompt());
+            sysEditor->setMaximumHeight(150);
+            layout->addWidget(sysEditor);
 
-                // -- User Prompt --
-                auto *usrLabel =
-                    new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                                   .arg(tr("User Prompt"), hint),
-                               &dialog);
-                usrLabel->setWordWrap(true);
-                layout->addWidget(usrLabel);
+            // -- User Prompt --
+            auto *usrLabel =
+                new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                               .arg(tr("User Prompt"), hint),
+                           &dialog);
+            usrLabel->setWordWrap(true);
+            layout->addWidget(usrLabel);
 
-                auto *usrEditor = new QTextEdit(&dialog);
-                usrEditor->setAcceptRichText(false);
-                usrEditor->setPlaceholderText(
-                    tr("Leave empty for built-in default template"));
-                usrEditor->setPlainText(
-                    appConfigString("settings/llm/userPrompt"));
-                usrEditor->setMaximumHeight(150);
-                layout->addWidget(usrEditor);
+            auto *usrEditor = new QTextEdit(&dialog);
+            usrEditor->setAcceptRichText(false);
+            usrEditor->setPlaceholderText(
+                tr("Leave empty for built-in default template"));
+            usrEditor->setPlainText(appConfigString("settings/llm/userPrompt"));
+            usrEditor->setMaximumHeight(150);
+            layout->addWidget(usrEditor);
 
-                // -- Hint about default template --
-                auto *defaultHint = new QLabel(
-                    tr("<small>留空则使用 config.json 中的默认模板。</small>"),
-                    &dialog);
-                defaultHint->setWordWrap(true);
-                defaultHint->setStyleSheet("color: gray");
-                layout->addWidget(defaultHint);
+            // -- Hint about default template --
+            auto *defaultHint = new QLabel(
+                tr("<small>留空则使用 config.json 中的默认模板。</small>"),
+                &dialog);
+            defaultHint->setWordWrap(true);
+            defaultHint->setStyleSheet("color: gray");
+            layout->addWidget(defaultHint);
 
-                layout->addStretch();
+            auto *resetBtn = new QPushButton(tr("Reset"));
+            connect(resetBtn, &QPushButton::clicked, &dialog,
+                    [sysEditor, usrEditor]() {
+                        sysEditor->setPlainText(qs(defaultLlmSystemPrompt()));
+                        usrEditor->setPlainText(qs(defaultLlmUserPrompt()));
+                    });
 
-                auto *buttons = new QDialogButtonBox(
-                    QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
-                connect(buttons, &QDialogButtonBox::accepted, &dialog,
-                        &QDialog::accept);
-                connect(buttons, &QDialogButtonBox::rejected, &dialog,
-                        &QDialog::reject);
-                layout->addWidget(buttons);
+            auto *buttons = new QDialogButtonBox(&dialog);
+            buttons->addButton(resetBtn, QDialogButtonBox::ResetRole);
+            buttons->addButton(QDialogButtonBox::Save);
+            buttons->addButton(QDialogButtonBox::Cancel);
+            connect(buttons, &QDialogButtonBox::accepted, &dialog,
+                    &QDialog::accept);
+            connect(buttons, &QDialogButtonBox::rejected, &dialog,
+                    &QDialog::reject);
+            layout->addWidget(buttons);
 
-                if (dialog.exec() != QDialog::Accepted) {
-                    return;
-                }
+            if (dialog.exec() != QDialog::Accepted) {
+                return;
+            }
 
-                setAppConfigValue("settings/llm/systemPrompt",
-                                  sysEditor->toPlainText().trimmed());
-                setAppConfigValue("settings/llm/userPrompt",
-                                  usrEditor->toPlainText().trimmed());
-                refreshPromptLabel();
-                emit statusMessage(tr("LLM prompts saved."));
-            });
+            setAppConfigValue("settings/llm/systemPrompt",
+                              sysEditor->toPlainText().trimmed());
+            setAppConfigValue("settings/llm/userPrompt",
+                              usrEditor->toPlainText().trimmed());
+            refreshPromptLabel();
+            emit statusMessage(tr("LLM prompts saved."));
+        });
 
     llmForm->addRow(tr("Provider"), providerCombo);
     llmForm->addRow(tr("Endpoint"), endpointEdit);
