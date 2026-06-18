@@ -35,6 +35,7 @@ std::vector<ModelPreset> s_toolPresets;
 LlmLocalModel s_llmLocalModel;
 std::vector<LlmProviderPreset> s_llmProviderPresets;
 std::string s_llmSystemPrompt;
+std::string s_llmUserPrompt;
 bool s_loaded = false;
 
 QString qs(const std::string &value)
@@ -143,6 +144,13 @@ std::string parseLlmSystemPrompt(const nlohmann::json &root)
     return llmObj.value("systemPrompt", std::string());
 }
 
+std::string parseLlmUserPrompt(const nlohmann::json &root)
+{
+    const nlohmann::json llmObj =
+        root.value("llmPostProcessing", nlohmann::json::object());
+    return llmObj.value("userPrompt", std::string());
+}
+
 void ensureLoaded()
 {
     if (s_loaded) {
@@ -156,6 +164,7 @@ void ensureLoaded()
     s_llmLocalModel = parseLlmLocalModel(root);
     s_llmProviderPresets = parseLlmProviderPresets(root);
     s_llmSystemPrompt = parseLlmSystemPrompt(root);
+    s_llmUserPrompt = parseLlmUserPrompt(root);
 
     spdlog::info("model_registry: loaded {} ASR presets, {} tool presets, {} "
                  "LLM providers, LLM model {}",
@@ -266,6 +275,12 @@ std::string defaultLlmSystemPrompt()
 {
     ensureLoaded();
     return s_llmSystemPrompt;
+}
+
+std::string defaultLlmUserPrompt()
+{
+    ensureLoaded();
+    return s_llmUserPrompt;
 }
 
 ModelFileSet resolveModelFiles(const QString &modelDir)

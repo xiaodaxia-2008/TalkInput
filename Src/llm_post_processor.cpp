@@ -549,12 +549,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     QString systemPrompt =
         appConfigString("settings/llm/systemPrompt").trimmed();
     if (systemPrompt.isEmpty()) {
-        // Second fallback: built-in default from config.json
         systemPrompt = qs(defaultLlmSystemPrompt()).trimmed();
-    }
-    if (systemPrompt.isEmpty()) {
-        // Final fallback
-        systemPrompt = QStringLiteral("You are a helpful assistant");
     }
     systemPrompt.replace("{{input}}", request.text);
     systemPrompt.replace("{{context}}", request.contextText);
@@ -563,18 +558,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     // ---- User prompt (template replacement) ----
     QString userPrompt = appConfigString("settings/llm/userPrompt").trimmed();
     if (userPrompt.isEmpty()) {
-        // Default user prompt template
-        userPrompt =
-            QStringLiteral("Please post-process this voice recognition text:\n"
-                           "{{input}}");
-        if (!request.contextText.isEmpty()) {
-            userPrompt += QStringLiteral(
-                "\n\n"
-                "Current focused input context (for proper nouns, "
-                "code, filenames only; do not insert content not "
-                "present in the speech text):\n"
-                "{{context}}");
-        }
+        userPrompt = qs(defaultLlmUserPrompt()).trimmed();
     }
     userPrompt.replace("{{input}}", request.text);
     userPrompt.replace("{{context}}", request.contextText);

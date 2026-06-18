@@ -67,6 +67,7 @@ std::string defaultLlmProviderId();
 std::string defaultLlmEndpoint();
 std::string defaultLlmModel();
 std::string defaultLlmSystemPrompt();
+std::string defaultLlmUserPrompt();
 ModelFileSet resolveModelFiles(const QString &modelDir);
 
 } // namespace talkinput

@@ -92,7 +92,8 @@
     }
   ],
   "llmPostProcessing": {
-    "systemPrompt": "You are a helpful assistant",
+    "systemPrompt": "你是一个有帮助的助手",
+    "userPrompt": "请后处理这段语音识别文本：\n{{input}}\n\n当前焦点输入框附近的 OCR 上下文如下（仅用于判断专有名词、代码、文件名或上下文语义；不要把语音文本中没有表达的内容直接插入结果）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}",
     "localModel": {
       "name": "Qwen3.5 2B Q4_K_M",
       "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",

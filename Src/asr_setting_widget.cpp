@@ -327,8 +327,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
                 auto *sysEditor = new QTextEdit(&dialog);
                 sysEditor->setAcceptRichText(false);
-                sysEditor->setPlaceholderText(
-                    tr("e.g. You are a helpful assistant"));
+                sysEditor->setPlaceholderText(tr("例如：你是一个有帮助的助手"));
                 sysEditor->setPlainText(currentLlmSystemPrompt());
                 sysEditor->setMaximumHeight(150);
                 layout->addWidget(sysEditor);
@@ -352,9 +351,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
                 // -- Hint about default template --
                 auto *defaultHint = new QLabel(
-                    tr("<small>If User Prompt is empty, a built-in default "
-                       "template is used that includes {{input}} and "
-                       "optionally {{context}}.</small>"),
+                    tr("<small>留空则使用 config.json 中的默认模板。</small>"),
                     &dialog);
                 defaultHint->setWordWrap(true);
                 defaultHint->setStyleSheet("color: gray");
