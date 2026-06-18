@@ -1,10 +1,12 @@
 #include "app_config.h"
 #include "logging.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QTimer>
 
 namespace talkinput
 {
@@ -14,6 +16,8 @@ namespace
 nlohmann::json s_defaultConfig;
 nlohmann::json s_config;
 bool s_loaded = false;
+bool s_dirty = false;
+QTimer *s_saveTimer = nullptr;
 
 std::string pointerPath(const QString &path)
 {
@@ -78,6 +82,47 @@ void ensureLoaded()
                  userConfig.empty() ? "defaults" : appConfigPath());
 }
 
+bool writeConfigNow()
+{
+    const QString path = appConfigPath();
+    QDir dir = QFileInfo(path).absoluteDir();
+    if (!dir.exists() && !dir.mkpath(".")) {
+        spdlog::warn("config: cannot create directory {}", dir.absolutePath());
+        return false;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        spdlog::warn("config: cannot write {}", path);
+        return false;
+    }
+    const std::string text = s_config.dump(2);
+    file.write(text.data(), static_cast<qint64>(text.size()));
+    s_dirty = false;
+    spdlog::debug("config: saved {}", path);
+    return true;
+}
+
+void scheduleSave()
+{
+    if (!QCoreApplication::instance()) {
+        writeConfigNow();
+        return;
+    }
+
+    if (!s_saveTimer) {
+        s_saveTimer = new QTimer(QCoreApplication::instance());
+        s_saveTimer->setSingleShot(true);
+        s_saveTimer->setInterval(500);
+        QObject::connect(s_saveTimer, &QTimer::timeout, []() {
+            if (s_dirty) {
+                writeConfigNow();
+            }
+        });
+    }
+    s_saveTimer->start();
+}
+
 } // namespace
 
 nlohmann::json appConfigRoot()
@@ -128,28 +173,20 @@ void setAppConfigValue(const QString &path, const nlohmann::json &value)
     ensureLoaded();
     const auto pointer = nlohmann::json::json_pointer(pointerPath(path));
     s_config[pointer] = value;
-    saveAppConfig();
+    s_dirty = true;
+    scheduleSave();
 }
 
 bool saveAppConfig()
 {
     ensureLoaded();
-    const QString path = appConfigPath();
-    QDir dir = QFileInfo(path).absoluteDir();
-    if (!dir.exists() && !dir.mkpath(".")) {
-        spdlog::warn("config: cannot create directory {}", dir.absolutePath());
-        return false;
+    if (s_saveTimer) {
+        s_saveTimer->stop();
     }
-
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        spdlog::warn("config: cannot write {}", path);
-        return false;
+    if (!s_dirty && QFileInfo::exists(appConfigPath())) {
+        return true;
     }
-    const std::string text = s_config.dump(2);
-    file.write(text.data(), static_cast<qint64>(text.size()));
-    spdlog::debug("config: saved {}", path);
-    return true;
+    return writeConfigNow();
 }
 
 } // namespace talkinput
