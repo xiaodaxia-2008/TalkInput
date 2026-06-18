@@ -20,26 +20,23 @@ class SpeechRecognizer : public QObject
 public:
     enum class Type
     {
-        StreamingTransducer,
         StreamingParaformer,
         SenseVoice,
         FunASRNano,
-        Qwen3ASR,
     };
 
     struct Config
     {
-        Type type = Type::StreamingTransducer;
+        Type type = Type::StreamingParaformer;
 
         QString modelDir;
         int sampleRate = 16000;
         int featureDim = 80;
         int numThreads = 2;
 
-        // Streaming (transducer / paraformer)
+        // Streaming (paraformer)
         QString encoderFile;
         QString decoderFile;
-        QString joinerFile;
         QString modelingUnit = "cjkchar";
 
         // Common
@@ -68,17 +65,6 @@ public:
 
         // Punctuation restoration (offline model, e.g. ct-transformer)
         QString punctuationModelPath;
-
-        // Qwen3-ASR
-        QString qwen3ConvFrontendFile;
-        QString qwen3EncoderFile;
-        QString qwen3DecoderFile;
-        QString qwen3TokenizerDir;
-        int qwen3MaxTotalLen = 1024;
-        int qwen3MaxNewTokens = 256;
-        float qwen3Temperature = 1e-6F;
-        float qwen3TopP = 0.8F;
-        int qwen3Seed = 42;
     };
 
     explicit SpeechRecognizer(QObject *parent = nullptr);

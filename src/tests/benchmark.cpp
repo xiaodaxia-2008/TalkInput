@@ -62,21 +62,19 @@ void usage()
               << std::endl
               << std::endl
               << "Supported types:" << std::endl
-              << "  transducer       (online streaming zipformer)" << std::endl
               << "  paraformer       (online streaming paraformer)" << std::endl
               << "  sense_voice      (offline SenseVoice)" << std::endl
               << "  fire_red_asr_ctc (offline FireRedAsr v2 CTC)" << std::endl
               << "  fire_red_asr_aed (offline FireRedAsr v2 AED)" << std::endl
               << "  moonshine_v2     (offline Moonshine v2, merged decoder)"
               << std::endl
-              << "  funasr_nano      (offline FunASR Nano)" << std::endl
-              << "  qwen3_asr        (offline Qwen3-ASR 0.6B)" << std::endl;
+              << "  funasr_nano      (offline FunASR Nano)" << std::endl;
 }
 
 BenchConfig parseArgs(const QStringList &args)
 {
     BenchConfig c;
-    c.type = "transducer";
+    c.type = "paraformer";
 
     for (int i = 1; i < args.size(); ++i) {
         const QString &arg = args[i];
@@ -235,178 +233,6 @@ void setupFunasrNano(const BenchConfig &cfg, OfflineSetup &s)
     s.conf.model_config.funasr_nano.seed = 42;
     s.conf.model_config.funasr_nano.language = "";
     s.conf.model_config.funasr_nano.itn = 1;
-}
-
-void setupQwen3Asr(const BenchConfig &cfg, OfflineSetup &s)
-{
-    s.conf.model_config.qwen3_asr.conv_frontend =
-        s.pool.store(modelFile(cfg.modelDir, "conv_frontend.onnx"));
-    s.conf.model_config.qwen3_asr.encoder =
-        s.pool.store(modelFile(cfg.modelDir, "encoder.int8.onnx"));
-    s.conf.model_config.qwen3_asr.decoder =
-        s.pool.store(modelFile(cfg.modelDir, "decoder.int8.onnx"));
-    s.conf.model_config.qwen3_asr.tokenizer =
-        s.pool.store(modelFile(cfg.modelDir, "tokenizer"));
-    s.conf.model_config.qwen3_asr.max_total_len = 1024;
-    s.conf.model_config.qwen3_asr.max_new_tokens = 256;
-    s.conf.model_config.qwen3_asr.temperature = 1e-6F;
-    s.conf.model_config.qwen3_asr.top_p = 0.8F;
-    s.conf.model_config.qwen3_asr.seed = 42;
-}
-
-// ── Online transducer (streaming) ──────────────────────────────────
-
-QString runOnlineTransducer(const BenchConfig &cfg, double *elapsedSec)
-{
-    const QString encoder = modelFile(cfg.modelDir, "encoder.int8.onnx");
-    const QString decoder = modelFile(cfg.modelDir, "decoder.onnx");
-    const QString joiner = modelFile(cfg.modelDir, "joiner.int8.onnx");
-    const QString tokens = modelFile(cfg.modelDir, "tokens.txt");
-
-    if (!requireFile(encoder) || !requireFile(decoder) ||
-        !requireFile(joiner) || !requireFile(tokens))
-    {
-        return {};
-    }
-
-    StringPool pool;
-    QString hotwordsText;
-    QByteArray hwBuf;
-
-    if (!cfg.hotwordsPath.isEmpty() && requireFile(cfg.hotwordsPath)) {
-        QFile f(cfg.hotwordsPath);
-        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            hotwordsText = QString::fromUtf8(f.readAll()).trimmed();
-        }
-        if (!hotwordsText.isEmpty()) {
-            hwBuf = hotwordsText.toUtf8();
-        }
-    }
-
-    SherpaOnnxOnlineRecognizerConfig conf;
-    std::memset(&conf, 0, sizeof(conf));
-    conf.feat_config.sample_rate = sampleRate;
-    conf.feat_config.feature_dim = 80;
-    conf.model_config.transducer.encoder = pool.store(encoder);
-    conf.model_config.transducer.decoder = pool.store(decoder);
-    conf.model_config.transducer.joiner = pool.store(joiner);
-    conf.model_config.tokens = pool.store(tokens);
-    conf.model_config.provider = "cpu";
-    conf.model_config.num_threads = 2;
-    conf.model_config.modeling_unit = "cjkchar";
-
-    if (!hwBuf.isEmpty()) {
-        conf.decoding_method = "modified_beam_search";
-        conf.hotwords_buf = hwBuf.constData();
-        conf.hotwords_buf_size = static_cast<int32_t>(hwBuf.size());
-        conf.hotwords_score = 1.5F;
-    }
-    else {
-        conf.decoding_method = "greedy_search";
-    }
-    conf.max_active_paths = 4;
-    conf.enable_endpoint = 1;
-    conf.rule1_min_trailing_silence = 2.4F;
-    conf.rule2_min_trailing_silence = 1.2F;
-    conf.rule3_min_utterance_length = 20.0F;
-
-    const SherpaOnnxOnlineRecognizer *rec =
-        SherpaOnnxCreateOnlineRecognizer(&conf);
-    if (!rec) {
-        std::cerr << "Failed to create online recognizer" << std::endl;
-        return {};
-    }
-
-    const SherpaOnnxOnlineStream *stream = SherpaOnnxCreateOnlineStream(rec);
-    if (!stream) {
-        SherpaOnnxDestroyOnlineRecognizer(rec);
-        return {};
-    }
-
-    QByteArray pcm = decodeAudioToPcm(cfg.audioPath);
-    if (pcm.isEmpty()) {
-        SherpaOnnxDestroyOnlineStream(stream);
-        SherpaOnnxDestroyOnlineRecognizer(rec);
-        return {};
-    }
-
-    QElapsedTimer timer;
-    timer.start();
-
-    const int sampleCount = pcm.size() / 2;
-    std::vector<float> samples;
-    samples.reserve(static_cast<size_t>(sampleCount));
-    const auto *data = reinterpret_cast<const uchar *>(pcm.constData());
-    for (int i = 0; i < sampleCount; ++i) {
-        qint16 s = qFromLittleEndian<qint16>(data + i * 2);
-        samples.push_back(static_cast<float>(s) / 32768.0F);
-    }
-
-    constexpr int chunk = sampleRate;
-    QStringList segments;
-    QString lastPartial;
-
-    for (size_t off = 0; off < samples.size(); off += chunk) {
-        int cnt = static_cast<int>(
-            std::min(static_cast<size_t>(chunk), samples.size() - off));
-        if (cnt == 0) {
-            break;
-        }
-        SherpaOnnxOnlineStreamAcceptWaveform(stream, sampleRate,
-                                             samples.data() + off, cnt);
-
-        while (SherpaOnnxIsOnlineStreamReady(rec, stream)) {
-            SherpaOnnxDecodeOnlineStream(rec, stream);
-        }
-
-        const SherpaOnnxOnlineRecognizerResult *res =
-            SherpaOnnxGetOnlineStreamResult(rec, stream);
-        if (res) {
-            QString partial =
-                QString::fromUtf8(res->text ? res->text : "").trimmed();
-            if (!partial.isEmpty() && partial != lastPartial) {
-                lastPartial = partial;
-            }
-            SherpaOnnxDestroyOnlineRecognizerResult(res);
-        }
-
-        if (SherpaOnnxOnlineStreamIsEndpoint(rec, stream)) {
-            const SherpaOnnxOnlineRecognizerResult *r2 =
-                SherpaOnnxGetOnlineStreamResult(rec, stream);
-            if (r2) {
-                QString fin =
-                    QString::fromUtf8(r2->text ? r2->text : "").trimmed();
-                if (!fin.isEmpty()) {
-                    segments.append(fin);
-                }
-                SherpaOnnxDestroyOnlineRecognizerResult(r2);
-            }
-            SherpaOnnxOnlineStreamReset(rec, stream);
-            lastPartial.clear();
-        }
-    }
-
-    SherpaOnnxOnlineStreamInputFinished(stream);
-    while (SherpaOnnxIsOnlineStreamReady(rec, stream)) {
-        SherpaOnnxDecodeOnlineStream(rec, stream);
-    }
-
-    const SherpaOnnxOnlineRecognizerResult *r3 =
-        SherpaOnnxGetOnlineStreamResult(rec, stream);
-    if (r3) {
-        QString fin = QString::fromUtf8(r3->text ? r3->text : "").trimmed();
-        if (!fin.isEmpty() && (segments.isEmpty() || segments.last() != fin)) {
-            segments.append(fin);
-        }
-        SherpaOnnxDestroyOnlineRecognizerResult(r3);
-    }
-
-    *elapsedSec = static_cast<double>(timer.nsecsElapsed()) / 1e9;
-
-    SherpaOnnxDestroyOnlineStream(stream);
-    SherpaOnnxDestroyOnlineRecognizer(rec);
-
-    return segments.join("");
 }
 
 // ── Online Paraformer (streaming) ─────────────────────────────
@@ -589,27 +415,15 @@ QString runOffline(const BenchConfig &cfg,
         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QString hw = QString::fromUtf8(f.readAll()).trimmed();
             if (!hw.isEmpty()) {
-                // Qwen3-ASR uses inline comma-separated hotwords
-                // (greedy_search) Others use hotwords_file (requires
-                // modified_beam_search)
-                if (cfg.type == "qwen3_asr") {
-                    // Qwen3-ASR uses comma-separated hotwords instead of
-                    // newlines
-                    s.conf.model_config.qwen3_asr.hotwords = s.pool.store(
-                        QStringList(hw.split('\n', Qt::SkipEmptyParts))
-                            .join(','));
-                }
-                else {
-                    s.hwFile.setFileTemplate(
-                        QDir::temp().filePath("hw_XXXXXX.txt"));
-                    if (s.hwFile.open()) {
-                        s.hwFile.write(hw.toUtf8());
-                        s.hwFile.flush();
-                        s.conf.hotwords_file = s.pool.store(
-                            QDir::toNativeSeparators(s.hwFile.fileName()));
-                        s.conf.hotwords_score = 1.5F;
-                        hasHotwords = true;
-                    }
+                s.hwFile.setFileTemplate(
+                    QDir::temp().filePath("hw_XXXXXX.txt"));
+                if (s.hwFile.open()) {
+                    s.hwFile.write(hw.toUtf8());
+                    s.hwFile.flush();
+                    s.conf.hotwords_file = s.pool.store(
+                        QDir::toNativeSeparators(s.hwFile.fileName()));
+                    s.conf.hotwords_score = 1.5F;
+                    hasHotwords = true;
                 }
             }
         }
@@ -727,10 +541,7 @@ int main(int argc, char *argv[])
     double elapsedSec = 0;
     double loadSec = 0;
 
-    if (cfg.type == "transducer") {
-        result = runOnlineTransducer(cfg, &elapsedSec);
-    }
-    else if (cfg.type == "paraformer") {
+    if (cfg.type == "paraformer") {
         result = runOnlineParaformer(cfg, &elapsedSec);
     }
     else if (cfg.type == "sense_voice") {
@@ -748,9 +559,6 @@ int main(int argc, char *argv[])
     else if (cfg.type == "funasr_nano") {
         result = runOffline(cfg, setupFunasrNano, &elapsedSec, &loadSec);
     }
-    else if (cfg.type == "qwen3_asr") {
-        result = runOffline(cfg, setupQwen3Asr, &elapsedSec, &loadSec);
-    }
     else {
         std::cerr << "Unknown model type: " << cfg.type.toStdString()
                   << std::endl;
@@ -766,7 +574,7 @@ int main(int argc, char *argv[])
     std::cout << "  Audio     : "
               << QDir::toNativeSeparators(cfg.audioPath).toStdString()
               << std::endl;
-    if (cfg.type == "transducer" || cfg.type == "paraformer") {
+    if (cfg.type == "paraformer") {
         std::cout << "  Load time : N/A (online)" << std::endl;
         std::cout << "  Total time: " << elapsedSec << " s" << std::endl;
     }

@@ -2,10 +2,8 @@
 
 #include "logging.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
-#include "recognizers/qwen3_asr_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
 #include "recognizers/streaming_paraformer_speech_recognizer.h"
-#include "recognizers/streaming_transducer_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
@@ -170,16 +168,12 @@ std::unique_ptr<SpeechRecognizer>
 createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent)
 {
     switch (type) {
-    case SpeechRecognizer::Type::StreamingTransducer:
-        return std::make_unique<StreamingTransducerSpeechRecognizer>(parent);
     case SpeechRecognizer::Type::StreamingParaformer:
         return std::make_unique<StreamingParaformerSpeechRecognizer>(parent);
     case SpeechRecognizer::Type::SenseVoice:
         return std::make_unique<SenseVoiceSpeechRecognizer>(parent);
     case SpeechRecognizer::Type::FunASRNano:
         return std::make_unique<FunASRNanoSpeechRecognizer>(parent);
-    case SpeechRecognizer::Type::Qwen3ASR:
-        return std::make_unique<Qwen3ASRSpeechRecognizer>(parent);
     }
 
     return nullptr;

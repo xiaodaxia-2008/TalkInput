@@ -50,7 +50,6 @@ talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir)
 {
     const QDir dir(modelDir);
 
-    const bool hasJoiner = hasFile(dir, {QStringLiteral("*joiner*")});
     const bool hasEncoder = hasFile(dir, {QStringLiteral("*encoder*")});
     const bool hasDecoder = hasFile(dir, {QStringLiteral("*decoder*")});
     const bool hasTokens =
@@ -61,22 +60,10 @@ talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir)
         hasFile(dir, {QStringLiteral("*llm*")}) &&
         hasFile(dir, {QStringLiteral("*embedding*")});
 
-    const bool hasQwenFrontend =
-        hasFile(dir, {QStringLiteral("*conv*frontend*")});
-    const bool hasQwenTok =
-        QFileInfo(dir.filePath(QStringLiteral("tokenizer"))).isDir();
     const bool hasModelInt8 = hasFile(dir, {QStringLiteral("model.int8.onnx")});
-
-    if (hasJoiner && hasEncoder && hasDecoder && hasTokens) {
-        return talkinput::SpeechRecognizer::Type::StreamingTransducer;
-    }
 
     if (hasFunasrFiles) {
         return talkinput::SpeechRecognizer::Type::FunASRNano;
-    }
-
-    if (hasQwenFrontend && hasEncoder && hasDecoder && hasQwenTok) {
-        return talkinput::SpeechRecognizer::Type::Qwen3ASR;
     }
 
     if (hasEncoder && hasDecoder && hasTokens) {
@@ -88,9 +75,9 @@ talkinput::SpeechRecognizer::Type detectModelArch(const QString &modelDir)
     }
 
     SPDLOG_WARN("AsrService: unknown model arch in {}; falling back to "
-                "streaming transducer",
+                "paraformer",
                 modelDir);
-    return talkinput::SpeechRecognizer::Type::StreamingTransducer;
+    return talkinput::SpeechRecognizer::Type::StreamingParaformer;
 }
 
 talkinput::SpeechRecognizer::Type typeFromString(const QString &str)
@@ -101,13 +88,10 @@ talkinput::SpeechRecognizer::Type typeFromString(const QString &str)
     if (str == QStringLiteral("FunASRNano")) {
         return talkinput::SpeechRecognizer::Type::FunASRNano;
     }
-    if (str == QStringLiteral("Qwen3ASR")) {
-        return talkinput::SpeechRecognizer::Type::Qwen3ASR;
-    }
     if (str == QStringLiteral("StreamingParaformer")) {
         return talkinput::SpeechRecognizer::Type::StreamingParaformer;
     }
-    return talkinput::SpeechRecognizer::Type::StreamingTransducer;
+    return talkinput::SpeechRecognizer::Type::StreamingParaformer;
 }
 
 QStringList hotwordLines(const QString &raw)
@@ -146,24 +130,8 @@ QString buildHotwordsText(const QString &raw,
         return {};
     }
 
-    if (type == talkinput::SpeechRecognizer::Type::Qwen3ASR) {
-        return lines.join(QLatin1Char(','));
-    }
-
     if (type == talkinput::SpeechRecognizer::Type::FunASRNano) {
         return lines.join(QLatin1Char('\n'));
-    }
-
-    if (type == talkinput::SpeechRecognizer::Type::StreamingTransducer) {
-        QStringList formatted;
-        formatted.reserve(lines.size());
-        for (const QString &line : lines) {
-            const QString hotword = formatCjkHotwordLine(line);
-            if (!hotword.isEmpty()) {
-                formatted.append(hotword);
-            }
-        }
-        return formatted.join(QLatin1Char('\n'));
     }
 
     return {};
@@ -229,15 +197,11 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         };
         assign("encoderFile", config.encoderFile);
         assign("decoderFile", config.decoderFile);
-        assign("joinerFile", config.joinerFile);
         assign("tokensFile", config.tokensFile);
         assign("senseVoiceModelFile", config.senseVoiceModelFile);
         assign("funasrEncoderAdaptorFile", config.funasrEncoderAdaptorFile);
         assign("funasrLlmFile", config.funasrLlmFile);
         assign("funasrEmbeddingFile", config.funasrEmbeddingFile);
-        assign("qwen3ConvFrontendFile", config.qwen3ConvFrontendFile);
-        assign("qwen3EncoderFile", config.qwen3EncoderFile);
-        assign("qwen3DecoderFile", config.qwen3DecoderFile);
 
         // Directory fields (not relative to modelDir — already absolute or
         // relative)
@@ -248,12 +212,6 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
             }
             else {
                 config.funasrTokenizerFile = QStringLiteral("Qwen3-0.6B");
-            }
-        }
-        {
-            const QString tok = resolvedFile("qwen3TokenizerDir");
-            if (!tok.isEmpty()) {
-                config.qwen3TokenizerDir = tok; // absolute
             }
         }
 
@@ -270,18 +228,6 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         config.type = arch;
 
         switch (arch) {
-        case SpeechRecognizer::Type::StreamingTransducer: {
-            auto rel = [&](const QString &abs) {
-                return dir.relativeFilePath(abs);
-            };
-            config.encoderFile =
-                rel(findModelFile(dir, {QStringLiteral("*encoder*")}));
-            config.decoderFile =
-                rel(findModelFile(dir, {QStringLiteral("*decoder*")}));
-            config.joinerFile =
-                rel(findModelFile(dir, {QStringLiteral("*joiner*")}));
-            break;
-        }
         case SpeechRecognizer::Type::StreamingParaformer: {
             auto rel = [&](const QString &abs) {
                 return dir.relativeFilePath(abs);
@@ -322,21 +268,6 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
             else {
                 config.funasrTokenizerFile = QStringLiteral("Qwen3-0.6B");
             }
-            break;
-        }
-        case SpeechRecognizer::Type::Qwen3ASR: {
-            auto rel = [&](const QString &abs) {
-                return dir.relativeFilePath(abs);
-            };
-            config.qwen3ConvFrontendFile =
-                rel(findModelFile(dir, {QStringLiteral("*conv*frontend*")}));
-            config.qwen3EncoderFile =
-                rel(findModelFile(dir, {QStringLiteral("*encoder*")}));
-            config.qwen3DecoderFile =
-                rel(findModelFile(dir, {QStringLiteral("*decoder*")}));
-            const QString tokDir =
-                findModelFileOrDir(dir, {QStringLiteral("tokenizer")});
-            config.qwen3TokenizerDir = tokDir.isEmpty() ? modelDir : tokDir;
             break;
         }
         }
@@ -406,8 +337,7 @@ void AsrService::loadModel()
 
     SpeechRecognizer::Config config = detectAndConfigure(m_modelDir);
     const bool streamingMode =
-        (config.type == SpeechRecognizer::Type::StreamingTransducer ||
-         config.type == SpeechRecognizer::Type::StreamingParaformer);
+        (config.type == SpeechRecognizer::Type::StreamingParaformer);
 
     unloadModel();
 
