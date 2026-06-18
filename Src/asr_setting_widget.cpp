@@ -38,6 +38,11 @@
 namespace
 {
 
+QString qs(const std::string &value)
+{
+    return QString::fromStdString(value);
+}
+
 QString cacheDir()
 {
     QString base =
@@ -50,7 +55,7 @@ QString cacheDir()
 
 QString displayTypeForPreset(const talkinput::ModelPreset &preset)
 {
-    if (preset.typeStr == "Tool") {
+    if (preset.type == "Tool") {
         return QCoreApplication::translate("talkinput::AsrSettingWidget",
                                            "Tool");
     }
@@ -65,7 +70,7 @@ QString displayTypeForPreset(const talkinput::ModelPreset &preset)
 QString displayNameForPreset(const talkinput::ModelPreset &preset)
 {
     return QCoreApplication::translate("talkinput::AsrSettingWidget",
-                                       preset.name.toUtf8().constData());
+                                       preset.name.c_str());
 }
 
 QString llmProviderModelKey(const QString &providerId)
@@ -78,7 +83,7 @@ QString currentLlmSystemPrompt()
     QString prompt =
         talkinput::appConfigString("settings/llm/systemPrompt").trimmed();
     if (prompt.isEmpty()) {
-        prompt = talkinput::defaultLlmSystemPrompt();
+        prompt = qs(talkinput::defaultLlmSystemPrompt());
     }
     return prompt;
 }
@@ -123,10 +128,11 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     llmForm->setContentsMargins(10, 10, 10, 10);
     llmForm->setSpacing(8);
 
-    const QVector<LlmProviderPreset> llmProviders = loadLlmProviderPresets();
+    const std::vector<LlmProviderPreset> llmProviders =
+        loadLlmProviderPresets();
     auto *providerCombo = new QComboBox(llmGroup);
     for (const auto &provider : llmProviders) {
-        providerCombo->addItem(provider.name, provider.id);
+        providerCombo->addItem(qs(provider.name), qs(provider.id));
     }
 
     auto *endpointEdit = new QLineEdit(llmGroup);
@@ -161,8 +167,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     refreshPromptLabel();
 
     auto providerAt = [llmProviders](int index) {
-        if (index >= 0 && index < llmProviders.size()) {
-            return llmProviders[index];
+        if (index >= 0 && static_cast<std::size_t>(index) < llmProviders.size())
+        {
+            return llmProviders[static_cast<std::size_t>(index)];
         }
         return defaultLlmProvider();
     };
@@ -172,20 +179,20 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         const QString endpoint =
             custom ? appConfigString("settings/llm/customEndpoint",
                                      appConfigString("settings/llm/endpoint"))
-                   : provider.endpoint;
+                   : qs(provider.endpoint);
         const QString model =
             custom ? appConfigString("settings/llm/customModel",
                                      appConfigString("settings/llm/model"))
-                   : appConfigString(llmProviderModelKey(provider.id),
-                                     provider.model);
+                   : appConfigString(llmProviderModelKey(qs(provider.id)),
+                                     qs(provider.model));
 
         {
             const QSignalBlocker endpointBlocker(endpointEdit);
             const QSignalBlocker modelBlocker(modelCombo);
             endpointEdit->setText(endpoint);
             modelCombo->clear();
-            for (const QString &presetModel : provider.models) {
-                modelCombo->addItem(presetModel);
+            for (const std::string &presetModel : provider.models) {
+                modelCombo->addItem(qs(presetModel));
             }
             if (!model.isEmpty() && modelCombo->findText(model) < 0) {
                 modelCombo->addItem(model);
@@ -201,27 +208,29 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         setAppConfigValue("settings/llm/providerId", provider.id);
         setAppConfigValue("settings/llm/endpoint", endpoint);
         setAppConfigValue("settings/llm/model", model);
-        setAppConfigValue(llmProviderModelKey(provider.id), model);
+        setAppConfigValue(llmProviderModelKey(qs(provider.id)), model);
         if (custom) {
             setAppConfigValue("settings/llm/customEndpoint", endpoint);
             setAppConfigValue("settings/llm/customModel", model);
         }
-        providerCombo->setCurrentIndex(providerCombo->findData(provider.id));
+        providerCombo->setCurrentIndex(
+            providerCombo->findData(qs(provider.id)));
     };
 
     {
-        QString providerId =
-            appConfigString("settings/llm/providerId", defaultLlmProviderId());
+        QString providerId = appConfigString("settings/llm/providerId",
+                                             qs(defaultLlmProviderId()));
         const QString savedEndpoint =
             appConfigString("settings/llm/endpoint").trimmed();
         if (!appConfigContains("settings/llm/providerId") &&
-            !savedEndpoint.isEmpty() && savedEndpoint != defaultLlmEndpoint())
+            !savedEndpoint.isEmpty() &&
+            savedEndpoint != qs(defaultLlmEndpoint()))
         {
             providerId = "custom";
         }
         int providerIndex = providerCombo->findData(providerId);
         if (providerIndex < 0) {
-            providerIndex = providerCombo->findData(defaultLlmProviderId());
+            providerIndex = providerCombo->findData(qs(defaultLlmProviderId()));
         }
         if (providerIndex < 0 && providerCombo->count() > 0) {
             providerIndex = 0;
@@ -361,22 +370,34 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     for (const auto &preset : loadModelPresets()) {
         spdlog::debug("AsrSettingWidget: ASR preset {} ({})", preset.name,
                       preset.modelDirName);
-        m_models.append({displayNameForPreset(preset),
-                         displayTypeForPreset(preset), preset.languages,
-                         preset.modelDirName, QUrl(preset.url), preset.size,
-                         preset.paramCount, preset.streamingSupport,
-                         preset.isPunctuationModel});
+        m_models.append(ModelInfo{
+            .name = displayNameForPreset(preset),
+            .type = displayTypeForPreset(preset),
+            .languages = qs(preset.languages),
+            .modelDirName = qs(preset.modelDirName),
+            .archiveUrl = QUrl(qs(preset.url)),
+            .modelSize = static_cast<qint64>(preset.size),
+            .paramCount = preset.paramCount,
+            .streamingSupport = preset.streamingSupport,
+            .isPunctuationModel = preset.isPunctuationModel,
+        });
     }
 
     spdlog::debug("AsrSettingWidget: loading tool presets");
     for (const auto &preset : loadToolPresets()) {
         spdlog::debug("AsrSettingWidget: tool preset {} ({})", preset.name,
                       preset.modelDirName);
-        m_models.append({displayNameForPreset(preset),
-                         displayTypeForPreset(preset), preset.languages,
-                         preset.modelDirName, QUrl(preset.url), preset.size,
-                         preset.paramCount, preset.streamingSupport,
-                         preset.isPunctuationModel});
+        m_models.append(ModelInfo{
+            .name = displayNameForPreset(preset),
+            .type = displayTypeForPreset(preset),
+            .languages = qs(preset.languages),
+            .modelDirName = qs(preset.modelDirName),
+            .archiveUrl = QUrl(qs(preset.url)),
+            .modelSize = static_cast<qint64>(preset.size),
+            .paramCount = preset.paramCount,
+            .streamingSupport = preset.streamingSupport,
+            .isPunctuationModel = preset.isPunctuationModel,
+        });
     }
 
     // Auto-download punctuation model after UI is ready

@@ -39,6 +39,11 @@ QString llmProviderModelKey(const QString &providerId)
     return QString("settings/llm/providerModels/%1").arg(providerId);
 }
 
+QString qs(const std::string &value)
+{
+    return QString::fromStdString(value);
+}
+
 QNetworkRequest makeRequest(const QUrl &url)
 {
     QNetworkRequest request(url);
@@ -252,10 +257,10 @@ QString LlmPostProcessor::llamaArchivePath() const
 QString LlmPostProcessor::modelPath() const
 {
     const LlmLocalModel model = loadLlmLocalModel();
-    if (model.fileName.isEmpty()) {
+    if (model.fileName.empty()) {
         return {};
     }
-    return QDir(modelDir()).filePath(model.fileName);
+    return QDir(modelDir()).filePath(qs(model.fileName));
 }
 
 QString LlmPostProcessor::serverExecutablePath() const
@@ -272,24 +277,24 @@ QString LlmPostProcessor::serverExecutablePath() const
 LlmProviderPreset LlmPostProcessor::configuredProvider() const
 {
     QString providerId =
-        appConfigString("settings/llm/providerId", defaultLlmProviderId())
+        appConfigString("settings/llm/providerId", qs(defaultLlmProviderId()))
             .trimmed();
     const QString savedEndpoint =
         appConfigString("settings/llm/endpoint").trimmed();
     if (!appConfigContains("settings/llm/providerId") &&
-        !savedEndpoint.isEmpty() && savedEndpoint != defaultLlmEndpoint())
+        !savedEndpoint.isEmpty() && savedEndpoint != qs(defaultLlmEndpoint()))
     {
         providerId = "custom";
     }
-    return findLlmProviderPreset(providerId);
+    return findLlmProviderPreset(providerId.toStdString());
 }
 
 QString LlmPostProcessor::configuredEndpoint() const
 {
     const LlmProviderPreset provider = configuredProvider();
     if (!provider.custom) {
-        const QString endpoint = provider.endpoint.trimmed();
-        return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
+        const QString endpoint = qs(provider.endpoint).trimmed();
+        return endpoint.isEmpty() ? qs(defaultLlmEndpoint()) : endpoint;
     }
 
     return appConfigString("settings/llm/endpoint").trimmed();
@@ -299,7 +304,7 @@ QString LlmPostProcessor::configuredModel() const
 {
     const LlmProviderPreset provider = configuredProvider();
     const QString providerModel =
-        appConfigString(llmProviderModelKey(provider.id)).trimmed();
+        appConfigString(llmProviderModelKey(qs(provider.id))).trimmed();
     if (!providerModel.isEmpty()) {
         return providerModel;
     }
@@ -308,8 +313,8 @@ QString LlmPostProcessor::configuredModel() const
     if (!configuredModel.isEmpty()) {
         return configuredModel;
     }
-    const QString model = provider.model.trimmed();
-    return model.isEmpty() ? defaultLlmModel() : model;
+    const QString model = qs(provider.model).trimmed();
+    return model.isEmpty() ? qs(defaultLlmModel()) : model;
 }
 
 QString LlmPostProcessor::configuredApiKey() const
@@ -368,11 +373,11 @@ void LlmPostProcessor::prepareManagedLocalService()
     if (!QFileInfo(localModelPath).isFile()) {
         emit statusMessage(tr("Downloading LLM model..."));
         const LlmLocalModel model = loadLlmLocalModel();
-        if (model.url.isEmpty()) {
+        if (model.url.empty()) {
             failPending(tr("LLM local model URL is not configured."));
             return;
         }
-        beginDownload(DownloadKind::Model, QUrl(model.url), modelPath());
+        beginDownload(DownloadKind::Model, QUrl(qs(model.url)), modelPath());
         return;
     }
 
@@ -534,7 +539,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     QString systemPrompt =
         appConfigString("settings/llm/systemPrompt").trimmed();
     if (systemPrompt.isEmpty()) {
-        systemPrompt = defaultLlmSystemPrompt();
+        systemPrompt = qs(defaultLlmSystemPrompt());
     }
     const QString userPrompt =
         QString("请后处理这段语音识别文本：\n%1").arg(request.text);

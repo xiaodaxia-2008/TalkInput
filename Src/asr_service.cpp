@@ -202,14 +202,19 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
     // Try the preset registry first
     ModelFileSet resolved = resolveModelFiles(modelDir);
     if (resolved.matched) {
-        config.type = typeFromString(resolved.typeStr);
+        config.type = typeFromString(QString::fromStdString(resolved.type));
         auto rel = [&](const QString &abs) {
             return dir.relativeFilePath(abs);
         };
 
+        auto resolvedFile = [&](const char *key) {
+            const auto it = resolved.resolvedFiles.find(key);
+            return it == resolved.resolvedFiles.end()
+                       ? QString()
+                       : QString::fromStdString(it->second);
+        };
         auto assign = [&](const char *key, QString &field) {
-            const QString v =
-                resolved.resolvedFiles.value(QString::fromLatin1(key));
+            const QString v = resolvedFile(key);
             if (!v.isEmpty()) {
                 field = rel(v);
             }
@@ -229,8 +234,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         // Directory fields (not relative to modelDir — already absolute or
         // relative)
         {
-            const QString tok = resolved.resolvedFiles.value(
-                QStringLiteral("funasrTokenizerFile"));
+            const QString tok = resolvedFile("funasrTokenizerFile");
             if (!tok.isEmpty()) {
                 config.funasrTokenizerFile = dir.relativeFilePath(tok);
             }
@@ -239,8 +243,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
             }
         }
         {
-            const QString tok = resolved.resolvedFiles.value(
-                QStringLiteral("qwen3TokenizerDir"));
+            const QString tok = resolvedFile("qwen3TokenizerDir");
             if (!tok.isEmpty()) {
                 config.qwen3TokenizerDir = tok; // absolute
             }
@@ -251,7 +254,7 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
             appConfigString("settings/app/language", "zh");
         config.senseVoiceUseItn = true;
 
-        spdlog::info("AsrService: configured from preset {}", resolved.typeStr);
+        spdlog::info("AsrService: configured from preset {}", resolved.type);
     }
     else {
         // Fall back to file-probing detection

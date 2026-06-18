@@ -1,72 +1,72 @@
 #pragma once
 
-#include <QMap>
 #include <QString>
-#include <QStringList>
-#include <QVector>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace talkinput
 {
 
+struct FileRule
+{
+    std::string configField;
+    std::vector<std::string> globPatterns;
+    bool isDir = false;
+};
+
 struct ModelPreset
 {
-    QString name;
-    QString typeStr;
-    QString languages;
-    QString modelDirName;
-    QString url;
-    qint64 size = 0;
+    std::string name;
+    std::string type;
+    std::string languages;
+    std::string modelDirName;
+    std::string url;
+    std::int64_t size = 0;
     int paramCount = 0;
     bool streamingSupport = false;
     bool isPunctuationModel = false;
-
-    struct FileRule
-    {
-        QString configField;
-        QStringList globPatterns;
-        bool isDir = false;
-    };
-
-    QVector<FileRule> files;
+    std::vector<FileRule> files;
 };
 
 struct ModelFileSet
 {
-    QString typeStr;
-    QString modelDirName;
-    QMap<QString, QString> resolvedFiles;
+    std::string type;
+    std::string modelDirName;
+    std::map<std::string, std::string> resolvedFiles;
     bool matched = false;
 };
 
 struct LlmLocalModel
 {
-    QString name;
-    QString url;
-    QString fileName;
-    qint64 size = 0;
+    std::string name;
+    std::string url;
+    std::string fileName;
+    std::int64_t size = 0;
 };
 
 struct LlmProviderPreset
 {
-    QString id;
-    QString name;
-    QString endpoint;
-    QString model;
-    QStringList models;
+    std::string id;
+    std::string name;
+    std::string endpoint;
+    std::string model;
+    std::vector<std::string> models;
     bool custom = false;
     bool managedLocalService = false;
 };
 
-QVector<ModelPreset> loadModelPresets();
-QVector<ModelPreset> loadToolPresets();
+std::vector<ModelPreset> loadModelPresets();
+std::vector<ModelPreset> loadToolPresets();
 LlmLocalModel loadLlmLocalModel();
-QVector<LlmProviderPreset> loadLlmProviderPresets();
+std::vector<LlmProviderPreset> loadLlmProviderPresets();
 LlmProviderPreset defaultLlmProvider();
-LlmProviderPreset findLlmProviderPreset(const QString &id);
-QString defaultLlmProviderId();
-QString defaultLlmEndpoint();
-QString defaultLlmModel();
-QString defaultLlmSystemPrompt();
+LlmProviderPreset findLlmProviderPreset(const std::string &id);
+std::string defaultLlmProviderId();
+std::string defaultLlmEndpoint();
+std::string defaultLlmModel();
+std::string defaultLlmSystemPrompt();
 ModelFileSet resolveModelFiles(const QString &modelDir);
 
 } // namespace talkinput
