@@ -341,7 +341,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
     auto submitToLlm = [this, finalText](const QString &ocrContext) {
         if (m_llmPostProcessor->isEnabled()) {
-            spdlog::debug("OCR context for LLM: {}", ocrContext.trimmed());
+            spdlog::debug("OCR context sent to LLM: {}", ocrContext.trimmed());
             emit statusMessage(tr("Post-processing recognition result..."));
         }
         m_llmPostProcessor->postProcess(
@@ -354,10 +354,27 @@ void VoiceInputController::postProcessFinalText(const QString &text)
             });
     };
 
-    if (!m_llmPostProcessor->isEnabled() ||
-        !appConfigBool("settings/ocr/useFocusedInputContext", false) ||
-        !m_ocrService || !m_ocrService->isAvailable())
-    {
+    const bool llmEnabled = m_llmPostProcessor->isEnabled();
+    const bool ocrEnabled =
+        appConfigBool("settings/ocr/useFocusedInputContext", false);
+    const bool ocrServiceAvailable =
+        m_ocrService && m_ocrService->isAvailable();
+    spdlog::debug("OCR context flow: llmEnabled={} ocrEnabled={} "
+                  "ocrServiceAvailable={}",
+                  llmEnabled, ocrEnabled, ocrServiceAvailable);
+
+    if (!llmEnabled) {
+        spdlog::debug("OCR context skipped: LLM post-processing is disabled");
+        submitToLlm({});
+        return;
+    }
+    if (!ocrEnabled) {
+        spdlog::debug("OCR context skipped: OCR focused context is disabled");
+        submitToLlm({});
+        return;
+    }
+    if (!ocrServiceAvailable) {
+        spdlog::debug("OCR context skipped: OCR service is unavailable");
         submitToLlm({});
         return;
     }
@@ -369,10 +386,14 @@ void VoiceInputController::postProcessFinalText(const QString &text)
         return;
     }
 
+    spdlog::debug("OCR context screenshot captured: {}x{}", image.width(),
+                  image.height());
     emit statusMessage(tr("Reading focused input context..."));
     m_ocrService->recognizeText(
         image, this, [submitToLlm](const QString &contextText) mutable {
-            submitToLlm(contextText.trimmed());
+            const QString result = contextText.trimmed();
+            spdlog::debug("OCR context result received: {}", result);
+            submitToLlm(result);
         });
 }
 
@@ -384,10 +405,15 @@ QImage VoiceInputController::captureFocusedContextImage() const
         rect = m_ocrService->focusedTextInputRect();
     }
     if (!rect.isEmpty()) {
+        spdlog::debug("OCR context focused rect: x={} y={} w={} h={}", rect.x(),
+                      rect.y(), rect.width(), rect.height());
         anchor = rect.center();
     }
     else {
         rect = QRect(anchor.x() - 450, anchor.y() - 180, 900, 360);
+        spdlog::debug("OCR context using cursor fallback rect: x={} y={} w={} "
+                      "h={}",
+                      rect.x(), rect.y(), rect.width(), rect.height());
     }
 
     QScreen *screen = QGuiApplication::screenAt(anchor);
@@ -395,11 +421,13 @@ QImage VoiceInputController::captureFocusedContextImage() const
         screen = QGuiApplication::primaryScreen();
     }
     if (!screen) {
+        spdlog::debug("OCR context screenshot skipped: no screen");
         return {};
     }
 
     rect = rect.intersected(screen->geometry());
     if (rect.width() <= 0 || rect.height() <= 0) {
+        spdlog::debug("OCR context screenshot skipped: rect outside screen");
         return {};
     }
 

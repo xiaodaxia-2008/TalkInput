@@ -67,14 +67,19 @@ void initWinrtApartment()
 QString recognizeWindowsText(QImage image)
 {
     if (image.isNull()) {
+        spdlog::debug("OCR: Windows OCR skipped empty image");
         return {};
     }
 
     initWinrtApartment();
 
+    spdlog::debug("OCR: Windows OCR input image: {}x{}", image.width(),
+                  image.height());
     if (image.width() > MaxContextWidth || image.height() > MaxContextHeight) {
         image = image.scaled(MaxContextWidth, MaxContextHeight,
                              Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        spdlog::debug("OCR: Windows OCR scaled image: {}x{}", image.width(),
+                      image.height());
     }
 
     QByteArray png;
@@ -113,7 +118,10 @@ QString recognizeWindowsText(QImage image)
     }
 
     const auto result = engine.RecognizeAsync(bitmap).get();
-    return QString::fromStdWString(std::wstring(result.Text())).trimmed();
+    const QString text =
+        QString::fromStdWString(std::wstring(result.Text())).trimmed();
+    spdlog::debug("OCR: Windows OCR result: {}", text);
+    return text;
 }
 #endif
 
@@ -140,6 +148,7 @@ QRect WindowsOcrService::focusedTextInputRect() const
 #ifdef Q_OS_WIN
     HWND foreground = GetForegroundWindow();
     if (!foreground) {
+        spdlog::debug("OCR: no foreground window");
         return {};
     }
 
@@ -151,6 +160,7 @@ QRect WindowsOcrService::focusedTextInputRect() const
             RECT caretRect = info.rcCaret;
             MapWindowPoints(info.hwndCaret, nullptr,
                             reinterpret_cast<POINT *>(&caretRect), 2);
+            spdlog::debug("OCR: using caret rect for focused context");
             return contextRectAround(rectFromWinRect(caretRect));
         }
 
@@ -159,6 +169,7 @@ QRect WindowsOcrService::focusedTextInputRect() const
             if (GetWindowRect(info.hwndFocus, &focusRect) &&
                 !IsRectEmpty(&focusRect))
             {
+                spdlog::debug("OCR: using focused window rect for context");
                 return contextRectAround(rectFromWinRect(focusRect));
             }
         }
@@ -166,6 +177,7 @@ QRect WindowsOcrService::focusedTextInputRect() const
 
     RECT windowRect = {};
     if (GetWindowRect(foreground, &windowRect) && !IsRectEmpty(&windowRect)) {
+        spdlog::debug("OCR: using foreground window rect for context");
         return contextRectAround(rectFromWinRect(windowRect));
     }
 #endif
