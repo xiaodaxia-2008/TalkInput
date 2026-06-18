@@ -45,7 +45,9 @@ bool OnlineSpeechRecognizer::start(const Config &config, QString *errorMessage)
 
     m_hotwordsText = config.hotwordsText.toUtf8().toStdString();
     if (!m_hotwordsText.empty()) {
-        recognizerConfig.decoding_method = "modified_beam_search";
+        recognizerConfig.decoding_method = supportsModifiedBeamSearch()
+                                               ? "modified_beam_search"
+                                               : "greedy_search";
         recognizerConfig.hotwords_buf = m_hotwordsText.c_str();
         recognizerConfig.hotwords_buf_size =
             static_cast<int32_t>(m_hotwordsText.size());
@@ -77,6 +79,11 @@ bool OnlineSpeechRecognizer::start(const Config &config, QString *errorMessage)
     }
 
     m_lastText.clear();
+    return true;
+}
+
+bool OnlineSpeechRecognizer::supportsModifiedBeamSearch() const
+{
     return true;
 }
 

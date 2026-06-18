@@ -40,11 +40,6 @@ endif()
 
 add_subdirectory(src)
 
-target_compile_definitions(TalkInput PRIVATE
-    GIT_COMMIT_ID="${GIT_COMMIT_ID}"
-    GIT_COMMIT_DATE="${GIT_COMMIT_DATE}"
-)
-
 include(InstallRequiredSystemLibraries)
 
 set(CPACK_GENERATOR "NSIS")

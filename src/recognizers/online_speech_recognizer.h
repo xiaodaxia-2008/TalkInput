@@ -32,6 +32,7 @@ protected:
     virtual bool configureModel(const Config &config,
                                 SherpaOnnxOnlineRecognizerConfig *recognizer,
                                 QString *errorMessage) = 0;
+    virtual bool supportsModifiedBeamSearch() const;
 
     std::string m_encoderPath;
     std::string m_decoderPath;

@@ -17,6 +17,11 @@ protected:
     bool configureModel(const Config &config,
                         SherpaOnnxOnlineRecognizerConfig *recognizer,
                         QString *errorMessage) override;
+
+    bool supportsModifiedBeamSearch() const override
+    {
+        return false;
+    }
 };
 
 } // namespace talkinput

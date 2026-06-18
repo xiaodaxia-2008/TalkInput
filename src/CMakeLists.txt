@@ -109,10 +109,6 @@ elseif(UNIX)
     )
 endif()
 
-target_compile_definitions(TalkInput PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-
-add_subdirectory(tests)
-
 target_include_directories(TalkInput PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
@@ -120,6 +116,9 @@ target_include_directories(TalkInput PRIVATE
 
 target_compile_definitions(TalkInput PRIVATE
     PROJECT_VERSION_STR="${PROJECT_VERSION}"
+    GIT_COMMIT_ID="${GIT_COMMIT_ID}"
+    GIT_COMMIT_DATE="${GIT_COMMIT_DATE}"
+    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
 qt_deploy(TARGET TalkInput COMPONENT Runtime)
@@ -137,3 +136,5 @@ if(WIN32)
         COMMAND_EXPAND_LISTS
     )
 endif()
+
+add_subdirectory(tests)
