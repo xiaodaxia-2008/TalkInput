@@ -3,8 +3,12 @@
 #include "logging.h"
 
 #include <QBuffer>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QMetaObject>
 #include <QPointer>
+#include <QStandardPaths>
 #include <QThreadPool>
 
 #ifdef Q_OS_WIN
@@ -322,44 +326,50 @@ QString recognizeWindowsText(QImage image)
         spdlog::debug("OCR: converted image to Format_RGB32");
     }
 
-    QByteArray bmp;
-    QBuffer buffer(&bmp);
-    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "BMP")) {
-        spdlog::warn("OCR: failed to encode screenshot as BMP");
+    // Write BMP to a temporary file and open it via StorageFile (same
+    // approach as the test program which reliably works). The in-memory
+    // DataWriter + InMemoryRandomAccessStream path produces valid decoder
+    // output but OCR returns empty for unknown reasons.
+    const QString tempPath =
+        QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation))
+            .filePath("talkinput-ocr.bmp");
+    if (!image.save(tempPath, "BMP")) {
+        spdlog::warn("OCR: failed to save temp BMP: {}", tempPath);
         return {};
     }
-    spdlog::debug("OCR: encoded BMP size={}", bmp.size());
+    spdlog::debug("OCR: temp BMP saved: {}", tempPath);
 
-    auto stream =
-        winrt::Windows::Storage::Streams::InMemoryRandomAccessStream();
-    auto writer = winrt::Windows::Storage::Streams::DataWriter(stream);
-    const auto *begin = reinterpret_cast<const uint8_t *>(bmp.constData());
-    writer.WriteBytes(winrt::array_view<const uint8_t>(
-        begin, begin + static_cast<std::ptrdiff_t>(bmp.size())));
-    writer.StoreAsync().get();
-    writer.FlushAsync().get();
-    stream.Seek(0);
+    winrt::Windows::Storage::StorageFile file = nullptr;
+    try {
+        file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
+                   tempPath.toStdWString())
+                   .get();
+    }
+    catch (const winrt::hresult_error &e) {
+        spdlog::warn("OCR: failed to open temp file: {}",
+                     winrt::to_string(e.message()));
+        QFile::remove(tempPath);
+        return {};
+    }
 
+    const auto stream =
+        file.OpenAsync(winrt::Windows::Storage::FileAccessMode::Read).get();
     const auto decoder =
         winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream)
             .get();
-    const auto softwareBitmap = decoder.GetSoftwareBitmapAsync().get();
-    spdlog::debug("OCR: decoder bitmap: {}x{} fmt={} alpha={}",
-                  softwareBitmap.PixelWidth(), softwareBitmap.PixelHeight(),
-                  static_cast<int>(softwareBitmap.BitmapPixelFormat()),
-                  static_cast<int>(softwareBitmap.BitmapAlphaMode()));
-
-    // Convert to the exact format the OCR engine needs (Bgra8 + Ignore),
-    // matching Microsoft's sample code pattern.
     const auto bitmap =
-        winrt::Windows::Graphics::Imaging::SoftwareBitmap::Convert(
-            softwareBitmap,
-            winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
-            winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore);
-    spdlog::debug("OCR: converted bitmap: {}x{} fmt={} alpha={}",
+        decoder
+            .GetSoftwareBitmapAsync(
+                winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
+                winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore)
+            .get();
+    spdlog::debug("OCR: decoder bitmap: {}x{} fmt={} alpha={}",
                   bitmap.PixelWidth(), bitmap.PixelHeight(),
                   static_cast<int>(bitmap.BitmapPixelFormat()),
                   static_cast<int>(bitmap.BitmapAlphaMode()));
+
+    // Clean up temp file
+    QFile::remove(tempPath);
 
     const auto engine = winrt::Windows::Media::Ocr::OcrEngine::
         TryCreateFromUserProfileLanguages();
@@ -376,6 +386,17 @@ QString recognizeWindowsText(QImage image)
     const QString text =
         QString::fromStdWString(std::wstring(textHstring)).trimmed();
     spdlog::debug("OCR: Windows OCR result: {}", text);
+
+    if (text.isEmpty()) {
+        // Save the temp BMP for debugging when OCR produced empty
+        const QString debugPath = QDir(QStandardPaths::writableLocation(
+                                           QStandardPaths::CacheLocation))
+                                      .filePath("ocr/ocr-debug-failed.bmp");
+        QDir().mkpath(QFileInfo(debugPath).absolutePath());
+        image.save(debugPath, "BMP");
+        spdlog::warn("OCR: empty result; debug image saved: {}", debugPath);
+    }
+
     return text;
 }
 #endif
