@@ -358,10 +358,22 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                                        : tr("LLM post-processing disabled."));
         });
 
+    auto *ocrContextCheck = new QCheckBox(tr("OCR focused context"), this);
+    ocrContextCheck->setToolTip(
+        tr("Use OCR text around the focused input as LLM context"));
+    ocrContextCheck->setChecked(
+        appConfigBool("settings/ocr/useFocusedInputContext", false));
+    connect(ocrContextCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        setAppConfigValue("settings/ocr/useFocusedInputContext", checked);
+        emit statusMessage(checked ? tr("OCR context enabled.")
+                                   : tr("OCR context disabled."));
+    });
+
     bottomRow->addWidget(archiveBtn);
     bottomRow->addWidget(openBtn);
     bottomRow->addWidget(hotwordsBtn);
     bottomRow->addWidget(llmPostProcessCheck);
+    bottomRow->addWidget(ocrContextCheck);
     bottomRow->addStretch();
     root->addLayout(bottomRow);
 

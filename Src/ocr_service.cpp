@@ -1,0 +1,60 @@
+#include "ocr_service.h"
+
+#include <QMetaObject>
+
+#ifdef Q_OS_WIN
+#include "ocr_service_windows.h"
+#endif
+
+namespace talkinput
+{
+
+OcrService::OcrService(QObject *parent) : QObject(parent)
+{
+}
+
+OcrService::~OcrService() = default;
+
+QRect OcrService::focusedTextInputRect() const
+{
+    return {};
+}
+
+namespace
+{
+
+class NullOcrService final : public OcrService
+{
+public:
+    using OcrService::OcrService;
+
+    bool isAvailable() const override
+    {
+        return false;
+    }
+
+    void recognizeText(const QImage &, QObject *receiver,
+                       Callback callback) override
+    {
+        if (!receiver || !callback) {
+            return;
+        }
+        QMetaObject::invokeMethod(
+            receiver,
+            [callback = std::move(callback)]() mutable { callback({}); },
+            Qt::QueuedConnection);
+    }
+};
+
+} // namespace
+
+OcrService *createOcrService(QObject *parent)
+{
+#ifdef Q_OS_WIN
+    return new WindowsOcrService(parent);
+#else
+    return new NullOcrService(parent);
+#endif
+}
+
+} // namespace talkinput

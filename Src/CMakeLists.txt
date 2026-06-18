@@ -21,6 +21,10 @@ add_executable(TalkInput
     history_widget.h
     llm_post_processor.cpp
     llm_post_processor.h
+    ocr_service.cpp
+    ocr_service.h
+    ocr_service_windows.cpp
+    ocr_service_windows.h
     logging.h
     recognition_history.cpp
     recognition_history.h
@@ -90,6 +94,10 @@ target_link_libraries(TalkInput
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
 )
+
+if(WIN32)
+    target_link_libraries(TalkInput PRIVATE windowsapp)
+endif()
 
 add_executable(TalkInputAsrTest
     asr_test.cpp

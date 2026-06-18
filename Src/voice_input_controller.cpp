@@ -1,7 +1,9 @@
 #include "voice_input_controller.h"
+#include "app_config.h"
 #include "asr_service.h"
 #include "llm_post_processor.h"
 #include "logging.h"
+#include "ocr_service.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
 
@@ -12,6 +14,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMediaDevices>
+#include <QPixmap>
 #include <QPropertyAnimation>
 #include <QScreen>
 #include <QTimer>
@@ -182,6 +185,7 @@ VoiceInputController::VoiceInputController(AsrService *asrService,
 {
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
+    m_ocrService = createOcrService(this);
     connect(m_llmPostProcessor, &LlmPostProcessor::statusMessage, this,
             &VoiceInputController::statusMessage);
     registerHotKey();
@@ -317,19 +321,7 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
         const bool shouldSend = m_pendingResult || !m_isListening;
         m_pendingResult = false;
         if (shouldSend && !text.trimmed().isEmpty()) {
-            const QString finalText = text.trimmed();
-            if (m_llmPostProcessor->isEnabled()) {
-                emit statusMessage(tr("Post-processing recognition result..."));
-            }
-            m_llmPostProcessor->postProcess(
-                finalText, this,
-                [this, finalText](const QString &processedText) {
-                    spdlog::debug(
-                        "Voice input final text after LLM: input='{}' "
-                        "output='{}'",
-                        finalText, processedText);
-                    injectFinalText(processedText.trimmed());
-                });
+            postProcessFinalText(text.trimmed());
         }
     }
     else if (m_isListening && text != m_lastResult) {
@@ -338,6 +330,82 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
             static_cast<OverlayWindow *>(m_overlay.get())->setPreviewText(text);
         }
     }
+}
+
+void VoiceInputController::postProcessFinalText(const QString &text)
+{
+    const QString finalText = text.trimmed();
+    if (finalText.isEmpty()) {
+        return;
+    }
+
+    auto submitToLlm = [this, finalText](const QString &ocrContext) {
+        if (m_llmPostProcessor->isEnabled()) {
+            spdlog::debug("OCR context for LLM: {}", ocrContext.trimmed());
+            emit statusMessage(tr("Post-processing recognition result..."));
+        }
+        m_llmPostProcessor->postProcess(
+            finalText, ocrContext, this,
+            [this, finalText](const QString &processedText) {
+                spdlog::debug(
+                    "Voice input final text after LLM: input='{}' output='{}'",
+                    finalText, processedText);
+                injectFinalText(processedText.trimmed());
+            });
+    };
+
+    if (!m_llmPostProcessor->isEnabled() ||
+        !appConfigBool("settings/ocr/useFocusedInputContext", false) ||
+        !m_ocrService || !m_ocrService->isAvailable())
+    {
+        submitToLlm({});
+        return;
+    }
+
+    const QImage image = captureFocusedContextImage();
+    if (image.isNull()) {
+        spdlog::debug("OCR context skipped: no focused screenshot");
+        submitToLlm({});
+        return;
+    }
+
+    emit statusMessage(tr("Reading focused input context..."));
+    m_ocrService->recognizeText(
+        image, this, [submitToLlm](const QString &contextText) mutable {
+            submitToLlm(contextText.trimmed());
+        });
+}
+
+QImage VoiceInputController::captureFocusedContextImage() const
+{
+    QPoint anchor = QCursor::pos();
+    QRect rect;
+    if (m_ocrService) {
+        rect = m_ocrService->focusedTextInputRect();
+    }
+    if (!rect.isEmpty()) {
+        anchor = rect.center();
+    }
+    else {
+        rect = QRect(anchor.x() - 450, anchor.y() - 180, 900, 360);
+    }
+
+    QScreen *screen = QGuiApplication::screenAt(anchor);
+    if (!screen) {
+        screen = QGuiApplication::primaryScreen();
+    }
+    if (!screen) {
+        return {};
+    }
+
+    rect = rect.intersected(screen->geometry());
+    if (rect.width() <= 0 || rect.height() <= 0) {
+        return {};
+    }
+
+    const QPixmap pixmap =
+        screen->grabWindow(0, rect.x(), rect.y(), rect.width(), rect.height());
+    return pixmap.toImage();
 }
 
 void VoiceInputController::injectFinalText(const QString &text)

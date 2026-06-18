@@ -29,6 +29,8 @@ public:
 
     bool isEnabled() const;
     void postProcess(const QString &text, QObject *receiver, Callback callback);
+    void postProcess(const QString &text, const QString &contextText,
+                     QObject *receiver, Callback callback);
 
 signals:
     void statusMessage(const QString &message);
@@ -44,6 +46,7 @@ private:
     struct PendingRequest
     {
         QString text;
+        QString contextText;
         QPointer<QObject> receiver;
         Callback callback;
     };

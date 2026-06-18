@@ -218,6 +218,13 @@ bool LlmPostProcessor::isEnabled() const
 void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
                                    Callback callback)
 {
+    postProcess(text, {}, receiver, std::move(callback));
+}
+
+void LlmPostProcessor::postProcess(const QString &text,
+                                   const QString &contextText,
+                                   QObject *receiver, Callback callback)
+{
     if (text.trimmed().isEmpty() || !isEnabled()) {
         callback(text);
         return;
@@ -225,7 +232,8 @@ void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
 
     const QString inputText = text.trimmed();
     spdlog::debug("LLM post-process queued input: {}", inputText);
-    m_pending.enqueue({inputText, receiver, std::move(callback)});
+    m_pending.enqueue(
+        {inputText, contextText.trimmed(), receiver, std::move(callback)});
     ensureReady();
 }
 
@@ -541,8 +549,19 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     if (systemPrompt.isEmpty()) {
         systemPrompt = qs(defaultLlmSystemPrompt());
     }
-    const QString userPrompt =
-        QString("请后处理这段语音识别文本：\n%1").arg(request.text);
+    QString userPrompt;
+    if (request.contextText.trimmed().isEmpty()) {
+        userPrompt =
+            QString("请后处理这段语音识别文本：\n%1").arg(request.text);
+    }
+    else {
+        userPrompt =
+            QString("请后处理这段语音识别文本：\n%1\n\n"
+                    "当前焦点输入框附近的 OCR 上下文如下，仅用于判断专有名词、"
+                    "代码、文件名或上下文语义；不要把语音文本中没有表达的内容"
+                    "直接插入结果：\n%2")
+                .arg(request.text, request.contextText);
+    }
 
     spdlog::debug("LLM system prompt: {}", systemPrompt);
     spdlog::debug("LLM user prompt: {}", userPrompt);
