@@ -390,8 +390,9 @@ void VoiceInputController::postProcessFinalText(const QString &text)
             spdlog::debug("OCR context sent to LLM: {}", ocrContext.trimmed());
             emit statusMessage(tr("Post-processing recognition result..."));
         }
+        const QString hotwords = appConfigString("settings/model/hotwords");
         m_llmPostProcessor->postProcess(
-            finalText, ocrContext, this,
+            finalText, ocrContext, hotwords, this,
             [this, finalText](const QString &processedText) {
                 spdlog::debug(
                     "Voice input final text after LLM: input='{}' output='{}'",

@@ -30,7 +30,8 @@ public:
     bool isEnabled() const;
     void postProcess(const QString &text, QObject *receiver, Callback callback);
     void postProcess(const QString &text, const QString &contextText,
-                     QObject *receiver, Callback callback);
+                     const QString &hotwords, QObject *receiver,
+                     Callback callback);
 
 signals:
     void statusMessage(const QString &message);
@@ -47,6 +48,7 @@ private:
     {
         QString text;
         QString contextText;
+        QString hotwords;
         QPointer<QObject> receiver;
         Callback callback;
     };

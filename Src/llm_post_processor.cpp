@@ -218,12 +218,13 @@ bool LlmPostProcessor::isEnabled() const
 void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
                                    Callback callback)
 {
-    postProcess(text, {}, receiver, std::move(callback));
+    postProcess(text, {}, {}, receiver, std::move(callback));
 }
 
 void LlmPostProcessor::postProcess(const QString &text,
                                    const QString &contextText,
-                                   QObject *receiver, Callback callback)
+                                   const QString &hotwords, QObject *receiver,
+                                   Callback callback)
 {
     if (text.trimmed().isEmpty() || !isEnabled()) {
         callback(text);
@@ -232,8 +233,8 @@ void LlmPostProcessor::postProcess(const QString &text,
 
     const QString inputText = text.trimmed();
     spdlog::debug("LLM post-process queued input: {}", inputText);
-    m_pending.enqueue(
-        {inputText, contextText.trimmed(), receiver, std::move(callback)});
+    m_pending.enqueue({inputText, contextText.trimmed(), hotwords.trimmed(),
+                       receiver, std::move(callback)});
     ensureReady();
 }
 
@@ -544,24 +545,40 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
 
     spdlog::debug("LLM post-process input: {}", request.text);
 
+    // ---- System prompt (template replacement) ----
     QString systemPrompt =
         appConfigString("settings/llm/systemPrompt").trimmed();
     if (systemPrompt.isEmpty()) {
-        systemPrompt = qs(defaultLlmSystemPrompt());
+        // Second fallback: built-in default from config.json
+        systemPrompt = qs(defaultLlmSystemPrompt()).trimmed();
     }
-    QString userPrompt;
-    if (request.contextText.trimmed().isEmpty()) {
+    if (systemPrompt.isEmpty()) {
+        // Final fallback
+        systemPrompt = QStringLiteral("You are a helpful assistant");
+    }
+    systemPrompt.replace("{{input}}", request.text);
+    systemPrompt.replace("{{context}}", request.contextText);
+    systemPrompt.replace("{{hotwords}}", request.hotwords);
+
+    // ---- User prompt (template replacement) ----
+    QString userPrompt = appConfigString("settings/llm/userPrompt").trimmed();
+    if (userPrompt.isEmpty()) {
+        // Default user prompt template
         userPrompt =
-            QString("请后处理这段语音识别文本：\n%1").arg(request.text);
+            QStringLiteral("Please post-process this voice recognition text:\n"
+                           "{{input}}");
+        if (!request.contextText.isEmpty()) {
+            userPrompt += QStringLiteral(
+                "\n\n"
+                "Current focused input context (for proper nouns, "
+                "code, filenames only; do not insert content not "
+                "present in the speech text):\n"
+                "{{context}}");
+        }
     }
-    else {
-        userPrompt =
-            QString("请后处理这段语音识别文本：\n%1\n\n"
-                    "当前焦点输入框附近的 OCR 上下文如下，仅用于判断专有名词、"
-                    "代码、文件名或上下文语义；不要把语音文本中没有表达的内容"
-                    "直接插入结果：\n%2")
-                .arg(request.text, request.contextText);
-    }
+    userPrompt.replace("{{input}}", request.text);
+    userPrompt.replace("{{context}}", request.contextText);
+    userPrompt.replace("{{hotwords}}", request.hotwords);
 
     spdlog::debug("LLM system prompt: {}", systemPrompt);
     spdlog::debug("LLM user prompt: {}", userPrompt);
