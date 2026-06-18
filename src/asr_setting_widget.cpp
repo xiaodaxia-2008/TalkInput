@@ -70,6 +70,16 @@ QString currentLlmSystemPrompt()
     return prompt;
 }
 
+QString currentLlmUserPrompt()
+{
+    QString prompt =
+        talkinput::appConfigString("settings/llm/userPrompt").trimmed();
+    if (prompt.isEmpty()) {
+        prompt = qs(talkinput::defaultLlmUserPrompt());
+    }
+    return prompt;
+}
+
 QString languageDisplay(const QString &lang)
 {
     if (lang == QStringLiteral("multilingual")) {
@@ -196,20 +206,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     auto refreshPromptLabel = [promptLabel]() {
         const QString sysPrompt = currentLlmSystemPrompt().simplified();
-        const QString usrPrompt =
-            appConfigString("settings/llm/userPrompt").trimmed();
-        if (!usrPrompt.isEmpty()) {
-            promptLabel->setText(
-                QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
-                    .arg(sysPrompt.left(40), usrPrompt.left(40)));
-        }
-        else {
-            promptLabel->setText(sysPrompt);
-        }
-        promptLabel->setToolTip(
-            QString("System: %1\nUser: %2")
-                .arg(sysPrompt, usrPrompt.isEmpty() ? tr("(default template)")
-                                                    : usrPrompt));
+        const QString usrPrompt = currentLlmUserPrompt().simplified();
+        promptLabel->setText(
+            QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
+                .arg(sysPrompt.left(40), usrPrompt.left(40)));
+        promptLabel->setToolTip(QString("System: %1\nUser: %2")
+                                    .arg(sysPrompt, usrPrompt));
     };
     refreshPromptLabel();
 
