@@ -2,8 +2,10 @@
 #include "app_config.h"
 #include "logging.h"
 #include "model_registry.h"
+#include "utils.h"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QStringList>
 #include <QThread>
 
@@ -126,6 +128,23 @@ void AsrService::loadModel()
     if (!modelPreset && !m_modelDir.isEmpty()) {
         modelPreset = findModelPresetByDirectory(m_modelDir);
     }
+
+    // Auto-select installed punctuation model partner if none explicitly set
+    if (modelPreset && config.punctuationModelDir.isEmpty()) {
+        const QString punctDirName =
+            QString::fromStdString(modelPreset->postPunctuationModelDirName);
+        if (!punctDirName.isEmpty()) {
+            const QString punctDir =
+                QDir(QDir(appDataDir()).filePath(QStringLiteral("models")))
+                    .filePath(punctDirName);
+            if (QFileInfo(punctDir).isDir()) {
+                config.punctuationModelDir = punctDir;
+                SPDLOG_INFO("AsrService: auto-selected punctuation model dir {}",
+                            punctDir);
+            }
+        }
+    }
+
     const bool hotwordsSupport =
         modelPreset ? modelPreset->hotwordsSupport : false;
     config.hotwordsText = buildHotwordsText(

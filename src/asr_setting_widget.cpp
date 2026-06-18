@@ -694,12 +694,10 @@ void AsrSettingWidget::autoLoadPunctuationModel(int modelRow)
         return;
     }
 
-    // Check if already installed
+    // Check if already installed (AsrService::loadModel will pick it up)
     if (isInstalled(punctRow)) {
         SPDLOG_DEBUG("AsrSettingWidget: punctuation model {} already installed",
                      punctDirName);
-        const QString punctDir = QDir(cacheDir()).filePath(punctDirName);
-        emit punctuationModelReady(punctDir);
         return;
     }
 
