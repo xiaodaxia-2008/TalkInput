@@ -96,7 +96,7 @@ target_link_libraries(TalkInput
 )
 
 if(WIN32)
-    target_link_libraries(TalkInput PRIVATE windowsapp)
+    target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore)
 endif()
 
 add_executable(TalkInputAsrTest

@@ -9,6 +9,8 @@
 
 #include <QAudioDevice>
 #include <QAudioSource>
+#include <QDateTime>
+#include <QDir>
 #include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -17,6 +19,7 @@
 #include <QPixmap>
 #include <QPropertyAnimation>
 #include <QScreen>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QtEndian>
 
@@ -43,6 +46,35 @@ qint16 floatToInt16(float sample)
 {
     const float clamped = std::clamp(sample, -1.0F, 1.0F);
     return static_cast<qint16>(clamped * 32767.0F);
+}
+
+void saveOcrDebugImage(const QImage &image)
+{
+    if (image.isNull()) {
+        return;
+    }
+
+    QString base =
+        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    if (base.isEmpty()) {
+        base = QDir::current().filePath("cache");
+    }
+
+    const QString dir = QDir(base).filePath("ocr");
+    QDir().mkpath(dir);
+    const QString timestamp =
+        QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
+    const QString path =
+        QDir(dir).filePath(QString("ocr-context-%1.png").arg(timestamp));
+    const QString latestPath = QDir(dir).filePath("ocr-context-latest.png");
+
+    if (image.save(path, "PNG")) {
+        image.save(latestPath, "PNG");
+        spdlog::debug("OCR context debug screenshot saved: {}", path);
+    }
+    else {
+        spdlog::warn("OCR context debug screenshot save failed: {}", path);
+    }
 }
 
 // ── Win32 acrylic blur helper ──────────────────────────────────
@@ -409,12 +441,6 @@ QImage VoiceInputController::captureFocusedContextImage() const
                       rect.y(), rect.width(), rect.height());
         anchor = rect.center();
     }
-    else {
-        rect = QRect(anchor.x() - 450, anchor.y() - 180, 900, 360);
-        spdlog::debug("OCR context using cursor fallback rect: x={} y={} w={} "
-                      "h={}",
-                      rect.x(), rect.y(), rect.width(), rect.height());
-    }
 
     QScreen *screen = QGuiApplication::screenAt(anchor);
     if (!screen) {
@@ -425,15 +451,28 @@ QImage VoiceInputController::captureFocusedContextImage() const
         return {};
     }
 
-    rect = rect.intersected(screen->geometry());
+    if (rect.isEmpty()) {
+        rect = screen->geometry();
+        spdlog::debug("OCR context using full-screen fallback rect: x={} y={} "
+                      "w={} h={}",
+                      rect.x(), rect.y(), rect.width(), rect.height());
+    }
+    else {
+        rect = rect.intersected(screen->geometry());
+    }
+
     if (rect.width() <= 0 || rect.height() <= 0) {
-        spdlog::debug("OCR context screenshot skipped: rect outside screen");
-        return {};
+        rect = screen->geometry();
+        spdlog::debug("OCR context rect outside screen; using full-screen "
+                      "fallback rect: x={} y={} w={} h={}",
+                      rect.x(), rect.y(), rect.width(), rect.height());
     }
 
     const QPixmap pixmap =
         screen->grabWindow(0, rect.x(), rect.y(), rect.width(), rect.height());
-    return pixmap.toImage();
+    const QImage image = pixmap.toImage();
+    saveOcrDebugImage(image);
+    return image;
 }
 
 void VoiceInputController::injectFinalText(const QString &text)
