@@ -340,29 +340,24 @@ SpeechRecognizer::Config AsrService::detectAndConfigure(const QString &modelDir)
         }
     }
 
-    // Check for punctuation model at well-known locations (common to both
-    // paths)
-    const QStringList punctCandidates = {
-        // float32 model
-        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
-            .filePath(QStringLiteral("punctuation/model.onnx")),
-        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
-            .filePath(QStringLiteral("models/"
-                                     "sherpa-onnx-punct-ct-transformer-zh-en-"
-                                     "vocab272727-2024-04-12-int8/model.onnx")),
-        // int8 model
-        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
-            .filePath(QStringLiteral("punctuation/model.int8.onnx")),
-        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
-            .filePath(
-                QStringLiteral("models/"
-                               "sherpa-onnx-punct-ct-transformer-zh-en-"
-                               "vocab272727-2024-04-12-int8/model.int8.onnx")),
-    };
-    for (const auto &p : punctCandidates) {
-        if (QFileInfo::exists(p)) {
-            config.punctuationModelPath = p;
-            break;
+    if (config.type == SpeechRecognizer::Type::StreamingParaformer) {
+        const QString cacheBase =
+            QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+        const QStringList punctCandidates = {
+            QDir(cacheBase).filePath("punctuation/model.onnx"),
+            QDir(cacheBase).filePath(
+                "models/sherpa-onnx-punct-ct-transformer-zh-en-"
+                "vocab272727-2024-04-12-int8/model.onnx"),
+            QDir(cacheBase).filePath("punctuation/model.int8.onnx"),
+            QDir(cacheBase).filePath(
+                "models/sherpa-onnx-punct-ct-transformer-zh-en-"
+                "vocab272727-2024-04-12-int8/model.int8.onnx"),
+        };
+        for (const auto &p : punctCandidates) {
+            if (QFileInfo::exists(p)) {
+                config.punctuationModelPath = p;
+                break;
+            }
         }
     }
 
