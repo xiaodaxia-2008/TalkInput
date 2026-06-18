@@ -1277,5 +1277,13 @@ Please wait for the model to load, then try again.</source>
         <source>LLM service stopped unexpectedly.</source>
         <translation>LLM 服务意外停止。</translation>
     </message>
+    <message>
+        <source>LLM post-processing failed; using original text.</source>
+        <translation>LLM 后处理失败，使用原始文本。</translation>
+    </message>
+    <message>
+        <source>LLM post-processing complete.</source>
+        <translation>LLM 后处理已完成。</translation>
+    </message>
 </context>
 </TS>

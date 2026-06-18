@@ -533,8 +533,10 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     spdlog::debug("LLM chat request JSON: {}", QString::fromUtf8(requestBody));
 
     auto *reply = m_network.post(networkRequest, requestBody);
-    connect(reply, &QNetworkReply::finished, this, [reply, request]() mutable {
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, request]() mutable {
         QString result = request.text;
+        bool requestFailed = false;
         if (reply->error() == QNetworkReply::NoError) {
             const QByteArray responseBody = reply->readAll();
             spdlog::debug("LLM chat response JSON: {}",
@@ -553,12 +555,17 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
         }
         else {
             spdlog::warn("LLM post-process failed: {}", reply->errorString());
+            requestFailed = true;
         }
         spdlog::debug("LLM post-process output: {}", result);
         reply->deleteLater();
         if (request.receiver && request.callback) {
             request.callback(result);
         }
+        emit statusMessage(requestFailed
+                               ? tr("LLM post-processing failed; using "
+                                    "original text.")
+                               : tr("LLM post-processing complete."));
     });
 }
 
