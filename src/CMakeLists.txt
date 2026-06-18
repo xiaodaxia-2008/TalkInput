@@ -21,6 +21,8 @@ add_executable(TalkInput
     history_widget.h
     llm_post_processor.cpp
     llm_post_processor.h
+    spawn_llama_server.cpp
+    spawn_llama_server.h
     ocr_service.cpp
     ocr_service.h
     system_ocr_service.h

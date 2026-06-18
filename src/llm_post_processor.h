@@ -1,14 +1,12 @@
 #pragma once
 
 #include "model_registry.h"
+#include "spawn_llama_server.h"
 
-#include <QFile>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QPointer>
-#include <QProcess>
 #include <QQueue>
-#include <QTimer>
 #include <functional>
 #include <memory>
 
@@ -37,13 +35,6 @@ signals:
     void statusMessage(const QString &message);
 
 private:
-    enum class DownloadKind
-    {
-        None,
-        LlamaArchive,
-        Model
-    };
-
     struct PendingRequest
     {
         QString text;
@@ -53,12 +44,6 @@ private:
         Callback callback;
     };
 
-    QString baseDir() const;
-    QString llamaDir() const;
-    QString modelDir() const;
-    QString llamaArchivePath() const;
-    QString modelPath() const;
-    QString serverExecutablePath() const;
     LlmProviderPreset configuredProvider() const;
     QString configuredEndpoint() const;
     QString configuredModel() const;
@@ -67,29 +52,14 @@ private:
     void shutdown();
 
     void ensureReady();
-    void prepareManagedLocalService();
-    void beginDownload(DownloadKind kind, const QUrl &url, const QString &path);
-    void onDownloadFinished(QNetworkReply *reply);
-    bool extractLlamaArchive(QString *errorMessage);
-    void startServer();
-    void pollHealth();
     void sendCompletion(const PendingRequest &request);
     void drainQueue();
     void failPending(const QString &reason);
     static QString cleanupResponseText(const QString &text);
 
     QNetworkAccessManager m_network;
-    QProcess m_server;
-    QTimer m_healthTimer;
+    LlamaServerManager m_serverManager;
     QQueue<PendingRequest> m_pending;
-    std::unique_ptr<QFile> m_downloadFile;
-    QNetworkReply *m_activeDownload = nullptr;
-    QString m_activeDownloadPath;
-    DownloadKind m_downloadKind = DownloadKind::None;
-    bool m_preparing = false;
-    bool m_serverReady = false;
-    bool m_stopping = false;
-    int m_healthAttempts = 0;
 };
 
 } // namespace talkinput
