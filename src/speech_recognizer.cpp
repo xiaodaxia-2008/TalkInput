@@ -2,6 +2,7 @@
 
 #include "logging.h"
 #include "model_registry.h"
+#include "utils.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
 #include "recognizers/streaming_paraformer_speech_recognizer.h"
@@ -11,7 +12,6 @@
 
 #include <QDir>
 #include <QFileInfo>
-#include <QStandardPaths>
 #include <QtEndian>
 
 #include <algorithm>
@@ -35,12 +35,7 @@ const FileRule *findFileRule(const ModelPreset &preset, const char *configField)
 
 QString modelsCacheDir()
 {
-    QString base =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    if (base.isEmpty()) {
-        base = QDir::current().filePath(QStringLiteral("cache"));
-    }
-    return QDir(base).filePath(QStringLiteral("models"));
+    return QDir(talkinput::appDataDir()).filePath(QStringLiteral("models"));
 }
 
 QString configuredToolPath(const QString &toolDir, const char *configField)

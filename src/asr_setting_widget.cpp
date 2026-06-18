@@ -42,12 +42,7 @@ QString qs(const std::string &value)
 
 QString cacheDir()
 {
-    QString base =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    if (base.isEmpty()) {
-        base = QDir::current().filePath(QStringLiteral("cache"));
-    }
-    return QDir(base).filePath(QStringLiteral("models"));
+    return QDir(talkinput::appDataDir()).filePath(QStringLiteral("models"));
 }
 
 QString formatSize(qint64 bytes)
@@ -1066,6 +1061,7 @@ bool AsrSettingWidget::isInstalled(int row) const
         return true;
     }
     const QString path = QDir(cacheDir()).filePath(m.modelDirName);
+    SPDLOG_DEBUG("model {} cache path: {}", m.modelDirName, path);
     return QFileInfo(path).isDir();
 }
 

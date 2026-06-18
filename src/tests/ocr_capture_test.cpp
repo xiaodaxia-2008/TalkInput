@@ -1,4 +1,5 @@
 #include "logging.h"
+#include "utils.h"
 
 #include <QCursor>
 #include <QDateTime>
@@ -7,7 +8,6 @@
 #include <QImage>
 #include <QPixmap>
 #include <QScreen>
-#include <QStandardPaths>
 #include <QStringList>
 #include <QThread>
 
@@ -43,12 +43,7 @@ int parseDelaySeconds(const QStringList &args)
 
 QString outputDir()
 {
-    QString base =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    if (base.isEmpty()) {
-        base = QDir::current().filePath("cache");
-    }
-    const QString dir = QDir(base).filePath("capture-test");
+    const QString dir = QDir(talkinput::appDataDir()).filePath("capture-test");
     QDir().mkpath(dir);
     return dir;
 }

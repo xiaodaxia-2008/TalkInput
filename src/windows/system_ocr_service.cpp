@@ -1,6 +1,7 @@
 #include "system_ocr_service.h"
 
 #include "logging.h"
+#include "utils.h"
 
 #include <QBuffer>
 #include <QDir>
@@ -399,8 +400,7 @@ QString recognizeWindowsText(QImage image)
 
     if (text.isEmpty()) {
         // Save the temp BMP for debugging when OCR produced empty
-        const QString debugPath = QDir(QStandardPaths::writableLocation(
-                                           QStandardPaths::CacheLocation))
+        const QString debugPath = QDir(talkinput::appDataDir())
                                       .filePath("ocr/ocr-debug-failed.bmp");
         QDir().mkpath(QFileInfo(debugPath).absolutePath());
         image.save(debugPath, "BMP");

@@ -25,7 +25,7 @@ Then search unfinished items in `src/TalkInput_zh.ts` and update them.
 
 ## History
 
-- SQLite DB at `QStandardPaths::AppDataLocation/history.db`, table `recognitions(id, text, created_at)`.
+- SQLite DB at `appDataDir()/history.db`, table `recognitions(id, text, created_at)`.
 
 ## Commit Rule
 

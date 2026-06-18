@@ -3,6 +3,7 @@
 #include "archive_utils.h"
 #include "logging.h"
 #include "model_registry.h"
+#include "utils.h"
 
 #include <QByteArray>
 #include <QCoreApplication>
@@ -12,7 +13,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegularExpression>
-#include <QStandardPaths>
 #include <QUrl>
 
 #ifdef Q_OS_WIN
@@ -260,12 +260,7 @@ void LlmPostProcessor::postProcess(const QString &text,
 
 QString LlmPostProcessor::baseDir() const
 {
-    QString base =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    if (base.isEmpty()) {
-        base = QDir::current().filePath("cache");
-    }
-    return QDir(base).filePath("llm");
+    return QDir(talkinput::appDataDir()).filePath("llm");
 }
 
 QString LlmPostProcessor::llamaDir() const

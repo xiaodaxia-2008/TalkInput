@@ -20,7 +20,6 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QSignalBlocker>
-#include <QStandardPaths>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
 #include <QThread>

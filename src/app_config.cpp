@@ -1,11 +1,11 @@
 #include "app_config.h"
 #include "logging.h"
+#include "utils.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QStandardPaths>
 #include <QTimer>
 
 namespace talkinput
@@ -143,12 +143,7 @@ nlohmann::json appConfigRoot()
 
 QString appConfigPath()
 {
-    QString dir =
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (dir.isEmpty()) {
-        dir = QDir::home().filePath(".config/TalkInput");
-    }
-    return QDir(dir).filePath("config.json");
+    return QDir(talkinput::appDataDir()).filePath("config.json");
 }
 
 bool appConfigContains(const QString &path)

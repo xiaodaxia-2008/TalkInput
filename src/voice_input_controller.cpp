@@ -6,6 +6,7 @@
 #include "ocr_service.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
+#include "utils.h"
 
 #include <QAudioDevice>
 #include <QAudioSource>
@@ -19,7 +20,6 @@
 #include <QPixmap>
 #include <QPropertyAnimation>
 #include <QScreen>
-#include <QStandardPaths>
 #include <QTimer>
 #include <QtEndian>
 
@@ -54,13 +54,7 @@ void saveOcrDebugImage(const QImage &image)
         return;
     }
 
-    QString base =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    if (base.isEmpty()) {
-        base = QDir::current().filePath("cache");
-    }
-
-    const QString dir = QDir(base).filePath("ocr");
+    const QString dir = QDir(talkinput::appDataDir()).filePath("ocr");
     QDir().mkpath(dir);
     const QString timestamp =
         QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");

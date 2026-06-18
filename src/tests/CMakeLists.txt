@@ -12,6 +12,7 @@ add_executable(TalkInputBenchmark
 
 add_executable(TalkInputOcrCaptureTest
     ocr_capture_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils.cpp
 )
 
 add_executable(TalkInputOcrRecognitionTest
@@ -46,6 +47,7 @@ target_link_libraries(TalkInputOcrCaptureTest
     PRIVATE
     Qt6::Core
     Qt6::Gui
+    Qt6::Widgets
     spdlog::spdlog_header_only
 )
 target_compile_definitions(TalkInputOcrCaptureTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)

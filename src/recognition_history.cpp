@@ -1,26 +1,21 @@
 #include "recognition_history.h"
 #include "logging.h"
+#include "utils.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
-#include <QStandardPaths>
 
 namespace talkinput
 {
 
 RecognitionHistory::RecognitionHistory()
 {
-    QString dbDir =
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (dbDir.isEmpty()) {
-        dbDir = QCoreApplication::applicationDirPath();
-    }
-    QDir().mkpath(dbDir);
-
-    const QString dbPath = QDir(dbDir).filePath(QStringLiteral("history.db"));
+    const QString dbPath =
+        QDir(talkinput::appDataDir()).filePath(QStringLiteral("history.db"));
+    QDir().mkpath(talkinput::appDataDir());
 
     m_db = new QSqlDatabase(QSqlDatabase::addDatabase(
         QStringLiteral("QSQLITE"), QStringLiteral("history")));
