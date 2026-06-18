@@ -1,11 +1,11 @@
-#include "streaming_paraformer_recognizer.h"
+#include "streaming_paraformer_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
 namespace talkinput
 {
 
-bool StreamingParaformerRecognizer::configureModel(
+bool StreamingParaformerSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOnlineRecognizerConfig *recognizer,
     QString *errorMessage)
 {

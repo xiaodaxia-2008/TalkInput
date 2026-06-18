@@ -5,10 +5,10 @@
 namespace talkinput
 {
 
-class StreamingParaformerRecognizer final : public OnlineSpeechRecognizer
+class StreamingParaformerSpeechRecognizer final : public OnlineSpeechRecognizer
 {
 public:
-    explicit StreamingParaformerRecognizer(QObject *parent = nullptr)
+    explicit StreamingParaformerSpeechRecognizer(QObject *parent = nullptr)
         : OnlineSpeechRecognizer(parent)
     {
     }

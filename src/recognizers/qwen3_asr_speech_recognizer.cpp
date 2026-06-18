@@ -1,11 +1,11 @@
-#include "qwen3_asr_recognizer.h"
+#include "qwen3_asr_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
 namespace talkinput
 {
 
-bool Qwen3ASRRecognizer::configureModel(
+bool Qwen3ASRSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOfflineRecognizerConfig *recognizer,
     QString *errorMessage)
 {

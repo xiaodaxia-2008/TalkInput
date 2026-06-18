@@ -1,11 +1,11 @@
-#include "sense_voice_recognizer.h"
+#include "sense_voice_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
 namespace talkinput
 {
 
-bool SenseVoiceRecognizer::configureModel(
+bool SenseVoiceSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOfflineRecognizerConfig *recognizer,
     QString *errorMessage)
 {

@@ -1,11 +1,11 @@
-#include "funasr_nano_recognizer.h"
+#include "funasr_nano_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
 namespace talkinput
 {
 
-bool FunASRNanoRecognizer::configureModel(
+bool FunASRNanoSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOfflineRecognizerConfig *recognizer,
     QString *errorMessage)
 {
@@ -53,7 +53,7 @@ bool FunASRNanoRecognizer::configureModel(
     return true;
 }
 
-int FunASRNanoRecognizer::chunkSeconds() const
+int FunASRNanoSpeechRecognizer::chunkSeconds() const
 {
     return 10;
 }

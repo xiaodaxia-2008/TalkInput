@@ -1,11 +1,11 @@
-#include "streaming_transducer_recognizer.h"
+#include "streaming_transducer_speech_recognizer.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
 namespace talkinput
 {
 
-bool StreamingTransducerRecognizer::configureModel(
+bool StreamingTransducerSpeechRecognizer::configureModel(
     const Config &config, SherpaOnnxOnlineRecognizerConfig *recognizer,
     QString *errorMessage)
 {

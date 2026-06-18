@@ -7,10 +7,10 @@
 namespace talkinput
 {
 
-class SenseVoiceRecognizer final : public OfflineSpeechRecognizer
+class Qwen3ASRSpeechRecognizer final : public OfflineSpeechRecognizer
 {
 public:
-    explicit SenseVoiceRecognizer(QObject *parent = nullptr)
+    explicit Qwen3ASRSpeechRecognizer(QObject *parent = nullptr)
         : OfflineSpeechRecognizer(parent)
     {
     }
@@ -21,8 +21,11 @@ protected:
                         QString *errorMessage) override;
 
 private:
-    std::string m_modelPath;
-    std::string m_language;
+    std::string m_convFrontendPath;
+    std::string m_encoderPath;
+    std::string m_decoderPath;
+    std::string m_tokenizerDir;
+    std::string m_hotwords;
 };
 
 } // namespace talkinput
