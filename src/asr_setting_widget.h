@@ -29,7 +29,6 @@ public:
 signals:
     void modelSelected(const QString &modelDirectory, const QString &modelName,
                        const QString &modelType);
-    void statusMessage(const QString &message);
     void hotwordsChanged();
 
 private:

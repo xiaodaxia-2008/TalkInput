@@ -369,9 +369,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             [this, providerCombo, providerAt, applyProvider](int index) {
                 const auto provider = providerAt(index);
                 applyProvider(provider, true);
-                emit statusMessage(tr("LLM provider saved: %1")
-                                       .arg(providerCombo->itemText(
-                                           providerCombo->currentIndex())));
+                spdlog::get("statusbar")
+                    ->info("{}", tr("LLM provider saved: %1")
+                                     .arg(providerCombo->itemText(
+                                         providerCombo->currentIndex())));
             });
     connect(endpointEdit, &QLineEdit::editingFinished, this,
             [this, providerCombo, endpointEdit]() {
@@ -380,7 +381,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 if (providerCombo->currentData().toString() == "custom") {
                     setAppConfigValue("/settings/llm/customEndpoint", endpoint);
                 }
-                emit statusMessage(tr("LLM endpoint saved."));
+                spdlog::get("statusbar")->info("{}", tr("LLM endpoint saved."));
             });
     auto saveModel = [this, providerCombo, modelCombo]() {
         const QString model = modelCombo->currentText().trimmed();
@@ -390,7 +391,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         if (providerId == "custom") {
             setAppConfigValue("/settings/llm/customModel", model);
         }
-        emit statusMessage(tr("LLM model saved."));
+        spdlog::get("statusbar")->info("{}", tr("LLM model saved."));
     };
     connect(modelCombo->lineEdit(), &QLineEdit::editingFinished, this,
             saveModel);
@@ -414,7 +415,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             [this, apiKeyEdit]() {
                 setAppConfigValue("/settings/llm/apiKey",
                                   apiKeyEdit->text().trimmed());
-                emit statusMessage(tr("LLM API key saved."));
+                spdlog::get("statusbar")->info("{}", tr("LLM API key saved."));
             });
     connect(promptEditBtn, &QPushButton::clicked, this,
             [this, refreshPromptLabel]() {
@@ -482,7 +483,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 setAppConfigValue("/settings/llm/userPrompt",
                                   usrEditor->toPlainText().trimmed());
                 refreshPromptLabel();
-                emit statusMessage(tr("LLM prompts saved."));
+                spdlog::get("statusbar")->info("{}", tr("LLM prompts saved."));
             });
 
     llmForm->addRow(tr("Provider"), providerCombo);
@@ -516,8 +517,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(
         llmPostProcessCheck, &QCheckBox::toggled, this, [this](bool checked) {
             setAppConfigValue("/settings/llm/postProcessingEnabled", checked);
-            emit statusMessage(checked ? tr("LLM post-processing enabled.")
-                                       : tr("LLM post-processing disabled."));
+            spdlog::get("statusbar")
+                ->info("{}", checked ? tr("LLM post-processing enabled.")
+                                     : tr("LLM post-processing disabled."));
         });
 
     auto *ocrContextCheck = new QCheckBox(tr("OCR focused context"), this);
@@ -527,8 +529,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         appConfigBool("/settings/ocr/useFocusedInputContext", false));
     connect(ocrContextCheck, &QCheckBox::toggled, this, [this](bool checked) {
         setAppConfigValue("/settings/ocr/useFocusedInputContext", checked);
-        emit statusMessage(checked ? tr("OCR context enabled.")
-                                   : tr("OCR context disabled."));
+        spdlog::get("statusbar")
+            ->info("{}", checked ? tr("OCR context enabled.")
+                                 : tr("OCR context disabled."));
     });
 
     bottomRow->addWidget(archiveBtn);
@@ -749,7 +752,8 @@ void AsrSettingWidget::startModelDownload(const QString &modelPointer)
         return;
     }
 
-    emit statusMessage(tr("Downloading %1...").arg(modelName));
+    spdlog::get("statusbar")
+        ->info("{}", tr("Downloading %1...").arg(modelName));
     m_dlBtn->setEnabled(false);
 
     QNetworkRequest req(archiveUrl);
@@ -767,8 +771,9 @@ void AsrSettingWidget::startModelDownload(const QString &modelPointer)
                     return;
                 }
                 const int pct = static_cast<int>(received * 100 / total);
-                emit statusMessage(
-                    tr("Downloading %1... %2%").arg(modelName).arg(pct));
+                spdlog::get("statusbar")
+                    ->info("{}",
+                           tr("Downloading %1... %2%").arg(modelName).arg(pct));
             });
 }
 
@@ -783,7 +788,7 @@ void AsrSettingWidget::onDeleteCurrent()
     const QString dir =
         QDir(cacheDir()).filePath(modelJsonString(m, "modelDirName"));
     if (!QFileInfo(dir).isDir()) {
-        emit statusMessage(tr("Model not found."));
+        spdlog::get("statusbar")->info("{}", tr("Model not found."));
         return;
     }
 
@@ -798,7 +803,7 @@ void AsrSettingWidget::onDeleteCurrent()
 
     QDir(dir).removeRecursively();
     SPDLOG_INFO("Deleted model: {} ({})", modelName, dir);
-    emit statusMessage(tr("Deleted: %1").arg(modelName));
+    spdlog::get("statusbar")->info("{}", tr("Deleted: %1").arg(modelName));
     refreshStatus();
 }
 
@@ -811,13 +816,15 @@ void AsrSettingWidget::onUseCurrent()
     }
 
     if (!isInstalled(m)) {
-        emit statusMessage(tr("Model not installed. Download first."));
+        spdlog::get("statusbar")
+            ->info("{}", tr("Model not installed. Download first."));
         return;
     }
 
     activateModel(modelPointer);
 
-    emit statusMessage(tr("Model loaded: %1").arg(modelJsonString(m, "name")));
+    spdlog::get("statusbar")
+        ->info("{}", tr("Model loaded: %1").arg(modelJsonString(m, "name")));
 }
 
 void AsrSettingWidget::activateModel(const QString &modelPointer)
@@ -848,7 +855,8 @@ void AsrSettingWidget::activateModel(const QString &modelPointer)
     setAppConfigValue("/settings/model/name", modelName);
     setAppConfigValue("/settings/model/type", modelType);
     emit modelSelected(dir, modelName, modelType);
-    emit statusMessage(tr("Model selected: %1").arg(modelName));
+    spdlog::get("statusbar")
+        ->info("{}", tr("Model selected: %1").arg(modelName));
 }
 
 void AsrSettingWidget::onUseArchive()
@@ -870,14 +878,14 @@ void AsrSettingWidget::onUseArchive()
         return;
     }
 
-    emit statusMessage(tr("Extracting..."));
+    spdlog::get("statusbar")->info("{}", tr("Extracting..."));
     QCoreApplication::processEvents();
 
     QString err;
     if (!extractArchive(path, dest.absolutePath(), &err)) {
         QMessageBox::warning(this, tr("Extraction failed"),
                              tr("Failed:\n%1").arg(err));
-        emit statusMessage(tr("Extraction failed."));
+        spdlog::get("statusbar")->info("{}", tr("Extraction failed."));
         return;
     }
 
@@ -893,12 +901,14 @@ void AsrSettingWidget::onUseArchive()
     if (QFileInfo(modelDir).isDir()) {
         SPDLOG_INFO("Extracted model: {}", modelDir);
         emit modelSelected(modelDir, base, {});
-        emit statusMessage(
-            tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));
+        spdlog::get("statusbar")
+            ->info("{}",
+                   tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));
     }
     else {
-        emit statusMessage(tr("Directory not found: %1")
-                               .arg(QDir::toNativeSeparators(modelDir)));
+        spdlog::get("statusbar")
+            ->info("{}", tr("Directory not found: %1")
+                             .arg(QDir::toNativeSeparators(modelDir)));
     }
 
     refreshStatus();
@@ -957,7 +967,7 @@ void AsrSettingWidget::onEditHotwords()
 
     setAppConfigValue("/settings/model/hotwords",
                       editor->toPlainText().trimmed());
-    emit statusMessage(tr("Hot words saved."));
+    spdlog::get("statusbar")->info("{}", tr("Hot words saved."));
     emit hotwordsChanged();
 }
 
@@ -985,7 +995,7 @@ void AsrSettingWidget::onDownloadFinished()
         QFile::remove(m_activeDownloadTempPath);
         m_activeDownloadFile.reset();
         m_downloadQueue.clear();
-        emit statusMessage(tr("Download failed."));
+        spdlog::get("statusbar")->info("{}", tr("Download failed."));
         refreshStatus();
         return;
     }
@@ -994,13 +1004,14 @@ void AsrSettingWidget::onDownloadFinished()
     QFile::rename(m_activeDownloadTempPath, m_activeDownloadPath);
     m_activeDownloadFile.reset();
 
-    emit statusMessage(tr("Extracting..."));
+    spdlog::get("statusbar")->info("{}", tr("Extracting..."));
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
     QString err;
     if (!extractArchive(m_activeDownloadPath, cacheDir(), &err)) {
         m_downloadQueue.clear();
-        emit statusMessage(tr("Extraction failed: %1").arg(err));
+        spdlog::get("statusbar")
+            ->info("{}", tr("Extraction failed: %1").arg(err));
         refreshStatus();
         return;
     }
@@ -1013,13 +1024,15 @@ void AsrSettingWidget::onDownloadFinished()
         if (QFileInfo(modelDir).isDir() || isInstalled(m)) {
             if (modelPointer.endsWith(QStringLiteral("/postPunctuationModel")))
             {
-                emit statusMessage(
-                    tr("Punctuation model ready: %1").arg(modelName));
+                spdlog::get("statusbar")
+                    ->info("{}",
+                           tr("Punctuation model ready: %1").arg(modelName));
             }
             else {
                 // Don't auto-load — user must click "Use"
-                emit statusMessage(tr("Downloaded: %1. Click \"Use\" to load.")
-                                       .arg(modelName));
+                spdlog::get("statusbar")
+                    ->info("{}", tr("Downloaded: %1. Click \"Use\" to load.")
+                                     .arg(modelName));
             }
         }
     }

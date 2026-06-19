@@ -29,6 +29,7 @@ add_executable(TalkInput
     speech_recognizer.h
     speech_recognizer.cpp
     system_speech_recognizer.h
+    logging.cpp
     logging.h
     recognition_history.cpp
     recognition_history.h

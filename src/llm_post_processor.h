@@ -31,9 +31,6 @@ public:
                      const QString &hotwords, QObject *receiver,
                      Callback callback);
 
-signals:
-    void statusMessage(const QString &message);
-
 private:
     struct PendingRequest
     {

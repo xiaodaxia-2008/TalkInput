@@ -88,8 +88,6 @@ LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
                 this, &LlmPostProcessor::shutdown);
     }
 
-    connect(&m_serverManager, &LlamaServerManager::statusMessage, this,
-            &LlmPostProcessor::statusMessage);
     connect(&m_serverManager, &LlamaServerManager::ready, this,
             &LlmPostProcessor::drainQueue);
     connect(&m_serverManager, &LlamaServerManager::failed, this,
@@ -355,17 +353,18 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                 if (pendingCopy.receiver && pendingCopy.callback) {
                     pendingCopy.callback(result);
                 }
-                emit this->statusMessage(
-                    requestFailed ? tr("LLM post-processing failed; using "
-                                       "original text.")
-                                  : tr("LLM post-processing complete."));
+                spdlog::get("statusbar")
+                    ->info("{}", requestFailed
+                                     ? tr("LLM post-processing failed; using "
+                                          "original text.")
+                                     : tr("LLM post-processing complete."));
             });
 }
 
 void LlmPostProcessor::failPending(const QString &reason)
 {
     SPDLOG_WARN("LLM post-processor fallback: {}", reason);
-    emit statusMessage(reason);
+    spdlog::get("statusbar")->info("{}", reason);
     while (!m_pending.isEmpty()) {
         auto request = m_pending.dequeue();
         if (request.receiver && request.callback) {

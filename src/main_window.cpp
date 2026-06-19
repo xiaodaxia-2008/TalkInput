@@ -85,6 +85,7 @@ void MainWindow::setupUi()
 {
     SPDLOG_DEBUG("MainWindow::setupUi: begin");
     m_ui->setupUi(this);
+    installStatusBarLogger(statusBar());
     SPDLOG_DEBUG("MainWindow::setupUi: ui setup complete");
 
     // ── ASR Service (persistent worker thread) ────────────────
@@ -103,12 +104,12 @@ void MainWindow::setupUi()
             [this](bool success, const QString &error) {
                 if (!success) {
                     SPDLOG_ERROR("ASR model load failed: {}", error);
-                    statusBar()->showMessage(
-                        tr("Model load failed: %1").arg(error));
+                    spdlog::get("statusbar")
+                        ->info("{}", tr("Model load failed: %1").arg(error));
                 }
                 else {
                     SPDLOG_INFO("ASR model loaded successfully");
-                    statusBar()->showMessage(tr("Model ready."));
+                    spdlog::get("statusbar")->info("{}", tr("Model ready."));
                 }
             });
 
@@ -117,10 +118,6 @@ void MainWindow::setupUi()
     m_historyWidget = new HistoryWidget(&m_history, m_ui->historyTab);
     m_ui->historyLayout->addWidget(m_historyWidget);
     SPDLOG_DEBUG("MainWindow::setupUi: HistoryWidget added");
-    connect(
-        m_historyWidget, &HistoryWidget::statusMessage, this,
-        [this](const QString &msg) { statusBar()->showMessage(msg, 2000); });
-
     // ── ASR settings tab ────────────────────────────────────────
     setupAsrSettingWidget();
 
@@ -150,7 +147,7 @@ void MainWindow::setupUi()
     connect(m_fileAction, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
 
-    statusBar()->showMessage(tr("Loading model..."));
+    spdlog::get("statusbar")->info("{}", tr("Loading model..."));
     SPDLOG_INFO("Starting ASR service");
 
     // ── VoiceInputController (global hotkey, overlay, text injection) ─
@@ -160,8 +157,6 @@ void MainWindow::setupUi()
 
     connect(m_voiceInput, &VoiceInputController::listeningChanged, this,
             [this](bool listening) { updateControls(listening); });
-    connect(m_voiceInput, &VoiceInputController::statusMessage, this,
-            [this](const QString &msg) { statusBar()->showMessage(msg); });
     connect(m_voiceInput, &VoiceInputController::finalTextCommitted, this,
             [this](const QString &text) {
                 if (m_historyWidget) {
@@ -282,18 +277,17 @@ void MainWindow::setupAsrSettingWidget()
             setRecognitionModel(dir, name, type);
             m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
         });
-    connect(m_asrSettingWidget, &AsrSettingWidget::statusMessage, this,
-            [this](const QString &msg) { statusBar()->showMessage(msg); });
-    connect(
-        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
-            if (m_currentModelDirectory.isEmpty()) {
-                return;
-            }
-            SPDLOG_INFO("Hot words changed, reloading ASR model...");
-            statusBar()->showMessage(tr("Hot words saved, reloading model..."));
-            QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                      Qt::QueuedConnection);
-        });
+    connect(m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
+            [this]() {
+                if (m_currentModelDirectory.isEmpty()) {
+                    return;
+                }
+                SPDLOG_INFO("Hot words changed, reloading ASR model...");
+                spdlog::get("statusbar")
+                    ->info("{}", tr("Hot words saved, reloading model..."));
+                QMetaObject::invokeMethod(m_asrService, "loadModel",
+                                          Qt::QueuedConnection);
+            });
 }
 
 void MainWindow::setupTrayIcon()
@@ -355,10 +349,10 @@ void MainWindow::updateControls(bool listening)
             m_startAction->setText(tr("Stop recognition"));
             m_startAction->setToolTip(tr("Stop recognition"));
         }
-        statusBar()->showMessage(
-            m_currentModelName.isEmpty()
-                ? tr("Listening...")
-                : tr("Listening — %1").arg(m_currentModelName));
+        spdlog::get("statusbar")
+            ->info("{}", m_currentModelName.isEmpty()
+                             ? tr("Listening...")
+                             : tr("Listening — %1").arg(m_currentModelName));
         if (m_historyWidget) {
             m_historyWidget->setListening(true);
         }
@@ -372,10 +366,11 @@ void MainWindow::updateControls(bool listening)
         if (m_currentModelDirectory.isEmpty() &&
             m_currentModelType != QStringLiteral("System"))
         {
-            statusBar()->showMessage(tr("No model selected"));
+            spdlog::get("statusbar")->info("{}", tr("No model selected"));
         }
         else {
-            statusBar()->showMessage(tr("Model: %1").arg(m_currentModelName));
+            spdlog::get("statusbar")
+                ->info("{}", tr("Model: %1").arg(m_currentModelName));
         }
         if (m_historyWidget) {
             m_historyWidget->setListening(false);
@@ -405,10 +400,10 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     if (m_currentModelDirectory.isEmpty() &&
         m_currentModelType != QStringLiteral("System"))
     {
-        statusBar()->showMessage(tr("No model selected"));
+        spdlog::get("statusbar")->info("{}", tr("No model selected"));
     }
     else {
-        statusBar()->showMessage(tr("Loading model..."));
+        spdlog::get("statusbar")->info("{}", tr("Loading model..."));
     }
     SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
                 m_currentModelDirectory);
@@ -440,21 +435,20 @@ void MainWindow::onResult(const QString &text, bool isFinal)
         QTimer::singleShot(0, m_historyWidget, &HistoryWidget::refreshHistory);
     }
 
-    if (auto *sb = statusBar()) {
-        if (isFinal) {
-            sb->showMessage(m_currentModelName.isEmpty()
-                                ? tr("Listening...")
-                                : tr("Listening — %1").arg(m_currentModelName));
-        }
+    if (isFinal) {
+        spdlog::get("statusbar")
+            ->info("{}", m_currentModelName.isEmpty()
+                             ? tr("Listening...")
+                             : tr("Listening — %1").arg(m_currentModelName));
     }
 }
 
 void MainWindow::onRecognizeFile()
 {
     if (m_asrService && !m_asrService->acceptsExternalAudio()) {
-        statusBar()->showMessage(
-            tr("Selected recognizer does not support audio file recognition."),
-            5000);
+        spdlog::get("statusbar")
+            ->info("{}", tr("Selected recognizer does not support audio file "
+                            "recognition."));
         return;
     }
 
@@ -466,7 +460,7 @@ void MainWindow::onRecognizeFile()
         return;
     }
 
-    statusBar()->showMessage(tr("Decoding audio..."));
+    spdlog::get("statusbar")->info("{}", tr("Decoding audio..."));
     SPDLOG_INFO("Recognizing file: {}", path);
 
     auto *decoder = new QAudioDecoder(this);
@@ -532,12 +526,14 @@ void MainWindow::onRecognizeFile()
     decoder->deleteLater();
 
     if (!ok || allPcm.isEmpty()) {
-        statusBar()->showMessage(tr("Failed to decode audio file."), 5000);
+        spdlog::get("statusbar")
+            ->info("{}", tr("Failed to decode audio file."));
         return;
     }
 
     if (decodedSampleRate <= 0 || decodedChannels <= 0) {
-        statusBar()->showMessage(tr("Failed to decode audio file."), 5000);
+        spdlog::get("statusbar")
+            ->info("{}", tr("Failed to decode audio file."));
         return;
     }
 
@@ -552,7 +548,7 @@ void MainWindow::onRecognizeFile()
             m_asrService->finishSession();
         },
         Qt::QueuedConnection);
-    statusBar()->showMessage(tr("Recognition sent to ASR engine."), 3000);
+    spdlog::get("statusbar")->info("{}", tr("Recognition sent to ASR engine."));
 }
 
 void MainWindow::quitApplication()
@@ -592,10 +588,11 @@ void MainWindow::retranslateUi()
     }
     m_helpMenu->setTitle(tr("Help"));
 
-    statusBar()->showMessage((m_currentModelDirectory.isEmpty() &&
-                              m_currentModelType != QStringLiteral("System"))
-                                 ? tr("No model selected")
-                                 : tr("Model: %1").arg(m_currentModelName));
+    spdlog::get("statusbar")
+        ->info("{}", (m_currentModelDirectory.isEmpty() &&
+                      m_currentModelType != QStringLiteral("System"))
+                         ? tr("No model selected")
+                         : tr("Model: %1").arg(m_currentModelName));
 }
 
 void MainWindow::doSwitchLanguage(const QString &lang)
@@ -693,10 +690,10 @@ void MainWindow::resetUserSettings()
             QMetaObject::invokeMethod(m_asrService, "unloadModel",
                                       Qt::QueuedConnection);
         }
-        statusBar()->showMessage(tr("No model selected"));
+        spdlog::get("statusbar")->info("{}", tr("No model selected"));
     }
 
-    statusBar()->showMessage(tr("Settings reset to defaults."), 3000);
+    spdlog::get("statusbar")->info("{}", tr("Settings reset to defaults."));
 }
 
 } // namespace talkinput

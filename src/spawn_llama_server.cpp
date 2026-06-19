@@ -348,7 +348,7 @@ void LlamaServerManager::prepare()
     QDir().mkpath(modelDir());
 
     if (serverExecutablePath().isEmpty()) {
-        emit statusMessage(tr("Downloading LLM runtime..."));
+        spdlog::get("statusbar")->info("{}", tr("Downloading LLM runtime..."));
         beginDownload(DownloadKind::LlamaArchive, LlamaArchiveUrl,
                       llamaArchivePath());
         return;
@@ -361,7 +361,7 @@ void LlamaServerManager::prepare()
     }
 
     if (!QFileInfo(localModelPath).isFile()) {
-        emit statusMessage(tr("Downloading LLM model..."));
+        spdlog::get("statusbar")->info("{}", tr("Downloading LLM model..."));
         const LocalModelInfo info = localModelInfo();
         if (info.url.isEmpty()) {
             emit failed(tr("LLM local model URL is not configured."));
@@ -400,8 +400,9 @@ void LlamaServerManager::beginDownload(DownloadKind kind, const QUrl &url,
                     return;
                 }
                 const int percent = static_cast<int>(received * 100 / total);
-                emit statusMessage(
-                    tr("Downloading LLM component %1%...").arg(percent));
+                spdlog::get("statusbar")
+                    ->info("{}",
+                           tr("Downloading LLM component %1%...").arg(percent));
             });
     SPDLOG_INFO("LLM download started: {}", url.toString());
 }
@@ -435,7 +436,7 @@ void LlamaServerManager::onDownloadFinished(QNetworkReply *reply)
     m_downloadFile.reset();
 
     if (m_downloadKind == DownloadKind::LlamaArchive) {
-        emit statusMessage(tr("Extracting LLM runtime..."));
+        spdlog::get("statusbar")->info("{}", tr("Extracting LLM runtime..."));
         QString error;
         if (!extractLlamaArchive(&error)) {
             emit this->failed(
@@ -478,7 +479,7 @@ void LlamaServerManager::startServer()
     m_server.setArguments({"-m", modelPath(), "--host", "127.0.0.1", "--port",
                            QString::number(ServerPort), "-c", "1024"});
 
-    emit statusMessage(tr("Starting LLM service..."));
+    spdlog::get("statusbar")->info("{}", tr("Starting LLM service..."));
     SPDLOG_INFO("Starting llama-server: {}", executable);
     m_server.start();
     m_healthAttempts = 0;
@@ -507,7 +508,7 @@ void LlamaServerManager::pollHealth()
         m_healthTimer.stop();
         m_preparing = false;
         m_ready = true;
-        emit statusMessage(tr("LLM service ready."));
+        spdlog::get("statusbar")->info("{}", tr("LLM service ready."));
         emit ready();
     });
 }

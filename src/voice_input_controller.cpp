@@ -226,8 +226,6 @@ VoiceInputController::VoiceInputController(AsrService *asrService,
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
     m_ocrService = createOcrService(this);
-    connect(m_llmPostProcessor, &LlmPostProcessor::statusMessage, this,
-            &VoiceInputController::statusMessage);
     registerHotKey();
 
     connect(m_asrService, &AsrService::resultChanged, this,
@@ -270,8 +268,9 @@ bool VoiceInputController::startListening()
 
     if (!m_asrService->isModelLoaded()) {
         SPDLOG_WARN("ASR model not loaded");
-        emit statusMessage(
-            tr("Model not loaded yet. Please wait or select a model."));
+        spdlog::get("statusbar")
+            ->info("{}",
+                   tr("Model not loaded yet. Please wait or select a model."));
         return false;
     }
 
@@ -290,7 +289,7 @@ bool VoiceInputController::startListening()
     const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
     if (inputDevice.isNull()) {
         SPDLOG_ERROR("No audio input device");
-        emit statusMessage(tr("No microphone available."));
+        spdlog::get("statusbar")->info("{}", tr("No microphone available."));
         return false;
     }
 
@@ -306,7 +305,8 @@ bool VoiceInputController::startListening()
 
     if (!inputDevice.isFormatSupported(m_audioFormat)) {
         SPDLOG_ERROR("Audio format not supported");
-        emit statusMessage(tr("Microphone format not supported."));
+        spdlog::get("statusbar")
+            ->info("{}", tr("Microphone format not supported."));
         return false;
     }
 
@@ -315,7 +315,7 @@ bool VoiceInputController::startListening()
     if (!m_audioDevice) {
         SPDLOG_ERROR("Failed to start microphone");
         m_audioSource.reset();
-        emit statusMessage(tr("Failed to start microphone."));
+        spdlog::get("statusbar")->info("{}", tr("Failed to start microphone."));
         return false;
     }
 
@@ -390,7 +390,8 @@ void VoiceInputController::postProcessFinalText(const QString &text)
     auto submitToLlm = [this, finalText](const QString &ocrContext) {
         if (m_llmPostProcessor->isEnabled()) {
             SPDLOG_DEBUG("OCR context sent to LLM: {}", ocrContext.trimmed());
-            emit statusMessage(tr("Post-processing recognition result..."));
+            spdlog::get("statusbar")
+                ->info("{}", tr("Post-processing recognition result..."));
         }
         const QString hotwords = appConfigString("/settings/model/hotwords");
         m_llmPostProcessor->postProcess(
@@ -437,7 +438,8 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
     SPDLOG_DEBUG("OCR context screenshot captured: {}x{}", image.width(),
                  image.height());
-    emit statusMessage(tr("Reading focused input context..."));
+    spdlog::get("statusbar")
+        ->info("{}", tr("Reading focused input context..."));
     m_ocrService->recognizeText(
         image, this, [submitToLlm](const QString &contextText) mutable {
             const QString result = contextText.trimmed();

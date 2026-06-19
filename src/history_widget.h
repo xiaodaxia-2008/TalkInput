@@ -25,9 +25,6 @@ public:
     void setRealtimeText(const QString &text);
     void retranslateUi();
 
-signals:
-    void statusMessage(const QString &message);
-
 private:
     void editEntry(int row);
     void copyEntry(int row);

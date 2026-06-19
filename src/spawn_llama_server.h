@@ -25,7 +25,6 @@ public:
     bool isReady() const;
 
 signals:
-    void statusMessage(const QString &message);
     void ready();
     void failed(const QString &reason);
 
