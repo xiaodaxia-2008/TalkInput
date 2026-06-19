@@ -40,7 +40,7 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     m_ui->table->setColumnWidth(3, 32);
     m_ui->table->verticalHeader()->hide();
     m_ui->table->verticalHeader()->setDefaultSectionSize(30);
-    retranslateUi();
+    refreshHistory();
     SPDLOG_DEBUG("HistoryWidget: constructor end");
 }
 
@@ -50,7 +50,8 @@ void HistoryWidget::changeEvent(QEvent *event)
 {
     QWidget::changeEvent(event);
     if (event->type() == QEvent::LanguageChange) {
-        retranslateUi();
+        m_ui->retranslateUi(this);
+        refreshHistory();
     }
 }
 
@@ -132,12 +133,6 @@ void HistoryWidget::setRealtimeText(const QString &text)
 
     m_ui->realtimeLabel->setText(trimmed);
     m_ui->realtimeLabel->show();
-}
-
-void HistoryWidget::retranslateUi()
-{
-    m_ui->retranslateUi(this);
-    refreshHistory();
 }
 
 void HistoryWidget::editEntry(int row)

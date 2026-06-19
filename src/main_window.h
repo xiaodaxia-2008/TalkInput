@@ -51,7 +51,6 @@ private:
     void onResult(const QString &text, bool isFinal);
     void onRecognizeFile();
     void quitApplication();
-    void retranslateUi();
     void doSwitchLanguage(const QString &lang);
     void resetUserSettings();
 

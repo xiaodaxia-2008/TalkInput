@@ -28,7 +28,6 @@ public:
     void refreshHistory();
     void setListening(bool listening);
     void setRealtimeText(const QString &text);
-    void retranslateUi();
 
 protected:
     void changeEvent(QEvent *event) override;

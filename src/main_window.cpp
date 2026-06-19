@@ -85,9 +85,40 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::changeEvent(QEvent *event)
 {
     QMainWindow::changeEvent(event);
-    if (event->type() == QEvent::LanguageChange) {
-        retranslateUi();
+    if (event->type() != QEvent::LanguageChange) {
+        return;
     }
+
+    m_ui->retranslateUi(this);
+    m_recognitionToolBar->setWindowTitle(tr("Recognition"));
+    if (m_fileAction) {
+        m_fileAction->setText(tr("Recognize file"));
+        m_fileAction->setToolTip(tr("Import an audio file for recognition"));
+    }
+    if (m_startAction) {
+        const bool listening = m_voiceInput && m_voiceInput->isListening();
+        m_startAction->setText(listening ? tr("Stop recognition")
+                                         : tr("Start recognition"));
+        m_startAction->setToolTip(listening ? tr("Stop recognition")
+                                            : tr("Start recognition"));
+    }
+
+    m_exitAction->setText(tr("Exit"));
+    m_prefMenu->setTitle(tr("Preferences"));
+    m_langMenu->setTitle(tr("Language"));
+    m_zhAction->setText(tr("Chinese"));
+    m_enAction->setText(tr("English"));
+    m_startHiddenAction->setText(tr("Start minimized"));
+    if (m_resetSettingsAction) {
+        m_resetSettingsAction->setText(tr("Reset Settings"));
+    }
+    m_helpMenu->setTitle(tr("Help"));
+
+    spdlog::get("statusbar")
+        ->info("{}", (m_currentModelDirectory.isEmpty() &&
+                      m_currentModelType != QStringLiteral("System"))
+                         ? tr("No model selected")
+                         : tr("Model: %1").arg(m_currentModelName));
 }
 
 void MainWindow::setupUi()
@@ -564,44 +595,6 @@ void MainWindow::quitApplication()
 {
     m_forceQuit = true;
     qApp->quit();
-}
-
-void MainWindow::retranslateUi()
-{
-    m_ui->retranslateUi(this);
-    if (m_historyWidget) {
-        m_historyWidget->retranslateUi();
-    }
-
-    m_recognitionToolBar->setWindowTitle(tr("Recognition"));
-    if (m_fileAction) {
-        m_fileAction->setText(tr("Recognize file"));
-        m_fileAction->setToolTip(tr("Import an audio file for recognition"));
-    }
-    if (m_startAction) {
-        const bool listening = m_voiceInput && m_voiceInput->isListening();
-        m_startAction->setText(listening ? tr("Stop recognition")
-                                         : tr("Start recognition"));
-        m_startAction->setToolTip(listening ? tr("Stop recognition")
-                                            : tr("Start recognition"));
-    }
-
-    m_exitAction->setText(tr("Exit"));
-    m_prefMenu->setTitle(tr("Preferences"));
-    m_langMenu->setTitle(tr("Language"));
-    m_zhAction->setText(tr("Chinese"));
-    m_enAction->setText(tr("English"));
-    m_startHiddenAction->setText(tr("Start minimized"));
-    if (m_resetSettingsAction) {
-        m_resetSettingsAction->setText(tr("Reset Settings"));
-    }
-    m_helpMenu->setTitle(tr("Help"));
-
-    spdlog::get("statusbar")
-        ->info("{}", (m_currentModelDirectory.isEmpty() &&
-                      m_currentModelType != QStringLiteral("System"))
-                         ? tr("No model selected")
-                         : tr("Model: %1").arg(m_currentModelName));
 }
 
 void MainWindow::doSwitchLanguage(const QString &lang)
