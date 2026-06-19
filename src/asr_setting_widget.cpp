@@ -330,7 +330,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 if (providerCombo->currentData().toString() == "custom") {
                     setAppConfigValue("/settings/llm/customEndpoint", endpoint);
                 }
-                spdlog::get("statusbar")->info("{}", tr("LLM endpoint saved."));
+                spdlog::get("statusbar")->info("{}", tr("LLM endpoint saved"));
             });
     auto saveModel = [this, providerCombo, modelCombo]() {
         const QString model = modelCombo->currentText().trimmed();
@@ -340,7 +340,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         if (providerId == "custom") {
             setAppConfigValue("/settings/llm/customModel", model);
         }
-        spdlog::get("statusbar")->info("{}", tr("LLM model saved."));
+        spdlog::get("statusbar")->info("{}", tr("LLM model saved"));
     };
     connect(modelCombo->lineEdit(), &QLineEdit::editingFinished, this,
             saveModel);
@@ -364,7 +364,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             [this, apiKeyEdit]() {
                 setAppConfigValue("/settings/llm/apiKey",
                                   apiKeyEdit->text().trimmed());
-                spdlog::get("statusbar")->info("{}", tr("LLM API key saved."));
+                spdlog::get("statusbar")->info("{}", tr("LLM API key saved"));
             });
     connect(promptEditBtn, &QPushButton::clicked, this, [this]() {
         QDialog dialog(this);
@@ -428,7 +428,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         setAppConfigValue("/settings/llm/userPrompt",
                           usrEditor->toPlainText().trimmed());
         refreshPromptLabel();
-        spdlog::get("statusbar")->info("{}", tr("LLM prompts saved."));
+        spdlog::get("statusbar")->info("{}", tr("LLM prompts saved"));
     });
 
     auto *hotwordsBtn = m_ui->hotwordsButton;
@@ -715,7 +715,7 @@ void AsrSettingWidget::onDeleteCurrent()
     const QString dir =
         QDir(cacheDir()).filePath(modelJsonString(m, "modelDirName"));
     if (!QFileInfo(dir).isDir()) {
-        spdlog::get("statusbar")->info("{}", tr("Model not found."));
+        spdlog::get("statusbar")->info("{}", tr("Model not found"));
         return;
     }
 
@@ -856,7 +856,7 @@ void AsrSettingWidget::onEditHotwords()
         }
         setAppConfigValue("/settings/asr/hotwords", std::move(arr));
     }
-    spdlog::get("statusbar")->info("{}", tr("Hot words saved."));
+    spdlog::get("statusbar")->info("{}", tr("Hot words saved"));
     emit hotwordsChanged();
 }
 
@@ -884,7 +884,7 @@ void AsrSettingWidget::onDownloadFinished()
         QFile::remove(m_activeDownloadTempPath);
         m_activeDownloadFile.reset();
         m_downloadQueue.clear();
-        spdlog::get("statusbar")->info("{}", tr("Download failed."));
+        spdlog::get("statusbar")->info("{}", tr("Download failed"));
         refreshStatus();
         return;
     }

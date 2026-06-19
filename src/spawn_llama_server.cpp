@@ -508,7 +508,7 @@ void LlamaServerManager::pollHealth()
         m_healthTimer.stop();
         m_preparing = false;
         m_ready = true;
-        spdlog::get("statusbar")->info("{}", tr("LLM service ready."));
+        spdlog::get("statusbar")->info("{}", tr("LLM service ready"));
         emit ready();
     });
 }

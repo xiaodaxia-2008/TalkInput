@@ -177,7 +177,7 @@ void HistoryWidget::editEntry(int row)
 
     m_history->updateEntry(entry.id, newText);
     refreshHistory();
-    spdlog::get("statusbar")->info("{}", tr("Updated."));
+    spdlog::get("statusbar")->info("{}", tr("Updated"));
 }
 
 void HistoryWidget::copyEntry(int row)
@@ -192,7 +192,7 @@ void HistoryWidget::copyEntry(int row)
     }
 
     QApplication::clipboard()->setText(entries.at(row).text);
-    spdlog::get("statusbar")->info("{}", tr("Copied."));
+    spdlog::get("statusbar")->info("{}", tr("Copied"));
 }
 
 void HistoryWidget::deleteEntry(int row)
@@ -205,7 +205,7 @@ void HistoryWidget::deleteEntry(int row)
     const int id = item->data(Qt::UserRole).toInt();
     m_history->deleteEntry(id);
     refreshHistory();
-    spdlog::get("statusbar")->info("{}", tr("Deleted."));
+    spdlog::get("statusbar")->info("{}", tr("Deleted"));
 }
 
 void HistoryWidget::clearHistory()
@@ -224,7 +224,7 @@ void HistoryWidget::clearHistory()
 
     m_history->clearAll();
     refreshHistory();
-    spdlog::get("statusbar")->info("{}", tr("History cleared."));
+    spdlog::get("statusbar")->info("{}", tr("History cleared"));
 }
 
 } // namespace talkinput

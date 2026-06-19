@@ -289,7 +289,7 @@ bool VoiceInputController::startListening()
     const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
     if (inputDevice.isNull()) {
         SPDLOG_ERROR("No audio input device");
-        spdlog::get("statusbar")->info("{}", tr("No microphone available."));
+        spdlog::get("statusbar")->info("{}", tr("No microphone available"));
         return false;
     }
 
@@ -315,7 +315,7 @@ bool VoiceInputController::startListening()
     if (!m_audioDevice) {
         SPDLOG_ERROR("Failed to start microphone");
         m_audioSource.reset();
-        spdlog::get("statusbar")->info("{}", tr("Failed to start microphone."));
+        spdlog::get("statusbar")->info("{}", tr("Failed to start microphone"));
         return false;
     }
 

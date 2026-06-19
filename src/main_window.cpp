@@ -117,7 +117,9 @@ void MainWindow::setupUi()
                         ->error("{}", tr("Model load failed: %1").arg(error));
                 }
                 else {
-                    spdlog::get("statusbar")->info("{}", tr("Model ready."));
+                    spdlog::get("statusbar")->info(
+                        "{}",
+                        tr("Model ready: %1").arg(m_currentModelName));
                 }
             });
 
@@ -381,7 +383,9 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
         spdlog::get("statusbar")->info("{}", tr("No model selected"));
     }
     else {
-        spdlog::get("statusbar")->info("{}", tr("Loading model..."));
+        spdlog::get("statusbar")->info(
+            "{}",
+            tr("Loading %1...").arg(m_currentModelName));
     }
     SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
                 m_currentModelDirectory);
@@ -524,7 +528,7 @@ void MainWindow::onRecognizeFile()
             m_asrService->finishSession();
         },
         Qt::QueuedConnection);
-    spdlog::get("statusbar")->info("{}", tr("Recognition sent to ASR engine."));
+    spdlog::get("statusbar")->info("{}", tr("Recognition sent to ASR engine"));
 }
 
 void MainWindow::quitApplication()
@@ -604,7 +608,7 @@ void MainWindow::resetUserSettings()
         spdlog::get("statusbar")->info("{}", tr("No model selected"));
     }
 
-    spdlog::get("statusbar")->info("{}", tr("Settings reset to defaults."));
+    spdlog::get("statusbar")->info("{}", tr("Settings reset to defaults"));
 }
 
 } // namespace talkinput
