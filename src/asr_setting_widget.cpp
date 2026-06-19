@@ -148,17 +148,9 @@ void AsrSettingWidget::initLlmProviders()
             combo->addItem(jsonString(preset, "name"), id);
     }
 
-    // Provider changed → apply UI + persist selection
-    connect(combo, &QComboBox::currentIndexChanged, this, [=]() {
-        const auto p = llmProviderPreset(combo);
-        if (!p.is_object()) return;
-        applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
-        setAppConfigValue("/settings/llm/providerId",
-                          llmProviderId(combo).toStdString());
-        spdlog::get("statusbar")->info(
-            "{}",
-            tr("LLM provider saved: %1").arg(combo->currentText()));
-    });
+    // Provider changed
+    connect(combo, &QComboBox::currentIndexChanged, this,
+            &AsrSettingWidget::onLlmProviderChanged);
 
     // Endpoint edited
     connect(endpointEdit, &QLineEdit::editingFinished, this, [=]() {
@@ -192,6 +184,20 @@ void AsrSettingWidget::initLlmProviders()
     const auto p = llmProviderPreset(combo);
     if (p.is_object())
         applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
+}
+
+void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
+{
+    auto *combo = m_ui->providerCombo;
+    const auto p = llmProviderPreset(combo);
+    if (!p.is_object()) return;
+
+    applyProviderToUi(p, m_ui->endpointEdit, m_ui->llmModelCombo,
+                      m_ui->apiKeyEdit);
+    setAppConfigValue("/settings/llm/providerId",
+                      llmProviderId(combo).toStdString());
+    spdlog::get("statusbar")->info(
+        "{}", tr("LLM provider saved: %1").arg(combo->currentText()));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -271,10 +277,14 @@ void AsrSettingWidget::initOcrProvider()
     const int idx = combo->findData(savedId);
     if (idx >= 0) combo->setCurrentIndex(idx);
 
-    connect(combo, &QComboBox::currentIndexChanged, this, [combo](int) {
-        setAppConfigValue("/settings/ocr/providerId",
-                          combo->currentData().toString());
-    });
+    connect(combo, &QComboBox::currentIndexChanged, this,
+            &AsrSettingWidget::onOcrProviderChanged);
+}
+
+void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
+{
+    setAppConfigValue("/settings/ocr/providerId",
+                      m_ui->ocrCombo->currentData().toString());
 }
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -37,6 +37,8 @@ signals:
     void hotwordsChanged();
 
 private:
+    void onLlmProviderChanged(int index);
+    void onOcrProviderChanged(int index);
     void onAsrModelChanged(int index);
     void refreshStatus();
     void onUseCurrent();
