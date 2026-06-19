@@ -43,7 +43,6 @@ private:
     void setRecognitionModel(const QString &modelDirectory,
                              const QString &modelName = QString(),
                              const QString &modelType = QString());
-    void onResult(const QString &text, bool isFinal);
     void onRecognizeFile();
     void quitApplication();
     void doSwitchLanguage(const QString &lang);

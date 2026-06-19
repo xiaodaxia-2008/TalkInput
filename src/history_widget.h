@@ -26,8 +26,6 @@ public:
     ~HistoryWidget() override;
 
     void refreshHistory();
-    void setListening(bool listening);
-    void setRealtimeText(const QString &text);
 
 protected:
     void changeEvent(QEvent *event) override;

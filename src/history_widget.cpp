@@ -28,7 +28,6 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
 {
     SPDLOG_DEBUG("HistoryWidget: constructor begin");
     m_ui->setupUi(this);
-    m_ui->realtimeLabel->hide();
     connect(m_ui->clearButton, &QPushButton::clicked, this,
             &HistoryWidget::clearHistory);
 
@@ -111,28 +110,6 @@ void HistoryWidget::refreshHistory()
 
     m_ui->table->setUpdatesEnabled(true);
     SPDLOG_DEBUG("HistoryWidget::refreshHistory: end");
-}
-
-void HistoryWidget::setListening(bool listening)
-{
-    if (listening) {
-        m_ui->realtimeLabel->clear();
-        m_ui->realtimeLabel->show();
-        return;
-    }
-
-    m_ui->realtimeLabel->hide();
-}
-
-void HistoryWidget::setRealtimeText(const QString &text)
-{
-    const QString trimmed = text.trimmed();
-    if (trimmed.isEmpty()) {
-        return;
-    }
-
-    m_ui->realtimeLabel->setText(trimmed);
-    m_ui->realtimeLabel->show();
 }
 
 void HistoryWidget::editEntry(int row)

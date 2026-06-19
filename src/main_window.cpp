@@ -136,8 +136,9 @@ void MainWindow::setupUi()
     // resultChanged comes from VoiceInputController → onResult
     connect(m_voiceInput, &VoiceInputController::finalTextCommitted, this,
             [this](const QString &text) {
+                m_history.addEntry(text);
                 if (m_historyWidget) {
-                    m_historyWidget->setRealtimeText(text);
+                    m_historyWidget->refreshHistory();
                 }
             });
     connect(m_voiceInput, &VoiceInputController::listeningChanged, this,
@@ -319,9 +320,6 @@ void MainWindow::updateControls(bool listening)
             ->info("{}", m_currentModelName.isEmpty()
                              ? tr("Listening...")
                              : tr("Listening — %1").arg(m_currentModelName));
-        if (m_historyWidget) {
-            m_historyWidget->setListening(true);
-        }
     }
     else {
         m_ui->actionStartRecognition->setIcon(
@@ -337,32 +335,6 @@ void MainWindow::updateControls(bool listening)
             spdlog::get("statusbar")
                 ->info("{}", tr("Model: %1").arg(m_currentModelName));
         }
-        if (m_historyWidget) {
-            m_historyWidget->setListening(false);
-        }
-    }
-}
-
-void MainWindow::onResult(const QString &text, bool isFinal)
-{
-    if (isFinal) {
-        SPDLOG_INFO("[final] {}", text);
-    }
-
-    if (!isFinal && !text.trimmed().isEmpty()) {
-        m_historyWidget->setRealtimeText(text);
-    }
-
-    if (isFinal && !text.trimmed().isEmpty()) {
-        m_historyWidget->setRealtimeText(text);
-        QTimer::singleShot(0, m_historyWidget, &HistoryWidget::refreshHistory);
-    }
-
-    if (isFinal) {
-        spdlog::get("statusbar")
-            ->info("{}", m_currentModelName.isEmpty()
-                             ? tr("Listening...")
-                             : tr("Listening — %1").arg(m_currentModelName));
     }
 }
 
