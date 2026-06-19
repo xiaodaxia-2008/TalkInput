@@ -40,14 +40,14 @@ private:
     void onLlmProviderChanged(int index);
     void onOcrProviderChanged(int index);
     void onAsrModelChanged(int index);
-    void refreshStatus();
-    void onUseCurrent();
+    void refreshAsrStatus();
+    void onUseAsrModel();
     void onEditHotwords();
     void onEditPrompt();
 
     // Init helpers
     void initLlmProviders();
-    void initPrompt();
+    void initLlmPrompt();
     void initOcrProvider();
     void initLlmChecks();
     void initAsrModel();
@@ -55,19 +55,19 @@ private:
 
     // Download helpers
     void startModelDownload(const QString &modelPointer);
-    void onDownloadFinished();
-    bool isInstalled(const nlohmann::json &model) const;
-    QString currentModelPointer() const;
+    void onModelDownloadFinished();
+    bool isAsrModelInstalled(const nlohmann::json &model) const;
+    QString currentAsrPresetPath() const;
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
 
     // Download state
-    QNetworkAccessManager *m_networkManager = nullptr;
-    QNetworkReply *m_activeDownloadReply = nullptr;
-    std::unique_ptr<QFile> m_activeDownloadFile;
-    QString m_activeDownloadPath;
-    QString m_activeDownloadTempPath;
-    QString m_downloadTargetPointer;
+    QNetworkAccessManager *m_downloadManager = nullptr;
+    QNetworkReply *m_downloadReply = nullptr;
+    std::unique_ptr<QFile> m_downloadFile;
+    QString m_downloadArchivePath;
+    QString m_downloadTempPath;
+    QString m_downloadingModelPath;
     QQueue<QString> m_downloadQueue;
 
     // Active ASR model — tracks which preset is currently loaded

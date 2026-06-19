@@ -110,10 +110,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::AsrSettingWidget>())
 {
     m_ui->setupUi(this);
-    m_networkManager = new QNetworkAccessManager(this);
+    m_downloadManager = new QNetworkAccessManager(this);
 
     initLlmProviders();
-    initPrompt();
+    initLlmPrompt();
     initOcrProvider();
     initLlmChecks();
     initAsrModel();
@@ -139,7 +139,7 @@ void AsrSettingWidget::initLlmProviders()
     modelCombo->lineEdit()->setPlaceholderText(
         tr("Model name sent to the LLM service"));
 
-    // Populate — store only the provider ID, same as OCR combo
+    // Populate — store only the provider ID
     const nlohmann::json presets = appConfigValue("/llmPresets");
     for (const auto &[key, preset] : presets.items()) {
         if (!preset.is_object()) continue;
@@ -147,10 +147,6 @@ void AsrSettingWidget::initLlmProviders()
         if (!id.isEmpty())
             combo->addItem(jsonString(preset, "name"), id);
     }
-
-    // Provider changed
-    connect(combo, &QComboBox::currentIndexChanged, this,
-            &AsrSettingWidget::onLlmProviderChanged);
 
     // Endpoint edited
     connect(endpointEdit, &QLineEdit::editingFinished, this, [=]() {
@@ -176,7 +172,7 @@ void AsrSettingWidget::initLlmProviders()
         spdlog::get("statusbar")->info("{}", tr("LLM API key saved"));
     });
 
-    // Restore saved provider
+    // Restore saved provider (before connecting signal to avoid double-fire)
     const QString savedId = appConfigString("/settings/llm/providerId");
     const int idx = combo->findData(savedId);
     if (idx >= 0) combo->setCurrentIndex(idx);
@@ -184,6 +180,9 @@ void AsrSettingWidget::initLlmProviders()
     const auto p = llmProviderPreset(combo);
     if (p.is_object())
         applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
+
+    connect(combo, &QComboBox::currentIndexChanged, this,
+            &AsrSettingWidget::onLlmProviderChanged);
 }
 
 void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
@@ -201,10 +200,10 @@ void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Prompt
+// LLM Prompt
 // ──────────────────────────────────────────────────────────────────────────
 
-void AsrSettingWidget::initPrompt()
+void AsrSettingWidget::initLlmPrompt()
 {
     connect(m_ui->promptEditButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditPrompt);
@@ -413,7 +412,7 @@ void AsrSettingWidget::initAsrModel()
     connect(combo, &QComboBox::currentIndexChanged, this,
             &AsrSettingWidget::onAsrModelChanged);
     connect(m_ui->useButton, &QPushButton::clicked, this,
-            &AsrSettingWidget::onUseCurrent);
+            &AsrSettingWidget::onUseAsrModel);
 
     if (combo->count() > 0) onAsrModelChanged(combo->currentIndex());
 }
@@ -438,13 +437,13 @@ void AsrSettingWidget::onAsrModelChanged(int index)
     m_ui->useButton->setEnabled(!isActive);
 }
 
-void AsrSettingWidget::refreshStatus()
+void AsrSettingWidget::refreshAsrStatus()
 {
     if (m_ui->modelCombo->count() > 0)
         onAsrModelChanged(m_ui->modelCombo->currentIndex());
 }
 
-QString AsrSettingWidget::currentModelPointer() const
+QString AsrSettingWidget::currentAsrPresetPath() const
 {
     const int ci = m_ui->modelCombo->currentIndex();
     if (ci < 0) return {};
@@ -455,9 +454,9 @@ QString AsrSettingWidget::currentModelPointer() const
 // Use / Download
 // ──────────────────────────────────────────────────────────────────────────
 
-void AsrSettingWidget::onUseCurrent()
+void AsrSettingWidget::onUseAsrModel()
 {
-    const QString ptr = currentModelPointer();
+    const QString ptr = currentAsrPresetPath();
     const nlohmann::json m = appConfigValue(ptr.toStdString());
     if (!m.is_object()) return;
 
@@ -465,7 +464,7 @@ void AsrSettingWidget::onUseCurrent()
     const bool isSystem =
         jsonString(m, "type") == QLatin1StringView("System");
 
-    if (!isSystem && !isInstalled(m)) {
+    if (!isSystem && !isAsrModelInstalled(m)) {
         // Queue download, then load on completion
         const QUrl url(jsonString(m, "url"));
         if (url.isEmpty()) return;
@@ -473,13 +472,13 @@ void AsrSettingWidget::onUseCurrent()
         QDir cache(appDataDir() + QStringLiteral("/models"));
         if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) return;
 
-        m_downloadTargetPointer = ptr;
+        m_downloadingModelPath = ptr;
         m_downloadQueue.clear();
         m_downloadQueue.enqueue(ptr);
 
         const nlohmann::json punct =
             m.value("postPunctuationModel", nlohmann::json::object());
-        if (punct.is_object() && !punct.empty() && !isInstalled(punct) &&
+        if (punct.is_object() && !punct.empty() && !isAsrModelInstalled(punct) &&
             !QUrl(jsonString(punct, "url")).isEmpty()) {
             m_downloadQueue.enqueue(
                 ptr + QStringLiteral("/postPunctuationModel"));
@@ -496,12 +495,12 @@ void AsrSettingWidget::onUseCurrent()
     auto *vc = VoiceInputController::instance();
     if (vc) vc->loadModel(m);
     m_activeAsrId = modelId;
-    refreshStatus();
+    refreshAsrStatus();
     spdlog::get("statusbar")->info(
         "{}", tr("Model loaded: %1").arg(jsonString(m, "name")));
 }
 
-bool AsrSettingWidget::isInstalled(const nlohmann::json &model) const
+bool AsrSettingWidget::isAsrModelInstalled(const nlohmann::json &model) const
 {
     if (!model.is_object()) return false;
     const QString type = jsonString(model, "type");
@@ -522,39 +521,39 @@ void AsrSettingWidget::startModelDownload(const QString &modelPointer)
     const QString modelName = jsonString(m, "name");
     const QString archiveName = QFileInfo(url.path()).fileName();
 
-    m_activeDownloadPath =
+    m_downloadArchivePath =
         appDataDir() + QStringLiteral("/models/") + archiveName;
-    m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
-    m_downloadTargetPointer = modelPointer;
+    m_downloadTempPath = m_downloadArchivePath + QStringLiteral(".part");
+    m_downloadingModelPath = modelPointer;
 
-    QFile::remove(m_activeDownloadTempPath);
-    m_activeDownloadFile = std::make_unique<QFile>(m_activeDownloadTempPath);
-    if (!m_activeDownloadFile->open(QIODevice::WriteOnly)) {
-        m_downloadTargetPointer.clear();
+    QFile::remove(m_downloadTempPath);
+    m_downloadFile = std::make_unique<QFile>(m_downloadTempPath);
+    if (!m_downloadFile->open(QIODevice::WriteOnly)) {
+        m_downloadingModelPath.clear();
         spdlog::get("statusbar")->info(
             "{}", tr("Failed to download %1").arg(modelName));
         return;
     }
 
     QNetworkRequest request(url);
-    m_activeDownloadReply = m_networkManager->get(request);
-    connect(m_activeDownloadReply, &QNetworkReply::finished, this,
-            &AsrSettingWidget::onDownloadFinished);
+    m_downloadReply = m_downloadManager->get(request);
+    connect(m_downloadReply, &QNetworkReply::finished, this,
+            &AsrSettingWidget::onModelDownloadFinished);
 }
 
-void AsrSettingWidget::onDownloadFinished()
+void AsrSettingWidget::onModelDownloadFinished()
 {
-    auto *reply = m_activeDownloadReply;
-    m_activeDownloadReply = nullptr;
+    auto *reply = m_downloadReply;
+    m_downloadReply = nullptr;
 
-    if (m_activeDownloadFile) {
-        m_activeDownloadFile->write(reply->readAll());
-        m_activeDownloadFile->close();
+    if (m_downloadFile) {
+        m_downloadFile->write(reply->readAll());
+        m_downloadFile->close();
     }
 
     const bool failed = !reply || reply->error() != QNetworkReply::NoError;
-    const QString modelPointer = m_downloadTargetPointer;
-    m_downloadTargetPointer.clear();
+    const QString modelPointer = m_downloadingModelPath;
+    m_downloadingModelPath.clear();
 
     if (reply) reply->deleteLater();
 
@@ -576,8 +575,8 @@ void AsrSettingWidget::onDownloadFinished()
     spdlog::get("statusbar")->info("{}", tr("Extracting..."));
     QCoreApplication::processEvents();
 
-    auto result = extractArchive(m_activeDownloadPath, dest.absolutePath());
-    QFile::remove(m_activeDownloadPath);
+    auto result = extractArchive(m_downloadArchivePath, dest.absolutePath());
+    QFile::remove(m_downloadArchivePath);
 
     if (!result) {
         QMessageBox::warning(
@@ -592,7 +591,7 @@ void AsrSettingWidget::onDownloadFinished()
         return;
     }
 
-    refreshStatus();
+    refreshAsrStatus();
 
     if (m_activeAsrId == jsonString(m, "id")) {
         auto *vc = VoiceInputController::instance();
@@ -627,7 +626,7 @@ void AsrSettingWidget::changeEvent(QEvent *event)
     QWidget::changeEvent(event);
     if (event->type() == QEvent::LanguageChange) {
         m_ui->retranslateUi(this);
-        refreshStatus();
+        refreshAsrStatus();
     }
 }
 
