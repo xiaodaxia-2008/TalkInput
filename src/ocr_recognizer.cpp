@@ -1,4 +1,5 @@
 #include "ocr_recognizer.h"
+#include "system_ocr_recognizer.h"
 
 namespace talkinput
 {
@@ -27,6 +28,37 @@ QString OcrRecognizer::focusedTextInputScreenName() const
 QImage OcrRecognizer::captureFocusedTextInputImage() const
 {
     return {};
+}
+
+std::unique_ptr<OcrRecognizer>
+createOcrRecognizer(OcrRecognizer::Type type, QObject *parent)
+{
+    switch (type) {
+    case OcrRecognizer::Type::System:
+        return std::make_unique<SystemOcrRecognizer>(parent);
+    }
+    return nullptr;
+}
+
+std::unique_ptr<OcrRecognizer>
+OcrRecognizer::createFromConfig(const nlohmann::json &preset,
+                                QString *errorMessage, QObject *parent)
+{
+    const QString typeName = jsonString(preset, "type");
+    std::optional<Type> type;
+    if (typeName == QStringLiteral("System")) {
+        type = Type::System;
+    }
+
+    if (!type) {
+        if (errorMessage) {
+            *errorMessage =
+                QStringLiteral("Unsupported OCR type: %1").arg(typeName);
+        }
+        return nullptr;
+    }
+
+    return createOcrRecognizer(*type, parent);
 }
 
 } // namespace talkinput

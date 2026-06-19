@@ -230,7 +230,29 @@ VoiceInputController::VoiceInputController(QObject *parent)
     s_instance = this;
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
-    m_ocrRecognizer = createOcrRecognizer(this);
+    // Create OCR recognizer from the configured provider
+    const QString ocrProviderId =
+        appConfigString("/settings/ocr/providerId");
+    const nlohmann::json ocrPresets =
+        appConfigValue("/ocrPresets");
+    nlohmann::json ocrPreset;
+    if (ocrPresets.is_array()) {
+        for (const auto &preset : ocrPresets) {
+            if (jsonString(preset, "id") == ocrProviderId) {
+                ocrPreset = preset;
+                break;
+            }
+        }
+    }
+    if (ocrPreset.empty()) {
+        ocrPreset = {{"type", "System"}};
+    }
+    QString ocrError;
+    auto ocr = OcrRecognizer::createFromConfig(ocrPreset, &ocrError, this);
+    if (!ocr) {
+        SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocrError);
+    }
+    m_ocrRecognizer = ocr.release();
     registerHotKey();
 }
 
