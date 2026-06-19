@@ -11,12 +11,12 @@
 class QAudioSource;
 class QHotkey;
 class QIODevice;
-class QWidget;
 
 namespace talkinput
 {
 
 class VoiceTextProcessor;
+class VoiceOverlay;
 
 class VoiceInputController final : public QObject
 {
@@ -78,7 +78,7 @@ private:
     QHotkey *m_hotkey = nullptr;
     bool m_isListening = false;
 
-    std::unique_ptr<QWidget> m_overlay;
+    std::unique_ptr<VoiceOverlay> m_overlay;
     QString m_lastResult;
     bool m_pendingResult = false;
 };

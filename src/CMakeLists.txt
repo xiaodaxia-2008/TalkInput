@@ -8,6 +8,8 @@ add_executable(TalkInput
     main_window.ui
     voice_input_controller.cpp
     voice_input_controller.h
+    voice_overlay.cpp
+    voice_overlay.h
     voice_text_processor.cpp
     voice_text_processor.h
     app_config.cpp

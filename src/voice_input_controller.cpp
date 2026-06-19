@@ -3,166 +3,14 @@
 #include "audio_utils.h"
 #include "logging.h"
 #include "paste_text.h"
-#include "scroll_text_display.h"
+#include "voice_overlay.h"
 #include "voice_text_processor.h"
 
 #include <QAudioDevice>
 #include <QAudioSource>
-#include <QCursor>
-#include <QGraphicsOpacityEffect>
-#include <QGuiApplication>
-#include <QHBoxLayout>
 #include <QHotkey>
-#include <QLabel>
 #include <QMediaDevices>
-#include <QPropertyAnimation>
-#include <QScreen>
 #include <QTimer>
-
-#ifdef Q_OS_WIN
-#define NOMINMAX
-#include <windows.h>
-#endif
-
-namespace
-{
-
-#ifdef Q_OS_WIN
-static void enableAcrylic(HWND hwnd)
-{
-    HMODULE hUser = GetModuleHandleW(L"user32.dll");
-    if (!hUser) {
-        return;
-    }
-
-    using SWCA = BOOL(WINAPI *)(HWND, void *);
-    auto func = reinterpret_cast<SWCA>(
-        GetProcAddress(hUser, "SetWindowCompositionAttribute"));
-    if (!func) {
-        return;
-    }
-
-    struct AccentPolicy
-    {
-        DWORD state;  // ACCENT_STATE
-        DWORD flags;  // AccentFlags
-        DWORD color;  // GradientColor (0xAARRGGBB)
-        DWORD animId; // AnimationId
-    };
-
-    struct WinCompAttrData
-    {
-        DWORD attr; // WCA_ACCENT_POLICY = 19
-        const void *data;
-        DWORD dataSize;
-    };
-
-    // ACCENT_ENABLE_ACRYLIC (4) with dark tint
-    AccentPolicy accent = {4, 0, 0xC0101012, 0};
-    WinCompAttrData wcad = {19, &accent, sizeof(accent)};
-    func(hwnd, &wcad);
-}
-
-void applyNativeOverlayEffects(QWidget *widget)
-{
-    HWND hwnd = reinterpret_cast<HWND>(widget->winId());
-    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-    enableAcrylic(hwnd);
-}
-#else
-void applyNativeOverlayEffects(QWidget *)
-{
-}
-#endif
-
-// ── Overlay window with marquee ────────────────────────────────
-
-class OverlayWindow : public QWidget
-{
-public:
-    OverlayWindow() : QWidget(nullptr)
-    {
-        setObjectName("voiceOverlay");
-        setWindowTitle(QStringLiteral("TalkInput"));
-        setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
-                       Qt::WindowStaysOnTopHint);
-        setAttribute(Qt::WA_TranslucentBackground);
-        setAttribute(Qt::WA_ShowWithoutActivating);
-        setAttribute(Qt::WA_TransparentForMouseEvents);
-        setFixedHeight(72);
-
-        auto *lay = new QHBoxLayout(this);
-        lay->setContentsMargins(14, 6, 14, 6);
-        lay->setSpacing(8);
-
-        auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
-        micLabel->setObjectName("voiceOverlayMicLabel");
-        lay->addWidget(micLabel);
-
-        auto *effect = new QGraphicsOpacityEffect(micLabel);
-        micLabel->setGraphicsEffect(effect);
-        m_blinkAnim = new QPropertyAnimation(effect, "opacity", this);
-        m_blinkAnim->setDuration(1200);
-        m_blinkAnim->setStartValue(1.0);
-        m_blinkAnim->setEndValue(0.15);
-        m_blinkAnim->setLoopCount(-1);
-        m_blinkAnim->setEasingCurve(QEasingCurve::InOutSine);
-
-        m_scrollText = new ScrollTextDisplay(this);
-        lay->addWidget(m_scrollText, 1);
-
-        setMinimumWidth(320);
-    }
-
-    void startAnimation()
-    {
-        m_blinkAnim->start();
-        m_scrollText->setText(QString());
-        show();
-        raise();
-        positionOnActiveScreen();
-
-        applyNativeOverlayEffects(this);
-    }
-
-    void stopAnimation()
-    {
-        m_blinkAnim->stop();
-        static_cast<QGraphicsOpacityEffect *>(m_blinkAnim->targetObject())
-            ->setOpacity(1.0);
-        hide();
-    }
-
-    void setPreviewText(const QString &text)
-    {
-        m_scrollText->setText(text);
-    }
-
-private:
-    void positionOnActiveScreen()
-    {
-        QPoint cursorPos = QCursor::pos();
-        QScreen *screen = QGuiApplication::screenAt(cursorPos);
-        if (!screen) {
-            screen = QGuiApplication::primaryScreen();
-        }
-        if (!screen) {
-            return;
-        }
-        QRect wr = screen->availableGeometry();
-        int x = wr.left() + wr.width() / 2 - width() / 2;
-        if (x < wr.left()) {
-            x = wr.left() + 8;
-        }
-        move(x, wr.bottom() - height() - 30);
-    }
-
-    QPropertyAnimation *m_blinkAnim = nullptr;
-    ScrollTextDisplay *m_scrollText = nullptr;
-};
-
-} // namespace
 
 // ── VoiceInputController ─────────────────────────────────────────
 
@@ -179,7 +27,7 @@ VoiceInputController *VoiceInputController::instance()
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
-    m_overlay = std::make_unique<OverlayWindow>();
+    m_overlay = std::make_unique<VoiceOverlay>();
     m_textProcessor = new VoiceTextProcessor(this);
     registerHotKey();
 }
@@ -308,7 +156,7 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
     else if (m_isListening && text != m_lastResult) {
         m_lastResult = text;
         if (m_overlay) {
-            static_cast<OverlayWindow *>(m_overlay.get())->setPreviewText(text);
+            m_overlay->setPreviewText(text);
         }
     }
 }
@@ -346,14 +194,14 @@ void VoiceInputController::sendText(const QString &text)
 void VoiceInputController::showOverlay()
 {
     if (m_overlay) {
-        static_cast<OverlayWindow *>(m_overlay.get())->startAnimation();
+        m_overlay->startAnimation();
     }
 }
 
 void VoiceInputController::hideOverlay()
 {
     if (m_overlay) {
-        static_cast<OverlayWindow *>(m_overlay.get())->stopAnimation();
+        m_overlay->stopAnimation();
     }
 }
 
