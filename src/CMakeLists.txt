@@ -12,6 +12,7 @@ add_executable(TalkInput
     app_config.h
     app_language.cpp
     app_language.h
+    json_utils.cpp
     json_utils.h
     archive_utils.cpp
     archive_utils.h
