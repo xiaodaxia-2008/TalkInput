@@ -18,11 +18,6 @@ class OcrRecognizer : public QObject
     Q_OBJECT
 
 public:
-    enum class Type
-    {
-        System,
-    };
-
     using Callback = std::function<void(const QString &)>;
 
     explicit OcrRecognizer(QObject *parent = nullptr);

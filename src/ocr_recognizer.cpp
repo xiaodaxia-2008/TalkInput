@@ -35,22 +35,14 @@ OcrRecognizer::createFromConfig(const nlohmann::json &preset,
                                 QString *errorMessage, QObject *parent)
 {
     const QString typeName = jsonString(preset, "type");
-    std::optional<Type> type;
+
     if (typeName == QStringLiteral("System")) {
-        type = Type::System;
-    }
-
-    if (!type) {
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("Unsupported OCR type: %1").arg(typeName);
-        }
-        return nullptr;
-    }
-
-    switch (*type) {
-    case Type::System:
         return std::make_unique<SystemOcrRecognizer>(parent);
+    }
+
+    if (errorMessage) {
+        *errorMessage =
+            QStringLiteral("Unsupported OCR type: %1").arg(typeName);
     }
     return nullptr;
 }
