@@ -222,19 +222,4 @@ nlohmann::json findLlmPresetById(const QString &id)
     return findPresetById("/llmPresets", id);
 }
 
-QString findAsrPresetIdByName(const QString &name)
-{
-    const nlohmann::json presets = appConfigValue("/asrPresets");
-    if (!presets.is_object()) {
-        return {};
-    }
-    const std::string nameStr = name.toStdString();
-    for (const auto &[key, preset] : presets.items()) {
-        if (preset.is_object() && preset.value("name", std::string()) == nameStr) {
-            return QString::fromStdString(key);
-        }
-    }
-    return {};
-}
-
 } // namespace talkinput

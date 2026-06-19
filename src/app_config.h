@@ -21,6 +21,5 @@ bool saveAppConfig();
 
 nlohmann::json findAsrPresetById(const QString &id);
 nlohmann::json findLlmPresetById(const QString &id);
-QString findAsrPresetIdByName(const QString &name);
 
 } // namespace talkinput
