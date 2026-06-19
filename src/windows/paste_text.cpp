@@ -1,5 +1,10 @@
-#include "paste_impl.h"
+#include "paste_text.h"
 
+#include <QClipboard>
+#include <QApplication>
+#include <QMimeData>
+#include <QThread>
+#include <QVector>
 #include <QString>
 
 #include <Windows.h>
@@ -7,7 +12,7 @@
 namespace talkinput
 {
 
-bool tryClipboardPaste(const QString &text)
+static bool tryClipboardPaste(const QString &text)
 {
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) {
@@ -65,7 +70,7 @@ bool tryClipboardPaste(const QString &text)
     return true;
 }
 
-void sendViaSendInput(const QString &text)
+static void sendViaSendInput(const QString &text)
 {
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) {
@@ -117,9 +122,8 @@ void sendViaSendInput(const QString &text)
     }
 }
 
-bool isTerminalWindow(void *nativeWindow)
+static bool isTerminalWindow(HWND hwnd)
 {
-    HWND hwnd = static_cast<HWND>(nativeWindow);
     wchar_t cls[256];
     if (!GetClassNameW(hwnd, cls, 256)) {
         return false;
@@ -128,7 +132,8 @@ bool isTerminalWindow(void *nativeWindow)
            wcscmp(cls, L"CASCADIA_HOSTING_WINDOW_CLASS") == 0;
 }
 
-void injectText(const QString &text)
+void pasteTextToActiveWindow(const QString &text, bool useClipboard,
+                             bool restoreClipboard)
 {
     if (text.isEmpty()) {
         return;
@@ -139,9 +144,44 @@ void injectText(const QString &text)
         return;
     }
 
-    if (isTerminalWindow(hwnd)) {
-        if (!tryClipboardPaste(text)) {
-            sendViaSendInput(text);
+    if (useClipboard) {
+        if (isTerminalWindow(hwnd)) {
+            if (!tryClipboardPaste(text)) {
+                sendViaSendInput(text);
+            }
+        }
+        else {
+            // Use Qt clipboard + Ctrl+V with optional restore
+            QClipboard *clipboard = QApplication::clipboard();
+            QMimeData *originalData = nullptr;
+
+            if (restoreClipboard) {
+                const QMimeData *currentData = clipboard->mimeData();
+                originalData = new QMimeData();
+                for (const QString &format : currentData->formats()) {
+                    originalData->setData(format, currentData->data(format));
+                }
+            }
+
+            clipboard->setText(text);
+
+            INPUT inputs[4] = {};
+            inputs[0].type = INPUT_KEYBOARD;
+            inputs[0].ki.wVk = VK_CONTROL;
+            inputs[1].type = INPUT_KEYBOARD;
+            inputs[1].ki.wVk = 'V';
+            inputs[2].type = INPUT_KEYBOARD;
+            inputs[2].ki.wVk = 'V';
+            inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+            inputs[3].type = INPUT_KEYBOARD;
+            inputs[3].ki.wVk = VK_CONTROL;
+            inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+            SendInput(4, inputs, sizeof(INPUT));
+
+            if (restoreClipboard && originalData) {
+                QThread::msleep(50);
+                clipboard->setMimeData(originalData);
+            }
         }
     }
     else {

@@ -3,7 +3,6 @@
 #include "llm_post_processor.h"
 #include "logging.h"
 #include "ocr_recognizer.h"
-#include "paste_impl.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
 #include "utils.h"
@@ -549,7 +548,7 @@ void VoiceInputController::sendText(const QString &text)
     }
 
     SPDLOG_INFO("Sending text to foreground app: {}", text);
-    injectText(text);
+    pasteTextToActiveWindow(text, true, false);
 }
 
 void VoiceInputController::showOverlay()

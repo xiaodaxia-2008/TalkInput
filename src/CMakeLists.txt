@@ -47,8 +47,6 @@ add_executable(TalkInput
     recognizers/funasr_nano_speech_recognizer.cpp
     recognizers/funasr_nano_speech_recognizer.h
     paste_text.h
-    paste_text.cpp
-    paste_impl.h
     scroll_text_display.h
     scroll_text_display.cpp
     utils.h
@@ -101,7 +99,7 @@ target_link_libraries(TalkInput
 if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore)
     target_sources(TalkInput PRIVATE
-        windows/paste_impl.cpp
+        windows/paste_text.cpp
         windows/port_killer.cpp
         windows/system_ocr_recognizer.cpp
         windows/system_speech_recognizer.cpp
@@ -109,7 +107,7 @@ if(WIN32)
     )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE
-        macos/paste_impl.cpp
+        macos/paste_text.cpp
         macos/port_killer.cpp
         macos/system_ocr_recognizer.cpp
         macos/system_speech_recognizer.cpp
@@ -117,7 +115,7 @@ elseif(APPLE)
     )
 elseif(UNIX)
     target_sources(TalkInput PRIVATE
-        linux/paste_impl.cpp
+        linux/paste_text.cpp
         linux/port_killer.cpp
         linux/system_ocr_recognizer.cpp
         linux/system_speech_recognizer.cpp
