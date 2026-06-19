@@ -132,7 +132,9 @@ QString formatSize(qint64 bytes)
 
 QString streamingLabel(bool streaming)
 {
-    return streaming ? QStringLiteral("Real-time") : QStringLiteral("Offline");
+    return streaming
+               ? QCoreApplication::translate("AsrSettingWidget", "Real-time")
+               : QCoreApplication::translate("AsrSettingWidget", "Offline");
 }
 
 QString languageDisplay(const QString &code)
@@ -144,9 +146,9 @@ QString languageDisplay(const QString &code)
     if (code == QStringLiteral("zh,en"))
         return QStringLiteral("CN/EN");
     if (code == QStringLiteral("multilingual"))
-        return QStringLiteral("Multi");
+        return QCoreApplication::translate("AsrSettingWidget", "Multi");
     if (code == QStringLiteral("system"))
-        return QStringLiteral("System");
+        return QCoreApplication::translate("AsrSettingWidget", "System");
     return code;
 }
 
@@ -467,7 +469,10 @@ void AsrSettingWidget::onModelChanged(int index)
         .arg(modelName, streamingLabel(modelJsonBool(m, "streamingSupport")),
              languageDisplay(modelJsonString(m, "languages")));
     m_ui->modelCombo->setItemText(index, isActive
-                                      ? baseLabel + QStringLiteral(" (Activated)")
+                                      ? baseLabel +
+                                            QStringLiteral(" (%1)")
+                                                .arg(QCoreApplication::translate(
+                                                    "AsrSettingWidget", "Activated"))
                                       : baseLabel);
 
     // Use button
