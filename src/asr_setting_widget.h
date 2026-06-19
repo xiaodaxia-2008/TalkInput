@@ -8,12 +8,9 @@
 #include <memory>
 
 class QEvent;
-class QComboBox;
 class QFile;
-class QLabel;
 class QNetworkAccessManager;
 class QNetworkReply;
-class QPushButton;
 class QTimer;
 
 namespace Ui
@@ -58,11 +55,6 @@ private:
     QString currentModelPointer() const;
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-    QComboBox *m_modelCombo = nullptr;
-    QLabel *m_statusLabel = nullptr;
-    QPushButton *m_dlBtn = nullptr;
-    QPushButton *m_delBtn = nullptr;
-    QPushButton *m_useBtn = nullptr;
 
     // Download
     QNetworkAccessManager *m_networkManager = nullptr;

@@ -191,11 +191,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             &AsrSettingWidget::onDownloadFinished);
 
     m_ui->setupUi(this);
-    m_modelCombo = m_ui->modelCombo;
-    m_statusLabel = m_ui->statusLabel;
-    m_dlBtn = m_ui->downloadButton;
-    m_delBtn = m_ui->deleteButton;
-    m_useBtn = m_ui->useButton;
 
     const nlohmann::json llmProviders = llmProvidersJson();
     auto *providerCombo = m_ui->providerCombo;
@@ -459,7 +454,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     // Populate ComboBox with ASR models. Each item stores the preset's
     // JSON Pointer so later actions can read the live appConfig directly.
     // Format: "Name - 实时/非实时 - 语言"
-    m_modelCombo->clear();
+    m_ui->modelCombo->clear();
     if (asrPresets.is_array()) {
         for (std::size_t i = 0; i < asrPresets.size(); ++i) {
             const nlohmann::json &preset = asrPresets[i];
@@ -476,7 +471,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                          streamingLabel(
                              modelJsonBool(preset, "streamingSupport")),
                          languageDisplay(modelJsonString(preset, "languages")));
-            m_modelCombo->addItem(label, asrPresetPointer(i));
+            m_ui->modelCombo->addItem(label, asrPresetPointer(i));
         }
     }
 
@@ -486,9 +481,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     const QString savedType = appConfigString("/settings/model/type");
     int restoreIndex = -1;
     if (savedType == QStringLiteral("System")) {
-        for (int ci = 0; ci < m_modelCombo->count(); ++ci) {
+        for (int ci = 0; ci < m_ui->modelCombo->count(); ++ci) {
             const nlohmann::json model =
-                modelJsonAtPointer(m_modelCombo->itemData(ci).toString());
+                modelJsonAtPointer(m_ui->modelCombo->itemData(ci).toString());
             if (modelJsonString(model, "type") == savedType) {
                 restoreIndex = ci;
                 break;
@@ -496,9 +491,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
     }
     else if (!savedDirName.isEmpty()) {
-        for (int ci = 0; ci < m_modelCombo->count(); ++ci) {
+        for (int ci = 0; ci < m_ui->modelCombo->count(); ++ci) {
             const nlohmann::json model =
-                modelJsonAtPointer(m_modelCombo->itemData(ci).toString());
+                modelJsonAtPointer(m_ui->modelCombo->itemData(ci).toString());
             if (modelJsonString(model, "modelDirName") == savedDirName) {
                 restoreIndex = ci;
                 break;
@@ -506,23 +501,23 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
     }
     if (restoreIndex >= 0) {
-        m_modelCombo->setCurrentIndex(restoreIndex);
+        m_ui->modelCombo->setCurrentIndex(restoreIndex);
     }
 
-    connect(m_modelCombo, &QComboBox::currentIndexChanged, this,
+    connect(m_ui->modelCombo, &QComboBox::currentIndexChanged, this,
             &AsrSettingWidget::onModelChanged);
 
     // Download/delete buttons
-    connect(m_dlBtn, &QPushButton::clicked, this,
+    connect(m_ui->downloadButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onDownloadCurrent);
-    connect(m_delBtn, &QPushButton::clicked, this,
+    connect(m_ui->deleteButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onDeleteCurrent);
-    connect(m_useBtn, &QPushButton::clicked, this,
+    connect(m_ui->useButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseCurrent);
 
     // Initial status update
-    if (m_modelCombo->count() > 0) {
-        onModelChanged(m_modelCombo->currentIndex());
+    if (m_ui->modelCombo->count() > 0) {
+        onModelChanged(m_ui->modelCombo->currentIndex());
     }
 
     // Apply icons to bottom buttons
@@ -566,12 +561,12 @@ void AsrSettingWidget::refreshPromptLabel()
 
 void AsrSettingWidget::onModelChanged(int index)
 {
-    if (index < 0 || index >= m_modelCombo->count()) {
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
         return;
     }
 
     const nlohmann::json model =
-        modelJsonAtPointer(m_modelCombo->itemData(index).toString());
+        modelJsonAtPointer(m_ui->modelCombo->itemData(index).toString());
     if (!model.is_object()) {
         return;
     }
@@ -582,48 +577,48 @@ void AsrSettingWidget::onModelChanged(int index)
         modelJsonString(model, "type") == QStringLiteral("System");
     const qint64 modelSize = modelJsonInt64(model, "size");
 
-    m_dlBtn->setEnabled(false);
-    m_delBtn->setEnabled(false);
-    m_useBtn->setEnabled(false);
+    m_ui->downloadButton->setEnabled(false);
+    m_ui->deleteButton->setEnabled(false);
+    m_ui->useButton->setEnabled(false);
 
     if (systemModel) {
-        m_statusLabel->setText(
+        m_ui->statusLabel->setText(
             tr("Uses the operating system speech recognizer."));
-        m_useBtn->setEnabled(true);
+        m_ui->useButton->setEnabled(true);
     }
     else if (installed) {
         const QString sizeStr =
             modelSize > 0 ? QString(" (%1)").arg(formatSize(modelSize))
                           : QString();
-        m_statusLabel->setText(
+        m_ui->statusLabel->setText(
             tr("Installed: %1%2 \342\200\224 click \"Use\" to load")
                 .arg(modelName, sizeStr));
-        m_delBtn->setEnabled(true);
-        m_useBtn->setEnabled(true);
+        m_ui->deleteButton->setEnabled(true);
+        m_ui->useButton->setEnabled(true);
     }
     else {
         const QString sizeStr =
             modelSize > 0 ? formatSize(modelSize) : QString();
-        m_statusLabel->setText(tr("Not installed (%1, %2). Click Download.")
-                                   .arg(modelName, sizeStr));
-        m_dlBtn->setEnabled(true);
+        m_ui->statusLabel->setText(tr("Not installed (%1, %2). Click Download.")
+                                       .arg(modelName, sizeStr));
+        m_ui->downloadButton->setEnabled(true);
     }
 }
 
 void AsrSettingWidget::refreshStatus()
 {
-    if (m_modelCombo->count() > 0) {
-        onModelChanged(m_modelCombo->currentIndex());
+    if (m_ui->modelCombo->count() > 0) {
+        onModelChanged(m_ui->modelCombo->currentIndex());
     }
 }
 
 QString AsrSettingWidget::currentModelPointer() const
 {
-    const int ci = m_modelCombo->currentIndex();
+    const int ci = m_ui->modelCombo->currentIndex();
     if (ci < 0) {
         return {};
     }
-    return m_modelCombo->currentData().toString();
+    return m_ui->modelCombo->currentData().toString();
 }
 
 // ── Punctuation model auto-load ──────────────────────────────────
@@ -689,7 +684,7 @@ void AsrSettingWidget::startModelDownload(const QString &modelPointer)
 
     spdlog::get("statusbar")
         ->info("{}", tr("Downloading %1...").arg(modelName));
-    m_dlBtn->setEnabled(false);
+    m_ui->downloadButton->setEnabled(false);
 
     QNetworkRequest req(archiveUrl);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
