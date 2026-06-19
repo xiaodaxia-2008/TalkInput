@@ -370,6 +370,7 @@ void VoiceInputController::stopListening()
     m_audioSource.reset();
 
     if (m_recognizer && m_recognizer->isRunning()) {
+        m_pendingResult = true;
         m_recognizer->finish();
         if (m_recognizer->acceptsExternalAudio()) {
             m_recognizer->resetStream();
@@ -377,7 +378,6 @@ void VoiceInputController::stopListening()
     }
 
     m_isListening = false;
-    m_pendingResult = true;
     hideOverlay();
     emit listeningChanged(false);
 }
