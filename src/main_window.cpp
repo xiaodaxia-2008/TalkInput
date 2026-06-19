@@ -1,5 +1,6 @@
 #include "main_window.h"
 #include "app_config.h"
+#include "app_language.h"
 #include "asr_setting_widget.h"
 #include "history_widget.h"
 #include "logging.h"
@@ -10,12 +11,12 @@
 #include <QAudioDecoder>
 #include <QDesktopServices>
 #include <QDir>
+#include <QEvent>
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QIcon>
 #include <QKeySequence>
-#include <QLibraryInfo>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -78,6 +79,14 @@ void MainWindow::closeEvent(QCloseEvent *event)
     if (m_trayIcon && m_trayIcon->isVisible()) {
         hide();
         event->ignore();
+    }
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
     }
 }
 
@@ -182,7 +191,7 @@ void MainWindow::setupUi()
         m_langMenu->addAction(QIcon(":/resources/icons/en.svg"), tr("English"));
     m_enAction->setCheckable(true);
 
-    m_currentLanguage = appConfigString("/settings/app/language", "zh");
+    m_currentLanguage = currentAppLanguage();
     if (m_currentLanguage == QStringLiteral("en")) {
         m_enAction->setChecked(true);
     }
@@ -599,42 +608,7 @@ void MainWindow::doSwitchLanguage(const QString &lang)
 {
     m_currentLanguage = lang;
     setAppConfigValue("/settings/app/language", lang);
-
-    // Remove old translators
-    if (m_appTranslator) {
-        QApplication::removeTranslator(m_appTranslator);
-        m_appTranslator->deleteLater();
-        m_appTranslator = nullptr;
-    }
-    if (m_qtTranslator) {
-        QApplication::removeTranslator(m_qtTranslator);
-        m_qtTranslator->deleteLater();
-        m_qtTranslator = nullptr;
-    }
-
-    if (lang == QStringLiteral("zh")) {
-        auto *appT = new QTranslator(this);
-        if (appT->load(QStringLiteral(":/i18n/TalkInput_zh.qm"))) {
-            m_appTranslator = appT;
-            QApplication::installTranslator(m_appTranslator);
-        }
-        else {
-            delete appT;
-        }
-
-        auto *qtT = new QTranslator(this);
-        if (qtT->load(QStringLiteral("qt_zh_CN"),
-                      QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
-        {
-            m_qtTranslator = qtT;
-            QApplication::installTranslator(m_qtTranslator);
-        }
-        else {
-            delete qtT;
-        }
-    }
-
-    retranslateUi();
+    installAppTranslations(lang, this, m_appTranslator, m_qtTranslator);
 }
 
 void MainWindow::resetUserSettings()
@@ -656,8 +630,7 @@ void MainWindow::resetUserSettings()
         return;
     }
 
-    const QString resetLanguage =
-        appConfigString("/settings/app/language", "zh");
+    const QString resetLanguage = currentAppLanguage();
     if (m_currentLanguage != resetLanguage) {
         doSwitchLanguage(resetLanguage);
     }

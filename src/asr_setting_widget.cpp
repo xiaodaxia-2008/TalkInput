@@ -2,6 +2,7 @@
 #include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
+#include "ui_asr_setting_widget.h"
 #include "utils.h"
 
 #include <QCheckBox>
@@ -11,12 +12,11 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QEvent>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QFormLayout>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -182,59 +182,23 @@ namespace talkinput
 {
 
 AsrSettingWidget::AsrSettingWidget(QWidget *parent)
-    : QWidget(parent), m_networkManager(new QNetworkAccessManager(this))
+    : QWidget(parent), m_ui(std::make_unique<Ui::AsrSettingWidget>()),
+      m_networkManager(new QNetworkAccessManager(this))
 {
     SPDLOG_DEBUG("AsrSettingWidget: constructor begin");
 
     connect(m_networkManager, &QNetworkAccessManager::finished, this,
             &AsrSettingWidget::onDownloadFinished);
 
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(8, 8, 8, 8);
-    root->setSpacing(8);
-
-    // ── Model selector ───────────────────────────────────────────
-    auto *modelGroup = new QGroupBox(tr("Recognition Model"), this);
-    auto *modelLayout = new QVBoxLayout(modelGroup);
-    modelLayout->setContentsMargins(10, 10, 10, 10);
-    modelLayout->setSpacing(8);
-
-    auto *modelRow = new QHBoxLayout();
-    modelRow->setSpacing(8);
-    m_modelCombo = new QComboBox(modelGroup);
-    modelRow->addWidget(new QLabel(tr("Model:"), modelGroup));
-    modelRow->addWidget(m_modelCombo, 1);
-    modelLayout->addLayout(modelRow);
-
-    m_statusLabel = new QLabel(modelGroup);
-    m_statusLabel->setWordWrap(true);
-    modelLayout->addWidget(m_statusLabel);
-
-    auto *btnRow = new QHBoxLayout();
-    btnRow->setSpacing(8);
-    m_dlBtn = new QPushButton(tr("Download"), modelGroup);
-    m_delBtn = new QPushButton(tr("Delete"), modelGroup);
-    m_useBtn = new QPushButton(tr("Use"), modelGroup);
-    m_dlBtn->setEnabled(false);
-    m_delBtn->setEnabled(false);
-    m_useBtn->setEnabled(false);
-    m_useBtn->setStyleSheet("font-weight: bold;");
-    btnRow->addWidget(m_dlBtn);
-    btnRow->addWidget(m_delBtn);
-    btnRow->addWidget(m_useBtn);
-    btnRow->addStretch();
-    modelLayout->addLayout(btnRow);
-
-    root->addWidget(modelGroup);
-
-    // ── LLM Service ──────────────────────────────────────────────
-    auto *llmGroup = new QGroupBox(tr("LLM Service"), this);
-    auto *llmForm = new QFormLayout(llmGroup);
-    llmForm->setContentsMargins(10, 10, 10, 10);
-    llmForm->setSpacing(8);
+    m_ui->setupUi(this);
+    m_modelCombo = m_ui->modelCombo;
+    m_statusLabel = m_ui->statusLabel;
+    m_dlBtn = m_ui->downloadButton;
+    m_delBtn = m_ui->deleteButton;
+    m_useBtn = m_ui->useButton;
 
     const nlohmann::json llmProviders = llmProvidersJson();
-    auto *providerCombo = new QComboBox(llmGroup);
+    auto *providerCombo = m_ui->providerCombo;
     for (const auto &provider : llmProviders) {
         if (!provider.is_object()) {
             continue;
@@ -243,39 +207,13 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                                qs(provider.value("id", std::string())));
     }
 
-    auto *endpointEdit = new QLineEdit(llmGroup);
-    endpointEdit->setPlaceholderText(
-        tr("OpenAI-compatible chat completions endpoint"));
-    auto *modelCombo = new QComboBox(llmGroup);
-    modelCombo->setEditable(true);
-    modelCombo->setInsertPolicy(QComboBox::NoInsert);
+    auto *endpointEdit = m_ui->endpointEdit;
+    auto *modelCombo = m_ui->llmModelCombo;
     modelCombo->lineEdit()->setPlaceholderText(
         tr("Model name sent to the LLM service"));
-    auto *apiKeyEdit = new QLineEdit(llmGroup);
-    apiKeyEdit->setEchoMode(QLineEdit::Password);
-    apiKeyEdit->setPlaceholderText(tr("Optional API key"));
-    auto *promptWidget = new QWidget(llmGroup);
-    auto *promptLayout = new QHBoxLayout(promptWidget);
-    promptLayout->setContentsMargins(0, 0, 0, 0);
-    promptLayout->setSpacing(6);
-    auto *promptLabel = new QLabel(promptWidget);
-    promptLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    promptLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    auto *promptEditBtn = new QPushButton(promptWidget);
-    promptEditBtn->setToolTip(tr("Edit LLM prompt"));
+    auto *apiKeyEdit = m_ui->apiKeyEdit;
+    auto *promptEditBtn = m_ui->promptEditButton;
     setButtonIcon(promptEditBtn, ":/resources/icons/edit.svg", 18);
-    promptLayout->addWidget(promptLabel, 1);
-    promptLayout->addWidget(promptEditBtn);
-
-    auto refreshPromptLabel = [promptLabel]() {
-        const QString sysPrompt = currentLlmSystemPrompt().simplified();
-        const QString usrPrompt = currentLlmUserPrompt().simplified();
-        promptLabel->setText(
-            QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
-                .arg(sysPrompt.left(40), usrPrompt.left(40)));
-        promptLabel->setToolTip(
-            QString("System: %1\nUser: %2").arg(sysPrompt, usrPrompt));
-    };
     refreshPromptLabel();
 
     auto providerAt = [providerCombo](int index) -> nlohmann::json {
@@ -417,101 +355,83 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                                   apiKeyEdit->text().trimmed());
                 spdlog::get("statusbar")->info("{}", tr("LLM API key saved."));
             });
-    connect(promptEditBtn, &QPushButton::clicked, this,
-            [this, refreshPromptLabel]() {
-                QDialog dialog(this);
-                dialog.setWindowTitle(tr("LLM Prompts"));
-                dialog.resize(580, 520);
+    connect(promptEditBtn, &QPushButton::clicked, this, [this]() {
+        QDialog dialog(this);
+        dialog.setWindowTitle(tr("LLM Prompts"));
+        dialog.resize(580, 520);
 
-                auto *layout = new QVBoxLayout(&dialog);
-                layout->setContentsMargins(16, 16, 16, 16);
-                layout->setSpacing(10);
+        auto *layout = new QVBoxLayout(&dialog);
+        layout->setContentsMargins(16, 16, 16, 16);
+        layout->setSpacing(10);
 
-                const QString hint =
-                    tr("Available variables: {{input}}, {{context}}, "
-                       "{{hotwords}}");
+        const QString hint = tr("Available variables: {{input}}, {{context}}, "
+                                "{{hotwords}}");
 
-                // -- System Prompt --
-                auto *sysLabel =
-                    new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                                   .arg(tr("System Prompt"), hint),
-                               &dialog);
-                sysLabel->setWordWrap(true);
-                layout->addWidget(sysLabel);
+        // -- System Prompt --
+        auto *sysLabel = new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                                        .arg(tr("System Prompt"), hint),
+                                    &dialog);
+        sysLabel->setWordWrap(true);
+        layout->addWidget(sysLabel);
 
-                auto *sysEditor = new QTextEdit(&dialog);
-                sysEditor->setAcceptRichText(false);
-                sysEditor->setPlaceholderText(tr(
-                    "\344\276\213\345\246\202\357\274\232\344\275\240\346\230"
-                    "\257\344\270\200\344\270\252\346\234\211\345\270\256\345"
-                    "\212\251\347\232\204\345\212\251\346\211\213"));
-                sysEditor->setPlainText(currentLlmSystemPrompt());
-                sysEditor->setMaximumHeight(150);
-                layout->addWidget(sysEditor);
+        auto *sysEditor = new QTextEdit(&dialog);
+        sysEditor->setAcceptRichText(false);
+        sysEditor->setPlaceholderText(
+            tr("\344\276\213\345\246\202\357\274\232\344\275\240\346\230"
+               "\257\344\270\200\344\270\252\346\234\211\345\270\256\345"
+               "\212\251\347\232\204\345\212\251\346\211\213"));
+        sysEditor->setPlainText(currentLlmSystemPrompt());
+        sysEditor->setMaximumHeight(150);
+        layout->addWidget(sysEditor);
 
-                // -- User Prompt --
-                auto *usrLabel =
-                    new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                                   .arg(tr("User Prompt"), hint),
-                               &dialog);
-                usrLabel->setWordWrap(true);
-                layout->addWidget(usrLabel);
+        // -- User Prompt --
+        auto *usrLabel = new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                                        .arg(tr("User Prompt"), hint),
+                                    &dialog);
+        usrLabel->setWordWrap(true);
+        layout->addWidget(usrLabel);
 
-                auto *usrEditor = new QTextEdit(&dialog);
-                usrEditor->setAcceptRichText(false);
-                usrEditor->setPlaceholderText(tr(
-                    "Use {{input}}, {{context}}, and {{hotwords}} as needed"));
-                usrEditor->setPlainText(currentLlmUserPrompt());
-                usrEditor->setMaximumHeight(150);
-                layout->addWidget(usrEditor);
+        auto *usrEditor = new QTextEdit(&dialog);
+        usrEditor->setAcceptRichText(false);
+        usrEditor->setPlaceholderText(
+            tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
+        usrEditor->setPlainText(currentLlmUserPrompt());
+        usrEditor->setMaximumHeight(150);
+        layout->addWidget(usrEditor);
 
-                auto *buttons = new QDialogButtonBox(&dialog);
-                buttons->addButton(QDialogButtonBox::Save);
-                buttons->addButton(QDialogButtonBox::Cancel);
-                connect(buttons, &QDialogButtonBox::accepted, &dialog,
-                        &QDialog::accept);
-                connect(buttons, &QDialogButtonBox::rejected, &dialog,
-                        &QDialog::reject);
-                layout->addWidget(buttons);
+        auto *buttons = new QDialogButtonBox(&dialog);
+        buttons->addButton(QDialogButtonBox::Save);
+        buttons->addButton(QDialogButtonBox::Cancel);
+        connect(buttons, &QDialogButtonBox::accepted, &dialog,
+                &QDialog::accept);
+        connect(buttons, &QDialogButtonBox::rejected, &dialog,
+                &QDialog::reject);
+        layout->addWidget(buttons);
 
-                if (dialog.exec() != QDialog::Accepted) {
-                    return;
-                }
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
 
-                setAppConfigValue("/settings/llm/systemPrompt",
-                                  sysEditor->toPlainText().trimmed());
-                setAppConfigValue("/settings/llm/userPrompt",
-                                  usrEditor->toPlainText().trimmed());
-                refreshPromptLabel();
-                spdlog::get("statusbar")->info("{}", tr("LLM prompts saved."));
-            });
+        setAppConfigValue("/settings/llm/systemPrompt",
+                          sysEditor->toPlainText().trimmed());
+        setAppConfigValue("/settings/llm/userPrompt",
+                          usrEditor->toPlainText().trimmed());
+        refreshPromptLabel();
+        spdlog::get("statusbar")->info("{}", tr("LLM prompts saved."));
+    });
 
-    llmForm->addRow(tr("Provider"), providerCombo);
-    llmForm->addRow(tr("Endpoint"), endpointEdit);
-    llmForm->addRow(tr("Model"), modelCombo);
-    llmForm->addRow(tr("API Key"), apiKeyEdit);
-    llmForm->addRow(tr("Prompt"), promptWidget);
-    root->addWidget(llmGroup);
-
-    // ── Bottom row ───────────────────────────────────────────────
-    auto *bottomRow = new QHBoxLayout();
-    auto *archiveBtn = new QPushButton(tr("Use Archive"), this);
-    archiveBtn->setToolTip(tr("Import and extract a model archive"));
+    auto *archiveBtn = m_ui->archiveButton;
     connect(archiveBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseArchive);
 
-    auto *openBtn = new QPushButton(tr("Open Folder"), this);
-    openBtn->setToolTip(tr("Open model cache directory"));
+    auto *openBtn = m_ui->openButton;
     connect(openBtn, &QPushButton::clicked, this, &AsrSettingWidget::onOpenDir);
 
-    auto *hotwordsBtn = new QPushButton(tr("Hot Words"), this);
-    hotwordsBtn->setToolTip(tr("Edit hot words"));
+    auto *hotwordsBtn = m_ui->hotwordsButton;
     connect(hotwordsBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
 
-    auto *llmPostProcessCheck = new QCheckBox(tr("LLM post-processing"), this);
-    llmPostProcessCheck->setToolTip(
-        tr("Use a local Qwen model to polish final recognition text"));
+    auto *llmPostProcessCheck = m_ui->llmPostProcessCheck;
     llmPostProcessCheck->setChecked(
         appConfigBool("/settings/llm/postProcessingEnabled", false));
     connect(
@@ -522,9 +442,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                                      : tr("LLM post-processing disabled."));
         });
 
-    auto *ocrContextCheck = new QCheckBox(tr("OCR focused context"), this);
-    ocrContextCheck->setToolTip(
-        tr("Use OCR text around the focused input as LLM context"));
+    auto *ocrContextCheck = m_ui->ocrContextCheck;
     ocrContextCheck->setChecked(
         appConfigBool("/settings/ocr/useFocusedInputContext", false));
     connect(ocrContextCheck, &QCheckBox::toggled, this, [this](bool checked) {
@@ -533,14 +451,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             ->info("{}", checked ? tr("OCR context enabled.")
                                  : tr("OCR context disabled."));
     });
-
-    bottomRow->addWidget(archiveBtn);
-    bottomRow->addWidget(openBtn);
-    bottomRow->addWidget(hotwordsBtn);
-    bottomRow->addWidget(llmPostProcessCheck);
-    bottomRow->addWidget(ocrContextCheck);
-    bottomRow->addStretch();
-    root->addLayout(bottomRow);
 
     // ── Load model presets from config ───────────────────────────
     SPDLOG_DEBUG("AsrSettingWidget: loading model presets");
@@ -626,6 +536,31 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 }
 
 AsrSettingWidget::~AsrSettingWidget() = default;
+
+void AsrSettingWidget::changeEvent(QEvent *event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange) {
+        m_ui->retranslateUi(this);
+        if (m_ui->llmModelCombo->lineEdit()) {
+            m_ui->llmModelCombo->lineEdit()->setPlaceholderText(
+                tr("Model name sent to the LLM service"));
+        }
+        refreshPromptLabel();
+        refreshStatus();
+    }
+}
+
+void AsrSettingWidget::refreshPromptLabel()
+{
+    const QString sysPrompt = currentLlmSystemPrompt().simplified();
+    const QString usrPrompt = currentLlmUserPrompt().simplified();
+    m_ui->promptLabel->setText(
+        QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
+            .arg(sysPrompt.left(40), usrPrompt.left(40)));
+    m_ui->promptLabel->setToolTip(
+        QString("System: %1\nUser: %2").arg(sysPrompt, usrPrompt));
+}
 
 // ── Model selection ──────────────────────────────────────────────
 

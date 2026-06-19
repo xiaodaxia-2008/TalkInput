@@ -1,11 +1,11 @@
 #include "app_config.h"
+#include "app_language.h"
 #include "logging.h"
 #include "main_window.h"
 
 #include <QApplication>
 #include <QFile>
 #include <QIcon>
-#include <QLibraryInfo>
 #include <QTranslator>
 
 int main(int argc, char *argv[])
@@ -36,30 +36,10 @@ int main(int argc, char *argv[])
 
     const bool startHidden =
         talkinput::appConfigBool("/settings/app/startMinimized", false);
-    const QString lang =
-        talkinput::appConfigString("/settings/app/language", "zh");
-
-    if (lang == QStringLiteral("zh")) {
-        SPDLOG_DEBUG("main: loading Chinese translations");
-        auto *appTranslator = new QTranslator(&app);
-        if (appTranslator->load(QStringLiteral(":/i18n/TalkInput_zh.qm"))) {
-            app.installTranslator(appTranslator);
-        }
-        else {
-            delete appTranslator;
-        }
-
-        auto *qtTranslator = new QTranslator(&app);
-        if (qtTranslator->load(
-                QStringLiteral("qt_zh_CN"),
-                QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
-        {
-            app.installTranslator(qtTranslator);
-        }
-        else {
-            delete qtTranslator;
-        }
-    }
+    QTranslator *appTranslator = nullptr;
+    QTranslator *qtTranslator = nullptr;
+    talkinput::installAppTranslations(talkinput::currentAppLanguage(), &app,
+                                      appTranslator, qtTranslator);
 
     SPDLOG_DEBUG("main: constructing MainWindow");
     talkinput::MainWindow window;

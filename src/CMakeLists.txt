@@ -12,13 +12,17 @@ add_executable(TalkInput
     asr_service.h
     app_config.cpp
     app_config.h
+    app_language.cpp
+    app_language.h
     json_utils.h
     archive_utils.cpp
     archive_utils.h
     asr_setting_widget.cpp
     asr_setting_widget.h
+    asr_setting_widget.ui
     history_widget.cpp
     history_widget.h
+    history_widget.ui
     llm_post_processor.cpp
     llm_post_processor.h
     spawn_llama_server.cpp

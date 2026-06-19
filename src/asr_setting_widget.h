@@ -7,6 +7,7 @@
 #include <QWidget>
 #include <memory>
 
+class QEvent;
 class QComboBox;
 class QFile;
 class QLabel;
@@ -14,6 +15,11 @@ class QNetworkAccessManager;
 class QNetworkReply;
 class QPushButton;
 class QTimer;
+
+namespace Ui
+{
+class AsrSettingWidget;
+}
 
 namespace talkinput
 {
@@ -25,6 +31,9 @@ class AsrSettingWidget final : public QWidget
 public:
     explicit AsrSettingWidget(QWidget *parent = nullptr);
     ~AsrSettingWidget() override;
+
+protected:
+    void changeEvent(QEvent *event) override;
 
 signals:
     void modelSelected(const QString &modelDirectory, const QString &modelName,
@@ -43,11 +52,12 @@ private:
     void onEditHotwords();
     void onDownloadFinished();
 
+    void refreshPromptLabel();
     void startModelDownload(const QString &modelPointer);
     bool isInstalled(const nlohmann::json &model) const;
     QString currentModelPointer() const;
 
-    // UI
+    std::unique_ptr<Ui::AsrSettingWidget> m_ui;
     QComboBox *m_modelCombo = nullptr;
     QLabel *m_statusLabel = nullptr;
     QPushButton *m_dlBtn = nullptr;

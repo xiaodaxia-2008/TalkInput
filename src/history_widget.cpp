@@ -1,6 +1,7 @@
 #include "history_widget.h"
 #include "logging.h"
 #include "recognition_history.h"
+#include "ui_history_widget.h"
 #include "utils.h"
 
 #include <QAbstractItemView>
@@ -8,9 +9,8 @@
 #include <QClipboard>
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QHBoxLayout>
+#include <QEvent>
 #include <QHeaderView>
-#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableWidget>
@@ -23,59 +23,35 @@ namespace talkinput
 {
 
 HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
-    : QWidget(parent), m_history(history)
+    : QWidget(parent), m_ui(std::make_unique<Ui::HistoryWidget>()),
+      m_history(history)
 {
     SPDLOG_DEBUG("HistoryWidget: constructor begin");
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(8, 8, 8, 8);
-    root->setSpacing(8);
-    SPDLOG_DEBUG("HistoryWidget: root layout created");
-
-    m_realtimeLabel = new QLabel(this);
-    m_realtimeLabel->setObjectName("historyRealtimeLabel");
-    m_realtimeLabel->setWordWrap(true);
-    m_realtimeLabel->setTextFormat(Qt::PlainText);
-    m_realtimeLabel->setMinimumHeight(36);
-    m_realtimeLabel->hide();
-    root->addWidget(m_realtimeLabel);
-    SPDLOG_DEBUG("HistoryWidget: realtime label created");
-
-    auto *headerLayout = new QHBoxLayout();
-    headerLayout->setContentsMargins(0, 4, 0, 0);
-
-    m_titleLabel = new QLabel(this);
-    m_titleLabel->setObjectName("historyTitleLabel");
-    headerLayout->addWidget(m_titleLabel);
-    headerLayout->addStretch();
-
-    m_clearButton = new QPushButton(this);
-    m_clearButton->setObjectName("historyClearButton");
-    m_clearButton->setFlat(true);
-    connect(m_clearButton, &QPushButton::clicked, this,
+    m_ui->setupUi(this);
+    m_ui->realtimeLabel->hide();
+    connect(m_ui->clearButton, &QPushButton::clicked, this,
             &HistoryWidget::clearHistory);
-    headerLayout->addWidget(m_clearButton);
 
-    root->addLayout(headerLayout);
-    SPDLOG_DEBUG("HistoryWidget: header created");
-
-    m_table = new QTableWidget(this);
-    m_table->setColumnCount(4);
-    m_table->setSelectionMode(QAbstractItemView::NoSelection);
-    m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setAlternatingRowColors(true);
-    m_table->setShowGrid(false);
-    m_table->horizontalHeader()->hide();
-    m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    m_table->setColumnWidth(1, 32);
-    m_table->setColumnWidth(2, 32);
-    m_table->setColumnWidth(3, 32);
-    m_table->verticalHeader()->hide();
-    m_table->verticalHeader()->setDefaultSectionSize(30);
-    root->addWidget(m_table);
-    SPDLOG_DEBUG("HistoryWidget: table created");
-
+    m_ui->table->horizontalHeader()->hide();
+    m_ui->table->horizontalHeader()->setSectionResizeMode(0,
+                                                          QHeaderView::Stretch);
+    m_ui->table->setColumnWidth(1, 32);
+    m_ui->table->setColumnWidth(2, 32);
+    m_ui->table->setColumnWidth(3, 32);
+    m_ui->table->verticalHeader()->hide();
+    m_ui->table->verticalHeader()->setDefaultSectionSize(30);
     retranslateUi();
     SPDLOG_DEBUG("HistoryWidget: constructor end");
+}
+
+HistoryWidget::~HistoryWidget() = default;
+
+void HistoryWidget::changeEvent(QEvent *event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
 }
 
 void HistoryWidget::refreshHistory()
@@ -89,8 +65,8 @@ void HistoryWidget::refreshHistory()
     const auto entries = m_history->allEntries();
     SPDLOG_DEBUG("HistoryWidget::refreshHistory: {} entries", entries.size());
 
-    m_table->setUpdatesEnabled(false);
-    m_table->setRowCount(entries.size());
+    m_ui->table->setUpdatesEnabled(false);
+    m_ui->table->setRowCount(entries.size());
 
     for (int i = 0; i < entries.size(); ++i) {
         const auto &entry = entries.at(i);
@@ -104,7 +80,7 @@ void HistoryWidget::refreshHistory()
         textItem->setData(Qt::UserRole, entry.id);
         textItem->setToolTip(entry.text);
         textItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        m_table->setItem(i, 0, textItem);
+        m_ui->table->setItem(i, 0, textItem);
 
         auto *editButton = new QPushButton();
         setButtonIcon(editButton, ":/resources/icons/edit.svg", 18);
@@ -127,24 +103,24 @@ void HistoryWidget::refreshHistory()
         connect(deleteButton, &QPushButton::clicked, this,
                 [this, i]() { deleteEntry(i); });
 
-        m_table->setCellWidget(i, 1, editButton);
-        m_table->setCellWidget(i, 2, copyButton);
-        m_table->setCellWidget(i, 3, deleteButton);
+        m_ui->table->setCellWidget(i, 1, editButton);
+        m_ui->table->setCellWidget(i, 2, copyButton);
+        m_ui->table->setCellWidget(i, 3, deleteButton);
     }
 
-    m_table->setUpdatesEnabled(true);
+    m_ui->table->setUpdatesEnabled(true);
     SPDLOG_DEBUG("HistoryWidget::refreshHistory: end");
 }
 
 void HistoryWidget::setListening(bool listening)
 {
     if (listening) {
-        m_realtimeLabel->clear();
-        m_realtimeLabel->show();
+        m_ui->realtimeLabel->clear();
+        m_ui->realtimeLabel->show();
         return;
     }
 
-    m_realtimeLabel->hide();
+    m_ui->realtimeLabel->hide();
 }
 
 void HistoryWidget::setRealtimeText(const QString &text)
@@ -154,14 +130,13 @@ void HistoryWidget::setRealtimeText(const QString &text)
         return;
     }
 
-    m_realtimeLabel->setText(trimmed);
-    m_realtimeLabel->show();
+    m_ui->realtimeLabel->setText(trimmed);
+    m_ui->realtimeLabel->show();
 }
 
 void HistoryWidget::retranslateUi()
 {
-    m_titleLabel->setText(tr("Recognition History"));
-    m_clearButton->setText(tr("Clear"));
+    m_ui->retranslateUi(this);
     refreshHistory();
 }
 
@@ -227,7 +202,7 @@ void HistoryWidget::copyEntry(int row)
 
 void HistoryWidget::deleteEntry(int row)
 {
-    auto *item = m_table->item(row, 0);
+    auto *item = m_ui->table->item(row, 0);
     if (!m_history || !item) {
         return;
     }

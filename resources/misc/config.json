@@ -152,7 +152,7 @@
   },
   "settings": {
     "app": {
-      "language": "zh",
+      "language": "system",
       "startMinimized": false
     },
     "model": {

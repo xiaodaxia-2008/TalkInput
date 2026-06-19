@@ -2,10 +2,14 @@
 
 #include <QString>
 #include <QWidget>
+#include <memory>
 
-class QLabel;
-class QPushButton;
-class QTableWidget;
+class QEvent;
+
+namespace Ui
+{
+class HistoryWidget;
+}
 
 namespace talkinput
 {
@@ -19,11 +23,15 @@ class HistoryWidget final : public QWidget
 public:
     explicit HistoryWidget(RecognitionHistory *history,
                            QWidget *parent = nullptr);
+    ~HistoryWidget() override;
 
     void refreshHistory();
     void setListening(bool listening);
     void setRealtimeText(const QString &text);
     void retranslateUi();
+
+protected:
+    void changeEvent(QEvent *event) override;
 
 private:
     void editEntry(int row);
@@ -31,11 +39,8 @@ private:
     void deleteEntry(int row);
     void clearHistory();
 
+    std::unique_ptr<Ui::HistoryWidget> m_ui;
     RecognitionHistory *m_history = nullptr;
-    QLabel *m_realtimeLabel = nullptr;
-    QLabel *m_titleLabel = nullptr;
-    QPushButton *m_clearButton = nullptr;
-    QTableWidget *m_table = nullptr;
 };
 
 } // namespace talkinput
