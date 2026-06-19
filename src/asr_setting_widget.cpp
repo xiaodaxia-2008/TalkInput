@@ -310,7 +310,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     const QString savedLlmId =
         talkinput::appConfigString("/settings/llm/providerId");
     int llmIdx = providerCombo->findData(savedLlmId);
-    if (llmIdx >= 0) providerCombo->setCurrentIndex(llmIdx);
+    if (llmIdx >= 0) {
+        providerCombo->setCurrentIndex(llmIdx);
+    }
+    applyProvider(providerAt(providerCombo->currentIndex()), false);
 
     // ── Prompt edit button ──────────────────────────────────────
     auto *promptBtn = m_ui->promptEditButton;
