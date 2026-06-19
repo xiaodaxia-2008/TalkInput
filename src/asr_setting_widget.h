@@ -7,11 +7,12 @@
 #include <QWidget>
 #include <memory>
 
+class QComboBox;
 class QEvent;
 class QFile;
+class QLineEdit;
 class QNetworkAccessManager;
 class QNetworkReply;
-class QTimer;
 
 namespace Ui
 {
@@ -41,6 +42,14 @@ private:
     void onUseCurrent();
     void onEditHotwords();
     void onEditPrompt();
+
+    // Init helpers
+    void initLlmProviders();
+    void initPrompt();
+    void initOcrProvider();
+    void initLlmChecks();
+    void initAsrModel();
+    void initIcons();
 
     // Download helpers
     void startModelDownload(const QString &modelPointer);
