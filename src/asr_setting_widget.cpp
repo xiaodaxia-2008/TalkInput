@@ -416,9 +416,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // ── Bottom icons ─────────────────────────────────────────────
     setButtonIcon(hotwordsBtn, ":/resources/icons/hotwords.svg", 22);
-    hotwordsBtn->setFlat(true);
+    hotwordsBtn->setProperty("buttonRole", "icon");
     setButtonIcon(promptBtn, ":/resources/icons/edit.svg", 22);
-    promptBtn->setFlat(true);
+    promptBtn->setProperty("buttonRole", "icon");
 
     // ── Network download ─────────────────────────────────────────
     m_networkManager = new QNetworkAccessManager(this);

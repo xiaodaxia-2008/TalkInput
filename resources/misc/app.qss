@@ -36,18 +36,16 @@ QPushButton#historyClearButton:hover {
 
 QPushButton[buttonRole="icon"] {
     background: transparent;
-    border: 1px solid #aaa;
-    border-radius: 3px;
+    border: none;
     padding: 4px;
 }
 
 QPushButton[buttonRole="icon"]:disabled {
-    border-color: #ddd;
+    border: none;
 }
 
 QPushButton[buttonRole="icon"]:hover {
     background: #f0f0f0;
-    border-color: #555;
 }
 
 QPushButton[actionRole="use"]:hover {

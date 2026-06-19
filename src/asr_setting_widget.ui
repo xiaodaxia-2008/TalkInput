@@ -258,8 +258,11 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="promptEditButton">
-          <property name="toolTip">
+          <widget class="QPushButton" name="promptEditButton">
+           <property name="flat">
+            <bool>true</bool>
+           </property>
+           <property name="toolTip">
            <string>Edit user prompt</string>
           </property>
          </widget>
@@ -288,8 +291,11 @@
       <number>8</number>
      </property>
      <item>
-      <widget class="QPushButton" name="hotwordsButton">
-       <property name="toolTip">
+       <widget class="QPushButton" name="hotwordsButton">
+        <property name="flat">
+         <bool>true</bool>
+        </property>
+        <property name="toolTip">
         <string>Edit hot words</string>
        </property>
        <property name="text">
