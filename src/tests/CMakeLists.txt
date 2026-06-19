@@ -84,6 +84,6 @@ add_executable(TalkInputSystemSpeechTest
 
 target_link_libraries(TalkInputSystemSpeechTest
     PRIVATE
-    windowsapp
+    ole32
 )
 target_compile_definitions(TalkInputSystemSpeechTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)

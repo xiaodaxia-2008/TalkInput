@@ -1,23 +1,18 @@
-/// Minimal test for Windows.Media.SpeechRecognition lifecycle.
+/// Windows offline speech recognition test using SAPI (COM).
+///
+/// Uses CLSID_SpInprocRecognizer — fully local, no online privacy policy needed.
 ///
 /// Usage:
-///   TalkInputSystemSpeechTest [language-tag] [--live N]
+///   TalkInputSystemSpeechTest [language-id] [--live N] [--file audio.wav]
 ///
-///   language-tag = "zh-CN" | "en-US" | "" (system default)
-///   --live N     = start microphone recognition for N seconds
+///   language-id = 2052 (zh-CN), 1033 (en-US), default is 2052
+///   --live N    = listen from microphone for N seconds
+///   --file x    = transcribe WAV file instead of microphone
 ///
-/// Notes:
-///   This test validates the WinRT apartment init + recognizer lifecycle
-///   that was crashing when Qt initialised the thread as STA.
-///
-///   The Windows system speech recognizer uses the system microphone.
-///   It cannot process a WAV file directly — use --live to test with
-///   actual microphone input.
-
-#include <chrono>
-#include <iostream>
-#include <string>
-#include <thread>
+/// Examples:
+///   TalkInputSystemSpeechTest --live 10              # 10s mic, zh-CN
+///   TalkInputSystemSpeechTest 1033 --live 5          # 5s mic, en-US
+///   TalkInputSystemSpeechTest --file Models/data/audio.wav
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -26,299 +21,326 @@
 #define NOMINMAX
 #endif
 
-#include <winrt/Windows.Foundation.Collections.h>
-#include <winrt/Windows.Foundation.h>
-#include <winrt/Windows.Globalization.h>
-#include <winrt/Windows.Media.SpeechRecognition.h>
-#include <winrt/base.h>
+#include <windows.h>
+#include <iostream>
+#include <string>
+#include <thread>
 
-#pragma comment(lib, "windowsapp")
+#include <sapi.h>
+#include <sphelper.h>
 
-using namespace winrt;
-using namespace Windows::Foundation;
-using namespace Windows::Globalization;
-using namespace Windows::Media::SpeechRecognition;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-void initWinrtApartment()
+static void printBanner()
 {
-    // Standalone test — no Qt has pre-initialised COM, so use MTA directly.
-    winrt::init_apartment(winrt::apartment_type::multi_threaded);
-    std::wcout << L"[init] WinRT apartment: multi_threaded (MTA)" << std::endl;
+    std::wcout << L"=== Windows SAPI Offline Speech Recognition ===" << std::endl;
 }
 
-void printStatus(const SpeechRecognizer &recognizer)
+static void printUsage()
 {
-    std::wcout << L"  State: " << static_cast<int>(recognizer.State())
-               << std::endl;
-    if (recognizer.CurrentLanguage()) {
-        std::wcout << L"  Language: "
-                   << recognizer.CurrentLanguage().LanguageTag().c_str()
+    std::wcout
+        << L"Usage: TalkInputSystemSpeechTest [language-id] [--live N] [--file x]\n"
+        << L"\n"
+        << L"  language-id = 2052 (zh-CN, default), 1033 (en-US), etc.\n"
+        << L"  --live N    = microphone input for N seconds\n"
+        << L"  --file x    = transcribe WAV file\n"
+        << L"\n"
+        << L"Examples:\n"
+        << L"  TalkInputSystemSpeechTest --live 10\n"
+        << L"  TalkInputSystemSpeechTest 1033 --live 5\n"
+        << L"  TalkInputSystemSpeechTest --file Models\\data\\audio.wav\n";
+}
+
+// ---------------------------------------------------------------------------
+// Mic recognition
+// ---------------------------------------------------------------------------
+static int runMic(int langId, int seconds)
+{
+    std::wcout << L"\nLanguage: 0x" << std::hex << langId << std::dec
+               << L", microphone for " << seconds << L" seconds" << std::endl;
+
+    HRESULT hr = S_OK;
+
+    CComPtr<ISpRecognizer> cpRecognizer;
+    hr = cpRecognizer.CoCreateInstance(CLSID_SpInprocRecognizer);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] Cannot create in-process recognizer: 0x"
+                   << std::hex << hr << std::endl;
+        return 1;
+    }
+
+    // Set language on the default audio input token
+    CComPtr<ISpObjectToken> cpAudioToken;
+    hr = SpGetDefaultTokenFromCategoryId(SPCAT_AUDIOIN, &cpAudioToken, FALSE);
+    if (SUCCEEDED(hr)) {
+        CComPtr<ISpObjectTokenCategory> cpCategory;
+        hr = SpGetCategoryFromId(SPCAT_AUDIOIN, &cpCategory);
+        if (SUCCEEDED(hr)) {
+            // Try to set the input to the default audio device
+            cpRecognizer->SetInput(cpAudioToken, TRUE);
+        }
+    }
+
+    // Create recognition context
+    CComPtr<ISpRecoContext> cpRecoContext;
+    hr = cpRecognizer->CreateRecoContext(&cpRecoContext);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] CreateRecoContext: 0x" << std::hex << hr
                    << std::endl;
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Step 1 – Create & configure (the regression test)
-// ---------------------------------------------------------------------------
-int testLifecycle(const std::wstring &languageTag)
-{
-    std::wcout << L"\n=== Test: Recognizer lifecycle ===" << std::endl;
-
-    // Create recognizer
-    SpeechRecognizer recognizer = nullptr;
-    try {
-        if (!languageTag.empty()) {
-            Language lang(languageTag);
-            recognizer = SpeechRecognizer(lang);
-            std::wcout << L"[ok] Created with language " << languageTag
-                       << std::endl;
-        }
-        else {
-            recognizer = SpeechRecognizer();
-            std::wcout << L"[ok] Created with system default language"
-                       << std::endl;
-        }
-    }
-    catch (const hresult_error &e) {
-        std::wcerr << L"[FAIL] SpeechRecognizer creation: "
-                   << e.message().c_str() << L" (0x" << std::hex << e.code()
-                   << L")" << std::endl;
         return 1;
     }
 
-    printStatus(recognizer);
-
-    // Configure constraints
-    try {
-        recognizer.Constraints().Clear();
-        recognizer.Constraints().Append(SpeechRecognitionTopicConstraint(
-            SpeechRecognitionScenario::Dictation, L"dictation"));
-        recognizer.Timeouts().InitialSilenceTimeout(std::chrono::seconds(30));
-        recognizer.Timeouts().EndSilenceTimeout(std::chrono::seconds(2));
-        std::wcout << L"[ok] Constraints & timeouts set" << std::endl;
-    }
-    catch (const hresult_error &e) {
-        std::wcerr << L"[FAIL] Constraint setup: " << e.message().c_str()
-                   << L" (0x" << std::hex << e.code() << L")" << std::endl;
+    // Load dictation grammar
+    CComPtr<ISpRecoGrammar> cpRecoGrammar;
+    hr = cpRecoContext->CreateGrammar(0, &cpRecoGrammar);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] CreateGrammar: 0x" << std::hex << hr
+                   << std::endl;
         return 1;
     }
 
-    // Compile constraints
-    try {
-        auto result = recognizer.CompileConstraintsAsync().get();
-        if (result.Status() == SpeechRecognitionResultStatus::Success) {
-            std::wcout << L"[ok] Constraints compiled" << std::endl;
-        }
-        else {
-            std::wcerr << L"[FAIL] Constraint compilation: "
-                       << static_cast<int>(result.Status()) << std::endl;
-            return 1;
-        }
-    }
-    catch (const hresult_error &e) {
-        std::wcerr << L"[FAIL] CompileConstraintsAsync: "
-                   << e.message().c_str() << L" (0x" << std::hex << e.code()
-                   << L")" << std::endl;
-        return 1;
-    }
-
-    // Start & stop continuous recognition (quick cycle)
-    auto session = recognizer.ContinuousRecognitionSession();
-
-    bool completed = false;
-    auto token = session.Completed(
-        [&completed](const auto &, const auto &args) {
-            completed = true;
-            std::wcout << L"[event] Session completed: "
-                       << static_cast<int>(args.Status()) << std::endl;
-        });
-
-    std::wcout << L"[ok] Event handlers registered" << std::endl;
-
-    try {
-        session.StartAsync().get();
-        std::wcout << L"[ok] Recognition started" << std::endl;
-
-        // Let it run very briefly to exercise the paths
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-        session.StopAsync().get();
-        std::wcout << L"[ok] Recognition stopped" << std::endl;
-    }
-    catch (const hresult_error &e) {
-        // SPERR_SPEECH_PRIVACY_POLICY_NOT_ACCEPTED — Windows online speech
-        // recognition is not enabled in Privacy settings.  This is not a code
-        // bug; the test cannot exercise the full recognition path without it.
-        if (e.code() == 0x80045509) {
-            std::wcout << L"[skip] StartAsync requires speech privacy policy"
-                       << L" (enable in Settings > Privacy > Speech)"
-                       << std::endl;
-        }
-        else {
-            std::wcerr << L"[FAIL] Start/StopAsync: " << e.message().c_str()
-                       << L" (0x" << std::hex << e.code() << L")" << std::endl;
-            return 1;
-        }
-    }
-
-    // Small wait for the Completed event
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    session.Completed(token);
-
-    if (completed) {
-        std::wcout << L"[ok] Completed event received" << std::endl;
-    }
-    else {
-        std::wcout
-            << L"[warn] Completed event not received within 200ms (normal)"
+    hr = cpRecoGrammar->LoadDictation(nullptr, SPLO_STATIC);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] LoadDictation: 0x" << std::hex << hr
+                   << std::endl;
+        std::wcerr
+            << L"  Install Chinese speech recognition from Settings > Time & "
+               L"Language > Language > Chinese > Options > Speech"
             << std::endl;
+        return 1;
     }
 
-    std::wcout << L"\n=== Lifecycle test PASSED ===" << std::endl;
+    // Set interest and Win32 event notification
+    cpRecoContext->SetInterest(
+        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION),
+        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION));
+    cpRecoContext->SetNotifyWin32Event();
+
+    // Activate dictation
+    hr = cpRecoGrammar->SetDictationState(SPRS_ACTIVE);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] SetDictationState: 0x" << std::hex << hr
+                   << std::endl;
+        return 1;
+    }
+
+    std::wcout << L"[ok] Listening... speak now!" << std::endl;
+
+    auto deadline = std::chrono::steady_clock::now() +
+                    std::chrono::seconds(seconds);
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        hr = cpRecoContext->WaitForNotifyEvent(250);
+        if (hr != S_OK) {
+            continue;
+        }
+
+        CSpEvent spEvent;
+        while (spEvent.GetFrom(cpRecoContext) == S_OK) {
+            switch (spEvent.eEventId) {
+            case SPEI_RECOGNITION: {
+                CComPtr<ISpRecoResult> result = spEvent.RecoResult();
+                SPPHRASE *phrase = nullptr;
+                if (SUCCEEDED(result->GetPhrase(&phrase)) && phrase) {
+                    std::wcout << L"  [final] ";
+                    for (ULONG i = 0; i < phrase->Rule.ulCountOfElements; i++) {
+                        if (phrase->pElements[i].pszDisplayText) {
+                            std::wcout
+                                << phrase->pElements[i].pszDisplayText;
+                        }
+                    }
+                    std::wcout << std::endl;
+                    CoTaskMemFree(phrase);
+                }
+                break;
+            }
+            case SPEI_FALSE_RECOGNITION:
+                std::wcout << L"  (no match)" << std::endl;
+                break;
+            }
+            spEvent.Clear();
+        }
+    }
+
+    cpRecoGrammar->SetDictationState(SPRS_INACTIVE);
+    cpRecoGrammar->UnloadDictation();
+
+    std::wcout << L"[ok] Done." << std::endl;
     return 0;
 }
 
 // ---------------------------------------------------------------------------
-// Step 2 – Live microphone test (optional)
+// WAV file recognition
 // ---------------------------------------------------------------------------
-int testLive(const std::wstring &languageTag, int seconds)
+static int runFile(int langId, const std::wstring &wavPath)
 {
-    std::wcout << L"\n=== Live microphone test (" << seconds
-               << L" seconds) ===" << std::endl;
-    std::wcout << L"Speak into the microphone now..." << std::endl;
+    std::wcout << L"\nLanguage: 0x" << std::hex << langId << std::dec
+               << L", file: " << wavPath << std::endl;
 
-    SpeechRecognizer recognizer = nullptr;
-    try {
-        if (!languageTag.empty()) {
-            recognizer = SpeechRecognizer(Language(languageTag));
-        }
-        else {
-            recognizer = SpeechRecognizer();
-        }
-    }
-    catch (const hresult_error &e) {
-        std::wcerr << L"[FAIL] SpeechRecognizer creation: "
-                   << e.message().c_str() << std::endl;
+    HRESULT hr = S_OK;
+
+    // Open WAV stream
+    CComPtr<ISpStream> cpStream;
+    hr = cpStream.CoCreateInstance(CLSID_SpStream);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] Cannot create stream: 0x" << std::hex << hr
+                   << std::endl;
         return 1;
     }
 
-    recognizer.Constraints().Clear();
-    recognizer.Constraints().Append(SpeechRecognitionTopicConstraint(
-        SpeechRecognitionScenario::Dictation, L"dictation"));
-    recognizer.Timeouts().InitialSilenceTimeout(std::chrono::seconds(30));
-    recognizer.Timeouts().EndSilenceTimeout(std::chrono::seconds(2));
-
-    auto compilation = recognizer.CompileConstraintsAsync().get();
-    if (compilation.Status() != SpeechRecognitionResultStatus::Success) {
-        std::wcerr << L"[FAIL] Constraints did not compile" << std::endl;
+    hr = cpStream->BindToFile(wavPath.c_str(), SPFM_OPEN_READONLY, nullptr,
+                              nullptr, SPFEI_ALL_EVENTS);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] Cannot open WAV file: 0x" << std::hex << hr
+                   << std::endl;
         return 1;
     }
 
-    auto session = recognizer.ContinuousRecognitionSession();
-
-    auto hypothesisToken = recognizer.HypothesisGenerated(
-        [](const auto &, const auto &args) {
-            std::wcout << L"[partial] " << args.Hypothesis().Text().c_str()
-                       << std::endl;
-        });
-
-    auto resultToken = session.ResultGenerated([](const auto &,
-                                                   const auto &args) {
-        auto r = args.Result();
-        std::wcout << L"["
-                   << (r.Status() == SpeechRecognitionResultStatus::Success
-                           ? L"final"
-                           : L"intermediate")
-                   << L"] " << r.Text().c_str() << std::endl;
-    });
-
-    std::wcout << L"Listening..." << std::endl;
-    try {
-        session.StartAsync().get();
-
-        std::this_thread::sleep_for(std::chrono::seconds(seconds));
-
-        session.StopAsync().get();
-        std::wcout << L"Stopped." << std::endl;
-    }
-    catch (const hresult_error &e) {
-        if (e.code() == 0x80045509) {
-            std::wcout << L"[skip] Speech privacy policy not enabled"
-                       << std::endl;
-        }
-        else {
-            std::wcerr << L"[FAIL] Live test: " << e.message().c_str()
-                       << L" (0x" << std::hex << e.code() << L")" << std::endl;
-            return 1;
-        }
+    // Create in-process recognizer
+    CComPtr<ISpRecognizer> cpRecognizer;
+    hr = cpRecognizer.CoCreateInstance(CLSID_SpInprocRecognizer);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] Cannot create recognizer: 0x" << std::hex << hr
+                   << std::endl;
+        return 1;
     }
 
-    recognizer.HypothesisGenerated(hypothesisToken);
-    session.ResultGenerated(resultToken);
+    hr = cpRecognizer->SetInput(cpStream, TRUE);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] SetInput: 0x" << std::hex << hr << std::endl;
+        return 1;
+    }
 
-    std::wcout << L"\n=== Live test done ===" << std::endl;
+    // Create context and grammar
+    CComPtr<ISpRecoContext> cpRecoContext;
+    hr = cpRecognizer->CreateRecoContext(&cpRecoContext);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] CreateRecoContext: 0x" << std::hex << hr
+                   << std::endl;
+        return 1;
+    }
+
+    CComPtr<ISpRecoGrammar> cpRecoGrammar;
+    hr = cpRecoContext->CreateGrammar(0, &cpRecoGrammar);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] CreateGrammar: 0x" << std::hex << hr
+                   << std::endl;
+        return 1;
+    }
+
+    hr = cpRecoGrammar->LoadDictation(nullptr, SPLO_STATIC);
+    if (FAILED(hr)) {
+        std::wcerr << L"[FAIL] LoadDictation: 0x" << std::hex << hr
+                   << std::endl;
+        std::wcerr
+            << L"  Install speech recognition from Settings > Time & "
+               L"Language > Language > Add a language > Options > Speech"
+            << std::endl;
+        return 1;
+    }
+
+    // Notification setup
+    cpRecoContext->SetInterest(
+        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION) |
+            SPFEI(SPEI_END_SR_STREAM),
+        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION) |
+            SPFEI(SPEI_END_SR_STREAM));
+    cpRecoContext->SetNotifyWin32Event();
+
+    // Activate
+    cpRecoGrammar->SetDictationState(SPRS_ACTIVE);
+
+    std::wcout << L"[ok] Transcribing..." << std::endl;
+
+    BOOL done = FALSE;
+    while (!done && cpRecoContext->WaitForNotifyEvent(60000) == S_OK) {
+        CSpEvent spEvent;
+        while (!done && spEvent.GetFrom(cpRecoContext) == S_OK) {
+            switch (spEvent.eEventId) {
+            case SPEI_RECOGNITION: {
+                CComPtr<ISpRecoResult> result = spEvent.RecoResult();
+                SPPHRASE *phrase = nullptr;
+                if (SUCCEEDED(result->GetPhrase(&phrase)) && phrase) {
+                    std::wcout << L"  ";
+                    for (ULONG i = 0; i < phrase->Rule.ulCountOfElements; i++) {
+                        if (phrase->pElements[i].pszDisplayText) {
+                            std::wcout
+                                << phrase->pElements[i].pszDisplayText;
+                        }
+                    }
+                    std::wcout << std::endl;
+                    CoTaskMemFree(phrase);
+                }
+                break;
+            }
+            case SPEI_FALSE_RECOGNITION:
+                break;
+            case SPEI_END_SR_STREAM:
+                done = TRUE;
+                break;
+            }
+            spEvent.Clear();
+        }
+    }
+
+    cpRecoGrammar->SetDictationState(SPRS_INACTIVE);
+    cpRecoGrammar->UnloadDictation();
+    cpStream->Close();
+
+    std::wcout << L"[ok] Done." << std::endl;
     return 0;
 }
 
-// ---------------------------------------------------------------------------
-// Entry point
 // ---------------------------------------------------------------------------
 int wmain(int argc, wchar_t *argv[])
 {
-    std::wstring languageTag;
-    int liveSeconds = 0;
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+    printBanner();
+
+    int langId = 2052; // zh-CN
+    int liveSecs = 0;
+    std::wstring wavPath;
 
     for (int i = 1; i < argc; ++i) {
-        std::wstring_view arg = argv[i];
+        std::wstring arg = argv[i];
         if (arg == L"--live" && i + 1 < argc) {
-            liveSeconds = std::stoi(argv[++i]);
+            liveSecs = std::stoi(argv[++i]);
+        }
+        else if (arg == L"--file" && i + 1 < argc) {
+            wavPath = argv[++i];
+        }
+        else if (arg == L"--help" || arg == L"-h") {
+            printUsage();
+            CoUninitialize();
+            return 0;
         }
         else {
-            languageTag = argv[i];
-        }
-    }
-
-    if (languageTag.empty()) {
-        std::wcout << L"Using system default language" << std::endl;
-    }
-    else {
-        std::wcout << L"Language: " << languageTag << std::endl;
-    }
-
-    if (liveSeconds > 0) {
-        std::wcout << L"Live mode: " << liveSeconds << L" seconds" << std::endl;
-    }
-
-    try {
-        initWinrtApartment();
-
-        int rc = testLifecycle(languageTag);
-        if (rc != 0) {
-            return rc;
-        }
-
-        if (liveSeconds > 0) {
-            rc = testLive(languageTag, liveSeconds);
-            if (rc != 0) {
-                return rc;
+            // treat as language ID
+            try {
+                langId = std::stoi(arg, nullptr, 0);
+            }
+            catch (...) {
+                std::wcerr << L"Unknown argument: " << arg << std::endl;
+                printUsage();
+                CoUninitialize();
+                return 1;
             }
         }
     }
-    catch (const hresult_error &e) {
-        std::wcerr << L"[FATAL] " << e.message().c_str() << L" (0x"
-                   << std::hex << e.code() << L")" << std::endl;
-        return 1;
-    }
-    catch (const std::exception &e) {
-        std::wcerr << L"[FATAL] std::exception: " << e.what() << std::endl;
-        return 1;
+
+    if (liveSecs == 0 && wavPath.empty()) {
+        printUsage();
+        CoUninitialize();
+        return 0;
     }
 
-    std::wcout << L"\nAll tests PASSED." << std::endl;
-    return 0;
+    int rc = 0;
+    if (liveSecs > 0) {
+        rc = runMic(langId, liveSecs);
+    }
+    else if (!wavPath.empty()) {
+        rc = runFile(langId, wavPath);
+    }
+
+    CoUninitialize();
+    return rc;
 }
