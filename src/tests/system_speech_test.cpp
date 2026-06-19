@@ -59,6 +59,7 @@ static int runMic(int langId, int seconds)
 
     HRESULT hr = S_OK;
 
+    // Create in-process recognizer — uses system default mic automatically
     CComPtr<ISpRecognizer> cpRecognizer;
     hr = cpRecognizer.CoCreateInstance(CLSID_SpInprocRecognizer);
     if (FAILED(hr)) {
@@ -66,17 +67,23 @@ static int runMic(int langId, int seconds)
                    << std::hex << hr << std::endl;
         return 1;
     }
+    std::wcout << L"[ok] In-process recognizer created" << std::endl;
 
-    // Set language on the default audio input token
+    // Explicitly set microphone as audio input
     CComPtr<ISpObjectToken> cpAudioToken;
     hr = SpGetDefaultTokenFromCategoryId(SPCAT_AUDIOIN, &cpAudioToken, FALSE);
-    if (SUCCEEDED(hr)) {
-        CComPtr<ISpObjectTokenCategory> cpCategory;
-        hr = SpGetCategoryFromId(SPCAT_AUDIOIN, &cpCategory);
-        if (SUCCEEDED(hr)) {
-            // Try to set the input to the default audio device
-            cpRecognizer->SetInput(cpAudioToken, TRUE);
+    if (SUCCEEDED(hr) && cpAudioToken) {
+        hr = cpRecognizer->SetInput(cpAudioToken, TRUE);
+        if (FAILED(hr)) {
+            std::wcerr << L"[FAIL] SetInput: 0x" << std::hex << hr << std::endl;
+            return 1;
         }
+        std::wcout << L"[ok] SetInput to default microphone" << std::endl;
+    }
+    else {
+        std::wcerr << L"[FAIL] No default audio input: 0x" << std::hex << hr
+                   << std::endl;
+        return 1;
     }
 
     // Create recognition context
@@ -101,17 +108,23 @@ static int runMic(int langId, int seconds)
     if (FAILED(hr)) {
         std::wcerr << L"[FAIL] LoadDictation: 0x" << std::hex << hr
                    << std::endl;
+        if (hr == SPERR_NOT_FOUND || hr == E_NOINTERFACE) {
+            std::wcerr << L"  No dictation engine for this language.\n";
+        }
         std::wcerr
-            << L"  Install Chinese speech recognition from Settings > Time & "
-               L"Language > Language > Chinese > Options > Speech"
+            << L"  Settings > Time & Language > Language > Chinese > Options > "
+               L"Basic typing & Speech"
             << std::endl;
         return 1;
     }
+    std::wcout << L"[ok] Dictation grammar loaded" << std::endl;
 
-    // Set interest and Win32 event notification
+    // Set interest — listen for audio state changes too for debugging
     cpRecoContext->SetInterest(
-        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION),
-        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION));
+        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION) |
+            SPFEI(SPEI_START_SR_STREAM),
+        SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION) |
+            SPFEI(SPEI_START_SR_STREAM));
     cpRecoContext->SetNotifyWin32Event();
 
     // Activate dictation
@@ -121,11 +134,17 @@ static int runMic(int langId, int seconds)
                    << std::endl;
         return 1;
     }
+    std::wcout << L"[ok] Dictation activated" << std::endl;
+
+    // Give SAPI time to initialize the audio stream
+    Sleep(500);
 
     std::wcout << L"[ok] Listening... speak now!" << std::endl;
 
     auto deadline = std::chrono::steady_clock::now() +
                     std::chrono::seconds(seconds);
+    int recognitionCount = 0;
+    int falseRecoCount = 0;
 
     while (std::chrono::steady_clock::now() < deadline) {
         hr = cpRecoContext->WaitForNotifyEvent(250);
@@ -137,6 +156,7 @@ static int runMic(int langId, int seconds)
         while (spEvent.GetFrom(cpRecoContext) == S_OK) {
             switch (spEvent.eEventId) {
             case SPEI_RECOGNITION: {
+                recognitionCount++;
                 CComPtr<ISpRecoResult> result = spEvent.RecoResult();
                 SPPHRASE *phrase = nullptr;
                 if (SUCCEEDED(result->GetPhrase(&phrase)) && phrase) {
@@ -153,12 +173,18 @@ static int runMic(int langId, int seconds)
                 break;
             }
             case SPEI_FALSE_RECOGNITION:
-                std::wcout << L"  (no match)" << std::endl;
+                falseRecoCount++;
+                break;
+            case SPEI_START_SR_STREAM:
+                std::wcout << L"  [stream] Audio stream started" << std::endl;
                 break;
             }
             spEvent.Clear();
         }
     }
+
+    std::wcout << L"[debug] Recognitions: " << recognitionCount
+               << L", false: " << falseRecoCount << std::endl;
 
     cpRecoGrammar->SetDictationState(SPRS_INACTIVE);
     cpRecoGrammar->UnloadDictation();
