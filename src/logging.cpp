@@ -1,11 +1,12 @@
 #include "logging.h"
 
+#include <QLabel>
 #include <QMetaObject>
 #include <QPointer>
+#include <QSizePolicy>
 #include <QStatusBar>
 #include <QString>
 #include <QStyle>
-#include <QWidget>
 
 #include <memory>
 #include <mutex>
@@ -33,7 +34,7 @@ QString statusLevelName(spdlog::level::level_enum level)
 class StatusBarSink final : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
-    explicit StatusBarSink(QStatusBar *statusBar) : m_statusBar(statusBar)
+    explicit StatusBarSink(QLabel *label) : m_label(label)
     {
         set_pattern("%v");
         set_level(spdlog::level::info);
@@ -42,7 +43,7 @@ public:
 protected:
     void sink_it_(const spdlog::details::log_msg &msg) override
     {
-        auto *target = m_statusBar.data();
+        auto *target = m_label.data();
         if (!target) {
             return;
         }
@@ -52,19 +53,15 @@ protected:
         const QString text = QString::fromUtf8(
             formatted.data(), static_cast<qsizetype>(formatted.size()));
         const QString level = statusLevelName(msg.level);
-        QPointer<QStatusBar> statusBar = target;
+        QPointer<QLabel> label = target;
         QMetaObject::invokeMethod(
             target,
-            [statusBar, text, level]() {
-                if (statusBar) {
-                    statusBar->setProperty("messageLevel", level);
-                    statusBar->style()->unpolish(statusBar);
-                    statusBar->style()->polish(statusBar);
-                    for (auto *child : statusBar->findChildren<QWidget *>()) {
-                        child->style()->unpolish(child);
-                        child->style()->polish(child);
-                    }
-                    statusBar->showMessage(text);
+            [label, text, level]() {
+                if (label) {
+                    label->setProperty("messageLevel", level);
+                    label->style()->unpolish(label);
+                    label->style()->polish(label);
+                    label->setText(text);
                 }
             },
             Qt::QueuedConnection);
@@ -75,14 +72,23 @@ protected:
     }
 
 private:
-    QPointer<QStatusBar> m_statusBar;
+    QPointer<QLabel> m_label;
 };
 
 } // namespace
 
 void installStatusBarLogger(QStatusBar *statusBar)
 {
-    auto statusBarSink = std::make_shared<StatusBarSink>(statusBar);
+    auto *statusLabel = statusBar->findChild<QLabel *>("statusbarLogLabel");
+    if (!statusLabel) {
+        statusLabel = new QLabel(statusBar);
+        statusLabel->setObjectName(QStringLiteral("statusbarLogLabel"));
+        statusLabel->setSizePolicy(QSizePolicy::Expanding,
+                                   QSizePolicy::Preferred);
+        statusBar->addWidget(statusLabel, 1);
+    }
+
+    auto statusBarSink = std::make_shared<StatusBarSink>(statusLabel);
     auto terminalSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     terminalSink->set_level(spdlog::level::info);
     terminalSink->set_pattern("[%n] [%^%l%$] %v");
