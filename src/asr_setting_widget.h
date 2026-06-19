@@ -69,8 +69,6 @@ private:
     QString m_downloadTempPath;
     QString m_downloadingModelPath;
     QQueue<QString> m_downloadQueue;
-
-
 };
 
 } // namespace talkinput
