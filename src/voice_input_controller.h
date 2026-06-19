@@ -7,12 +7,11 @@
 
 #include <memory>
 
-class QHotkey;
-
 namespace talkinput
 {
 
 class AudioInputCapture;
+class VoiceHotkey;
 class VoiceTextProcessor;
 class VoiceOverlay;
 
@@ -58,8 +57,6 @@ public slots:
     void finishSession();
 
 private:
-    void registerHotKey();
-    void unregisterHotKey();
     void onResult(const QString &text, bool isFinal);
     void postProcessFinalText(const QString &text);
     void injectFinalText(const QString &text);
@@ -70,8 +67,8 @@ private:
     std::unique_ptr<SpeechRecognizer> m_recognizer;
     AudioInputCapture *m_audioCapture = nullptr;
     VoiceTextProcessor *m_textProcessor = nullptr;
+    VoiceHotkey *m_hotkey = nullptr;
 
-    QHotkey *m_hotkey = nullptr;
     bool m_isListening = false;
 
     std::unique_ptr<VoiceOverlay> m_overlay;

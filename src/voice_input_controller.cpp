@@ -3,10 +3,9 @@
 #include "audio_input_capture.h"
 #include "logging.h"
 #include "paste_text.h"
+#include "voice_hotkey.h"
 #include "voice_overlay.h"
 #include "voice_text_processor.h"
-
-#include <QHotkey>
 
 // ── VoiceInputController ─────────────────────────────────────────
 
@@ -31,15 +30,23 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
                 }
             });
 
+    m_hotkey = new VoiceHotkey(this);
+    connect(m_hotkey, &VoiceHotkey::activated, this, [this]() {
+        if (m_isListening) {
+            stopListening();
+        }
+        else {
+            startListening();
+        }
+    });
+
     m_overlay = std::make_unique<VoiceOverlay>();
     m_textProcessor = new VoiceTextProcessor(this);
-    registerHotKey();
 }
 
 VoiceInputController::~VoiceInputController()
 {
     stopListening();
-    unregisterHotKey();
     s_instance = nullptr;
 }
 
@@ -165,41 +172,6 @@ void VoiceInputController::hideOverlay()
 {
     if (m_overlay) {
         m_overlay->stopAnimation();
-    }
-}
-
-void VoiceInputController::registerHotKey()
-{
-    if (!QHotkey::isPlatformSupported()) {
-        SPDLOG_WARN("Global hotkeys are not supported on this platform");
-        return;
-    }
-
-    m_hotkey =
-        new QHotkey(QKeySequence(QStringLiteral("Ctrl+Alt+L")), true, this);
-    connect(m_hotkey, &QHotkey::activated, this, [this]() {
-        if (m_isListening) {
-            stopListening();
-        }
-        else {
-            startListening();
-        }
-    });
-
-    if (!m_hotkey->isRegistered()) {
-        SPDLOG_WARN("Failed to register global hotkey: Ctrl+Alt+L");
-    }
-    else {
-        SPDLOG_INFO("Global hotkey registered: Ctrl+Alt+L");
-    }
-}
-
-void VoiceInputController::unregisterHotKey()
-{
-    if (m_hotkey) {
-        m_hotkey->setRegistered(false);
-        delete m_hotkey;
-        m_hotkey = nullptr;
     }
 }
 
