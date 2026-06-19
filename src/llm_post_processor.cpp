@@ -287,12 +287,12 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                                 outputTokens * outputPer1M / 1e6;
                             const double totalCost = inputCost + outputCost;
 
-                            SPDLOG_INFO("LLM cost: {} tokens, $"
+                            SPDLOG_INFO("LLM cost: {} tokens, ¥"
                                         "{:.6f} (cache hit: "
-                                        "{:.0f} * ${:.4f}/M, cache "
-                                        "miss: {:.0f} * ${:.4f}/M, "
+                                        "{:.0f} * ¥{:.4f}/M, cache "
+                                        "miss: {:.0f} * ¥{:.4f}/M, "
                                         "output: {:.0f} * "
-                                        "${:.4f}/M)",
+                                        "¥{:.4f}/M)",
                                         totalTokens, totalCost, promptCacheHit,
                                         cacheHitInputPer1M, promptCacheMiss,
                                         cacheMissInputPer1M, outputTokens,
