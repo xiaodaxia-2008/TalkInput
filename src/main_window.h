@@ -9,11 +9,8 @@
 #include <QTranslator>
 #include <memory>
 
-class QAction;
-class QMenu;
 class QSystemTrayIcon;
 class QThread;
-class QToolBar;
 
 namespace Ui
 {
@@ -71,18 +68,6 @@ private:
     QTranslator *m_appTranslator = nullptr;
     QTranslator *m_qtTranslator = nullptr;
 
-    // Menus created dynamically (needed for retranslation)
-    QToolBar *m_recognitionToolBar = nullptr;
-    QAction *m_startAction = nullptr;
-    QAction *m_fileAction = nullptr;
-    QAction *m_exitAction = nullptr;
-    QMenu *m_prefMenu = nullptr;
-    QMenu *m_langMenu = nullptr;
-    QAction *m_zhAction = nullptr;
-    QAction *m_enAction = nullptr;
-    QAction *m_startHiddenAction = nullptr;
-    QAction *m_resetSettingsAction = nullptr;
-    QMenu *m_helpMenu = nullptr;
     bool m_forceQuit = false;
 };
 

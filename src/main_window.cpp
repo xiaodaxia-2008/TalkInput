@@ -16,16 +16,13 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QIcon>
-#include <QKeySequence>
 #include <QMenu>
-#include <QMenuBar>
 #include <QMessageBox>
 #include <QSignalBlocker>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
 #include <QThread>
 #include <QTimer>
-#include <QToolBar>
 #include <QTranslator>
 #include <QtEndian>
 
@@ -90,35 +87,7 @@ void MainWindow::changeEvent(QEvent *event)
     }
 
     m_ui->retranslateUi(this);
-    m_recognitionToolBar->setWindowTitle(tr("Recognition"));
-    if (m_fileAction) {
-        m_fileAction->setText(tr("Recognize file"));
-        m_fileAction->setToolTip(tr("Import an audio file for recognition"));
-    }
-    if (m_startAction) {
-        const bool listening = m_voiceInput && m_voiceInput->isListening();
-        m_startAction->setText(listening ? tr("Stop recognition")
-                                         : tr("Start recognition"));
-        m_startAction->setToolTip(listening ? tr("Stop recognition")
-                                            : tr("Start recognition"));
-    }
-
-    m_exitAction->setText(tr("Exit"));
-    m_prefMenu->setTitle(tr("Preferences"));
-    m_langMenu->setTitle(tr("Language"));
-    m_zhAction->setText(tr("Chinese"));
-    m_enAction->setText(tr("English"));
-    m_startHiddenAction->setText(tr("Start minimized"));
-    if (m_resetSettingsAction) {
-        m_resetSettingsAction->setText(tr("Reset Settings"));
-    }
-    m_helpMenu->setTitle(tr("Help"));
-
-    spdlog::get("statusbar")
-        ->info("{}", (m_currentModelDirectory.isEmpty() &&
-                      m_currentModelType != QStringLiteral("System"))
-                         ? tr("No model selected")
-                         : tr("Model: %1").arg(m_currentModelName));
+    updateControls(m_voiceInput && m_voiceInput->isListening());
 }
 
 void MainWindow::setupUi()
@@ -161,18 +130,7 @@ void MainWindow::setupUi()
     // ── ASR settings tab ────────────────────────────────────────
     setupAsrSettingWidget();
 
-    // ── Toolbar ────────────────────────────────────────────────
-    SPDLOG_DEBUG("MainWindow::setupUi: creating toolbar");
-    m_recognitionToolBar = addToolBar(tr("Recognition"));
-    m_recognitionToolBar->setObjectName("recognitionToolBar");
-    m_recognitionToolBar->setMovable(false);
-    m_recognitionToolBar->setIconSize(QSize(28, 28));
-    m_recognitionToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-
-    m_startAction = m_recognitionToolBar->addAction(
-        QIcon(":/resources/icons/mic.svg"), tr("Start recognition"));
-    m_startAction->setToolTip(tr("Start recognition"));
-    connect(m_startAction, &QAction::triggered, this, [this]() {
+    connect(m_ui->actionStartRecognition, &QAction::triggered, this, [this]() {
         if (m_voiceInput && m_voiceInput->isListening()) {
             m_voiceInput->stopListening();
         }
@@ -181,10 +139,7 @@ void MainWindow::setupUi()
         }
     });
 
-    m_fileAction = m_recognitionToolBar->addAction(
-        QIcon(":/resources/icons/folder-plus.svg"), tr("Recognize file"));
-    m_fileAction->setToolTip(tr("Import an audio file for recognition"));
-    connect(m_fileAction, &QAction::triggered, this,
+    connect(m_ui->actionRecognizeFile, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
 
     spdlog::get("statusbar")->info("{}", tr("Loading model..."));
@@ -209,64 +164,43 @@ void MainWindow::setupUi()
     SPDLOG_DEBUG("MainWindow::setupUi: setting up tray icon");
     setupTrayIcon();
 
-    // ── Menu bar ────────────────────────────────────────────────
-    SPDLOG_DEBUG("MainWindow::setupUi: creating menu bar");
-    m_prefMenu = menuBar()->addMenu(tr("Preferences"));
-    m_langMenu = m_prefMenu->addMenu(QIcon(":/resources/icons/globe.svg"),
-                                     tr("Language"));
-
-    m_zhAction =
-        m_langMenu->addAction(QIcon(":/resources/icons/zh.svg"), tr("Chinese"));
-    m_zhAction->setCheckable(true);
-    m_enAction =
-        m_langMenu->addAction(QIcon(":/resources/icons/en.svg"), tr("English"));
-    m_enAction->setCheckable(true);
-
     m_currentLanguage = currentAppLanguage();
     if (m_currentLanguage == QStringLiteral("en")) {
-        m_enAction->setChecked(true);
+        m_ui->actionEnglish->setChecked(true);
     }
     else {
-        m_zhAction->setChecked(true);
+        m_ui->actionChinese->setChecked(true);
     }
 
-    connect(m_zhAction, &QAction::triggered, this, [this]() {
-        m_zhAction->setChecked(true);
-        m_enAction->setChecked(false);
+    connect(m_ui->actionChinese, &QAction::triggered, this, [this]() {
+        m_ui->actionChinese->setChecked(true);
+        m_ui->actionEnglish->setChecked(false);
         doSwitchLanguage(QStringLiteral("zh"));
     });
-    connect(m_enAction, &QAction::triggered, this, [this]() {
-        m_enAction->setChecked(true);
-        m_zhAction->setChecked(false);
+    connect(m_ui->actionEnglish, &QAction::triggered, this, [this]() {
+        m_ui->actionEnglish->setChecked(true);
+        m_ui->actionChinese->setChecked(false);
         doSwitchLanguage(QStringLiteral("en"));
     });
 
-    m_prefMenu->addSeparator();
-    m_startHiddenAction = m_prefMenu->addAction(tr("Start minimized"));
-    m_startHiddenAction->setCheckable(true);
-
     const bool startHidden =
         appConfigBool("/settings/app/startMinimized", false);
-    m_startHiddenAction->setChecked(startHidden);
+    m_ui->actionStartMinimized->setChecked(startHidden);
 
-    connect(m_startHiddenAction, &QAction::toggled, this, [](bool checked) {
-        setAppConfigValue("/settings/app/startMinimized", checked);
-    });
+    connect(m_ui->actionStartMinimized, &QAction::toggled, this,
+            [](bool checked) {
+                setAppConfigValue("/settings/app/startMinimized", checked);
+            });
 
-    m_prefMenu->addSeparator();
-    m_resetSettingsAction = m_prefMenu->addAction(tr("Reset Settings"));
-    connect(m_resetSettingsAction, &QAction::triggered, this,
+    connect(m_ui->actionResetSettings, &QAction::triggered, this,
             &MainWindow::resetUserSettings);
 
-    m_helpMenu = menuBar()->addMenu(tr("Help"));
-    auto *modelsAction = m_helpMenu->addAction(QStringLiteral("More Models"));
-    connect(modelsAction, &QAction::triggered, this, []() {
+    connect(m_ui->actionMoreModels, &QAction::triggered, this, []() {
         QDesktopServices::openUrl(
             QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
                                 "releases/tag/asr-models")));
     });
-    auto *aboutAction = m_helpMenu->addAction(tr("About"));
-    connect(aboutAction, &QAction::triggered, this, [this]() {
+    connect(m_ui->actionAbout, &QAction::triggered, this, [this]() {
         QMessageBox::about(this, tr("About TalkInput"),
                            tr("<h3>TalkInput %1</h3>"
                               "<p>Local voice input method.</p>"
@@ -279,9 +213,7 @@ void MainWindow::setupUi()
                                     QStringLiteral(GIT_COMMIT_DATE)));
     });
 
-    m_exitAction = menuBar()->addAction(tr("Exit"));
-    m_exitAction->setShortcut(QKeySequence::Quit);
-    connect(m_exitAction, &QAction::triggered, this,
+    connect(m_ui->actionExit, &QAction::triggered, this,
             &MainWindow::quitApplication);
 
     // ── Restore persisted state & load model ────────────────────
@@ -384,11 +316,10 @@ void MainWindow::stopListening()
 void MainWindow::updateControls(bool listening)
 {
     if (listening) {
-        if (m_startAction) {
-            m_startAction->setIcon(QIcon(":/resources/icons/stop.svg"));
-            m_startAction->setText(tr("Stop recognition"));
-            m_startAction->setToolTip(tr("Stop recognition"));
-        }
+        m_ui->actionStartRecognition->setIcon(
+            QIcon(":/resources/icons/stop.svg"));
+        m_ui->actionStartRecognition->setText(tr("Stop recognition"));
+        m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
         spdlog::get("statusbar")
             ->info("{}", m_currentModelName.isEmpty()
                              ? tr("Listening...")
@@ -398,11 +329,10 @@ void MainWindow::updateControls(bool listening)
         }
     }
     else {
-        if (m_startAction) {
-            m_startAction->setIcon(QIcon(":/resources/icons/mic.svg"));
-            m_startAction->setText(tr("Start recognition"));
-            m_startAction->setToolTip(tr("Start recognition"));
-        }
+        m_ui->actionStartRecognition->setIcon(
+            QIcon(":/resources/icons/mic.svg"));
+        m_ui->actionStartRecognition->setText(tr("Start recognition"));
+        m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
         if (m_currentModelDirectory.isEmpty() &&
             m_currentModelType != QStringLiteral("System"))
         {
@@ -629,12 +559,12 @@ void MainWindow::resetUserSettings()
     }
 
     {
-        const QSignalBlocker zhBlocker(m_zhAction);
-        const QSignalBlocker enBlocker(m_enAction);
-        const QSignalBlocker startHiddenBlocker(m_startHiddenAction);
-        m_zhAction->setChecked(resetLanguage != QStringLiteral("en"));
-        m_enAction->setChecked(resetLanguage == QStringLiteral("en"));
-        m_startHiddenAction->setChecked(
+        const QSignalBlocker zhBlocker(m_ui->actionChinese);
+        const QSignalBlocker enBlocker(m_ui->actionEnglish);
+        const QSignalBlocker startHiddenBlocker(m_ui->actionStartMinimized);
+        m_ui->actionChinese->setChecked(resetLanguage != QStringLiteral("en"));
+        m_ui->actionEnglish->setChecked(resetLanguage == QStringLiteral("en"));
+        m_ui->actionStartMinimized->setChecked(
             appConfigBool("/settings/app/startMinimized", false));
     }
 
