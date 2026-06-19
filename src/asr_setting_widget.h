@@ -38,21 +38,18 @@ signals:
 private:
     void onModelChanged(int index);
     void refreshStatus();
-    void onDownloadCurrent();
-    void onDeleteCurrent();
     void onUseCurrent();
-    void activateModel(const QString &modelPointer);
     void onEditHotwords();
-    void onDownloadFinished();
 
-    void refreshPromptLabel();
+    // Download helpers
     void startModelDownload(const QString &modelPointer);
+    void onDownloadFinished();
     bool isInstalled(const nlohmann::json &model) const;
     QString currentModelPointer() const;
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
 
-    // Download
+    // Download state
     QNetworkAccessManager *m_networkManager = nullptr;
     QNetworkReply *m_activeDownloadReply = nullptr;
     std::unique_ptr<QFile> m_activeDownloadFile;
@@ -60,6 +57,9 @@ private:
     QString m_activeDownloadTempPath;
     QString m_downloadTargetPointer;
     QQueue<QString> m_downloadQueue;
+
+    // Active ASR model — tracks which preset is currently loaded
+    QString m_activeAsrId;
 };
 
 } // namespace talkinput

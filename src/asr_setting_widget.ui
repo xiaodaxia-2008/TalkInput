@@ -21,7 +21,7 @@
    <item>
     <widget class="QGroupBox" name="modelGroup">
      <property name="title">
-      <string>Recognition Model</string>
+      <string>ASR Service</string>
      </property>
      <layout class="QVBoxLayout" name="modelLayout">
       <property name="leftMargin">
@@ -52,39 +52,12 @@
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="modelCombo"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QLabel" name="statusLabel">
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="modelButtonRow">
-        <property name="spacing">
-         <number>8</number>
-        </property>
-        <item>
-         <widget class="QPushButton" name="downloadButton">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Download</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="deleteButton">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Delete</string>
+         <widget class="QComboBox" name="modelCombo">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
           </property>
          </widget>
         </item>
@@ -99,22 +72,63 @@
           <property name="text">
            <string>Use</string>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
          </widget>
         </item>
-        <item>
-         <spacer name="modelButtonSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
        </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="statusLabel">
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="ocrGroup">
+     <property name="title">
+      <string>OCR Service</string>
+     </property>
+     <layout class="QHBoxLayout" name="ocrLayout">
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>10</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>10</number>
+      </property>
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="ocrLabel">
+        <property name="text">
+         <string>Provider:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="ocrCombo">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -148,7 +162,14 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QComboBox" name="providerCombo"/>
+       <widget class="QComboBox" name="providerCombo">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="endpointFormLabel">
@@ -160,7 +181,7 @@
       <item row="1" column="1">
        <widget class="QLineEdit" name="endpointEdit">
         <property name="placeholderText">
-         <string>OpenAI-compatible chat completions endpoint</string>
+         <string>https://api.openai.com</string>
         </property>
        </widget>
       </item>
@@ -179,6 +200,12 @@
         <property name="insertPolicy">
          <enum>QComboBox::NoInsert</enum>
         </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
        </widget>
       </item>
       <item row="3" column="0">
@@ -194,99 +221,20 @@
          <enum>QLineEdit::Password</enum>
         </property>
         <property name="placeholderText">
-         <string>Optional API key</string>
+         <string>sk-...</string>
         </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="promptFormLabel">
-        <property name="text">
-         <string>Prompt</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QWidget" name="promptWidget">
-        <layout class="QHBoxLayout" name="promptLayout">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <property name="spacing">
-          <number>6</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="promptLabel">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="textInteractionFlags">
-            <set>Qt::TextSelectableByMouse</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="promptEditButton">
-           <property name="toolTip">
-            <string>Edit LLM prompt</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
        </widget>
       </item>
      </layout>
     </widget>
-    </item>
-    <item>
-     <widget class="QGroupBox" name="ocrGroup">
-      <property name="title">
-       <string>OCR Service</string>
-      </property>
-      <layout class="QHBoxLayout" name="ocrLayout">
-       <property name="leftMargin">
-        <number>10</number>
-       </property>
-       <property name="topMargin">
-        <number>10</number>
-       </property>
-       <property name="rightMargin">
-        <number>10</number>
-       </property>
-       <property name="bottomMargin">
-        <number>10</number>
-       </property>
-       <property name="spacing">
-        <number>8</number>
-       </property>
-       <item>
-        <widget class="QLabel" name="ocrLabel">
-         <property name="text">
-          <string>Provider:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="ocrCombo"/>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="bottomRow">
-      <item>
-       <widget class="QPushButton" name="hotwordsButton">
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="bottomRow">
+     <property name="spacing">
+      <number>8</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="hotwordsButton">
        <property name="toolTip">
         <string>Edit hot words</string>
        </property>
@@ -298,10 +246,10 @@
      <item>
       <widget class="QCheckBox" name="llmPostProcessCheck">
        <property name="toolTip">
-        <string>Use a local Qwen model to polish final recognition text</string>
+        <string>Use LLM to polish final recognition text</string>
        </property>
        <property name="text">
-        <string>LLM post-processing</string>
+        <string>LLM Polish</string>
        </property>
       </widget>
      </item>
@@ -311,7 +259,7 @@
         <string>Use OCR text around the focused input as LLM context</string>
        </property>
        <property name="text">
-        <string>OCR focused context</string>
+        <string>OCR Context</string>
        </property>
       </widget>
      </item>
