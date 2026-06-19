@@ -1,16 +1,12 @@
 #include "voice_input_controller.h"
 #include "asr_config.h"
-#include "audio_utils.h"
+#include "audio_input_capture.h"
 #include "logging.h"
 #include "paste_text.h"
 #include "voice_overlay.h"
 #include "voice_text_processor.h"
 
-#include <QAudioDevice>
-#include <QAudioSource>
 #include <QHotkey>
-#include <QMediaDevices>
-#include <QTimer>
 
 // ── VoiceInputController ─────────────────────────────────────────
 
@@ -27,6 +23,14 @@ VoiceInputController *VoiceInputController::instance()
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
+    m_audioCapture = new AudioInputCapture(this);
+    connect(m_audioCapture, &AudioInputCapture::pcm16Ready, this,
+            [this](const QByteArray &pcm16, int sampleRate, int channels) {
+                if (m_recognizer) {
+                    m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
+                }
+            });
+
     m_overlay = std::make_unique<VoiceOverlay>();
     m_textProcessor = new VoiceTextProcessor(this);
     registerHotKey();
@@ -67,50 +71,11 @@ bool VoiceInputController::startListening()
         return true;
     }
 
-    const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
-    if (inputDevice.isNull()) {
-        SPDLOG_ERROR("No audio input device");
-        spdlog::get("statusbar")->info("{}", tr("No microphone available"));
+    auto captureStarted = m_audioCapture->start();
+    if (!captureStarted) {
+        spdlog::get("statusbar")->info("{}", captureStarted.error());
         return false;
     }
-
-    m_audioFormat = inputDevice.preferredFormat();
-    if (!m_audioFormat.isValid() ||
-        m_audioFormat.sampleFormat() == QAudioFormat::Unknown)
-    {
-        m_audioFormat = QAudioFormat();
-        m_audioFormat.setSampleRate(48000);
-        m_audioFormat.setChannelCount(1);
-        m_audioFormat.setSampleFormat(QAudioFormat::Int16);
-    }
-
-    if (!inputDevice.isFormatSupported(m_audioFormat)) {
-        SPDLOG_ERROR("Audio format not supported");
-        spdlog::get("statusbar")
-            ->info("{}", tr("Microphone format not supported."));
-        return false;
-    }
-
-    m_audioSource = std::make_unique<QAudioSource>(inputDevice, m_audioFormat);
-    m_audioDevice = m_audioSource->start();
-    if (!m_audioDevice) {
-        SPDLOG_ERROR("Failed to start microphone");
-        m_audioSource.reset();
-        spdlog::get("statusbar")->info("{}", tr("Failed to start microphone"));
-        return false;
-    }
-
-    connect(m_audioDevice, &QIODevice::readyRead, this, [this]() {
-        if (!m_audioDevice) {
-            return;
-        }
-        const QByteArray audioData = m_audioDevice->readAll();
-        const QByteArray pcm16 = convertAudioToPcm16(audioData, m_audioFormat);
-        if (m_recognizer) {
-            m_recognizer->acceptPcm16(pcm16, m_audioFormat.sampleRate(),
-                                      m_audioFormat.channelCount());
-        }
-    });
 
     m_isListening = true;
     m_lastResult.clear();
@@ -124,11 +89,9 @@ void VoiceInputController::stopListening()
 {
     SPDLOG_INFO("VoiceInputController: stop listening");
 
-    if (m_audioSource) {
-        m_audioSource->stop();
+    if (m_audioCapture) {
+        m_audioCapture->stop();
     }
-    m_audioDevice = nullptr;
-    m_audioSource.reset();
 
     if (m_recognizer && m_recognizer->isRunning()) {
         m_pendingResult = true;

@@ -2,19 +2,17 @@
 
 #include "speech_recognizer.h"
 
-#include <QAudioFormat>
 #include <QByteArray>
 #include <QObject>
 
 #include <memory>
 
-class QAudioSource;
 class QHotkey;
-class QIODevice;
 
 namespace talkinput
 {
 
+class AudioInputCapture;
 class VoiceTextProcessor;
 class VoiceOverlay;
 
@@ -70,11 +68,9 @@ private:
     void hideOverlay();
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
+    AudioInputCapture *m_audioCapture = nullptr;
     VoiceTextProcessor *m_textProcessor = nullptr;
 
-    std::unique_ptr<QAudioSource> m_audioSource;
-    QIODevice *m_audioDevice = nullptr;
-    QAudioFormat m_audioFormat;
     QHotkey *m_hotkey = nullptr;
     bool m_isListening = false;
 
