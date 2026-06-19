@@ -87,13 +87,13 @@ void MainWindow::changeEvent(QEvent *event)
 
 void MainWindow::setupUi()
 {
-    SPDLOG_DEBUG("MainWindow::setupUi: begin");
+    SPDLOG_DEBUG("setupUi: begin");
     m_ui->setupUi(this);
     installStatusBarLogger(statusBar());
-    SPDLOG_DEBUG("MainWindow::setupUi: ui setup complete");
+    SPDLOG_DEBUG("setupUi: ui setup complete");
 
     // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
-    SPDLOG_DEBUG("MainWindow::setupUi: creating VoiceInputController");
+    SPDLOG_DEBUG("setupUi: creating VoiceInputController");
     m_voiceInput = new VoiceInputController(this);
     qApp->installNativeEventFilter(m_voiceInput);
 
@@ -114,10 +114,10 @@ void MainWindow::setupUi()
             });
 
     // ── History tab ────────────────────────────────────────────
-    SPDLOG_DEBUG("MainWindow::setupUi: creating HistoryWidget");
+    SPDLOG_DEBUG("setupUi: creating HistoryWidget");
     m_historyWidget = new HistoryWidget(&m_history, m_ui->historyTab);
     m_ui->historyLayout->addWidget(m_historyWidget);
-    SPDLOG_DEBUG("MainWindow::setupUi: HistoryWidget added");
+    SPDLOG_DEBUG("setupUi: HistoryWidget added");
     // ── ASR settings tab ────────────────────────────────────────
     setupAsrSettingWidget();
 
@@ -148,7 +148,7 @@ void MainWindow::setupUi()
             [this](bool listening) { updateControls(listening); });
 
     // ── System tray ────────────────────────────────────────────
-    SPDLOG_DEBUG("MainWindow::setupUi: setting up tray icon");
+    SPDLOG_DEBUG("setupUi: setting up tray icon");
     setupTrayIcon();
 
     if (currentAppLanguage() == QStringLiteral("en")) {
@@ -215,13 +215,13 @@ void MainWindow::setupUi()
                                                         preset, "modelDirName")));
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
-            SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", name);
+            SPDLOG_DEBUG("setupUi: restoring saved model {}", name);
             m_voiceInput->loadModel(preset);
             SPDLOG_INFO("Restored model: {} ({})", name, dir);
         }
     }
 
-    SPDLOG_DEBUG("MainWindow::setupUi: end");
+    SPDLOG_DEBUG("setupUi: end");
 }
 
 void MainWindow::setupAsrSettingWidget()
@@ -233,10 +233,10 @@ void MainWindow::setupAsrSettingWidget()
         m_asrSettingWidget = nullptr;
     }
 
-    SPDLOG_DEBUG("MainWindow::setupAsrSettingWidget: creating widget");
+    SPDLOG_DEBUG("setupAsrSettingWidget: creating widget");
     m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
-    SPDLOG_DEBUG("MainWindow::setupAsrSettingWidget: widget added");
+    SPDLOG_DEBUG("setupAsrSettingWidget: widget added");
 
     connect(
         m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,

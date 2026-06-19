@@ -11,11 +11,12 @@
 int main(int argc, char *argv[])
 {
     spdlog::set_level(spdlog::level::debug);
+    spdlog::set_pattern("[%s:%# %!] [%^%l%$] %v");
     spdlog::flush_on(spdlog::level::debug);
-    SPDLOG_DEBUG("main: starting application");
+    SPDLOG_DEBUG("starting application");
 
     QApplication app(argc, argv);
-    SPDLOG_DEBUG("main: QApplication created");
+    SPDLOG_DEBUG("QApplication created");
     QApplication::setApplicationName("TalkInput");
     QApplication::setApplicationDisplayName("TalkInput Voice Input");
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
@@ -29,10 +30,10 @@ int main(int argc, char *argv[])
         app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));
     }
     else {
-        SPDLOG_WARN("main: failed to load application stylesheet");
+        SPDLOG_WARN("failed to load application stylesheet");
     }
 
-    SPDLOG_DEBUG("main: config path {}", talkinput::appConfigPath());
+    SPDLOG_DEBUG("config path {}", talkinput::appConfigPath());
 
     const bool startHidden =
         talkinput::appConfigBool("/settings/app/startMinimized", false);
@@ -41,17 +42,17 @@ int main(int argc, char *argv[])
     talkinput::installAppTranslations(talkinput::currentAppLanguage(), &app,
                                       appTranslator, qtTranslator);
 
-    SPDLOG_DEBUG("main: constructing MainWindow");
+    SPDLOG_DEBUG("constructing MainWindow");
     talkinput::MainWindow window;
-    SPDLOG_DEBUG("main: MainWindow constructed");
+    SPDLOG_DEBUG("MainWindow constructed");
     if (!startHidden) {
-        SPDLOG_DEBUG("main: showing MainWindow");
+        SPDLOG_DEBUG("showing MainWindow");
         window.show();
     }
     else {
-        SPDLOG_DEBUG("main: start hidden is enabled");
+        SPDLOG_DEBUG("start hidden is enabled");
     }
 
-    SPDLOG_DEBUG("main: entering event loop");
+    SPDLOG_DEBUG("entering event loop");
     return app.exec();
 }

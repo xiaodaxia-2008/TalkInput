@@ -56,14 +56,14 @@ void HistoryWidget::changeEvent(QEvent *event)
 
 void HistoryWidget::refreshHistory()
 {
-    SPDLOG_DEBUG("HistoryWidget::refreshHistory: begin");
+    SPDLOG_DEBUG("refreshHistory: begin");
     if (!m_history) {
-        SPDLOG_DEBUG("HistoryWidget::refreshHistory: no history backend");
+        SPDLOG_DEBUG("refreshHistory: no history backend");
         return;
     }
 
     const auto entries = m_history->allEntries();
-    SPDLOG_DEBUG("HistoryWidget::refreshHistory: {} entries", entries.size());
+    SPDLOG_DEBUG("refreshHistory: {} entries", entries.size());
 
     m_ui->table->setUpdatesEnabled(false);
     m_ui->table->setRowCount(entries.size());
@@ -109,7 +109,7 @@ void HistoryWidget::refreshHistory()
     }
 
     m_ui->table->setUpdatesEnabled(true);
-    SPDLOG_DEBUG("HistoryWidget::refreshHistory: end");
+    SPDLOG_DEBUG("refreshHistory: end");
 }
 
 void HistoryWidget::editEntry(int row)

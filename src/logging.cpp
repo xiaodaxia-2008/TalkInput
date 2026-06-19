@@ -91,7 +91,7 @@ void installStatusBarLogger(QStatusBar *statusBar)
     auto statusBarSink = std::make_shared<StatusBarSink>(statusLabel);
     auto terminalSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     terminalSink->set_level(spdlog::level::info);
-    terminalSink->set_pattern("[%n] [%^%l%$] %v");
+    terminalSink->set_pattern("[statusbar] [%^%l%$] %v");
 
     auto logger = std::make_shared<spdlog::logger>(
         "statusbar", spdlog::sinks_init_list{statusBarSink, terminalSink});
