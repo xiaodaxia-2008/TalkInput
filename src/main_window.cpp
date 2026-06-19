@@ -159,12 +159,12 @@ void MainWindow::setupUi()
     connect(m_ui->actionChinese, &QAction::triggered, this, [this]() {
         m_ui->actionChinese->setChecked(true);
         m_ui->actionEnglish->setChecked(false);
-        doSwitchLanguage(QStringLiteral("zh"));
+        onSwitchLanguage(QStringLiteral("zh"));
     });
     connect(m_ui->actionEnglish, &QAction::triggered, this, [this]() {
         m_ui->actionEnglish->setChecked(true);
         m_ui->actionChinese->setChecked(false);
-        doSwitchLanguage(QStringLiteral("en"));
+        onSwitchLanguage(QStringLiteral("en"));
     });
 
     const bool startHidden =
@@ -449,7 +449,7 @@ void MainWindow::quitApplication()
     qApp->quit();
 }
 
-void MainWindow::doSwitchLanguage(const QString &lang)
+void MainWindow::onSwitchLanguage(const QString &lang)
 {
     m_currentLanguage = lang;
     setAppConfigValue("/settings/app/language", lang);
@@ -477,7 +477,7 @@ void MainWindow::resetUserSettings()
 
     const QString resetLanguage = currentAppLanguage();
     if (m_currentLanguage != resetLanguage) {
-        doSwitchLanguage(resetLanguage);
+        onSwitchLanguage(resetLanguage);
     }
 
     {

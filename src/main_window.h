@@ -40,12 +40,9 @@ private:
     void startListening();
     void stopListening();
     void updateControls(bool listening);
-    void setRecognitionModel(const QString &modelDirectory,
-                             const QString &modelName = QString(),
-                             const QString &modelType = QString());
     void onRecognizeFile();
     void quitApplication();
-    void doSwitchLanguage(const QString &lang);
+    void onSwitchLanguage(const QString &lang);
     void resetUserSettings();
 
     std::unique_ptr<Ui::MainWindow> m_ui;
