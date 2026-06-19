@@ -58,7 +58,8 @@ nlohmann::json firstLlmProviderJson()
 
 nlohmann::json findLlmProviderJson(const QString &id)
 {
-    return talkinput::findLlmPresetById(id);
+    return talkinput::appConfigValue(
+        ("/llmPresets/" + id).toStdString());
 }
 
 } // namespace
@@ -122,7 +123,8 @@ nlohmann::json LlmPostProcessor::configuredProvider() const
     const QString providerId =
         appConfigString("/settings/llm/providerId").trimmed();
     if (!providerId.isEmpty()) {
-        nlohmann::json provider = findLlmPresetById(providerId);
+        nlohmann::json provider = appConfigValue(
+            ("/llmPresets/" + providerId).toStdString());
         if (provider.is_object() && !provider.empty()) {
             return provider;
         }

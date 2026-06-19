@@ -198,28 +198,4 @@ bool saveAppConfig()
     return writeConfigNow();
 }
 
-namespace
-{
-
-nlohmann::json findPresetById(std::string_view arrayPath, const QString &id)
-{
-    const nlohmann::json presets = appConfigValue(arrayPath);
-    if (!presets.is_object()) {
-        return nlohmann::json::object();
-    }
-    return presets.value(id.toStdString(), nlohmann::json::object());
-}
-
-} // namespace
-
-nlohmann::json findAsrPresetById(const QString &id)
-{
-    return findPresetById("/asrPresets", id);
-}
-
-nlohmann::json findLlmPresetById(const QString &id)
-{
-    return findPresetById("/llmPresets", id);
-}
-
 } // namespace talkinput

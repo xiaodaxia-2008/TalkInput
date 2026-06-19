@@ -26,8 +26,10 @@ struct LocalServiceInfo
 
 LocalServiceInfo localServiceInfo()
 {
-    const auto provider = talkinput::findLlmPresetById(
-        talkinput::appConfigString("/settings/llm/providerId").trimmed());
+    const auto provider = talkinput::appConfigValue(
+        ("/llmPresets/" +
+         talkinput::appConfigString("/settings/llm/providerId").trimmed())
+            .toStdString());
     return {
         .port = jsonInt(provider, "localServicePort", 8765),
         .maxHealthAttempts = jsonInt(provider, "localServiceMaxHealthAttempts", 120),
@@ -64,7 +66,8 @@ LocalModelInfo localModelInfo()
 {
     const QString providerId =
         talkinput::appConfigString("/settings/llm/providerId").trimmed();
-    nlohmann::json provider = talkinput::findLlmPresetById(providerId);
+    nlohmann::json provider = talkinput::appConfigValue(
+        ("/llmPresets/" + providerId).toStdString());
 
     // Fall back to the first provider
     if (!provider.is_object() || provider.empty()) {

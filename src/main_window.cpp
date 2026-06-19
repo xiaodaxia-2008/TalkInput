@@ -104,8 +104,10 @@ void MainWindow::setupUi()
                         ->error("{}", tr("Model load failed: %1").arg(error));
                 }
                 else {
-                    const auto preset = findAsrPresetById(
-                        appConfigString("/settings/asr/providerId"));
+                    const auto preset = appConfigValue(
+                        ("/asrPresets/" +
+                         appConfigString("/settings/asr/providerId"))
+                            .toStdString());
                     spdlog::get("statusbar")->info(
                         "{}",
                         tr("Model ready: %1")
@@ -205,7 +207,8 @@ void MainWindow::setupUi()
     // ── Restore persisted state & load model ────────────────────
     const QString savedAsrId = appConfigString("/settings/asr/providerId");
     if (!savedAsrId.isEmpty()) {
-        const nlohmann::json preset = findAsrPresetById(savedAsrId);
+        const nlohmann::json preset = appConfigValue(
+            ("/asrPresets/" + savedAsrId).toStdString());
         const QString type = jsonString(preset, "type");
         const QString dir = type == QStringLiteral("System")
                                 ? QString()
@@ -245,8 +248,10 @@ void MainWindow::setupAsrSettingWidget()
                 spdlog::get("statusbar")
                     ->info("{}", tr("Hot words saved, reloading model..."));
                 if (m_voiceInput) {
-                    const nlohmann::json preset = findAsrPresetById(
-                        appConfigString("/settings/asr/providerId"));
+                    const nlohmann::json preset = appConfigValue(
+                        ("/asrPresets/" +
+                         appConfigString("/settings/asr/providerId"))
+                            .toStdString());
                     if (preset.is_object()) {
                         m_voiceInput->loadModel(preset);
                     }
@@ -313,7 +318,10 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setText(tr("Stop recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
         const QString name = jsonString(
-            findAsrPresetById(appConfigString("/settings/asr/providerId")),
+            appConfigValue(
+                ("/asrPresets/" +
+                 appConfigString("/settings/asr/providerId"))
+                    .toStdString()),
             "name");
         spdlog::get("statusbar")
             ->info("{}", name.isEmpty()
@@ -326,7 +334,10 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
         const QString type = jsonString(
-            findAsrPresetById(appConfigString("/settings/asr/providerId")),
+            appConfigValue(
+                ("/asrPresets/" +
+                 appConfigString("/settings/asr/providerId"))
+                    .toStdString()),
             "type");
         if (!m_voiceInput->isModelLoaded() &&
             type != QStringLiteral("System"))
@@ -338,9 +349,11 @@ void MainWindow::updateControls(bool listening)
                 ->info("{}",
                        tr("Model: %1")
                            .arg(jsonString(
-                               findAsrPresetById(
-                                   appConfigString(
-                                       "/settings/asr/providerId")),
+                                appConfigValue(
+                                    ("/asrPresets/" +
+                                     appConfigString(
+                                         "/settings/asr/providerId"))
+                                        .toStdString()),
                                "name")));
         }
     }
@@ -502,7 +515,8 @@ void MainWindow::resetUserSettings()
 
     const QString savedAsrId = appConfigString("/settings/asr/providerId");
     if (!savedAsrId.isEmpty()) {
-        const nlohmann::json preset = findAsrPresetById(savedAsrId);
+        const nlohmann::json preset = appConfigValue(
+            ("/asrPresets/" + savedAsrId).toStdString());
         const QString type = jsonString(preset, "type");
         const QString dir = type == QStringLiteral("System")
                                 ? QString()

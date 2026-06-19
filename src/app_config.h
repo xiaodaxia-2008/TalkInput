@@ -19,7 +19,4 @@ void setAppConfigValue(std::string_view path, const nlohmann::json &value);
 bool resetAppConfigToDefaults();
 bool saveAppConfig();
 
-nlohmann::json findAsrPresetById(const QString &id);
-nlohmann::json findLlmPresetById(const QString &id);
-
 } // namespace talkinput
