@@ -2,17 +2,13 @@
 
 #include "json_utils.h"
 
-#include <QQueue>
 #include <QString>
 #include <QWidget>
 #include <memory>
 
 class QComboBox;
 class QEvent;
-class QFile;
 class QLineEdit;
-class QNetworkAccessManager;
-class QNetworkReply;
 
 namespace Ui
 {
@@ -21,6 +17,8 @@ class AsrSettingWidget;
 
 namespace talkinput
 {
+
+class ModelDownloadManager;
 
 class AsrSettingWidget final : public QWidget
 {
@@ -53,21 +51,11 @@ private:
     void initAsrModel();
     void initIcons();
 
-    // Download helpers
-    void startModelDownload(const QString &modelPointer);
-    void onModelDownloadFinished();
+    void onDownloadFinished(const QString &modelPointer);
     QString currentAsrPresetPath() const;
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-
-    // Download state
-    QNetworkAccessManager *m_downloadManager = nullptr;
-    QNetworkReply *m_downloadReply = nullptr;
-    std::unique_ptr<QFile> m_downloadFile;
-    QString m_downloadArchivePath;
-    QString m_downloadTempPath;
-    QString m_downloadingModelPath;
-    QQueue<QString> m_downloadQueue;
+    ModelDownloadManager *m_downloadManager = nullptr;
 };
 
 } // namespace talkinput

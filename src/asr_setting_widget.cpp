@@ -1,28 +1,21 @@
 #include "asr_setting_widget.h"
 #include "app_config.h"
-#include "archive_utils.h"
 #include "asr_config.h"
 #include "logging.h"
+#include "model_download_manager.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QDir>
 #include <QEvent>
-#include <QFile>
-#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QTextEdit>
@@ -125,7 +118,28 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::AsrSettingWidget>())
 {
     m_ui->setupUi(this);
-    m_downloadManager = new QNetworkAccessManager(this);
+    m_downloadManager = new ModelDownloadManager(this);
+    connect(m_downloadManager, &ModelDownloadManager::downloadStarted, this,
+            [this](const QString &modelName) {
+                spdlog::get("statusbar")
+                    ->info("{}", tr("Downloading %1...").arg(modelName));
+            });
+    connect(m_downloadManager, &ModelDownloadManager::extracting, this,
+            [this]() {
+                spdlog::get("statusbar")->info("{}", tr("Extracting..."));
+            });
+    connect(m_downloadManager, &ModelDownloadManager::downloadFailed, this,
+            [this](const QString &) {
+                spdlog::get("statusbar")->info("{}", tr("Download failed"));
+            });
+    connect(m_downloadManager, &ModelDownloadManager::extractionFailed, this,
+            [this](const QString &error) {
+                QMessageBox::warning(this, tr("Extraction failed"),
+                                     tr("Failed:\n%1").arg(error));
+                spdlog::get("statusbar")->info("{}", tr("Extraction failed"));
+            });
+    connect(m_downloadManager, &ModelDownloadManager::finished, this,
+            &AsrSettingWidget::onDownloadFinished);
 
     initLlmProviders();
     initLlmPrompt();
@@ -516,35 +530,13 @@ void AsrSettingWidget::onUseAsrModel()
     const bool isSystem = isSystemAsrPreset(m);
 
     if (!isSystem && !isAsrPresetInstalled(m)) {
-        // Queue download, then load on completion
-        const QUrl url(jsonString(m, "url"));
-        if (url.isEmpty()) {
-            return;
-        }
-
-        QDir cache(appDataDir() + QStringLiteral("/models"));
-        if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) {
-            return;
-        }
-
-        m_downloadingModelPath = ptr;
-        m_downloadQueue.clear();
-        m_downloadQueue.enqueue(ptr);
-
-        const nlohmann::json punct =
-            m.value("postPunctuationModel", nlohmann::json::object());
-        if (punct.is_object() && !punct.empty() &&
-            !isAsrPresetInstalled(punct) &&
-            !QUrl(jsonString(punct, "url")).isEmpty())
-        {
-            m_downloadQueue.enqueue(ptr +
-                                    QStringLiteral("/postPunctuationModel"));
-        }
-
         setCurrentAsrProviderId(modelId);
-        spdlog::get("statusbar")
-            ->info("{}", tr("Downloading %1...").arg(jsonString(m, "name")));
-        startModelDownload(m_downloadQueue.dequeue());
+        QString error;
+        if (!m_downloadManager->startAsrModelDownload(ptr, &error) &&
+            !error.isEmpty())
+        {
+            spdlog::get("statusbar")->info("{}", error);
+        }
         return;
     }
 
@@ -559,88 +551,14 @@ void AsrSettingWidget::onUseAsrModel()
         ->info("{}", tr("Model loaded: %1").arg(jsonString(m, "name")));
 }
 
-void AsrSettingWidget::startModelDownload(const QString &modelPointer)
+void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
 {
     const nlohmann::json m = appConfigValue(modelPointer.toStdString());
     if (!m.is_object()) {
         return;
     }
 
-    const QUrl url(jsonString(m, "url"));
     const QString modelName = jsonString(m, "name");
-    const QString archiveName = QFileInfo(url.path()).fileName();
-
-    m_downloadArchivePath =
-        appDataDir() + QStringLiteral("/models/") + archiveName;
-    m_downloadTempPath = m_downloadArchivePath + QStringLiteral(".part");
-    m_downloadingModelPath = modelPointer;
-
-    QFile::remove(m_downloadTempPath);
-    m_downloadFile = std::make_unique<QFile>(m_downloadTempPath);
-    if (!m_downloadFile->open(QIODevice::WriteOnly)) {
-        m_downloadingModelPath.clear();
-        spdlog::get("statusbar")
-            ->info("{}", tr("Failed to download %1").arg(modelName));
-        return;
-    }
-
-    QNetworkRequest request(url);
-    m_downloadReply = m_downloadManager->get(request);
-    connect(m_downloadReply, &QNetworkReply::finished, this,
-            &AsrSettingWidget::onModelDownloadFinished);
-}
-
-void AsrSettingWidget::onModelDownloadFinished()
-{
-    auto *reply = m_downloadReply;
-    m_downloadReply = nullptr;
-
-    if (m_downloadFile) {
-        m_downloadFile->write(reply->readAll());
-        m_downloadFile->close();
-    }
-
-    const bool failed = !reply || reply->error() != QNetworkReply::NoError;
-    const QString modelPointer = m_downloadingModelPath;
-    m_downloadingModelPath.clear();
-
-    if (reply) {
-        reply->deleteLater();
-    }
-
-    if (failed) {
-        spdlog::get("statusbar")->info("{}", tr("Download failed"));
-        m_downloadQueue.clear();
-        return;
-    }
-
-    const nlohmann::json m = appConfigValue(modelPointer.toStdString());
-    const QString modelName = jsonString(m, "name");
-
-    QDir dest(appDataDir() + QStringLiteral("/models"));
-    if (!dest.exists() && !dest.mkpath(QStringLiteral("."))) {
-        spdlog::get("statusbar")->info("{}", tr("Extraction failed"));
-        return;
-    }
-
-    spdlog::get("statusbar")->info("{}", tr("Extracting..."));
-    QCoreApplication::processEvents();
-
-    auto result = extractArchive(m_downloadArchivePath, dest.absolutePath());
-    QFile::remove(m_downloadArchivePath);
-
-    if (!result) {
-        QMessageBox::warning(this, tr("Extraction failed"),
-                             tr("Failed:\n%1").arg(result.error()));
-        spdlog::get("statusbar")->info("{}", tr("Extraction failed"));
-        return;
-    }
-
-    if (!m_downloadQueue.isEmpty()) {
-        startModelDownload(m_downloadQueue.dequeue());
-        return;
-    }
-
     refreshAsrStatus();
 
     if (currentAsrProviderId() == jsonString(m, "id")) {

@@ -28,6 +28,8 @@ add_executable(TalkInput
     history_widget.ui
     llm_post_processor.cpp
     llm_post_processor.h
+    model_download_manager.cpp
+    model_download_manager.h
     rapid_ocr_recognizer.cpp
     rapid_ocr_recognizer.h
     spawn_llama_server.cpp
