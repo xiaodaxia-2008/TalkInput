@@ -14,7 +14,7 @@ bool RapidOcrRecognizer::isAvailable() const
 {
     return QFileInfo::exists(
         QCoreApplication::applicationDirPath() +
-        QStringLiteral("/scripts/rapidocr.py"));
+        QStringLiteral("/scripts/rapidocr_cli.py"));
 }
 
 void RapidOcrRecognizer::recognizeText(const QImage &image,
@@ -47,7 +47,7 @@ void RapidOcrRecognizer::recognizeText(const QImage &image,
 
     const QString scriptPath =
         QCoreApplication::applicationDirPath() +
-        QStringLiteral("/scripts/rapidocr.py");
+        QStringLiteral("/scripts/rapidocr_cli.py");
 
     const QString scriptsDir =
         QCoreApplication::applicationDirPath() +
