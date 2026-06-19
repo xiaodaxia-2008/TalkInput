@@ -179,6 +179,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         providerCombo->addItem(qs(provider.value("name", std::string())),
                                qs(provider.value("id", std::string())));
     }
+    const QString savedLlmId =
+        talkinput::appConfigString("/settings/llm/providerId");
+    int llmIdx = providerCombo->findData(savedLlmId);
+    if (llmIdx >= 0) providerCombo->setCurrentIndex(llmIdx);
 
     auto *endpointEdit = m_ui->endpointEdit;
     auto *modelCombo = m_ui->llmModelCombo;
