@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QStringList>
 #include <QThread>
+#include <QtGlobal>
 
 #include <optional>
 
@@ -51,6 +52,15 @@ typeFromString(const QString &str)
         return talkinput::SpeechRecognizer::Type::System;
     }
     return std::nullopt;
+}
+
+bool systemSpeechRecognizerSupported()
+{
+#if defined(Q_OS_WIN)
+    return true;
+#else
+    return false;
+#endif
 }
 
 // Look up an ASR preset in the live appConfig by its model directory name.
@@ -102,6 +112,13 @@ void AsrService::setModelType(const QString &type)
 void AsrService::loadModel()
 {
     if (m_modelType == QStringLiteral("System")) {
+        if (!systemSpeechRecognizerSupported()) {
+            SPDLOG_WARN("AsrService: system speech recognizer is unavailable");
+            emit modelLoadResult(
+                false, tr("System speech recognition is not available on this "
+                          "platform."));
+            return;
+        }
         loadFromJson({}, SpeechRecognizer::Type::System);
         return;
     }

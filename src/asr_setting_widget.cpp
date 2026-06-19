@@ -30,6 +30,7 @@
 #include <QTextEdit>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QtGlobal>
 
 namespace
 {
@@ -174,6 +175,21 @@ QString streamingLabel(bool streaming)
     }
     return QCoreApplication::translate("talkinput::AsrSettingWidget",
                                        "\351\235\236\345\256\236\346\227\266");
+}
+
+bool systemSpeechRecognizerSupported()
+{
+#if defined(Q_OS_WIN)
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool shouldShowAsrPreset(const nlohmann::json &preset)
+{
+    return modelJsonString(preset, "type") != QStringLiteral("System") ||
+           systemSpeechRecognizerSupported();
 }
 
 } // namespace
@@ -459,6 +475,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         for (std::size_t i = 0; i < asrPresets.size(); ++i) {
             const nlohmann::json &preset = asrPresets[i];
             if (!preset.is_object()) {
+                continue;
+            }
+            if (!shouldShowAsrPreset(preset)) {
                 continue;
             }
             const QString name = modelJsonString(preset, "name");
