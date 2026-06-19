@@ -3,6 +3,7 @@
 #include "llm_post_processor.h"
 #include "logging.h"
 #include "ocr_recognizer.h"
+#include "paste_impl.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
 #include "utils.h"
@@ -540,135 +541,6 @@ void VoiceInputController::injectFinalText(const QString &text)
     SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
 }
 
-// ── Clipboard paste helper ────────────────────────────────────
-// 先填写剪切板、等待异步传播完成、再发 Ctrl+V。
-// 粘贴后不清除剪切板，文本留给用户备用。
-static bool tryClipboardPaste(const QString &text)
-{
-    HWND hwnd = GetForegroundWindow();
-    if (!hwnd) {
-        return false;
-    }
-
-    if (!OpenClipboard(nullptr)) {
-        return false;
-    }
-
-    EmptyClipboard();
-
-    const int len = text.length();
-    HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, static_cast<size_t>(len + 1) *
-                                                     sizeof(wchar_t));
-    if (!hGlobal) {
-        CloseClipboard();
-        return false;
-    }
-
-    auto *dst = static_cast<wchar_t *>(GlobalLock(hGlobal));
-    text.toWCharArray(dst);
-    dst[len] = L'\0';
-    GlobalUnlock(hGlobal);
-
-    if (!SetClipboardData(CF_UNICODETEXT, hGlobal)) {
-        GlobalFree(hGlobal);
-        CloseClipboard();
-        return false;
-    }
-    CloseClipboard();
-
-    // 剪切板更新是异步的 — 等待传播完成再发 Ctrl+V
-    // 轮询 GetClipboardSequenceNumber() 直到变化，再加 20 ms 保险
-    const DWORD seqBefore = GetClipboardSequenceNumber();
-    for (int tries = 0; tries < 50; ++tries) {
-        if (GetClipboardSequenceNumber() != seqBefore) {
-            break;
-        }
-        Sleep(10);
-    }
-    Sleep(20);
-
-    // Ctrl+V
-    INPUT ctrlV[4] = {};
-    ctrlV[0].type = INPUT_KEYBOARD;
-    ctrlV[0].ki.wVk = VK_CONTROL;
-    ctrlV[1].type = INPUT_KEYBOARD;
-    ctrlV[1].ki.wVk = 'V';
-    ctrlV[2].type = INPUT_KEYBOARD;
-    ctrlV[2].ki.wVk = 'V';
-    ctrlV[2].ki.dwFlags = KEYEVENTF_KEYUP;
-    ctrlV[3].type = INPUT_KEYBOARD;
-    ctrlV[3].ki.wVk = VK_CONTROL;
-    ctrlV[3].ki.dwFlags = KEYEVENTF_KEYUP;
-    SendInput(4, ctrlV, sizeof(INPUT));
-
-    // 不还原剪切板 — 文本留给用户
-    return true;
-}
-
-// ── SendInput 模式：逐字 KEYEVENTF_UNICODE + ASCII 延时 ────
-static void sendViaSendInput(const QString &text)
-{
-    HWND hwnd = GetForegroundWindow();
-    if (!hwnd) {
-        return;
-    }
-
-    DWORD tid = GetWindowThreadProcessId(hwnd, nullptr);
-    DWORD ourTid = GetCurrentThreadId();
-    const BOOL attached =
-        (tid != ourTid) ? AttachThreadInput(ourTid, tid, TRUE) : FALSE;
-
-    HIMC himc = ImmGetContext(hwnd);
-    const BOOL wasOpen = himc ? ImmGetOpenStatus(himc) : FALSE;
-    if (himc) {
-        ImmSetOpenStatus(himc, FALSE);
-    }
-
-    for (const QChar ch : text) {
-        const ushort code = ch.unicode();
-        if (code == 0) {
-            continue;
-        }
-
-        INPUT pair[2] = {};
-        pair[0].type = INPUT_KEYBOARD;
-        pair[0].ki.wVk = 0;
-        pair[0].ki.wScan = code;
-        pair[0].ki.dwFlags = KEYEVENTF_UNICODE;
-
-        pair[1].type = INPUT_KEYBOARD;
-        pair[1].ki.wVk = 0;
-        pair[1].ki.wScan = code;
-        pair[1].ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-
-        SendInput(2, pair, sizeof(INPUT));
-
-        if (code < 0x80) {
-            Sleep(15);
-        }
-    }
-
-    if (himc) {
-        ImmSetOpenStatus(himc, wasOpen);
-        ImmReleaseContext(hwnd, himc);
-    }
-
-    if (attached) {
-        AttachThreadInput(ourTid, tid, FALSE);
-    }
-}
-
-// ── 终端检测 ──────────────────────────────────────────────────
-static bool isTerminalWindow(HWND hwnd)
-{
-    wchar_t cls[256];
-    if (!GetClassNameW(hwnd, cls, 256)) {
-        return false;
-    }
-    return wcscmp(cls, L"ConsoleWindowClass") == 0 ||
-           wcscmp(cls, L"CASCADIA_HOSTING_WINDOW_CLASS") == 0;
-}
-
 // ── VoiceInputController::sendText ────────────────────────────
 void VoiceInputController::sendText(const QString &text)
 {
@@ -677,23 +549,7 @@ void VoiceInputController::sendText(const QString &text)
     }
 
     SPDLOG_INFO("Sending text to foreground app: {}", text);
-
-    HWND hwnd = GetForegroundWindow();
-    if (!hwnd) {
-        return;
-    }
-
-    if (isTerminalWindow(hwnd)) {
-        // 终端窗口：剪切板 + Ctrl+V（绕过英文丢字问题）
-        SPDLOG_DEBUG("Terminal window, using clipboard paste");
-        if (!tryClipboardPaste(text)) {
-            sendViaSendInput(text);
-        }
-    }
-    else {
-        // 非终端窗口：直接字符发送（兼容性更好）
-        sendViaSendInput(text);
-    }
+    injectText(text);
 }
 
 void VoiceInputController::showOverlay()
