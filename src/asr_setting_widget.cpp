@@ -36,80 +36,6 @@
 namespace
 {
 
-QString qs(const std::string &value)
-{
-    return QString::fromStdString(value);
-}
-
-QString cacheDir()
-{
-    return QDir(talkinput::appDataDir()).filePath(QStringLiteral("models"));
-}
-
-const nlohmann::json llmProvidersJson()
-{
-    return talkinput::appConfigValue("/llmPresets");
-}
-
-nlohmann::json firstLlmProviderJson()
-{
-    const nlohmann::json providers = llmProvidersJson();
-    if (providers.is_object() && !providers.empty()) {
-        return providers.begin().value();
-    }
-    return nlohmann::json::object();
-}
-
-nlohmann::json findLlmProviderJson(const QString &id)
-{
-    const nlohmann::json providers = llmProvidersJson();
-    if (providers.is_object()) {
-        return providers.value(id.toStdString(), nlohmann::json::object());
-    }
-    return nlohmann::json::object();
-}
-
-std::string llmProviderModelKey(const QString &providerId)
-{
-    return QStringLiteral("/settings/llm/providerModels/%1")
-        .arg(providerId)
-        .toStdString();
-}
-
-QString asrPresetPointer(const QString &id)
-{
-    return QStringLiteral("/asrPresets/%1").arg(id);
-}
-
-nlohmann::json modelJsonAtPointer(const QString &pointer)
-{
-    if (pointer.isEmpty()) {
-        return nlohmann::json::object();
-    }
-    return talkinput::appConfigValue(pointer.toStdString());
-}
-
-QString modelJsonString(const nlohmann::json &obj, const std::string &key)
-{
-    return jsonString(obj, key);
-}
-
-bool modelJsonBool(const nlohmann::json &obj, const std::string &key)
-{
-    return obj.value(key, false);
-}
-
-qint64 modelJsonInt64(const nlohmann::json &obj, const std::string &key)
-{
-    return obj.value(key, qint64(0));
-}
-
-QUrl modelArchiveUrl(const nlohmann::json &model)
-{
-    const QString url = modelJsonString(model, "url");
-    return url.isEmpty() ? QUrl() : QUrl(url);
-}
-
 QString formatSize(qint64 bytes)
 {
     if (bytes >= 1'000'000'000) {
@@ -124,42 +50,6 @@ QString formatSize(qint64 bytes)
     return QStringLiteral("%1 B").arg(bytes);
 }
 
-QString streamingLabel(bool streaming)
-{
-    return streaming
-               ? QCoreApplication::translate("AsrSettingWidget", "Real-time")
-               : QCoreApplication::translate("AsrSettingWidget", "Offline");
-}
-
-QString languageDisplay(const QString &code)
-{
-    if (code == QStringLiteral("zh"))
-        return QStringLiteral("CN");
-    if (code == QStringLiteral("en"))
-        return QStringLiteral("EN");
-    if (code == QStringLiteral("zh,en"))
-        return QStringLiteral("CN/EN");
-    if (code == QStringLiteral("multilingual"))
-        return QCoreApplication::translate("AsrSettingWidget", "Multi");
-    if (code == QStringLiteral("system"))
-        return QCoreApplication::translate("AsrSettingWidget", "System");
-    return code;
-}
-
-bool shouldShowAsrPreset(const nlohmann::json &preset)
-{
-    Q_UNUSED(preset);
-    return true;
-}
-
-void setButtonIcon(QPushButton *button, const QString &iconPath, int size)
-{
-    if (!button) return;
-    QIcon icon(iconPath);
-    button->setIcon(icon);
-    button->setIconSize(QSize(size, size));
-}
-
 } // namespace
 
 namespace talkinput
@@ -172,12 +62,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     m_ui->setupUi(this);
 
     // ── LLM providers combo ─────────────────────────────────────
-    const nlohmann::json llmProviders = llmProvidersJson();
+    const nlohmann::json llmProviders = appConfigValue("/llmPresets");
     auto *providerCombo = m_ui->providerCombo;
     for (const auto &[key, provider] : llmProviders.items()) {
         if (!provider.is_object()) continue;
-        providerCombo->addItem(qs(provider.value("name", std::string())),
-                               qs(provider.value("id", std::string())));
+        providerCombo->addItem(jsonString(provider, "name"),
+                               jsonString(provider, "id"));
     }
 
     auto *endpointEdit = m_ui->endpointEdit;
@@ -189,18 +79,22 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     auto providerAt = [providerCombo](int index) -> nlohmann::json {
         if (index >= 0 && index < providerCombo->count()) {
             const QString id = providerCombo->itemData(index).toString();
-            nlohmann::json p = findLlmProviderJson(id);
+            nlohmann::json p = appConfigValue("/llmPresets").value(
+                id.toStdString(), nlohmann::json::object());
             if (p.is_object() && !p.empty()) return p;
         }
-        return firstLlmProviderJson();
+        const auto presets = appConfigValue("/llmPresets");
+        if (presets.is_object() && !presets.empty())
+            return presets.begin().value();
+        return nlohmann::json::object();
     };
 
     auto applyProvider = [providerCombo, endpointEdit, modelCombo](
                              const nlohmann::json &provider, bool persist) {
         const QString endpoint =
-            qs(provider.value("endpoint", std::string())).trimmed();
+            jsonString(provider, "endpoint").trimmed();
         const QString currentModel =
-            qs(provider.value("currentModel", std::string())).trimmed();
+            jsonString(provider, "currentModel").trimmed();
         {
             const QSignalBlocker epBlocker(endpointEdit);
             const QSignalBlocker mBlocker(modelCombo);
@@ -209,7 +103,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             const nlohmann::json models =
                 provider.value("models", nlohmann::json::array());
             for (const auto &m : models) {
-                if (m.is_string()) modelCombo->addItem(qs(m.get<std::string>()));
+                if (m.is_string()) modelCombo->addItem(m.get<QString>());
             }
             if (!currentModel.isEmpty() &&
                 modelCombo->findText(currentModel) < 0)
@@ -237,11 +131,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 applyProvider(p, true);
                 const QString id = providerCombo->itemData(index).toString();
                 if (!id.isEmpty()) {
-                    const auto preset = talkinput::appConfigValue(
+                    const auto preset = appConfigValue(
                         QStringLiteral("/llmPresets/%1").arg(id)
                             .toStdString());
-                    apiKeyEdit->setText(
-                        qs(preset.value("apiKey", std::string())));
+                    apiKeyEdit->setText(jsonString(preset, "apiKey"));
                 }
                 spdlog::get("statusbar")
                     ->info("{}", tr("LLM provider saved: %1")
@@ -299,7 +192,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // Restore saved LLM provider
     const QString savedLlmId =
-        talkinput::appConfigString("/settings/llm/providerId");
+        appConfigString("/settings/llm/providerId");
     const int llmIdx = providerCombo->findData(savedLlmId);
     if (llmIdx >= 0) {
         providerCombo->setCurrentIndex(llmIdx);
@@ -307,12 +200,13 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     else {
         providerCombo->setCurrentIndex(0);
     }
-    const auto savedProvider = findLlmProviderJson(
-        providerCombo->currentData().toString());
+    const auto savedProvider = appConfigValue("/llmPresets").value(
+        providerCombo->currentData().toString().toStdString(),
+        nlohmann::json::object());
     if (savedProvider.is_object() && !savedProvider.empty()) {
         applyProvider(savedProvider, false);
         apiKeyEdit->setText(
-            qs(savedProvider.value("apiKey", std::string())));
+            jsonString(savedProvider, "apiKey"));
     }
 
     // ── Prompt edit button ──────────────────────────────────────
@@ -320,7 +214,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(promptBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditPrompt);
     {
-        const QString usr = talkinput::appConfigString("/settings/llm/userPrompt");
+        const QString usr = appConfigString("/settings/llm/userPrompt");
         m_ui->promptLabel->setText(
             QString("%1 \342\200\246").arg(usr.simplified().left(50)));
         m_ui->promptLabel->setToolTip(usr);
@@ -329,16 +223,16 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     // ── OCR provider combo ───────────────────────────────────────
     auto *ocrCombo = m_ui->ocrCombo;
     const nlohmann::json ocrPresets =
-        talkinput::appConfigValue("/ocrPresets");
+        appConfigValue("/ocrPresets");
     if (ocrPresets.is_object()) {
         for (const auto &[key, preset] : ocrPresets.items()) {
             if (!preset.is_object()) continue;
-            ocrCombo->addItem(qs(preset.value("name", std::string())),
-                              qs(preset.value("id", std::string())));
+            ocrCombo->addItem(jsonString(preset, "name"),
+                              jsonString(preset, "id"));
         }
     }
     const QString savedOcrId =
-        talkinput::appConfigString("/settings/ocr/providerId");
+        appConfigString("/settings/ocr/providerId");
     int ocrIdx = ocrCombo->findData(savedOcrId);
     if (ocrIdx >= 0) ocrCombo->setCurrentIndex(ocrIdx);
     connect(ocrCombo, &QComboBox::currentIndexChanged, this,
@@ -372,32 +266,41 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             &QCheckBox::setEnabled);
 
     // ── ASR model combo ──────────────────────────────────────────
-    const nlohmann::json asrPresets = talkinput::appConfigValue("/asrPresets");
+    const nlohmann::json asrPresets = appConfigValue("/asrPresets");
     m_ui->modelCombo->clear();
     if (asrPresets.is_object()) {
         for (const auto &[key, p] : asrPresets.items()) {
-            if (!p.is_object() || !shouldShowAsrPreset(p)) continue;
-            const QString name = modelJsonString(p, "name");
+            if (!p.is_object()) continue;
+            const QString name = jsonString(p, "name");
             const QString label =
                 QStringLiteral("%1 - %2 - %3")
                     .arg(name,
-                         streamingLabel(
-                             modelJsonBool(p, "streamingSupport")),
-                         languageDisplay(modelJsonString(p, "languages")));
-            m_ui->modelCombo->addItem(label, asrPresetPointer(
-                                                QString::fromStdString(key)));
+                         p.value("streamingSupport", false)
+                             ? tr("Real-time")
+                             : tr("Offline"),
+                         [](const QString &c) {
+                             if (c == "zh") return QStringLiteral("CN");
+                             if (c == "en") return QStringLiteral("EN");
+                             if (c == "zh,en") return QStringLiteral("CN/EN");
+                             if (c == "multilingual") return tr("Multilingual");
+                             if (c == "system") return tr("System");
+                             return c;
+                         }(jsonString(p, "languages")));
+            m_ui->modelCombo->addItem(label,
+                QStringLiteral("/asrPresets/%1").arg(
+                    QString::fromStdString(key)));
         }
     }
 
     // Restore saved selection
-    m_activeAsrId = talkinput::appConfigString("/settings/asr/providerId");
+    m_activeAsrId = appConfigString("/settings/asr/providerId");
     const QString savedAsrId = m_activeAsrId;
     int restoreIndex = -1;
     if (!savedAsrId.isEmpty()) {
         for (int ci = 0; ci < m_ui->modelCombo->count(); ++ci) {
             const nlohmann::json m =
-                modelJsonAtPointer(m_ui->modelCombo->itemData(ci).toString());
-            if (modelJsonString(m, "id") == savedAsrId) {
+                appConfigValue(m_ui->modelCombo->itemData(ci).toString().toStdString());
+            if (jsonString(m, "id") == savedAsrId) {
                 restoreIndex = ci;
                 break;
             }
@@ -446,18 +349,28 @@ void AsrSettingWidget::onModelChanged(int index)
     if (index < 0 || index >= m_ui->modelCombo->count()) return;
 
     const nlohmann::json m =
-        modelJsonAtPointer(m_ui->modelCombo->itemData(index).toString());
+        appConfigValue(m_ui->modelCombo->itemData(index).toString().toStdString());
     if (!m.is_object()) return;
 
-    const QString modelName = modelJsonString(m, "name");
-    const QString modelId = modelJsonString(m, "id");
+    const QString modelName = jsonString(m, "name");
+    const QString modelId = jsonString(m, "id");
     const bool isActive = (modelId == m_activeAsrId);
 
     // Combo item label: add "(Activated)" suffix for loaded model
     // Store the original base label in item data to allow clean toggling
     const QString baseLabel = QStringLiteral("%1 - %2 - %3")
-        .arg(modelName, streamingLabel(modelJsonBool(m, "streamingSupport")),
-             languageDisplay(modelJsonString(m, "languages")));
+        .arg(modelName,
+             m.value("streamingSupport", false)
+                 ? tr("Real-time")
+                 : tr("Offline"),
+             [](const QString &c) {
+                 if (c == "zh") return QStringLiteral("CN");
+                 if (c == "en") return QStringLiteral("EN");
+                 if (c == "zh,en") return QStringLiteral("CN/EN");
+                 if (c == "multilingual") return tr("Multilingual");
+                 if (c == "system") return tr("System");
+                 return c;
+             }(jsonString(m, "languages")));
     m_ui->modelCombo->setItemText(index, isActive
                                       ? baseLabel +
                                             QStringLiteral(" (%1)")
@@ -488,18 +401,18 @@ QString AsrSettingWidget::currentModelPointer() const
 void AsrSettingWidget::onUseCurrent()
 {
     const QString ptr = currentModelPointer();
-    const nlohmann::json m = modelJsonAtPointer(ptr);
+    const nlohmann::json m = appConfigValue(ptr.toStdString());
     if (!m.is_object()) return;
 
-    const QString modelId = modelJsonString(m, "id");
-    const bool isSystem = modelJsonString(m, "type") == QStringLiteral("System");
+    const QString modelId = jsonString(m, "id");
+    const bool isSystem = jsonString(m, "type") == QStringLiteral("System");
 
     if (!isSystem && !isInstalled(m)) {
         // Download first, then load on completion
-        const QUrl archiveUrl = modelArchiveUrl(m);
+        const QUrl archiveUrl = QUrl(jsonString(m, "url"));
         if (archiveUrl.isEmpty()) return;
 
-        QDir cache(cacheDir());
+        QDir cache(QDir(appDataDir()).filePath(QStringLiteral("models")));
         if (!cache.exists() && !cache.mkpath(QStringLiteral("."))) return;
 
         m_downloadTargetPointer = ptr;
@@ -510,14 +423,14 @@ void AsrSettingWidget::onUseCurrent()
         const nlohmann::json punct =
             m.value("postPunctuationModel", nlohmann::json::object());
         if (punct.is_object() && !punct.empty() && !isInstalled(punct) &&
-            !modelArchiveUrl(punct).isEmpty())
+            !QUrl(jsonString(punct, "url")).isEmpty())
         {
             m_downloadQueue.enqueue(ptr + QStringLiteral("/postPunctuationModel"));
         }
 
         m_activeAsrId = modelId; // will load after download
         spdlog::get("statusbar")->info("{}", tr("Downloading %1...").arg(
-                                                 modelJsonString(m, "name")));
+                                                 jsonString(m, "name")));
         startModelDownload(m_downloadQueue.dequeue());
         return;
     }
@@ -528,7 +441,7 @@ void AsrSettingWidget::onUseCurrent()
     m_activeAsrId = modelId;
     refreshStatus();
     spdlog::get("statusbar")->info("{}", tr("Model loaded: %1").arg(
-                                             modelJsonString(m, "name")));
+                                             jsonString(m, "name")));
 }
 
 // ── Download ─────────────────────────────────────────────────────
@@ -536,22 +449,22 @@ void AsrSettingWidget::onUseCurrent()
 bool AsrSettingWidget::isInstalled(const nlohmann::json &model) const
 {
     if (!model.is_object()) return false;
-    const QString type = modelJsonString(model, "type");
+    const QString type = jsonString(model, "type");
     if (type.isEmpty() || type == QStringLiteral("System")) return true;
-    const QString dirName = modelJsonString(model, "modelDirName");
+    const QString dirName = jsonString(model, "modelDirName");
     if (dirName.isEmpty()) return false;
-    return QFileInfo(QDir(cacheDir()).filePath(dirName)).isDir();
+    return QFileInfo(QDir(QDir(appDataDir()).filePath(QStringLiteral("models"))).filePath(dirName)).isDir();
 }
 
 void AsrSettingWidget::startModelDownload(const QString &modelPointer)
 {
-    const nlohmann::json m = modelJsonAtPointer(modelPointer);
+    const nlohmann::json m = appConfigValue(modelPointer.toStdString());
     if (!m.is_object()) return;
-    const QUrl archiveUrl = modelArchiveUrl(m);
-    const QString modelName = modelJsonString(m, "name");
+    const QUrl archiveUrl = QUrl(jsonString(m, "url"));
+    const QString modelName = jsonString(m, "name");
 
     const QString archiveName = QFileInfo(archiveUrl.path()).fileName();
-    m_activeDownloadPath = QDir(cacheDir()).filePath(archiveName);
+    m_activeDownloadPath = QDir(QDir(appDataDir()).filePath(QStringLiteral("models"))).filePath(archiveName);
     m_activeDownloadTempPath = m_activeDownloadPath + QStringLiteral(".part");
     m_downloadTargetPointer = modelPointer;
 
@@ -592,10 +505,10 @@ void AsrSettingWidget::onDownloadFinished()
     }
 
     // Extract archive
-    const nlohmann::json m = modelJsonAtPointer(modelPointer);
-    const QString modelName = modelJsonString(m, "name");
+    const nlohmann::json m = appConfigValue(modelPointer.toStdString());
+    const QString modelName = jsonString(m, "name");
 
-    QDir dest(cacheDir());
+    QDir dest(QDir(appDataDir()).filePath(QStringLiteral("models")));
     if (!dest.exists() && !dest.mkpath(QStringLiteral("."))) {
         spdlog::get("statusbar")->info("{}", tr("Extraction failed"));
         return;
@@ -623,7 +536,7 @@ void AsrSettingWidget::onDownloadFinished()
     refreshStatus();
 
     // If the "Use" triggered this download, load the model now
-    const QString modelId = modelJsonString(m, "id");
+    const QString modelId = jsonString(m, "id");
     if (m_activeAsrId == modelId) {
         auto *vc = VoiceInputController::instance();
         if (vc) vc->loadModel(m);
@@ -656,7 +569,7 @@ void AsrSettingWidget::onEditPrompt()
     editor->setAcceptRichText(false);
     editor->setPlaceholderText(
         tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
-    editor->setPlainText(talkinput::appConfigString("/settings/llm/userPrompt"));
+    editor->setPlainText(appConfigString("/settings/llm/userPrompt"));
     layout->addWidget(editor, 1);
 
     auto *buttons = new QDialogButtonBox(
@@ -706,13 +619,13 @@ void AsrSettingWidget::onEditHotwords()
 
     {
         const nlohmann::json hw =
-            talkinput::appConfigValue("/settings/hotwords");
+            appConfigValue("/settings/hotwords");
         QStringList lines;
         if (hw.is_array()) {
             for (const auto &item : hw) {
                 if (item.is_string()) {
                     const QString s =
-                        QString::fromStdString(item.get<std::string>())
+                        item.get<QString>()
                             .trimmed();
                     if (!s.isEmpty()) lines.append(s);
                 }
