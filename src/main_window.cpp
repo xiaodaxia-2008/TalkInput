@@ -187,7 +187,7 @@ void MainWindow::setupUi()
         m_langMenu->addAction(QIcon(":/resources/icons/en.svg"), tr("English"));
     m_enAction->setCheckable(true);
 
-    m_currentLanguage = appConfigString("settings/app/language", "zh");
+    m_currentLanguage = appConfigString("/settings/app/language", "zh");
     if (m_currentLanguage == QStringLiteral("en")) {
         m_enAction->setChecked(true);
     }
@@ -211,11 +211,11 @@ void MainWindow::setupUi()
     m_startHiddenAction->setCheckable(true);
 
     const bool startHidden =
-        appConfigBool("settings/app/startMinimized", false);
+        appConfigBool("/settings/app/startMinimized", false);
     m_startHiddenAction->setChecked(startHidden);
 
     connect(m_startHiddenAction, &QAction::toggled, this, [](bool checked) {
-        setAppConfigValue("settings/app/startMinimized", checked);
+        setAppConfigValue("/settings/app/startMinimized", checked);
     });
 
     m_prefMenu->addSeparator();
@@ -250,9 +250,9 @@ void MainWindow::setupUi()
             &MainWindow::quitApplication);
 
     // ── Restore persisted state & load model ────────────────────
-    const QString savedDir = appConfigString("settings/model/directory");
-    const QString savedName = appConfigString("settings/model/name");
-    const QString savedType = appConfigString("settings/model/type");
+    const QString savedDir = appConfigString("/settings/model/directory");
+    const QString savedName = appConfigString("/settings/model/name");
+    const QString savedType = appConfigString("/settings/model/type");
     if (!savedDir.isEmpty() || savedType == QStringLiteral("System")) {
         SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", savedDir);
         setRecognitionModel(savedDir, savedName, savedType);
@@ -413,9 +413,9 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
                 m_currentModelDirectory);
 
-    setAppConfigValue("settings/model/directory", m_currentModelDirectory);
-    setAppConfigValue("settings/model/name", m_currentModelName);
-    setAppConfigValue("settings/model/type", m_currentModelType);
+    setAppConfigValue("/settings/model/directory", m_currentModelDirectory);
+    setAppConfigValue("/settings/model/name", m_currentModelName);
+    setAppConfigValue("/settings/model/type", m_currentModelType);
 
     if (m_asrService) {
         m_asrService->setModelDirectory(m_currentModelDirectory);
@@ -601,7 +601,7 @@ void MainWindow::retranslateUi()
 void MainWindow::doSwitchLanguage(const QString &lang)
 {
     m_currentLanguage = lang;
-    setAppConfigValue("settings/app/language", lang);
+    setAppConfigValue("/settings/app/language", lang);
 
     // Remove old translators
     if (m_appTranslator) {
@@ -660,7 +660,7 @@ void MainWindow::resetUserSettings()
     }
 
     const QString resetLanguage =
-        appConfigString("settings/app/language", "zh");
+        appConfigString("/settings/app/language", "zh");
     if (m_currentLanguage != resetLanguage) {
         doSwitchLanguage(resetLanguage);
     }
@@ -672,14 +672,14 @@ void MainWindow::resetUserSettings()
         m_zhAction->setChecked(resetLanguage != QStringLiteral("en"));
         m_enAction->setChecked(resetLanguage == QStringLiteral("en"));
         m_startHiddenAction->setChecked(
-            appConfigBool("settings/app/startMinimized", false));
+            appConfigBool("/settings/app/startMinimized", false));
     }
 
     setupAsrSettingWidget();
 
-    const QString savedDir = appConfigString("settings/model/directory");
-    const QString savedName = appConfigString("settings/model/name");
-    const QString savedType = appConfigString("settings/model/type");
+    const QString savedDir = appConfigString("/settings/model/directory");
+    const QString savedName = appConfigString("/settings/model/name");
+    const QString savedType = appConfigString("/settings/model/type");
     if (!savedDir.isEmpty() || savedType == QStringLiteral("System")) {
         setRecognitionModel(savedDir, savedName, savedType);
     }

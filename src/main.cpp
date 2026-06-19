@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
     SPDLOG_DEBUG("main: config path {}", talkinput::appConfigPath());
 
     const bool startHidden =
-        talkinput::appConfigBool("settings/app/startMinimized", false);
+        talkinput::appConfigBool("/settings/app/startMinimized", false);
     const QString lang =
-        talkinput::appConfigString("settings/app/language", "zh");
+        talkinput::appConfigString("/settings/app/language", "zh");
 
     if (lang == QStringLiteral("zh")) {
         SPDLOG_DEBUG("main: loading Chinese translations");

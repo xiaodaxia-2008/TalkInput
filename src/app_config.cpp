@@ -19,19 +19,6 @@ bool s_loaded = false;
 bool s_dirty = false;
 QTimer *s_saveTimer = nullptr;
 
-std::string pointerPath(const QString &path)
-{
-    QString normalized = path.trimmed();
-    if (normalized.isEmpty()) {
-        return {};
-    }
-    if (!normalized.startsWith('/')) {
-        normalized.prepend('/');
-    }
-    normalized.replace("~", "~0");
-    return normalized.toStdString();
-}
-
 nlohmann::json readConfigObject(const QString &path)
 {
     QFile file(path);
@@ -146,37 +133,41 @@ QString appConfigPath()
     return QDir(talkinput::appDataDir()).filePath("config.json");
 }
 
-bool appConfigContains(const QString &path)
+bool appConfigContains(std::string_view path)
 {
     ensureLoaded();
-    const auto pointer = nlohmann::json::json_pointer(pointerPath(path));
+    const auto pointer = nlohmann::json::json_pointer(std::string{path});
     return s_config.contains(pointer);
 }
 
-nlohmann::json appConfigValue(const QString &path,
+nlohmann::json appConfigValue(std::string_view path,
                               const nlohmann::json &fallback)
 {
     ensureLoaded();
-    const auto pointer = nlohmann::json::json_pointer(pointerPath(path));
+    const auto pointer = nlohmann::json::json_pointer(std::string{path});
     return s_config.contains(pointer) ? s_config.at(pointer) : fallback;
 }
 
-QString appConfigString(const QString &path, const QString &fallback)
+QString appConfigString(std::string_view path, std::string_view fallback)
 {
-    const nlohmann::json value = appConfigValue(path, fallback);
-    return value.is_string() ? value.get<QString>() : fallback;
+    const nlohmann::json value = appConfigValue(path, std::string{fallback});
+    if (value.is_string()) {
+        return value.get<QString>();
+    }
+    return QString::fromUtf8(fallback.data(),
+                             static_cast<qsizetype>(fallback.size()));
 }
 
-bool appConfigBool(const QString &path, bool fallback)
+bool appConfigBool(std::string_view path, bool fallback)
 {
     const nlohmann::json value = appConfigValue(path, fallback);
     return value.is_boolean() ? value.get<bool>() : fallback;
 }
 
-void setAppConfigValue(const QString &path, const nlohmann::json &value)
+void setAppConfigValue(std::string_view path, const nlohmann::json &value)
 {
     ensureLoaded();
-    const auto pointer = nlohmann::json::json_pointer(pointerPath(path));
+    const auto pointer = nlohmann::json::json_pointer(std::string{path});
     s_config[pointer] = value;
     s_dirty = true;
     scheduleSave();

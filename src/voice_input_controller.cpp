@@ -392,7 +392,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
             SPDLOG_DEBUG("OCR context sent to LLM: {}", ocrContext.trimmed());
             emit statusMessage(tr("Post-processing recognition result..."));
         }
-        const QString hotwords = appConfigString("settings/model/hotwords");
+        const QString hotwords = appConfigString("/settings/model/hotwords");
         m_llmPostProcessor->postProcess(
             finalText, ocrContext, hotwords, this,
             [this, finalText](const QString &processedText) {
@@ -405,7 +405,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
     const bool llmEnabled = m_llmPostProcessor->isEnabled();
     const bool ocrEnabled =
-        appConfigBool("settings/ocr/useFocusedInputContext", false);
+        appConfigBool("/settings/ocr/useFocusedInputContext", false);
     const bool ocrServiceAvailable =
         m_ocrService && m_ocrService->isAvailable();
     SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "

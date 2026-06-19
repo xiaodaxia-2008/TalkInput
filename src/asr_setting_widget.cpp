@@ -46,7 +46,7 @@ QString cacheDir()
 
 const nlohmann::json llmProvidersJson()
 {
-    return talkinput::appConfigValue("llmPostProcessing/providers");
+    return talkinput::appConfigValue("/llmPostProcessing/providers");
 }
 
 nlohmann::json firstLlmProviderJson()
@@ -68,9 +68,9 @@ QString formatSize(qint64 bytes)
                                        0, 'f', 0);
 }
 
-QString llmProviderModelKey(const QString &providerId)
+std::string llmProviderModelKey(const QString &providerId)
 {
-    return QString("settings/llm/providerModels/%1").arg(providerId);
+    return "/settings/llm/providerModels/" + providerId.toStdString();
 }
 
 nlohmann::json findLlmProviderJson(const QString &id)
@@ -126,12 +126,12 @@ QString postPunctuationDirName(const nlohmann::json &model)
 
 QString currentLlmSystemPrompt()
 {
-    return talkinput::appConfigString("settings/llm/systemPrompt");
+    return talkinput::appConfigString("/settings/llm/systemPrompt");
 }
 
 QString currentLlmUserPrompt()
 {
-    return talkinput::appConfigString("settings/llm/userPrompt");
+    return talkinput::appConfigString("/settings/llm/userPrompt");
 }
 
 QString languageDisplay(const QString &lang)
@@ -267,14 +267,15 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         promptLabel->setText(
             QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
                 .arg(sysPrompt.left(40), usrPrompt.left(40)));
-        promptLabel->setToolTip(QString("System: %1\nUser: %2")
-                                    .arg(sysPrompt, usrPrompt));
+        promptLabel->setToolTip(
+            QString("System: %1\nUser: %2").arg(sysPrompt, usrPrompt));
     };
     refreshPromptLabel();
 
     auto providerAt = [providerCombo](int index) -> nlohmann::json {
         if (index >= 0 && index < providerCombo->count()) {
-            const QString providerId = providerCombo->itemData(index).toString();
+            const QString providerId =
+                providerCombo->itemData(index).toString();
             nlohmann::json provider = findLlmProviderJson(providerId);
             if (provider.is_object() && !provider.empty()) {
                 return provider;
@@ -289,13 +290,14 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         QString endpoint;
         QString model;
         if (custom) {
-            endpoint = appConfigString("settings/llm/customEndpoint").trimmed();
+            endpoint =
+                appConfigString("/settings/llm/customEndpoint").trimmed();
             if (endpoint.isEmpty()) {
-                endpoint = appConfigString("settings/llm/endpoint").trimmed();
+                endpoint = appConfigString("/settings/llm/endpoint").trimmed();
             }
-            model = appConfigString("settings/llm/customModel").trimmed();
+            model = appConfigString("/settings/llm/customModel").trimmed();
             if (model.isEmpty()) {
-                model = appConfigString("settings/llm/model").trimmed();
+                model = appConfigString("/settings/llm/model").trimmed();
             }
         }
         else {
@@ -329,14 +331,14 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             return;
         }
 
-        setAppConfigValue("settings/llm/providerId",
+        setAppConfigValue("/settings/llm/providerId",
                           provider.value("id", std::string()));
-        setAppConfigValue("settings/llm/endpoint", endpoint);
-        setAppConfigValue("settings/llm/model", model);
+        setAppConfigValue("/settings/llm/endpoint", endpoint);
+        setAppConfigValue("/settings/llm/model", model);
         setAppConfigValue(llmProviderModelKey(providerId), model);
         if (custom) {
-            setAppConfigValue("settings/llm/customEndpoint", endpoint);
-            setAppConfigValue("settings/llm/customModel", model);
+            setAppConfigValue("/settings/llm/customEndpoint", endpoint);
+            setAppConfigValue("/settings/llm/customModel", model);
         }
         int idx = providerCombo->findData(providerId);
         if (idx >= 0 && idx != providerCombo->currentIndex()) {
@@ -345,7 +347,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     };
 
     {
-        QString providerId = appConfigString("settings/llm/providerId");
+        QString providerId = appConfigString("/settings/llm/providerId");
         int providerIndex = providerCombo->findData(providerId);
         if (providerIndex < 0) {
             providerIndex = 0;
@@ -354,7 +356,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             providerCombo->setCurrentIndex(providerIndex);
             applyProvider(providerAt(providerIndex), false);
         }
-        apiKeyEdit->setText(appConfigString("settings/llm/apiKey"));
+        apiKeyEdit->setText(appConfigString("/settings/llm/apiKey"));
     }
 
     connect(providerCombo, &QComboBox::currentIndexChanged, this,
@@ -368,19 +370,19 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(endpointEdit, &QLineEdit::editingFinished, this,
             [this, providerCombo, endpointEdit]() {
                 const QString endpoint = endpointEdit->text().trimmed();
-                setAppConfigValue("settings/llm/endpoint", endpoint);
+                setAppConfigValue("/settings/llm/endpoint", endpoint);
                 if (providerCombo->currentData().toString() == "custom") {
-                    setAppConfigValue("settings/llm/customEndpoint", endpoint);
+                    setAppConfigValue("/settings/llm/customEndpoint", endpoint);
                 }
                 emit statusMessage(tr("LLM endpoint saved."));
             });
     auto saveModel = [this, providerCombo, modelCombo]() {
         const QString model = modelCombo->currentText().trimmed();
         const QString providerId = providerCombo->currentData().toString();
-        setAppConfigValue("settings/llm/model", model);
+        setAppConfigValue("/settings/llm/model", model);
         setAppConfigValue(llmProviderModelKey(providerId), model);
         if (providerId == "custom") {
-            setAppConfigValue("settings/llm/customModel", model);
+            setAppConfigValue("/settings/llm/customModel", model);
         }
         emit statusMessage(tr("LLM model saved."));
     };
@@ -396,87 +398,86 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 }
                 const QString providerId =
                     providerCombo->currentData().toString();
-                setAppConfigValue("settings/llm/model", model);
+                setAppConfigValue("/settings/llm/model", model);
                 setAppConfigValue(llmProviderModelKey(providerId), model);
                 if (providerId == "custom") {
-                    setAppConfigValue("settings/llm/customModel", model);
+                    setAppConfigValue("/settings/llm/customModel", model);
                 }
             });
     connect(apiKeyEdit, &QLineEdit::editingFinished, this,
             [this, apiKeyEdit]() {
-                setAppConfigValue("settings/llm/apiKey",
+                setAppConfigValue("/settings/llm/apiKey",
                                   apiKeyEdit->text().trimmed());
                 emit statusMessage(tr("LLM API key saved."));
             });
-    connect(
-        promptEditBtn, &QPushButton::clicked, this,
-        [this, refreshPromptLabel]() {
-            QDialog dialog(this);
-            dialog.setWindowTitle(tr("LLM Prompts"));
-            dialog.resize(580, 520);
+    connect(promptEditBtn, &QPushButton::clicked, this,
+            [this, refreshPromptLabel]() {
+                QDialog dialog(this);
+                dialog.setWindowTitle(tr("LLM Prompts"));
+                dialog.resize(580, 520);
 
-            auto *layout = new QVBoxLayout(&dialog);
-            layout->setContentsMargins(16, 16, 16, 16);
-            layout->setSpacing(10);
+                auto *layout = new QVBoxLayout(&dialog);
+                layout->setContentsMargins(16, 16, 16, 16);
+                layout->setSpacing(10);
 
-            const QString hint =
-                tr("Available variables: {{input}}, {{context}}, "
-                   "{{hotwords}}");
+                const QString hint =
+                    tr("Available variables: {{input}}, {{context}}, "
+                       "{{hotwords}}");
 
-            // -- System Prompt --
-            auto *sysLabel =
-                new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                               .arg(tr("System Prompt"), hint),
-                           &dialog);
-            sysLabel->setWordWrap(true);
-            layout->addWidget(sysLabel);
+                // -- System Prompt --
+                auto *sysLabel =
+                    new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                                   .arg(tr("System Prompt"), hint),
+                               &dialog);
+                sysLabel->setWordWrap(true);
+                layout->addWidget(sysLabel);
 
-            auto *sysEditor = new QTextEdit(&dialog);
-            sysEditor->setAcceptRichText(false);
-            sysEditor->setPlaceholderText(
-                tr("\344\276\213\345\246\202\357\274\232\344\275\240\346\230"
-                   "\257\344\270\200\344\270\252\346\234\211\345\270\256\345"
-                   "\212\251\347\232\204\345\212\251\346\211\213"));
-            sysEditor->setPlainText(currentLlmSystemPrompt());
-            sysEditor->setMaximumHeight(150);
-            layout->addWidget(sysEditor);
+                auto *sysEditor = new QTextEdit(&dialog);
+                sysEditor->setAcceptRichText(false);
+                sysEditor->setPlaceholderText(tr(
+                    "\344\276\213\345\246\202\357\274\232\344\275\240\346\230"
+                    "\257\344\270\200\344\270\252\346\234\211\345\270\256\345"
+                    "\212\251\347\232\204\345\212\251\346\211\213"));
+                sysEditor->setPlainText(currentLlmSystemPrompt());
+                sysEditor->setMaximumHeight(150);
+                layout->addWidget(sysEditor);
 
-            // -- User Prompt --
-            auto *usrLabel =
-                new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                               .arg(tr("User Prompt"), hint),
-                           &dialog);
-            usrLabel->setWordWrap(true);
-            layout->addWidget(usrLabel);
+                // -- User Prompt --
+                auto *usrLabel =
+                    new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                                   .arg(tr("User Prompt"), hint),
+                               &dialog);
+                usrLabel->setWordWrap(true);
+                layout->addWidget(usrLabel);
 
-            auto *usrEditor = new QTextEdit(&dialog);
-            usrEditor->setAcceptRichText(false);
-            usrEditor->setPlaceholderText(
-                tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
-            usrEditor->setPlainText(currentLlmUserPrompt());
-            usrEditor->setMaximumHeight(150);
-            layout->addWidget(usrEditor);
+                auto *usrEditor = new QTextEdit(&dialog);
+                usrEditor->setAcceptRichText(false);
+                usrEditor->setPlaceholderText(tr(
+                    "Use {{input}}, {{context}}, and {{hotwords}} as needed"));
+                usrEditor->setPlainText(currentLlmUserPrompt());
+                usrEditor->setMaximumHeight(150);
+                layout->addWidget(usrEditor);
 
-            auto *buttons = new QDialogButtonBox(&dialog);
-            buttons->addButton(QDialogButtonBox::Save);
-            buttons->addButton(QDialogButtonBox::Cancel);
-            connect(buttons, &QDialogButtonBox::accepted, &dialog,
-                    &QDialog::accept);
-            connect(buttons, &QDialogButtonBox::rejected, &dialog,
-                    &QDialog::reject);
-            layout->addWidget(buttons);
+                auto *buttons = new QDialogButtonBox(&dialog);
+                buttons->addButton(QDialogButtonBox::Save);
+                buttons->addButton(QDialogButtonBox::Cancel);
+                connect(buttons, &QDialogButtonBox::accepted, &dialog,
+                        &QDialog::accept);
+                connect(buttons, &QDialogButtonBox::rejected, &dialog,
+                        &QDialog::reject);
+                layout->addWidget(buttons);
 
-            if (dialog.exec() != QDialog::Accepted) {
-                return;
-            }
+                if (dialog.exec() != QDialog::Accepted) {
+                    return;
+                }
 
-            setAppConfigValue("settings/llm/systemPrompt",
-                              sysEditor->toPlainText().trimmed());
-            setAppConfigValue("settings/llm/userPrompt",
-                              usrEditor->toPlainText().trimmed());
-            refreshPromptLabel();
-            emit statusMessage(tr("LLM prompts saved."));
-        });
+                setAppConfigValue("/settings/llm/systemPrompt",
+                                  sysEditor->toPlainText().trimmed());
+                setAppConfigValue("/settings/llm/userPrompt",
+                                  usrEditor->toPlainText().trimmed());
+                refreshPromptLabel();
+                emit statusMessage(tr("LLM prompts saved."));
+            });
 
     llmForm->addRow(tr("Provider"), providerCombo);
     llmForm->addRow(tr("Endpoint"), endpointEdit);
@@ -505,10 +506,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     llmPostProcessCheck->setToolTip(
         tr("Use a local Qwen model to polish final recognition text"));
     llmPostProcessCheck->setChecked(
-        appConfigBool("settings/llm/postProcessingEnabled", false));
+        appConfigBool("/settings/llm/postProcessingEnabled", false));
     connect(
         llmPostProcessCheck, &QCheckBox::toggled, this, [this](bool checked) {
-            setAppConfigValue("settings/llm/postProcessingEnabled", checked);
+            setAppConfigValue("/settings/llm/postProcessingEnabled", checked);
             emit statusMessage(checked ? tr("LLM post-processing enabled.")
                                        : tr("LLM post-processing disabled."));
         });
@@ -517,9 +518,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     ocrContextCheck->setToolTip(
         tr("Use OCR text around the focused input as LLM context"));
     ocrContextCheck->setChecked(
-        appConfigBool("settings/ocr/useFocusedInputContext", false));
+        appConfigBool("/settings/ocr/useFocusedInputContext", false));
     connect(ocrContextCheck, &QCheckBox::toggled, this, [this](bool checked) {
-        setAppConfigValue("settings/ocr/useFocusedInputContext", checked);
+        setAppConfigValue("/settings/ocr/useFocusedInputContext", checked);
         emit statusMessage(checked ? tr("OCR context enabled.")
                                    : tr("OCR context disabled."));
     });
@@ -534,7 +535,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     // ── Load model presets from config ───────────────────────────
     SPDLOG_DEBUG("AsrSettingWidget: loading model presets");
-    const nlohmann::json asrPresets = talkinput::appConfigValue("asrPresets");
+    const nlohmann::json asrPresets = talkinput::appConfigValue("/asrPresets");
 
     // Store ALL presets (ASR + nested punctuation tool presets) in m_models
     for (const auto &preset : asrPresets) {
@@ -558,7 +559,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                          name, punctDirName);
             nlohmann::json toolPreset = punct;
             toolPreset["isPunctuationModel"] = true;
-            const std::string toolType = toolPreset.value("type", std::string());
+            const std::string toolType =
+                toolPreset.value("type", std::string());
             if (toolType.empty()) {
                 toolPreset["type"] = "Tool";
             }
@@ -576,19 +578,19 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
         const QString label =
             QStringLiteral("%1 - %2 - %3")
-                .arg(modelJsonString(m_models[i], "name"),
-                     streamingLabel(
-                         modelJsonBool(m_models[i], "streamingSupport")),
-                     languageDisplay(
-                         modelJsonString(m_models[i], "languages")));
+                .arg(
+                    modelJsonString(m_models[i], "name"),
+                    streamingLabel(
+                        modelJsonBool(m_models[i], "streamingSupport")),
+                    languageDisplay(modelJsonString(m_models[i], "languages")));
         m_modelCombo->addItem(label);
         m_asrModelIndices.append(i);
     }
 
     // Restore saved model selection (by modelDirName)
     const QString savedDirName =
-        QFileInfo(appConfigString("settings/model/directory")).fileName();
-    const QString savedType = appConfigString("settings/model/type");
+        QFileInfo(appConfigString("/settings/model/directory")).fileName();
+    const QString savedType = appConfigString("/settings/model/type");
     int restoreIndex = -1;
     if (savedType == QStringLiteral("System")) {
         for (int ci = 0; ci < m_asrModelIndices.size(); ++ci) {
@@ -774,18 +776,17 @@ void AsrSettingWidget::startModelDownload(int row)
             m_activeDownloadFile->write(m_activeDownloadReply->readAll());
         }
     });
-    connect(
-        m_activeDownloadReply, &QNetworkReply::downloadProgress, this,
-        [this, row](qint64 received, qint64 total) {
-            if (total <= 0) {
-                return;
-            }
-            const int pct = static_cast<int>(received * 100 / total);
-            emit statusMessage(
-                tr("Downloading %1... %2%")
-                    .arg(modelJsonString(m_models[row], "name"))
-                    .arg(pct));
-        });
+    connect(m_activeDownloadReply, &QNetworkReply::downloadProgress, this,
+            [this, row](qint64 received, qint64 total) {
+                if (total <= 0) {
+                    return;
+                }
+                const int pct = static_cast<int>(received * 100 / total);
+                emit statusMessage(
+                    tr("Downloading %1... %2%")
+                        .arg(modelJsonString(m_models[row], "name"))
+                        .arg(pct));
+            });
 }
 
 void AsrSettingWidget::onDeleteCurrent()
@@ -836,8 +837,7 @@ void AsrSettingWidget::onUseCurrent()
     activateModel(row);
 
     emit statusMessage(
-        tr("Model loaded: %1")
-            .arg(modelJsonString(m_models[row], "name")));
+        tr("Model loaded: %1").arg(modelJsonString(m_models[row], "name")));
 }
 
 void AsrSettingWidget::activateModel(int modelRow)
@@ -851,8 +851,9 @@ void AsrSettingWidget::activateModel(int modelRow)
     const QString modelType = modelJsonString(m, "type");
     const bool systemModel = modelType == QStringLiteral("System");
     const QString dir =
-        systemModel ? QString() : QDir(cacheDir()).filePath(
-                                      modelJsonString(m, "modelDirName"));
+        systemModel
+            ? QString()
+            : QDir(cacheDir()).filePath(modelJsonString(m, "modelDirName"));
 
     if (!systemModel && !QFileInfo(dir).isDir()) {
         return;
@@ -863,9 +864,9 @@ void AsrSettingWidget::activateModel(int modelRow)
     }
 
     SPDLOG_INFO("Recognition model set: {} ({})", modelName, dir);
-    setAppConfigValue("settings/model/directory", dir);
-    setAppConfigValue("settings/model/name", modelName);
-    setAppConfigValue("settings/model/type", modelType);
+    setAppConfigValue("/settings/model/directory", dir);
+    setAppConfigValue("/settings/model/name", modelName);
+    setAppConfigValue("/settings/model/type", modelType);
     emit modelSelected(dir, modelName, modelType);
     emit statusMessage(tr("Model selected: %1").arg(modelName));
 }
@@ -961,7 +962,7 @@ void AsrSettingWidget::onEditHotwords()
     auto *editor = new QTextEdit(&dialog);
     editor->setAcceptRichText(false);
     editor->setPlaceholderText(tr("Enter hot words, one per line"));
-    editor->setPlainText(appConfigString("settings/model/hotwords"));
+    editor->setPlainText(appConfigString("/settings/model/hotwords"));
     layout->addWidget(editor, 1);
 
     auto *buttons = new QDialogButtonBox(
@@ -974,7 +975,7 @@ void AsrSettingWidget::onEditHotwords()
         return;
     }
 
-    setAppConfigValue("settings/model/hotwords",
+    setAppConfigValue("/settings/model/hotwords",
                       editor->toPlainText().trimmed());
     emit statusMessage(tr("Hot words saved."));
     emit hotwordsChanged();
@@ -1036,9 +1037,8 @@ void AsrSettingWidget::onDownloadFinished()
             }
             else {
                 // Don't auto-load — user must click "Use"
-                emit statusMessage(
-                    tr("Downloaded: %1. Click \"Use\" to load.")
-                        .arg(modelName));
+                emit statusMessage(tr("Downloaded: %1. Click \"Use\" to load.")
+                                       .arg(modelName));
             }
         }
     }
@@ -1061,7 +1061,8 @@ bool AsrSettingWidget::isInstalled(int row) const
     const nlohmann::json &m = m_models.at(row);
     const QString modelDirName = modelJsonString(m, "modelDirName");
     if (modelJsonString(m, "type") == QStringLiteral("System") ||
-        modelDirName.isEmpty()) {
+        modelDirName.isEmpty())
+    {
         return true;
     }
     const QString path = QDir(cacheDir()).filePath(modelDirName);

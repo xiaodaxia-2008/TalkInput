@@ -58,13 +58,13 @@ std::optional<nlohmann::json>
 findAsrPresetJsonByDirectory(const QString &modelDir)
 {
     const QString dirName = QDir(modelDir).dirName();
-    const nlohmann::json presets = talkinput::appConfigValue("asrPresets");
+    const nlohmann::json presets = talkinput::appConfigValue("/asrPresets");
     if (!presets.is_array()) {
         return std::nullopt;
     }
     for (const auto &preset : presets) {
-        if (preset.is_object() &&
-            preset.value("modelDirName", std::string()) == dirName.toStdString())
+        if (preset.is_object() && preset.value("modelDirName", std::string()) ==
+                                      dirName.toStdString())
         {
             return std::optional<nlohmann::json>{preset};
         }
@@ -112,11 +112,11 @@ void AsrService::loadModel()
         return;
     }
 
-    const auto modelPresetJson =
-        findAsrPresetJsonByDirectory(m_modelDir);
+    const auto modelPresetJson = findAsrPresetJsonByDirectory(m_modelDir);
     if (!modelPresetJson) {
         SPDLOG_WARN("AsrService: no preset found for {}", m_modelDir);
-        emit modelLoadResult(false, tr("No preset found for the selected model."));
+        emit modelLoadResult(false,
+                             tr("No preset found for the selected model."));
         return;
     }
 
@@ -149,10 +149,9 @@ void AsrService::loadModel()
     // The nested postPunctuationModel block (if any) is forwarded as-is; the
     // recognizer resolves its model path internally after ASR results.
 
-    const bool hotwordsSupport =
-        config.value("hotwordsSupport", false);
+    const bool hotwordsSupport = config.value("hotwordsSupport", false);
     config["hotwordsText"] =
-        buildHotwordsText(appConfigString("settings/model/hotwords"),
+        buildHotwordsText(appConfigString("/settings/model/hotwords"),
                           hotwordsSupport)
             .toStdString();
 

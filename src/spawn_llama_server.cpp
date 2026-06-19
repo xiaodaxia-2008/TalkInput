@@ -59,13 +59,13 @@ struct LocalModelInfo
 LocalModelInfo localModelInfo()
 {
     const nlohmann::json providers =
-        talkinput::appConfigValue("llmPostProcessing/providers");
+        talkinput::appConfigValue("/llmPostProcessing/providers");
     if (!providers.is_array()) {
         return {};
     }
 
     QString providerId =
-        talkinput::appConfigString("settings/llm/providerId").trimmed();
+        talkinput::appConfigString("/settings/llm/providerId").trimmed();
 
     nlohmann::json provider = nlohmann::json::object();
     bool found = false;
@@ -94,11 +94,12 @@ LocalModelInfo localModelInfo()
     // post-processor): per-provider override > global model > provider default.
     QString model;
     if (!providerId.isEmpty()) {
-        model = talkinput::appConfigString(
-                    "settings/llm/providerModels/" + providerId).trimmed();
+        model = talkinput::appConfigString("/settings/llm/providerModels/" +
+                                           providerId.toStdString())
+                    .trimmed();
     }
     if (model.isEmpty()) {
-        model = talkinput::appConfigString("settings/llm/model").trimmed();
+        model = talkinput::appConfigString("/settings/llm/model").trimmed();
     }
     if (model.isEmpty()) {
         model = qs(provider.value("model", std::string()));
@@ -437,7 +438,8 @@ void LlamaServerManager::onDownloadFinished(QNetworkReply *reply)
         emit statusMessage(tr("Extracting LLM runtime..."));
         QString error;
         if (!extractLlamaArchive(&error)) {
-            emit this->failed(tr("LLM runtime extraction failed: %1").arg(error));
+            emit this->failed(
+                tr("LLM runtime extraction failed: %1").arg(error));
             return;
         }
     }

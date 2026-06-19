@@ -29,9 +29,9 @@ QString extractOcrWords(const QString &text)
     return words.join(' ');
 }
 
-QString llmProviderModelKey(const QString &providerId)
+std::string llmProviderModelKey(const QString &providerId)
 {
-    return QString("settings/llm/providerModels/%1").arg(providerId);
+    return "/settings/llm/providerModels/" + providerId.toStdString();
 }
 
 QString qs(const std::string &value)
@@ -49,7 +49,7 @@ QNetworkRequest makeRequest(const QUrl &url)
 
 const nlohmann::json llmProvidersJson()
 {
-    return talkinput::appConfigValue("llmPostProcessing/providers");
+    return talkinput::appConfigValue("/llmPostProcessing/providers");
 }
 
 nlohmann::json firstLlmProviderJson()
@@ -108,7 +108,7 @@ void LlmPostProcessor::shutdown()
 
 bool LlmPostProcessor::isEnabled() const
 {
-    return appConfigBool("settings/llm/postProcessingEnabled", false);
+    return appConfigBool("/settings/llm/postProcessingEnabled", false);
 }
 
 void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
@@ -137,7 +137,7 @@ void LlmPostProcessor::postProcess(const QString &text,
 nlohmann::json LlmPostProcessor::configuredProvider() const
 {
     const QString providerId =
-        appConfigString("settings/llm/providerId").trimmed();
+        appConfigString("/settings/llm/providerId").trimmed();
     nlohmann::json provider = findLlmProviderJson(providerId);
     if (provider.is_object() && !provider.empty()) {
         return provider;
@@ -148,14 +148,14 @@ nlohmann::json LlmPostProcessor::configuredProvider() const
 QString LlmPostProcessor::configuredEndpoint() const
 {
     const QString endpoint =
-        appConfigString("settings/llm/endpoint").trimmed();
+        appConfigString("/settings/llm/endpoint").trimmed();
     if (!endpoint.isEmpty()) {
         return endpoint;
     }
 
     const nlohmann::json provider = configuredProvider();
     if (provider.value("custom", false)) {
-        return appConfigString("settings/llm/customEndpoint").trimmed();
+        return appConfigString("/settings/llm/customEndpoint").trimmed();
     }
 
     return qs(provider.value("endpoint", std::string())).trimmed();
@@ -164,7 +164,7 @@ QString LlmPostProcessor::configuredEndpoint() const
 QString LlmPostProcessor::configuredModel() const
 {
     const QString configuredModel =
-        appConfigString("settings/llm/model").trimmed();
+        appConfigString("/settings/llm/model").trimmed();
     if (!configuredModel.isEmpty()) {
         return configuredModel;
     }
@@ -172,7 +172,7 @@ QString LlmPostProcessor::configuredModel() const
     const nlohmann::json provider = configuredProvider();
     const QString providerId = qs(provider.value("id", std::string()));
     if (provider.value("custom", false)) {
-        return appConfigString("settings/llm/customModel").trimmed();
+        return appConfigString("/settings/llm/customModel").trimmed();
     }
 
     const QString providerModel =
@@ -185,7 +185,7 @@ QString LlmPostProcessor::configuredModel() const
 
 QString LlmPostProcessor::configuredApiKey() const
 {
-    return appConfigString("settings/llm/apiKey").trimmed();
+    return appConfigString("/settings/llm/apiKey").trimmed();
 }
 
 bool LlmPostProcessor::usesManagedLocalService() const
@@ -228,13 +228,13 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     const QString cleanedContext = extractOcrWords(request.contextText);
 
     // ---- System prompt (template replacement) ----
-    QString systemPrompt = appConfigString("settings/llm/systemPrompt");
+    QString systemPrompt = appConfigString("/settings/llm/systemPrompt");
     systemPrompt.replace("{{input}}", formattedInput);
     systemPrompt.replace("{{context}}", cleanedContext);
     systemPrompt.replace("{{hotwords}}", request.hotwords);
 
     // ---- User prompt (template replacement) ----
-    QString userPrompt = appConfigString("settings/llm/userPrompt");
+    QString userPrompt = appConfigString("/settings/llm/userPrompt");
     userPrompt.replace("{{input}}", formattedInput);
     userPrompt.replace("{{context}}", cleanedContext);
     userPrompt.replace("{{hotwords}}", request.hotwords);
@@ -276,90 +276,90 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
             : nlohmann::json::object();
     const double inputPer1M = pricing.value("inputPer1M", 0.0);
     const double cacheHitInputPer1M = pricing.value("cacheHitInputPer1M", 0.0);
-    const double cacheMissInputPer1M = pricing.value("cacheMissInputPer1M", 0.0);
+    const double cacheMissInputPer1M =
+        pricing.value("cacheMissInputPer1M", 0.0);
     const double outputPer1M = pricing.value("outputPer1M", 0.0);
 
     QNetworkReply *reply = m_network.post(networkRequest, requestBody);
     const PendingRequest pendingCopy = request;
-    connect(
-        reply, &QNetworkReply::finished, this,
-        [this, reply, pendingCopy, inputPer1M, cacheHitInputPer1M,
-         cacheMissInputPer1M, outputPer1M]() mutable {
-            QString result = pendingCopy.text;
-            bool requestFailed = false;
-            if (reply->error() == QNetworkReply::NoError) {
-                const QByteArray responseBody = reply->readAll();
-                try {
-                    const nlohmann::json doc = nlohmann::json::parse(
-                        responseBody.constData(),
-                        responseBody.constData() + responseBody.size());
-                    SPDLOG_DEBUG("LLM chat response JSON: {}", doc.dump(2));
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, pendingCopy, inputPer1M, cacheHitInputPer1M,
+             cacheMissInputPer1M, outputPer1M]() mutable {
+                QString result = pendingCopy.text;
+                bool requestFailed = false;
+                if (reply->error() == QNetworkReply::NoError) {
+                    const QByteArray responseBody = reply->readAll();
+                    try {
+                        const nlohmann::json doc = nlohmann::json::parse(
+                            responseBody.constData(),
+                            responseBody.constData() + responseBody.size());
+                        SPDLOG_DEBUG("LLM chat response JSON: {}", doc.dump(2));
 
-                    // ---- Extract content ----
-                    const auto &choices =
-                        doc.value("choices", nlohmann::json::array());
-                    if (!choices.empty()) {
-                        const auto &message = choices.front().value(
-                            "message", nlohmann::json::object());
-                        const QString content =
-                            message.value("content", QString()).trimmed();
-                        if (!content.isEmpty()) {
-                            result = this->cleanupResponseText(content);
+                        // ---- Extract content ----
+                        const auto &choices =
+                            doc.value("choices", nlohmann::json::array());
+                        if (!choices.empty()) {
+                            const auto &message = choices.front().value(
+                                "message", nlohmann::json::object());
+                            const QString content =
+                                message.value("content", QString()).trimmed();
+                            if (!content.isEmpty()) {
+                                result = this->cleanupResponseText(content);
+                            }
+                        }
+
+                        // ---- Token usage & cost calculation ----
+                        const auto &usage =
+                            doc.value("usage", nlohmann::json::object());
+                        if (!usage.empty() && inputPer1M > 0) {
+                            const double promptCacheHit =
+                                usage.value("prompt_cache_hit_tokens", 0.0);
+                            const double promptCacheMiss =
+                                usage.value("prompt_cache_miss_tokens", 0.0);
+                            const double outputTokens =
+                                usage.value("completion_tokens", 0.0);
+                            const double totalTokens =
+                                usage.value("total_tokens", 0.0);
+
+                            const double inputCost =
+                                promptCacheHit * cacheHitInputPer1M / 1e6 +
+                                promptCacheMiss * cacheMissInputPer1M / 1e6;
+                            const double outputCost =
+                                outputTokens * outputPer1M / 1e6;
+                            const double totalCost = inputCost + outputCost;
+
+                            SPDLOG_INFO("LLM cost: {} tokens, $"
+                                        "{:.6f} (cache hit: "
+                                        "{:.0f} * ${:.4f}/M, cache "
+                                        "miss: {:.0f} * ${:.4f}/M, "
+                                        "output: {:.0f} * "
+                                        "${:.4f}/M)",
+                                        totalTokens, totalCost, promptCacheHit,
+                                        cacheHitInputPer1M, promptCacheMiss,
+                                        cacheMissInputPer1M, outputTokens,
+                                        outputPer1M);
                         }
                     }
-
-                    // ---- Token usage & cost calculation ----
-                    const auto &usage =
-                        doc.value("usage", nlohmann::json::object());
-                    if (!usage.empty() && inputPer1M > 0) {
-                        const double promptCacheHit =
-                            usage.value("prompt_cache_hit_tokens", 0.0);
-                        const double promptCacheMiss =
-                            usage.value("prompt_cache_miss_tokens", 0.0);
-                        const double outputTokens =
-                            usage.value("completion_tokens", 0.0);
-                        const double totalTokens =
-                            usage.value("total_tokens", 0.0);
-
-                        const double inputCost =
-                            promptCacheHit * cacheHitInputPer1M / 1e6 +
-                            promptCacheMiss * cacheMissInputPer1M / 1e6;
-                        const double outputCost =
-                            outputTokens * outputPer1M / 1e6;
-                        const double totalCost = inputCost + outputCost;
-
-                        SPDLOG_INFO("LLM cost: {} tokens, $"
-                                    "{:.6f} (cache hit: "
-                                    "{:.0f} * ${:.4f}/M, cache "
-                                    "miss: {:.0f} * ${:.4f}/M, "
-                                    "output: {:.0f} * "
-                                    "${:.4f}/M)",
-                                    totalTokens, totalCost, promptCacheHit,
-                                    cacheHitInputPer1M, promptCacheMiss,
-                                    cacheMissInputPer1M, outputTokens,
-                                    outputPer1M);
+                    catch (const nlohmann::json::exception &e) {
+                        SPDLOG_WARN("LLM response parse failed: {}", e.what());
+                        requestFailed = true;
                     }
                 }
-                catch (const nlohmann::json::exception &e) {
-                    SPDLOG_WARN("LLM response parse failed: {}", e.what());
+                else {
+                    SPDLOG_WARN("LLM post-process failed: {}",
+                                reply->errorString());
                     requestFailed = true;
                 }
-            }
-            else {
-                SPDLOG_WARN("LLM post-process failed: {}",
-                            reply->errorString());
-                requestFailed = true;
-            }
-            SPDLOG_DEBUG("LLM post-process output: {}", result);
-            reply->deleteLater();
-            if (pendingCopy.receiver && pendingCopy.callback) {
-                pendingCopy.callback(result);
-            }
-            emit this->statusMessage(
-                requestFailed ? tr("LLM post-processing failed; using "
-                                   "original text.")
-                              : tr("LLM post-processing complete."));
-        });
+                SPDLOG_DEBUG("LLM post-process output: {}", result);
+                reply->deleteLater();
+                if (pendingCopy.receiver && pendingCopy.callback) {
+                    pendingCopy.callback(result);
+                }
+                emit this->statusMessage(
+                    requestFailed ? tr("LLM post-processing failed; using "
+                                       "original text.")
+                                  : tr("LLM post-processing complete."));
+            });
 }
 
 void LlmPostProcessor::failPending(const QString &reason)

@@ -3,18 +3,19 @@
 #include "json_utils.h"
 
 #include <QString>
+#include <string_view>
 
 namespace talkinput
 {
 
 nlohmann::json appConfigRoot();
 QString appConfigPath();
-bool appConfigContains(const QString &path);
-nlohmann::json appConfigValue(const QString &path,
+bool appConfigContains(std::string_view path);
+nlohmann::json appConfigValue(std::string_view path,
                               const nlohmann::json &fallback = {});
-QString appConfigString(const QString &path, const QString &fallback = {});
-bool appConfigBool(const QString &path, bool fallback = false);
-void setAppConfigValue(const QString &path, const nlohmann::json &value);
+QString appConfigString(std::string_view path, std::string_view fallback = {});
+bool appConfigBool(std::string_view path, bool fallback = false);
+void setAppConfigValue(std::string_view path, const nlohmann::json &value);
 bool resetAppConfigToDefaults();
 bool saveAppConfig();
 
