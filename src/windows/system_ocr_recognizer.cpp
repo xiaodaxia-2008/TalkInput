@@ -1,4 +1,4 @@
-#include "system_ocr_service.h"
+#include "system_ocr_recognizer.h"
 
 #include "logging.h"
 #include "utils.h"
@@ -416,16 +416,16 @@ QString recognizeWindowsText(QImage image)
 namespace talkinput
 {
 
-SystemOcrService::SystemOcrService(QObject *parent) : OcrRecognizer(parent)
+SystemOcrRecognizer::SystemOcrRecognizer(QObject *parent) : OcrRecognizer(parent)
 {
 }
 
-bool SystemOcrService::isAvailable() const
+bool SystemOcrRecognizer::isAvailable() const
 {
     return true;
 }
 
-QRect SystemOcrService::focusedTextInputRect() const
+QRect SystemOcrRecognizer::focusedTextInputRect() const
 {
     const QRect uiAutomationRect = focusedRectFromUiAutomation();
     if (!uiAutomationRect.isEmpty()) {
@@ -467,12 +467,12 @@ QRect SystemOcrService::focusedTextInputRect() const
     return {};
 }
 
-WId SystemOcrService::focusedTextInputWindowId() const
+WId SystemOcrRecognizer::focusedTextInputWindowId() const
 {
     return reinterpret_cast<WId>(focusedInputWindow());
 }
 
-QString SystemOcrService::focusedTextInputScreenName() const
+QString SystemOcrRecognizer::focusedTextInputScreenName() const
 {
     const HWND hwnd = focusedInputWindow();
     if (!hwnd) {
@@ -495,7 +495,7 @@ QString SystemOcrService::focusedTextInputScreenName() const
     return name;
 }
 
-QImage SystemOcrService::captureFocusedTextInputImage() const
+QImage SystemOcrRecognizer::captureFocusedTextInputImage() const
 {
     const HWND hwnd = focusedInputWindow();
     if (!hwnd) {
@@ -522,7 +522,7 @@ QImage SystemOcrService::captureFocusedTextInputImage() const
     return {};
 }
 
-void SystemOcrService::recognizeText(const QImage &image, QObject *receiver,
+void SystemOcrRecognizer::recognizeText(const QImage &image, QObject *receiver,
                                      Callback callback)
 {
     if (!receiver || !callback) {

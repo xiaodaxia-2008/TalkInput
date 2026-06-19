@@ -1,12 +1,12 @@
 #include "ocr_recognizer.h"
-#include "system_ocr_service.h"
+#include "system_ocr_recognizer.h"
 
 namespace talkinput
 {
 
 OcrRecognizer *createOcrRecognizer(QObject *parent)
 {
-    return new SystemOcrService(parent);
+    return new SystemOcrRecognizer(parent);
 }
 
 } // namespace talkinput

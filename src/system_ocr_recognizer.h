@@ -5,12 +5,12 @@
 namespace talkinput
 {
 
-class SystemOcrService final : public OcrRecognizer
+class SystemOcrRecognizer final : public OcrRecognizer
 {
     Q_OBJECT
 
 public:
-    explicit SystemOcrService(QObject *parent = nullptr);
+    explicit SystemOcrRecognizer(QObject *parent = nullptr);
 
     bool isAvailable() const override;
     QRect focusedTextInputRect() const override;

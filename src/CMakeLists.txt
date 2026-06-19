@@ -28,7 +28,7 @@ add_executable(TalkInput
     spawn_llama_server.h
     ocr_recognizer.cpp
     ocr_recognizer.h
-    system_ocr_service.h
+    system_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
     system_speech_recognizer.h
@@ -102,7 +102,7 @@ if(WIN32)
     target_sources(TalkInput PRIVATE
         windows/ocr_factory.cpp
         windows/port_killer.cpp
-        windows/system_ocr_service.cpp
+        windows/system_ocr_recognizer.cpp
         windows/system_speech_recognizer.cpp
         windows/system_speech_support.cpp
     )
@@ -110,7 +110,7 @@ elseif(APPLE)
     target_sources(TalkInput PRIVATE
         macos/ocr_factory.cpp
         macos/port_killer.cpp
-        macos/system_ocr_service.cpp
+        macos/system_ocr_recognizer.cpp
         macos/system_speech_recognizer.cpp
         macos/system_speech_support.cpp
     )
@@ -118,7 +118,7 @@ elseif(UNIX)
     target_sources(TalkInput PRIVATE
         linux/ocr_factory.cpp
         linux/port_killer.cpp
-        linux/system_ocr_service.cpp
+        linux/system_ocr_recognizer.cpp
         linux/system_speech_recognizer.cpp
         linux/system_speech_support.cpp
     )
