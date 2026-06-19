@@ -54,8 +54,8 @@ const nlohmann::json llmProvidersJson()
 nlohmann::json firstLlmProviderJson()
 {
     const nlohmann::json providers = llmProvidersJson();
-    if (providers.is_array() && !providers.empty()) {
-        return providers.front();
+    if (providers.is_object() && !providers.empty()) {
+        return providers.begin().value();
     }
     return nlohmann::json::object();
 }
@@ -63,14 +63,8 @@ nlohmann::json firstLlmProviderJson()
 nlohmann::json findLlmProviderJson(const QString &id)
 {
     const nlohmann::json providers = llmProvidersJson();
-    if (providers.is_array()) {
-        for (const auto &provider : providers) {
-            if (provider.is_object() &&
-                qs(provider.value("id", std::string())) == id)
-            {
-                return provider;
-            }
-        }
+    if (providers.is_object()) {
+        return providers.value(id.toStdString(), nlohmann::json::object());
     }
     return nlohmann::json::object();
 }
@@ -82,9 +76,9 @@ std::string llmProviderModelKey(const QString &providerId)
         .toStdString();
 }
 
-QString asrPresetPointer(std::size_t index)
+QString asrPresetPointer(const QString &id)
 {
-    return QStringLiteral("/asrPresets/%1").arg(index);
+    return QStringLiteral("/asrPresets/%1").arg(id);
 }
 
 nlohmann::json modelJsonAtPointer(const QString &pointer)
@@ -180,7 +174,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     // ── LLM providers combo ─────────────────────────────────────
     const nlohmann::json llmProviders = llmProvidersJson();
     auto *providerCombo = m_ui->providerCombo;
-    for (const auto &provider : llmProviders) {
+    for (const auto &[key, provider] : llmProviders.items()) {
         if (!provider.is_object()) continue;
         providerCombo->addItem(qs(provider.value("name", std::string())),
                                qs(provider.value("id", std::string())));
@@ -227,9 +221,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         if (!persist) return;
         setAppConfigValue("/settings/llm/providerId",
                           provider.value("id", std::string()));
-        const int idx = providerCombo->currentIndex();
-        if (idx >= 0) {
-            const QString prefix = QStringLiteral("/llmPresets/%1").arg(idx);
+        const QString id = providerCombo->currentData().toString();
+        if (!id.isEmpty()) {
+            const QString prefix = QStringLiteral("/llmPresets/%1").arg(id);
             setAppConfigValue((prefix + "/endpoint").toStdString(), endpoint);
             setAppConfigValue((prefix + "/currentModel").toStdString(),
                               currentModel);
@@ -237,10 +231,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     };
 
     {
-        const int idx = providerCombo->currentIndex();
-        if (idx >= 0) {
+        const QString id = providerCombo->currentData().toString();
+        if (!id.isEmpty()) {
             const auto preset = talkinput::appConfigValue(
-                QStringLiteral("/llmPresets/%1").arg(idx).toStdString());
+                QStringLiteral("/llmPresets/%1").arg(id).toStdString());
             apiKeyEdit->setText(qs(preset.value("apiKey", std::string())));
         }
     }
@@ -250,9 +244,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 int index) {
                 const auto p = providerAt(index);
                 applyProvider(p, true);
-                if (index >= 0) {
+                const QString id = providerCombo->itemData(index).toString();
+                if (!id.isEmpty()) {
                     const auto preset = talkinput::appConfigValue(
-                        QStringLiteral("/llmPresets/%1").arg(index)
+                        QStringLiteral("/llmPresets/%1").arg(id)
                             .toStdString());
                     apiKeyEdit->setText(
                         qs(preset.value("apiKey", std::string())));
@@ -264,10 +259,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     connect(endpointEdit, &QLineEdit::editingFinished, this,
             [this, providerCombo]() {
-                const int idx = providerCombo->currentIndex();
-                if (idx >= 0) {
+                const QString id = providerCombo->currentData().toString();
+                if (!id.isEmpty()) {
                     setAppConfigValue(
-                        QStringLiteral("/llmPresets/%1/endpoint").arg(idx)
+                        QStringLiteral("/llmPresets/%1/endpoint").arg(id)
                             .toStdString(),
                         m_ui->endpointEdit->text().trimmed());
                 }
@@ -275,10 +270,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             });
 
     auto saveModel = [this, providerCombo, modelCombo]() {
-        const int idx = providerCombo->currentIndex();
-        if (idx >= 0) {
+        const QString id = providerCombo->currentData().toString();
+        if (!id.isEmpty()) {
             setAppConfigValue(
-                QStringLiteral("/llmPresets/%1/currentModel").arg(idx)
+                QStringLiteral("/llmPresets/%1/currentModel").arg(id)
                     .toStdString(),
                 modelCombo->currentText().trimmed());
         }
@@ -290,21 +285,21 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             [saveModel](int) { saveModel(); });
     connect(modelCombo, &QComboBox::currentTextChanged, this,
             [providerCombo, modelCombo]() {
-                const int idx = providerCombo->currentIndex();
-                if (idx >= 0) {
+                const QString id = providerCombo->currentData().toString();
+                if (!id.isEmpty()) {
                     setAppConfigValue(
                         QStringLiteral("/llmPresets/%1/currentModel")
-                            .arg(idx)
+                            .arg(id)
                             .toStdString(),
                         modelCombo->currentText().trimmed());
                 }
             });
     connect(apiKeyEdit, &QLineEdit::editingFinished, this,
             [this, providerCombo]() {
-                const int idx = providerCombo->currentIndex();
-                if (idx >= 0) {
+                const QString id = providerCombo->currentData().toString();
+                if (!id.isEmpty()) {
                     setAppConfigValue(
-                        QStringLiteral("/llmPresets/%1/apiKey").arg(idx)
+                        QStringLiteral("/llmPresets/%1/apiKey").arg(id)
                             .toStdString(),
                         m_ui->apiKeyEdit->text().trimmed());
                 }
@@ -326,8 +321,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     auto *ocrCombo = m_ui->ocrCombo;
     const nlohmann::json ocrPresets =
         talkinput::appConfigValue("/ocrPresets");
-    if (ocrPresets.is_array()) {
-        for (const auto &preset : ocrPresets) {
+    if (ocrPresets.is_object()) {
+        for (const auto &[key, preset] : ocrPresets.items()) {
             if (!preset.is_object()) continue;
             ocrCombo->addItem(qs(preset.value("name", std::string())),
                               qs(preset.value("id", std::string())));
@@ -370,9 +365,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     // ── ASR model combo ──────────────────────────────────────────
     const nlohmann::json asrPresets = talkinput::appConfigValue("/asrPresets");
     m_ui->modelCombo->clear();
-    if (asrPresets.is_array()) {
-        for (std::size_t i = 0; i < asrPresets.size(); ++i) {
-            const nlohmann::json &p = asrPresets[i];
+    if (asrPresets.is_object()) {
+        for (const auto &[key, p] : asrPresets.items()) {
             if (!p.is_object() || !shouldShowAsrPreset(p)) continue;
             const QString name = modelJsonString(p, "name");
             const QString label =
@@ -381,7 +375,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                          streamingLabel(
                              modelJsonBool(p, "streamingSupport")),
                          languageDisplay(modelJsonString(p, "languages")));
-            m_ui->modelCombo->addItem(label, asrPresetPointer(i));
+            m_ui->modelCombo->addItem(label, asrPresetPointer(
+                                                QString::fromStdString(key)));
         }
     }
 

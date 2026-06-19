@@ -204,16 +204,10 @@ namespace
 nlohmann::json findPresetById(std::string_view arrayPath, const QString &id)
 {
     const nlohmann::json presets = appConfigValue(arrayPath);
-    if (!presets.is_array()) {
+    if (!presets.is_object()) {
         return nlohmann::json::object();
     }
-    const std::string idStr = id.toStdString();
-    for (const auto &preset : presets) {
-        if (preset.is_object() && preset.value("id", std::string()) == idStr) {
-            return preset;
-        }
-    }
-    return nlohmann::json::object();
+    return presets.value(id.toStdString(), nlohmann::json::object());
 }
 
 } // namespace
@@ -231,13 +225,13 @@ nlohmann::json findLlmPresetById(const QString &id)
 QString findAsrPresetIdByName(const QString &name)
 {
     const nlohmann::json presets = appConfigValue("/asrPresets");
-    if (!presets.is_array()) {
+    if (!presets.is_object()) {
         return {};
     }
     const std::string nameStr = name.toStdString();
-    for (const auto &preset : presets) {
+    for (const auto &[key, preset] : presets.items()) {
         if (preset.is_object() && preset.value("name", std::string()) == nameStr) {
-            return QString::fromStdString(preset.value("id", std::string()));
+            return QString::fromStdString(key);
         }
     }
     return {};

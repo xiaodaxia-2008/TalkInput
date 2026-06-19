@@ -62,32 +62,17 @@ struct LocalModelInfo
 
 LocalModelInfo localModelInfo()
 {
-    const nlohmann::json providers =
-        talkinput::appConfigValue("/llmPresets");
-    if (!providers.is_array()) {
-        return {};
-    }
-
-    QString providerId =
+    const QString providerId =
         talkinput::appConfigString("/settings/llm/providerId").trimmed();
+    nlohmann::json provider = talkinput::findLlmPresetById(providerId);
 
-    nlohmann::json provider = nlohmann::json::object();
-    bool found = false;
-    for (const auto &p : providers) {
-        if (!p.is_object()) {
-            continue;
+    // Fall back to the first provider
+    if (!provider.is_object() || provider.empty()) {
+        const nlohmann::json providers =
+            talkinput::appConfigValue("/llmPresets");
+        if (providers.is_object() && !providers.empty()) {
+            provider = providers.begin().value();
         }
-        if (providerId.isEmpty() ||
-            p.value("id", std::string()) == providerId.toStdString())
-        {
-            provider = p;
-            found = true;
-            break;
-        }
-    }
-    if (!found && !providers.empty() && providers.front().is_object()) {
-        provider = providers.front();
-        providerId = qs(provider.value("id", std::string()));
     }
 
     if (!provider.is_object() || provider.empty()) {

@@ -47,33 +47,18 @@ QNetworkRequest makeRequest(const QUrl &url)
     return request;
 }
 
-const nlohmann::json llmProvidersJson()
-{
-    return talkinput::appConfigValue("/llmPresets");
-}
-
 nlohmann::json firstLlmProviderJson()
 {
-    const nlohmann::json providers = llmProvidersJson();
-    if (providers.is_array() && !providers.empty()) {
-        return providers.front();
+    const nlohmann::json providers = talkinput::appConfigValue("/llmPresets");
+    if (providers.is_object() && !providers.empty()) {
+        return providers.begin().value();
     }
     return nlohmann::json::object();
 }
 
 nlohmann::json findLlmProviderJson(const QString &id)
 {
-    const nlohmann::json providers = llmProvidersJson();
-    if (providers.is_array()) {
-        for (const auto &provider : providers) {
-            if (provider.is_object() &&
-                provider.value("id", std::string()) == id.toStdString())
-            {
-                return provider;
-            }
-        }
-    }
-    return nlohmann::json::object();
+    return talkinput::findLlmPresetById(id);
 }
 
 } // namespace

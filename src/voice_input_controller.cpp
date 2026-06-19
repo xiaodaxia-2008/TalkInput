@@ -236,13 +236,9 @@ VoiceInputController::VoiceInputController(QObject *parent)
     const nlohmann::json ocrPresets =
         appConfigValue("/ocrPresets");
     nlohmann::json ocrPreset;
-    if (ocrPresets.is_array()) {
-        for (const auto &preset : ocrPresets) {
-            if (jsonString(preset, "id") == ocrProviderId) {
-                ocrPreset = preset;
-                break;
-            }
-        }
+    if (ocrPresets.is_object()) {
+        ocrPreset = ocrPresets.value(ocrProviderId.toStdString(),
+                                     nlohmann::json::object());
     }
     if (ocrPreset.empty()) {
         ocrPreset = {{"type", "System"}};

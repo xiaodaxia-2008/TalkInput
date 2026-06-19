@@ -19,8 +19,8 @@
       "userPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}"
     }
   },
-  "asrPresets": [
-    {
+  "asrPresets": {
+    "streaming-paraformer-bilingual-zh-en": {
       "id": "streaming-paraformer-bilingual-zh-en",
       "name": "Paraformer",
       "type": "StreamingParaformer",
@@ -53,7 +53,7 @@
         }
       }
     },
-    {
+    "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17": {
       "id": "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
       "name": "SenseVoice",
       "type": "SenseVoice",
@@ -77,7 +77,7 @@
         "tokensFile": "tokens.txt"
       }
     },
-    {
+    "funasr-nano-int8-2025-12-30": {
       "id": "funasr-nano-int8-2025-12-30",
       "name": "FunASR Nano",
       "type": "FunASRNano",
@@ -109,7 +109,7 @@
         "funasrTokenizerFile>dir": "Qwen3-0.6B"
       }
     },
-    {
+    "system-speech-recognizer": {
       "id": "system-speech-recognizer",
       "name": "System",
       "type": "System",
@@ -123,9 +123,9 @@
       "params": {},
       "files": {}
     }
-  ],
-  "llmPresets": [
-    {
+  },
+  "llmPresets": {
+    "llama.cpp": {
       "id": "llama.cpp",
       "name": "llama.cpp",
       "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
@@ -144,7 +144,7 @@
       "localServiceMaxHealthAttempts": 120,
       "localServiceArchiveUrl": "https://github.com/ggml-org/llama.cpp/releases/download/b9685/llama-b9685-bin-win-cpu-x64.zip"
     },
-    {
+    "deepseek": {
       "id": "deepseek",
       "name": "DeepSeek",
       "endpoint": "https://api.deepseek.com/v1/chat/completions",
@@ -166,7 +166,7 @@
         }
       }
     },
-    {
+    "custom": {
       "id": "custom",
       "name": "Custom",
       "endpoint": "",
@@ -174,12 +174,12 @@
       "currentModel": "",
       "models": []
     }
-  ],
-  "ocrPresets": [
-    {
+  },
+  "ocrPresets": {
+    "system-ocr": {
       "id": "system-ocr",
       "name": "System",
       "type": "System"
     }
-  ]
+  }
 }
