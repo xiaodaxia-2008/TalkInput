@@ -21,7 +21,7 @@ class LlmPostProcessor;
 class OcrRecognizer;
 
 class VoiceInputController final : public QObject,
-                                    public QAbstractNativeEventFilter
+                                   public QAbstractNativeEventFilter
 {
     Q_OBJECT
 
@@ -34,10 +34,22 @@ public:
     bool nativeEventFilter(const QByteArray &eventType, void *message,
                            qintptr *result) override;
 
-    bool isListening() const { return m_isListening; }
-    bool isModelLoaded() const { return m_recognizer != nullptr; }
+    bool isListening() const
+    {
+        return m_isListening;
+    }
+
+    bool isModelLoaded() const
+    {
+        return m_recognizer != nullptr;
+    }
+
     bool acceptsExternalAudio() const;
-    SpeechRecognizer *recognizer() const { return m_recognizer.get(); }
+
+    SpeechRecognizer *recognizer() const
+    {
+        return m_recognizer.get();
+    }
 
 signals:
     void listeningChanged(bool listening);
@@ -63,8 +75,6 @@ private:
     void sendText(const QString &text);
     void showOverlay();
     void hideOverlay();
-    QByteArray convertToPcm16(const QByteArray &data,
-                              const QAudioFormat &format);
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
     LlmPostProcessor *m_llmPostProcessor = nullptr;

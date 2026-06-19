@@ -1,5 +1,6 @@
 #include "voice_input_controller.h"
 #include "app_config.h"
+#include "audio_utils.h"
 #include "llm_post_processor.h"
 #include "logging.h"
 #include "ocr_recognizer.h"
@@ -20,32 +21,14 @@
 #include <QPropertyAnimation>
 #include <QScreen>
 #include <QTimer>
-#include <QtEndian>
 
 #define NOMINMAX
 #include <imm.h>
-#include <vector>
 #include <windows.h>
 #pragma comment(lib, "imm32")
 
 namespace
 {
-
-// ── PCM16 conversion helpers (copied from main_window.cpp) ────────
-
-void appendInt16(QByteArray &audioData, qint16 sample)
-{
-    const qsizetype offset = audioData.size();
-    audioData.resize(offset + static_cast<qsizetype>(sizeof(qint16)));
-    qToLittleEndian<qint16>(
-        sample, reinterpret_cast<uchar *>(audioData.data() + offset));
-}
-
-qint16 floatToInt16(float sample)
-{
-    const float clamped = std::clamp(sample, -1.0F, 1.0F);
-    return static_cast<qint16>(clamped * 32767.0F);
-}
 
 void saveOcrDebugImage(const QImage &image)
 {
@@ -224,17 +207,14 @@ VoiceInputController *VoiceInputController::instance()
     return s_instance;
 }
 
-VoiceInputController::VoiceInputController(QObject *parent)
-    : QObject(parent)
+VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
     // Create OCR recognizer from the configured provider
-    const QString ocrProviderId =
-        appConfigString("/settings/ocr/providerId");
-    const nlohmann::json ocrPresets =
-        appConfigValue("/ocrPresets");
+    const QString ocrProviderId = appConfigString("/settings/ocr/providerId");
+    const nlohmann::json ocrPresets = appConfigValue("/ocrPresets");
     nlohmann::json ocrPreset;
     if (ocrPresets.is_object()) {
         ocrPreset = ocrPresets.value(ocrProviderId.toStdString(),
@@ -344,7 +324,7 @@ bool VoiceInputController::startListening()
             return;
         }
         const QByteArray audioData = m_audioDevice->readAll();
-        const QByteArray pcm16 = convertToPcm16(audioData, m_audioFormat);
+        const QByteArray pcm16 = convertAudioToPcm16(audioData, m_audioFormat);
         if (m_recognizer) {
             m_recognizer->acceptPcm16(pcm16, m_audioFormat.sampleRate(),
                                       m_audioFormat.channelCount());
@@ -423,7 +403,9 @@ void VoiceInputController::postProcessFinalText(const QString &text)
                         const QString s =
                             QString::fromStdString(item.get<std::string>())
                                 .trimmed();
-                        if (!s.isEmpty()) lines.append(s);
+                        if (!s.isEmpty()) {
+                            lines.append(s);
+                        }
                     }
                 }
             }
@@ -487,7 +469,6 @@ QImage VoiceInputController::captureFocusedContextImage() const
 {
     if (m_ocrRecognizer) {
 
-        
         const QImage focusedWindowImage =
             m_ocrRecognizer->captureFocusedTextInputImage();
         if (!focusedWindowImage.isNull()) {
@@ -503,7 +484,8 @@ QImage VoiceInputController::captureFocusedContextImage() const
     }
 
     const QString screenName =
-        m_ocrRecognizer ? m_ocrRecognizer->focusedTextInputScreenName() : QString();
+        m_ocrRecognizer ? m_ocrRecognizer->focusedTextInputScreenName()
+                        : QString();
     QScreen *screen = screenByName(screenName);
     if (screen) {
         SPDLOG_DEBUG("OCR context matched focused screen '{}'", screen->name());
@@ -586,62 +568,6 @@ void VoiceInputController::unregisterHotKey()
     }
 }
 
-QByteArray VoiceInputController::convertToPcm16(const QByteArray &audioData,
-                                                const QAudioFormat &format)
-{
-    if (audioData.isEmpty()) {
-        return {};
-    }
-
-    if (format.sampleFormat() == QAudioFormat::Int16) {
-        return audioData;
-    }
-
-    QByteArray pcm16;
-
-    switch (format.sampleFormat()) {
-    case QAudioFormat::UInt8:
-        pcm16.reserve(audioData.size() * 2);
-        for (const char byte : audioData) {
-            const auto sample = static_cast<unsigned char>(byte);
-            appendInt16(pcm16, static_cast<qint16>(
-                                   (static_cast<int>(sample) - 128) << 8));
-        }
-        break;
-    case QAudioFormat::Int32: {
-        const int sampleCount =
-            audioData.size() / static_cast<int>(sizeof(qint32));
-        pcm16.reserve(sampleCount * 2);
-        const auto *data =
-            reinterpret_cast<const uchar *>(audioData.constData());
-        for (int i = 0; i < sampleCount; ++i) {
-            const qint32 sample =
-                qFromLittleEndian<qint32>(data + i * sizeof(qint32));
-            appendInt16(pcm16, static_cast<qint16>(sample >> 16));
-        }
-        break;
-    }
-    case QAudioFormat::Float: {
-        const int sampleCount =
-            audioData.size() / static_cast<int>(sizeof(float));
-        pcm16.reserve(sampleCount * 2);
-        for (int i = 0; i < sampleCount; ++i) {
-            float sample = 0.0F;
-            std::memcpy(&sample,
-                        audioData.constData() +
-                            i * static_cast<int>(sizeof(float)),
-                        sizeof(float));
-            appendInt16(pcm16, floatToInt16(sample));
-        }
-        break;
-    }
-    default:
-        break;
-    }
-
-    return pcm16;
-}
-
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
 void VoiceInputController::loadModel(const nlohmann::json &preset)
@@ -656,12 +582,12 @@ void VoiceInputController::loadModel(const nlohmann::json &preset)
             : QDir(talkinput::appDataDir())
                   .filePath(QStringLiteral("models/%1").arg(modelDirName));
 
-    auto recognizer =
-        SpeechRecognizer::createFromConfig(preset, modelDir,
-                                           talkinput::appConfigValue("/settings/hotwords"),
-                                           this);
+    auto recognizer = SpeechRecognizer::createFromConfig(
+        preset, modelDir, talkinput::appConfigValue("/settings/hotwords"),
+        this);
     if (!recognizer) {
-        SPDLOG_ERROR("VoiceInputController: model load failed: {}", recognizer.error());
+        SPDLOG_ERROR("VoiceInputController: model load failed: {}",
+                     recognizer.error());
         emit modelLoadResult(false, recognizer.error());
         return;
     }
@@ -671,8 +597,7 @@ void VoiceInputController::loadModel(const nlohmann::json &preset)
     m_recognizer = std::move(*recognizer);
 
     // Persist providerId
-    setAppConfigValue("/settings/asr/providerId",
-                      jsonString(preset, "id"));
+    setAppConfigValue("/settings/asr/providerId", jsonString(preset, "id"));
 
     emit modelLoadResult(true, {});
 }

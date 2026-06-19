@@ -2,6 +2,7 @@
 #include "app_config.h"
 #include "app_language.h"
 #include "asr_setting_widget.h"
+#include "audio_utils.h"
 #include "history_widget.h"
 #include "logging.h"
 #include "ui_main_window.h"
@@ -25,28 +26,6 @@
 #include <QThread>
 #include <QTimer>
 #include <QTranslator>
-#include <QtEndian>
-
-#include <algorithm>
-
-namespace
-{
-
-void appendInt16(QByteArray &audioData, qint16 sample)
-{
-    const qsizetype offset = audioData.size();
-    audioData.resize(offset + static_cast<qsizetype>(sizeof(qint16)));
-    qToLittleEndian<qint16>(
-        sample, reinterpret_cast<uchar *>(audioData.data() + offset));
-}
-
-qint16 floatToInt16(float sample)
-{
-    const float clamped = std::clamp(sample, -1.0F, 1.0F);
-    return static_cast<qint16>(clamped * 32767.0F);
-}
-
-} // namespace
 
 namespace talkinput
 {
@@ -55,8 +34,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>())
 {
     SPDLOG_DEBUG("MainWindow: constructor begin");
-    installAppTranslations(currentAppLanguage(), this,
-                           m_appTranslator, m_qtTranslator);
+    installAppTranslations(currentAppLanguage(), this, m_appTranslator,
+                           m_qtTranslator);
     setupUi();
     SPDLOG_DEBUG("MainWindow: constructor end");
 }
@@ -99,23 +78,24 @@ void MainWindow::setupUi()
     m_voiceInput = new VoiceInputController(this);
     qApp->installNativeEventFilter(m_voiceInput);
 
-    connect(m_voiceInput, &VoiceInputController::modelLoadResult, this,
-            [this](bool success, const QString &error) {
-                if (!success) {
-                    spdlog::get("statusbar")
-                        ->error("{}", tr("Model load failed: %1").arg(error));
-                }
-                else {
-                    const auto preset = appConfigValue(
-                        ("/asrPresets/" +
-                         appConfigString("/settings/asr/providerId"))
-                            .toStdString());
-                    spdlog::get("statusbar")->info(
+    connect(
+        m_voiceInput, &VoiceInputController::modelLoadResult, this,
+        [this](bool success, const QString &error) {
+            if (!success) {
+                spdlog::get("statusbar")
+                    ->error("{}", tr("Model load failed: %1").arg(error));
+            }
+            else {
+                const auto preset =
+                    appConfigValue(("/asrPresets/" +
+                                    appConfigString("/settings/asr/providerId"))
+                                       .toStdString());
+                spdlog::get("statusbar")
+                    ->info(
                         "{}",
-                        tr("Model ready: %1")
-                            .arg(jsonString(preset, "name")));
-                }
-            });
+                        tr("Model ready: %1").arg(jsonString(preset, "name")));
+            }
+        });
 
     // ── History tab ────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: creating HistoryWidget");
@@ -209,15 +189,15 @@ void MainWindow::setupUi()
     // ── Restore persisted state & load model ────────────────────
     const QString savedAsrId = appConfigString("/settings/asr/providerId");
     if (!savedAsrId.isEmpty()) {
-        const nlohmann::json preset = appConfigValue(
-            ("/asrPresets/" + savedAsrId).toStdString());
+        const nlohmann::json preset =
+            appConfigValue(("/asrPresets/" + savedAsrId).toStdString());
         const QString type = jsonString(preset, "type");
-        const QString dir = type == QStringLiteral("System")
-                                ? QString()
-                                : QDir(talkinput::appDataDir())
-                                      .filePath(QStringLiteral("models/%1")
-                                                    .arg(jsonString(
-                                                        preset, "modelDirName")));
+        const QString dir =
+            type == QStringLiteral("System")
+                ? QString()
+                : QDir(talkinput::appDataDir())
+                      .filePath(QStringLiteral("models/%1")
+                                    .arg(jsonString(preset, "modelDirName")));
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
             SPDLOG_DEBUG("setupUi: restoring saved model {}", name);
@@ -244,21 +224,20 @@ void MainWindow::setupAsrSettingWidget()
     SPDLOG_DEBUG("setupAsrSettingWidget: widget added");
 
     connect(
-        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
-            [this]() {
-                SPDLOG_INFO("Hot words changed, reloading ASR model...");
-                spdlog::get("statusbar")
-                    ->info("{}", tr("Hot words saved, reloading model..."));
-                if (m_voiceInput) {
-                    const nlohmann::json preset = appConfigValue(
-                        ("/asrPresets/" +
-                         appConfigString("/settings/asr/providerId"))
-                            .toStdString());
-                    if (preset.is_object()) {
-                        m_voiceInput->loadModel(preset);
-                    }
+        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
+            SPDLOG_INFO("Hot words changed, reloading ASR model...");
+            spdlog::get("statusbar")
+                ->info("{}", tr("Hot words saved, reloading model..."));
+            if (m_voiceInput) {
+                const nlohmann::json preset =
+                    appConfigValue(("/asrPresets/" +
+                                    appConfigString("/settings/asr/providerId"))
+                                       .toStdString());
+                if (preset.is_object()) {
+                    m_voiceInput->loadModel(preset);
                 }
-            });
+            }
+        });
 }
 
 void MainWindow::setupTrayIcon()
@@ -321,14 +300,12 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
         const QString name = jsonString(
             appConfigValue(
-                ("/asrPresets/" +
-                 appConfigString("/settings/asr/providerId"))
+                ("/asrPresets/" + appConfigString("/settings/asr/providerId"))
                     .toStdString()),
             "name");
         spdlog::get("statusbar")
-            ->info("{}", name.isEmpty()
-                             ? tr("Listening...")
-                             : tr("Listening — %1").arg(name));
+            ->info("{}", name.isEmpty() ? tr("Listening...")
+                                        : tr("Listening — %1").arg(name));
     }
     else {
         m_ui->actionStartRecognition->setIcon(
@@ -337,12 +314,10 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
         const QString type = jsonString(
             appConfigValue(
-                ("/asrPresets/" +
-                 appConfigString("/settings/asr/providerId"))
+                ("/asrPresets/" + appConfigString("/settings/asr/providerId"))
                     .toStdString()),
             "type");
-        if (!m_voiceInput->isModelLoaded() &&
-            type != QStringLiteral("System"))
+        if (!m_voiceInput->isModelLoaded() && type != QStringLiteral("System"))
         {
             spdlog::get("statusbar")->info("{}", tr("No model selected"));
         }
@@ -351,11 +326,10 @@ void MainWindow::updateControls(bool listening)
                 ->info("{}",
                        tr("Model: %1")
                            .arg(jsonString(
-                                appConfigValue(
-                                    ("/asrPresets/" +
-                                     appConfigString(
-                                         "/settings/asr/providerId"))
-                                        .toStdString()),
+                               appConfigValue(
+                                   ("/asrPresets/" +
+                                    appConfigString("/settings/asr/providerId"))
+                                       .toStdString()),
                                "name")));
         }
     }
@@ -405,16 +379,8 @@ void MainWindow::onRecognizeFile()
                         format.channelCount());
         }
 
-        if (format.sampleFormat() == QAudioFormat::Int16) {
-            allPcm.append(
-                reinterpret_cast<const char *>(buf.constData<int16_t>()),
-                buf.byteCount());
-        }
-        else if (format.sampleFormat() == QAudioFormat::Float) {
-            for (int i = 0; i < buf.sampleCount(); ++i) {
-                appendInt16(allPcm, floatToInt16(buf.constData<float>()[i]));
-            }
-        }
+        const QByteArray audioData(buf.constData<char>(), buf.byteCount());
+        allPcm.append(convertAudioToPcm16(audioData, format));
     });
 
     connect(decoder, &QAudioDecoder::finished, this, [&]() {
@@ -517,15 +483,15 @@ void MainWindow::resetUserSettings()
 
     const QString savedAsrId = appConfigString("/settings/asr/providerId");
     if (!savedAsrId.isEmpty()) {
-        const nlohmann::json preset = appConfigValue(
-            ("/asrPresets/" + savedAsrId).toStdString());
+        const nlohmann::json preset =
+            appConfigValue(("/asrPresets/" + savedAsrId).toStdString());
         const QString type = jsonString(preset, "type");
-        const QString dir = type == QStringLiteral("System")
-                                ? QString()
-                                : QDir(talkinput::appDataDir())
-                                      .filePath(QStringLiteral("models/%1")
-                                                    .arg(jsonString(
-                                                        preset, "modelDirName")));
+        const QString dir =
+            type == QStringLiteral("System")
+                ? QString()
+                : QDir(talkinput::appDataDir())
+                      .filePath(QStringLiteral("models/%1")
+                                    .arg(jsonString(preset, "modelDirName")));
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
             m_voiceInput->loadModel(preset);

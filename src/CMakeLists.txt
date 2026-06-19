@@ -16,6 +16,8 @@ add_executable(TalkInput
     json_utils.h
     archive_utils.cpp
     archive_utils.h
+    audio_utils.cpp
+    audio_utils.h
     asr_setting_widget.cpp
     asr_setting_widget.h
     asr_setting_widget.ui
