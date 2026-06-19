@@ -70,8 +70,7 @@ private:
     QString m_downloadingModelPath;
     QQueue<QString> m_downloadQueue;
 
-    // Active ASR model — tracks which preset is currently loaded
-    QString m_activeAsrId;
+
 };
 
 } // namespace talkinput

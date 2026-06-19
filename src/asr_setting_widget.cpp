@@ -395,13 +395,13 @@ void AsrSettingWidget::initAsrModel()
     }
 
     // Restore saved selection
-    m_activeAsrId = appConfigString("/settings/asr/providerId");
+    const QString savedId = appConfigString("/settings/asr/providerId");
     int restoreIdx = -1;
-    if (!m_activeAsrId.isEmpty()) {
+    if (!savedId.isEmpty()) {
         for (int i = 0; i < combo->count(); ++i) {
             const nlohmann::json m = appConfigValue(
                 combo->itemData(i).toString().toStdString());
-            if (jsonString(m, "id") == m_activeAsrId) {
+            if (jsonString(m, "id") == savedId) {
                 restoreIdx = i;
                 break;
             }
@@ -426,7 +426,8 @@ void AsrSettingWidget::onAsrModelChanged(int index)
     if (!m.is_object()) return;
 
     const QString modelId = jsonString(m, "id");
-    const bool isActive = (modelId == m_activeAsrId);
+    const bool isActive =
+        (modelId == appConfigString("/settings/asr/providerId"));
 
     QString label = asrModelLabel(m);
     if (isActive) {
@@ -484,7 +485,8 @@ void AsrSettingWidget::onUseAsrModel()
                 ptr + QStringLiteral("/postPunctuationModel"));
         }
 
-        m_activeAsrId = modelId;
+        setAppConfigValue("/settings/asr/providerId",
+                          modelId.toStdString());
         spdlog::get("statusbar")->info(
             "{}", tr("Downloading %1...").arg(jsonString(m, "name")));
         startModelDownload(m_downloadQueue.dequeue());
@@ -494,7 +496,7 @@ void AsrSettingWidget::onUseAsrModel()
     // Already installed — load directly
     auto *vc = VoiceInputController::instance();
     if (vc) vc->loadModel(m);
-    m_activeAsrId = modelId;
+    setAppConfigValue("/settings/asr/providerId", modelId.toStdString());
     refreshAsrStatus();
     spdlog::get("statusbar")->info(
         "{}", tr("Model loaded: %1").arg(jsonString(m, "name")));
@@ -593,7 +595,7 @@ void AsrSettingWidget::onModelDownloadFinished()
 
     refreshAsrStatus();
 
-    if (m_activeAsrId == jsonString(m, "id")) {
+    if (appConfigString("/settings/asr/providerId") == jsonString(m, "id")) {
         auto *vc = VoiceInputController::instance();
         if (vc) vc->loadModel(m);
         spdlog::get("statusbar")->info(
