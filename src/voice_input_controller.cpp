@@ -394,26 +394,8 @@ void VoiceInputController::postProcessFinalText(const QString &text)
             spdlog::get("statusbar")
                 ->info("{}", tr("Post-processing recognition result..."));
         }
-        const QString hotwords = []() -> QString {
-            const nlohmann::json hw =
-                talkinput::appConfigValue("/settings/hotwords");
-            QStringList lines;
-            if (hw.is_array()) {
-                for (const auto &item : hw) {
-                    if (item.is_string()) {
-                        const QString s =
-                            QString::fromStdString(item.get<std::string>())
-                                .trimmed();
-                        if (!s.isEmpty()) {
-                            lines.append(s);
-                        }
-                    }
-                }
-            }
-            return lines.join(QLatin1Char('\n'));
-        }();
         m_llmPostProcessor->postProcess(
-            finalText, ocrContext, hotwords, this,
+            finalText, ocrContext, currentHotwordsText(), this,
             [this, finalText](const QString &processedText) {
                 SPDLOG_DEBUG(
                     "Voice input final text after LLM: input='{}' output='{}'",
@@ -578,8 +560,7 @@ void VoiceInputController::loadModel(const nlohmann::json &preset)
     const QString modelDir = asrModelDir(preset);
 
     auto recognizer = SpeechRecognizer::createFromConfig(
-        preset, modelDir, talkinput::appConfigValue("/settings/hotwords"),
-        this);
+        preset, modelDir, currentHotwordsConfig(), this);
     if (!recognizer) {
         SPDLOG_ERROR("VoiceInputController: model load failed: {}",
                      recognizer.error());

@@ -4,6 +4,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QStringList>
 
 namespace talkinput
 {
@@ -65,6 +66,46 @@ bool isAsrPresetInstalled(const nlohmann::json &preset)
     }
     const QString modelDir = asrModelDir(preset);
     return !modelDir.isEmpty() && QFileInfo(modelDir).isDir();
+}
+
+nlohmann::json currentHotwordsConfig()
+{
+    return appConfigValue("/settings/hotwords");
+}
+
+QString hotwordsTextFromConfig(const nlohmann::json &hotwordsConfig)
+{
+    QStringList lines;
+    if (!hotwordsConfig.is_array()) {
+        return {};
+    }
+
+    for (const auto &item : hotwordsConfig) {
+        if (!item.is_string()) {
+            continue;
+        }
+
+        const QString line =
+            QString::fromStdString(item.get<std::string>()).trimmed();
+        if (!line.isEmpty()) {
+            lines.append(line);
+        }
+    }
+    return lines.join(QLatin1Char('\n'));
+}
+
+QString currentHotwordsText()
+{
+    return hotwordsTextFromConfig(currentHotwordsConfig());
+}
+
+QString hotwordsTextForPreset(const nlohmann::json &preset,
+                              const nlohmann::json &hotwordsConfig)
+{
+    if (!preset.value("hotwordsSupport", false)) {
+        return {};
+    }
+    return hotwordsTextFromConfig(hotwordsConfig);
 }
 
 } // namespace talkinput

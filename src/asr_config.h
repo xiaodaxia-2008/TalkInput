@@ -15,5 +15,10 @@ void setCurrentAsrProviderId(const QString &id);
 bool isSystemAsrPreset(const nlohmann::json &preset);
 QString asrModelDir(const nlohmann::json &preset);
 bool isAsrPresetInstalled(const nlohmann::json &preset);
+nlohmann::json currentHotwordsConfig();
+QString hotwordsTextFromConfig(const nlohmann::json &hotwordsConfig);
+QString currentHotwordsText();
+QString hotwordsTextForPreset(const nlohmann::json &preset,
+                              const nlohmann::json &hotwordsConfig);
 
 } // namespace talkinput
