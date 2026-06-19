@@ -55,6 +55,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>())
 {
     SPDLOG_DEBUG("MainWindow: constructor begin");
+    installAppTranslations(currentAppLanguage(), this,
+                           m_appTranslator, m_qtTranslator);
     setupUi();
     SPDLOG_DEBUG("MainWindow: constructor end");
 }

@@ -1,12 +1,10 @@
 #include "app_config.h"
-#include "app_language.h"
 #include "logging.h"
 #include "main_window.h"
 
 #include <QApplication>
 #include <QFile>
 #include <QIcon>
-#include <QTranslator>
 
 int main(int argc, char *argv[])
 {
@@ -36,10 +34,6 @@ int main(int argc, char *argv[])
 
     const bool startHidden =
         talkinput::appConfigBool("/settings/app/startMinimized", false);
-    QTranslator *appTranslator = nullptr;
-    QTranslator *qtTranslator = nullptr;
-    talkinput::installAppTranslations(talkinput::currentAppLanguage(), &app,
-                                      appTranslator, qtTranslator);
 
     SPDLOG_DEBUG("constructing MainWindow");
     talkinput::MainWindow window;
