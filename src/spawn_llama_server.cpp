@@ -26,23 +26,16 @@ struct LocalServiceInfo
 
 LocalServiceInfo localServiceInfo()
 {
-    LocalServiceInfo info;
-    const auto provider = talkinput::appConfigValue("/llmPresets");
-    if (!provider.is_array()) return info;
-
-    const QString id =
-        talkinput::appConfigString("/settings/llm/providerId").trimmed();
-    for (const auto &p : provider) {
-        if (!p.is_object()) continue;
-        if (p.value("id", std::string()) != id.toStdString()) continue;
-        info.port = p.value("localServicePort", 8765);
-        info.maxHealthAttempts = p.value("localServiceMaxHealthAttempts", 120);
-        const std::string url =
-            p.value("localServiceArchiveUrl", std::string());
-        if (!url.empty()) info.archiveUrl = QUrl(QString::fromStdString(url));
-        break;
-    }
-    return info;
+    const auto provider = talkinput::findLlmPresetById(
+        talkinput::appConfigString("/settings/llm/providerId").trimmed());
+    return {
+        .port = jsonInt(provider, "localServicePort", 8765),
+        .maxHealthAttempts = jsonInt(provider, "localServiceMaxHealthAttempts", 120),
+        .archiveUrl = QUrl(jsonString(
+            provider, "localServiceArchiveUrl",
+            QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/"
+                           "download/b9685/llama-b9685-bin-win-cpu-x64.zip"))),
+    };
 }
 
 QString qs(const std::string &value)
