@@ -4,6 +4,7 @@
 #include "audio_utils.h"
 #include "llm_post_processor.h"
 #include "logging.h"
+#include "ocr_config.h"
 #include "ocr_recognizer.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
@@ -223,19 +224,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     s_instance = this;
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
-    // Create OCR recognizer from the configured provider
-    const QString ocrProviderId = appConfigString("/settings/ocr/providerId");
-    const nlohmann::json ocrPresets = appConfigValue("/ocrPresets");
-    nlohmann::json ocrPreset;
-    if (ocrPresets.is_object()) {
-        ocrPreset = ocrPresets.value(ocrProviderId.toStdString(),
-                                     nlohmann::json::object());
-    }
-    if (ocrPreset.empty()) {
-        ocrPreset = {{"type", "System"}};
-    }
     QString ocrError;
-    auto ocr = OcrRecognizer::createFromConfig(ocrPreset, this);
+    auto ocr = OcrRecognizer::createFromConfig(currentOcrPreset(), this);
     if (!ocr) {
         SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocr.error());
     }
@@ -396,8 +386,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
     };
 
     const bool llmEnabled = m_llmPostProcessor->isEnabled();
-    const bool ocrEnabled =
-        appConfigBool("/settings/ocr/ocrContextEnableForAsr", false);
+    const bool ocrEnabled = ocrContextEnabledForAsr();
     const bool ocrServiceAvailable =
         m_ocrRecognizer && m_ocrRecognizer->isAvailable();
     SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "

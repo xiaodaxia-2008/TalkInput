@@ -4,6 +4,7 @@
 #include "llm_config.h"
 #include "logging.h"
 #include "model_download_manager.h"
+#include "ocr_config.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
@@ -294,7 +295,7 @@ void AsrSettingWidget::initOcrProvider()
 {
     auto *combo = m_ui->ocrCombo;
 
-    const nlohmann::json presets = appConfigValue("/ocrPresets");
+    const nlohmann::json presets = ocrPresets();
     if (presets.is_object()) {
         for (const auto &[key, preset] : presets.items()) {
             if (!preset.is_object()) {
@@ -305,7 +306,7 @@ void AsrSettingWidget::initOcrProvider()
         }
     }
 
-    const QString savedId = appConfigString("/settings/ocr/providerId");
+    const QString savedId = currentOcrProviderId();
     const int idx = combo->findData(savedId);
     if (idx >= 0) {
         combo->setCurrentIndex(idx);
@@ -317,8 +318,7 @@ void AsrSettingWidget::initOcrProvider()
 
 void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
 {
-    setAppConfigValue("/settings/ocr/providerId",
-                      m_ui->ocrCombo->currentData().toString());
+    setCurrentOcrProviderId(m_ui->ocrCombo->currentData().toString());
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -406,15 +406,13 @@ void AsrSettingWidget::initLlmChecks()
     llmCheck->setChecked(
         appConfigBool("/settings/llm/llmPostProcessEnableForAsr", false));
     ocrCheck->setEnabled(llmCheck->isChecked());
-    ocrCheck->setChecked(
-        appConfigBool("/settings/ocr/ocrContextEnableForAsr", false));
+    ocrCheck->setChecked(ocrContextEnabledForAsr());
 
     connect(llmCheck, &QCheckBox::toggled, this, [](bool checked) {
         setAppConfigValue("/settings/llm/llmPostProcessEnableForAsr", checked);
     });
-    connect(ocrCheck, &QCheckBox::toggled, this, [](bool checked) {
-        setAppConfigValue("/settings/ocr/ocrContextEnableForAsr", checked);
-    });
+    connect(ocrCheck, &QCheckBox::toggled, this,
+            [](bool checked) { setOcrContextEnabledForAsr(checked); });
     connect(llmCheck, &QCheckBox::toggled, ocrCheck, &QCheckBox::setEnabled);
 }
 

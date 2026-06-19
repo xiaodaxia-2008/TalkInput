@@ -38,6 +38,8 @@ add_executable(TalkInput
     spawn_llama_server.h
     ocr_recognizer.cpp
     ocr_recognizer.h
+    ocr_config.cpp
+    ocr_config.h
     system_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
