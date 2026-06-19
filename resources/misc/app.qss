@@ -7,6 +7,21 @@ QLabel#historyRealtimeLabel {
     font-size: 13px;
 }
 
+QStatusBar[messageLevel="info"],
+QStatusBar[messageLevel="info"] QLabel {
+    color: #333;
+}
+
+QStatusBar[messageLevel="warning"],
+QStatusBar[messageLevel="warning"] QLabel {
+    color: #9a5b00;
+}
+
+QStatusBar[messageLevel="error"],
+QStatusBar[messageLevel="error"] QLabel {
+    color: #b42318;
+}
+
 QLabel#historyTitleLabel {
     font-size: 13px;
     font-weight: bold;

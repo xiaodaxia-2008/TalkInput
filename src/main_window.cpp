@@ -112,12 +112,10 @@ void MainWindow::setupUi()
     connect(m_asrService, &AsrService::modelLoadResult, this,
             [this](bool success, const QString &error) {
                 if (!success) {
-                    SPDLOG_ERROR("ASR model load failed: {}", error);
                     spdlog::get("statusbar")
-                        ->info("{}", tr("Model load failed: %1").arg(error));
+                        ->error("{}", tr("Model load failed: %1").arg(error));
                 }
                 else {
-                    SPDLOG_INFO("ASR model loaded successfully");
                     spdlog::get("statusbar")->info("{}", tr("Model ready."));
                 }
             });
