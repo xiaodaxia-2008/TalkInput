@@ -8,6 +8,7 @@
 #define NOMINMAX
 #endif
 
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Globalization.h>
 #include <winrt/Windows.Media.SpeechRecognition.h>
@@ -15,6 +16,7 @@
 
 #include <QMetaObject>
 #include <QPointer>
+#include <chrono>
 #include <memory>
 
 // WinRT namespace aliases
@@ -43,6 +45,9 @@ void initWinrtApartment()
 
 QString windowsLanguageTag(const QString &language)
 {
+    if (language.isEmpty() || language == QStringLiteral("system")) {
+        return {};
+    }
     if (language == QStringLiteral("zh")) {
         return QStringLiteral("zh-CN");
     }
@@ -50,6 +55,35 @@ QString windowsLanguageTag(const QString &language)
         return QStringLiteral("en-US");
     }
     return language;
+}
+
+QString completedStatusName(Speech::SpeechRecognitionResultStatus status)
+{
+    switch (status) {
+    case Speech::SpeechRecognitionResultStatus::Success:
+        return QStringLiteral("Success");
+    case Speech::SpeechRecognitionResultStatus::TopicLanguageNotSupported:
+        return QStringLiteral("TopicLanguageNotSupported");
+    case Speech::SpeechRecognitionResultStatus::GrammarLanguageMismatch:
+        return QStringLiteral("GrammarLanguageMismatch");
+    case Speech::SpeechRecognitionResultStatus::GrammarCompilationFailure:
+        return QStringLiteral("GrammarCompilationFailure");
+    case Speech::SpeechRecognitionResultStatus::AudioQualityFailure:
+        return QStringLiteral("AudioQualityFailure");
+    case Speech::SpeechRecognitionResultStatus::UserCanceled:
+        return QStringLiteral("UserCanceled");
+    case Speech::SpeechRecognitionResultStatus::TimeoutExceeded:
+        return QStringLiteral("TimeoutExceeded");
+    case Speech::SpeechRecognitionResultStatus::PauseLimitExceeded:
+        return QStringLiteral("PauseLimitExceeded");
+    case Speech::SpeechRecognitionResultStatus::NetworkFailure:
+        return QStringLiteral("NetworkFailure");
+    case Speech::SpeechRecognitionResultStatus::MicrophoneUnavailable:
+        return QStringLiteral("MicrophoneUnavailable");
+    case Speech::SpeechRecognitionResultStatus::Unknown:
+    default:
+        return QStringLiteral("Unknown");
+    }
 }
 
 } // namespace
@@ -73,6 +107,8 @@ public:
     bool start(const nlohmann::json &config, QString *errorMessage,
                QPointer<SystemSpeechRecognizer> context)
     {
+        stop();
+
         try {
             initWinrtApartment();
 
@@ -80,7 +116,7 @@ public:
             const nlohmann::json params =
                 config.value("params", nlohmann::json::object());
             const QString language =
-                windowsLanguageTag(jsonString(params, "language", "zh"));
+                windowsLanguageTag(jsonString(params, "language", "system"));
             if (!language.isEmpty()) {
                 m_recognizer = Speech::SpeechRecognizer(
                     winrt::Windows::Globalization::Language(
@@ -91,7 +127,15 @@ public:
                 m_recognizer = Speech::SpeechRecognizer();
             }
 
-            // Compile the default (dictation) grammar
+            m_recognizer.Constraints().Clear();
+            m_recognizer.Constraints().Append(
+                Speech::SpeechRecognitionTopicConstraint(
+                    Speech::SpeechRecognitionScenario::Dictation,
+                    L"dictation"));
+            m_recognizer.Timeouts().InitialSilenceTimeout(
+                std::chrono::seconds(30));
+            m_recognizer.Timeouts().EndSilenceTimeout(std::chrono::seconds(2));
+
             const auto compilationResult =
                 m_recognizer.CompileConstraintsAsync().get();
             if (compilationResult.Status() !=
@@ -152,8 +196,23 @@ public:
                 });
 
             // Start continuous recognition
+            m_stopRequested = false;
             session.StartAsync().get();
             m_running = true;
+
+            m_completedToken = session.Completed([this](auto &&, auto &&args) {
+                m_running = false;
+                const QString status = completedStatusName(args.Status());
+                if (m_stopRequested ||
+                    args.Status() ==
+                        Speech::SpeechRecognitionResultStatus::Success)
+                {
+                    SPDLOG_DEBUG("System recognizer completed: {}", status);
+                }
+                else {
+                    SPDLOG_WARN("System recognizer completed: {}", status);
+                }
+            });
 
             SPDLOG_INFO("System recognizer started");
             return true;
@@ -170,22 +229,29 @@ public:
 
     void stop()
     {
-        if (!m_running) {
+        if (!m_recognizer) {
+            m_running = false;
             return;
         }
 
+        const bool wasRunning = m_running;
+        m_stopRequested = true;
         try {
-            if (m_recognizer) {
-                if (m_resultToken) {
-                    auto session = m_recognizer.ContinuousRecognitionSession();
-                    session.ResultGenerated(m_resultToken);
-                    session.StopAsync().get();
-                    m_resultToken = {};
-                }
-                if (m_hypothesisToken) {
-                    m_recognizer.HypothesisGenerated(m_hypothesisToken);
-                    m_hypothesisToken = {};
-                }
+            auto session = m_recognizer.ContinuousRecognitionSession();
+            if (m_completedToken) {
+                session.Completed(m_completedToken);
+                m_completedToken = {};
+            }
+            if (m_resultToken) {
+                session.ResultGenerated(m_resultToken);
+                m_resultToken = {};
+            }
+            if (m_hypothesisToken) {
+                m_recognizer.HypothesisGenerated(m_hypothesisToken);
+                m_hypothesisToken = {};
+            }
+            if (wasRunning) {
+                session.StopAsync().get();
             }
         }
         catch (const winrt::hresult_error &e) {
@@ -193,7 +259,9 @@ public:
                         winrt::to_string(e.message()));
         }
 
+        m_recognizer = nullptr;
         m_running = false;
+        m_stopRequested = false;
         SPDLOG_INFO("System recognizer stopped");
     }
 
@@ -211,7 +279,9 @@ private:
     Speech::SpeechRecognizer m_recognizer = nullptr;
     winrt::event_token m_resultToken;
     winrt::event_token m_hypothesisToken;
+    winrt::event_token m_completedToken;
     bool m_running = false;
+    bool m_stopRequested = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -266,6 +336,9 @@ void SystemSpeechRecognizer::resetStream()
     QString error;
     if (!m_impl->start(m_config, &error, this)) {
         SPDLOG_WARN("System recognizer session start failed: {}", error);
+        spdlog::get("statusbar")
+            ->error("{}",
+                    tr("System speech recognition failed: %1").arg(error));
     }
 }
 
