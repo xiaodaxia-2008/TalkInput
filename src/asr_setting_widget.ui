@@ -248,9 +248,43 @@
       </item>
      </layout>
     </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="bottomRow">
+    </item>
+    <item>
+     <widget class="QGroupBox" name="ocrGroup">
+      <property name="title">
+       <string>OCR Service</string>
+      </property>
+      <layout class="QHBoxLayout" name="ocrLayout">
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="ocrLabel">
+         <property name="text">
+          <string>Provider:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="ocrCombo"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="bottomRow">
       <item>
        <widget class="QPushButton" name="hotwordsButton">
        <property name="toolTip">
