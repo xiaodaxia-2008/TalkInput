@@ -22,13 +22,14 @@ OfflineSpeechRecognizer::~OfflineSpeechRecognizer()
     stop();
 }
 
-bool OfflineSpeechRecognizer::start(const nlohmann::json &config,
-                                    QString *errorMessage)
+std::expected<void, QString>
+OfflineSpeechRecognizer::start(const nlohmann::json &config)
 {
     stop();
 
-    if (!prepareRecognizer(config, errorMessage)) {
-        return false;
+    auto prepResult = prepareRecognizer(config);
+    if (!prepResult) {
+        return std::unexpected(prepResult.error());
     }
 
     const nlohmann::json params =
@@ -40,9 +41,10 @@ bool OfflineSpeechRecognizer::start(const nlohmann::json &config,
     recognizerConfig.feat_config.sample_rate = sampleRate;
     recognizerConfig.feat_config.feature_dim = jsonInt(params, "featureDim", 80);
 
-    if (!configureModel(config, &recognizerConfig, errorMessage)) {
+    auto modelResult = configureModel(config, &recognizerConfig);
+    if (!modelResult) {
         stop();
-        return false;
+        return std::unexpected(modelResult.error());
     }
 
     recognizerConfig.model_config.provider = "cpu";
@@ -58,17 +60,14 @@ bool OfflineSpeechRecognizer::start(const nlohmann::json &config,
     m_recognizer = SherpaOnnxCreateOfflineRecognizer(&recognizerConfig);
     if (!m_recognizer) {
         stop();
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("Failed to create offline recognizer.");
-        }
-        return false;
+        return std::unexpected(
+            QStringLiteral("Failed to create offline recognizer."));
     }
 
     m_modelSampleRate = sampleRate;
     m_inputSampleRate = 0;
     m_samples.clear();
-    return true;
+    return {};
 }
 
 void OfflineSpeechRecognizer::stop()

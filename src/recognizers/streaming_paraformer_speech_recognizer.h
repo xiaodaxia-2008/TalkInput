@@ -14,9 +14,9 @@ public:
     }
 
 protected:
-    bool configureModel(const nlohmann::json &config,
-                        SherpaOnnxOnlineRecognizerConfig *recognizer,
-                        QString *errorMessage) override;
+    std::expected<void, QString>
+    configureModel(const nlohmann::json &config,
+                   SherpaOnnxOnlineRecognizerConfig *recognizer) override;
 
     bool supportsModifiedBeamSearch() const override
     {

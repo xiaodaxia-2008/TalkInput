@@ -248,11 +248,11 @@ VoiceInputController::VoiceInputController(QObject *parent)
         ocrPreset = {{"type", "System"}};
     }
     QString ocrError;
-    auto ocr = OcrRecognizer::createFromConfig(ocrPreset, &ocrError, this);
+    auto ocr = OcrRecognizer::createFromConfig(ocrPreset, this);
     if (!ocr) {
-        SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocrError);
+        SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocr.error());
     }
-    m_ocrRecognizer = ocr.release();
+    m_ocrRecognizer = ocr->release();
     registerHotKey();
 }
 
@@ -805,20 +805,19 @@ void VoiceInputController::loadModel(const nlohmann::json &preset)
             : QDir(talkinput::appDataDir())
                   .filePath(QStringLiteral("models/%1").arg(modelDirName));
 
-    QString error;
     auto recognizer =
         SpeechRecognizer::createFromConfig(preset, modelDir,
                                            talkinput::appConfigValue("/settings/hotwords"),
-                                           &error, this);
+                                           this);
     if (!recognizer) {
-        SPDLOG_ERROR("VoiceInputController: model load failed: {}", error);
-        emit modelLoadResult(false, error);
+        SPDLOG_ERROR("VoiceInputController: model load failed: {}", recognizer.error());
+        emit modelLoadResult(false, recognizer.error());
         return;
     }
 
-    connect(recognizer.get(), &SpeechRecognizer::resultChanged, this,
+    connect(recognizer->get(), &SpeechRecognizer::resultChanged, this,
             &VoiceInputController::onResult);
-    m_recognizer = std::move(recognizer);
+    m_recognizer = std::move(*recognizer);
 
     // Persist providerId
     setAppConfigValue("/settings/asr/providerId",

@@ -17,15 +17,12 @@ public:
         stop();
     }
 
-    bool start(const nlohmann::json &, QString *errorMessage,
-               QPointer<SystemSpeechRecognizer>)
+    std::expected<void, QString> start(const nlohmann::json &,
+                                        QPointer<SystemSpeechRecognizer>)
     {
         SPDLOG_WARN("System speech recognizer is not implemented on Linux");
-        if (errorMessage) {
-            *errorMessage = QStringLiteral(
-                "System speech recognition is not available on this platform.");
-        }
-        return false;
+        return std::unexpected(QStringLiteral(
+            "System speech recognition is not available on this platform."));
     }
 
     void stop()
@@ -56,10 +53,10 @@ SystemSpeechRecognizer::SystemSpeechRecognizer(QObject *parent)
 
 SystemSpeechRecognizer::~SystemSpeechRecognizer() = default;
 
-bool SystemSpeechRecognizer::start(const nlohmann::json &config,
-                                   QString *errorMessage)
+std::expected<void, QString>
+SystemSpeechRecognizer::start(const nlohmann::json &config)
 {
-    return m_impl->start(config, errorMessage, this);
+    return m_impl->start(config, this);
 }
 
 void SystemSpeechRecognizer::stop()

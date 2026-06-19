@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QRect>
 #include <QString>
+#include <expected>
 #include <functional>
 #include <memory>
 #include <qwindowdefs.h>
@@ -31,8 +32,8 @@ public:
     virtual void recognizeText(const QImage &image, QObject *receiver,
                                Callback callback) = 0;
 
-    static std::unique_ptr<OcrRecognizer>
-    createFromConfig(const nlohmann::json &preset, QString *errorMessage,
+    static std::expected<std::unique_ptr<OcrRecognizer>, QString>
+    createFromConfig(const nlohmann::json &preset,
                      QObject *parent = nullptr);
 };
 

@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QString>
 
+#include <expected>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,8 +32,8 @@ public:
     explicit SpeechRecognizer(QObject *parent = nullptr);
     ~SpeechRecognizer() override;
 
-    virtual bool start(const nlohmann::json &config,
-                       QString *errorMessage) = 0;
+    virtual std::expected<void, QString>
+    start(const nlohmann::json &config) = 0;
     virtual void stop() = 0;
     virtual bool isRunning() const = 0;
     virtual bool isStreaming() const = 0;
@@ -43,11 +44,9 @@ public:
     virtual void resetStream() = 0;
     virtual bool acceptsExternalAudio() const;
 
-    // Create a recognizer from an asrPreset entry + current settings.
-    // Returns nullptr and fills *errorMessage on failure.
-    static std::unique_ptr<SpeechRecognizer>
+    static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
     createFromConfig(const nlohmann::json &preset, const QString &modelDir,
-                     const nlohmann::json &hotwordsConfig, QString *errorMessage,
+                     const nlohmann::json &hotwordsConfig,
                      QObject *parent = nullptr);
 
 signals:
@@ -55,17 +54,16 @@ signals:
     void resultChanged(const QString &text, bool isFinal);
 
 protected:
-    bool prepareRecognizer(const nlohmann::json &config,
-                           QString *errorMessage);
+    std::expected<void, QString>
+    prepareRecognizer(const nlohmann::json &config);
     void stopPunctuation();
     QString addPunctuation(const QString &text) const;
 
     static QString modelPath(const QString &modelDir, const QString &fileName);
-    static bool configuredModelPath(const nlohmann::json &config,
-                                    const char *configField, QString *path,
-                                    QString *errorMessage);
-    static bool fileExists(const QString &path, QString *errorMessage);
-    static bool pathExists(const QString &path, QString *errorMessage);
+    static std::expected<QString, QString>
+    configuredModelPath(const nlohmann::json &config, const char *configField);
+    static std::expected<void, QString> fileExists(const QString &path);
+    static std::expected<void, QString> pathExists(const QString &path);
     static QString decodeSherpaText(const char *text);
     static int appendPcm16AsMonoFloat(const QByteArray &audioData,
                                       int channelCount,

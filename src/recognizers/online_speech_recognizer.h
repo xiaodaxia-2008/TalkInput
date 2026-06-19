@@ -18,7 +18,8 @@ public:
     explicit OnlineSpeechRecognizer(QObject *parent = nullptr);
     ~OnlineSpeechRecognizer() override;
 
-    bool start(const nlohmann::json &config, QString *errorMessage) final;
+    std::expected<void, QString>
+    start(const nlohmann::json &config) final;
     void stop() override;
     bool isRunning() const final;
     bool isStreaming() const final;
@@ -29,9 +30,9 @@ public:
     void resetStream() final;
 
 protected:
-    virtual bool configureModel(const nlohmann::json &config,
-                                SherpaOnnxOnlineRecognizerConfig *recognizer,
-                                QString *errorMessage) = 0;
+    virtual std::expected<void, QString>
+    configureModel(const nlohmann::json &config,
+                   SherpaOnnxOnlineRecognizerConfig *recognizer) = 0;
     virtual bool supportsModifiedBeamSearch() const;
 
     std::string m_encoderPath;

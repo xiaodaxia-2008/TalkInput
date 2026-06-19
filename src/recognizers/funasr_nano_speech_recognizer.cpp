@@ -5,32 +5,26 @@
 namespace talkinput
 {
 
-bool FunASRNanoSpeechRecognizer::configureModel(
+std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
     const nlohmann::json &config,
-    SherpaOnnxOfflineRecognizerConfig *recognizer, QString *errorMessage)
+    SherpaOnnxOfflineRecognizerConfig *recognizer)
 {
-    QString adaptor;
-    QString llm;
-    QString embedding;
-    QString tokenizer;
-    if (!configuredModelPath(config, "funasrEncoderAdaptorFile", &adaptor,
-                             errorMessage) ||
-        !configuredModelPath(config, "funasrLlmFile", &llm, errorMessage) ||
-        !configuredModelPath(config, "funasrEmbeddingFile", &embedding,
-                             errorMessage) ||
-        !configuredModelPath(config, "funasrTokenizerFile", &tokenizer,
-                             errorMessage))
-    {
-        return false;
-    }
+    auto adaptorResult = configuredModelPath(config, "funasrEncoderAdaptorFile");
+    if (!adaptorResult) return std::unexpected(adaptorResult.error());
+    auto llmResult = configuredModelPath(config, "funasrLlmFile");
+    if (!llmResult) return std::unexpected(llmResult.error());
+    auto embeddingResult = configuredModelPath(config, "funasrEmbeddingFile");
+    if (!embeddingResult) return std::unexpected(embeddingResult.error());
+    auto tokenizerResult = configuredModelPath(config, "funasrTokenizerFile");
+    if (!tokenizerResult) return std::unexpected(tokenizerResult.error());
 
     const nlohmann::json params =
         config.value("params", nlohmann::json::object());
 
-    m_encoderAdaptorPath = adaptor.toUtf8().toStdString();
-    m_llmPath = llm.toUtf8().toStdString();
-    m_embeddingPath = embedding.toUtf8().toStdString();
-    m_tokenizerPath = tokenizer.toUtf8().toStdString();
+    m_encoderAdaptorPath = adaptorResult->toUtf8().toStdString();
+    m_llmPath = llmResult->toUtf8().toStdString();
+    m_embeddingPath = embeddingResult->toUtf8().toStdString();
+    m_tokenizerPath = tokenizerResult->toUtf8().toStdString();
     m_systemPrompt =
         jsonString(params, "funasrSystemPrompt", "You are a helpful assistant.")
             .toUtf8()
@@ -62,7 +56,7 @@ bool FunASRNanoSpeechRecognizer::configureModel(
     if (!m_hotwords.empty()) {
         recognizer->model_config.funasr_nano.hotwords = m_hotwords.c_str();
     }
-    return true;
+    return {};
 }
 
 int FunASRNanoSpeechRecognizer::chunkSeconds() const

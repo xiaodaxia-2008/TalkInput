@@ -337,10 +337,10 @@ void LlamaServerManager::onDownloadFinished(QNetworkReply *reply)
 
     if (m_downloadKind == DownloadKind::LlamaArchive) {
         spdlog::get("statusbar")->info("{}", tr("Extracting LLM runtime..."));
-        QString error;
-        if (!extractLlamaArchive(&error)) {
+        auto extractResult = extractLlamaArchive();
+        if (!extractResult) {
             emit this->failed(
-                tr("LLM runtime extraction failed: %1").arg(error));
+                tr("LLM runtime extraction failed: %1").arg(extractResult.error()));
             return;
         }
     }
@@ -350,11 +350,11 @@ void LlamaServerManager::onDownloadFinished(QNetworkReply *reply)
     prepare();
 }
 
-bool LlamaServerManager::extractLlamaArchive(QString *errorMessage)
+std::expected<void, QString> LlamaServerManager::extractLlamaArchive()
 {
     QDir(llamaDir()).removeRecursively();
     QDir().mkpath(llamaDir());
-    return extractArchive(llamaArchivePath(), llamaDir(), errorMessage);
+    return extractArchive(llamaArchivePath(), llamaDir());
 }
 
 void LlamaServerManager::startServer()

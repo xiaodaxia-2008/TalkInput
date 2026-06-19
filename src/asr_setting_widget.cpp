@@ -600,10 +600,10 @@ void AsrSettingWidget::onDownloadFinished()
     spdlog::get("statusbar")->info("{}", tr("Extracting..."));
     QCoreApplication::processEvents();
 
-    QString err;
-    if (!extractArchive(m_activeDownloadPath, dest.absolutePath(), &err)) {
+    auto extractResult = extractArchive(m_activeDownloadPath, dest.absolutePath());
+    if (!extractResult) {
         QMessageBox::warning(this, tr("Extraction failed"),
-                             tr("Failed:\n%1").arg(err));
+                             tr("Failed:\n%1").arg(extractResult.error()));
         spdlog::get("statusbar")->info("{}", tr("Extraction failed"));
         return;
     }

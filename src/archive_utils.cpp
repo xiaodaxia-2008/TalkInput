@@ -10,6 +10,7 @@
 #include <QFileInfo>
 
 #include <memory>
+#include <expected>
 
 namespace
 {
@@ -41,15 +42,12 @@ QString entryPath(struct archive_entry *entry)
 namespace talkinput
 {
 
-bool extractArchive(const QString &archivePath, const QString &destDir,
-                    QString *errorMessage)
+std::expected<void, QString> extractArchive(const QString &archivePath,
+                                            const QString &destDir)
 {
     QDir dest(destDir);
     if (!dest.exists() && !dest.mkpath(".")) {
-        if (errorMessage) {
-            *errorMessage = QString("Cannot create: %1").arg(destDir);
-        }
-        return false;
+        return std::unexpected(QString("Cannot create: %1").arg(destDir));
     }
 
     std::unique_ptr<archive, decltype(&archive_read_free)> reader(
@@ -62,29 +60,20 @@ bool extractArchive(const QString &archivePath, const QString &destDir,
             QDir::toNativeSeparators(archivePath).toLocal8Bit().constData(),
             10240) != ARCHIVE_OK)
     {
-        if (errorMessage) {
-            *errorMessage =
-                QString::fromLocal8Bit(archive_error_string(reader.get()));
-        }
-        return false;
+        return std::unexpected(
+            QString::fromLocal8Bit(archive_error_string(reader.get())));
     }
 
     archive_entry *entry = nullptr;
     while (archive_read_next_header(reader.get(), &entry) == ARCHIVE_OK) {
         const QString rel = QDir::cleanPath(entryPath(entry));
         if (isUnsafeArchivePath(rel)) {
-            if (errorMessage) {
-                *errorMessage = QString("Unsafe path: %1").arg(rel);
-            }
-            return false;
+            return std::unexpected(QString("Unsafe path: %1").arg(rel));
         }
 
         const QString outPath = dest.filePath(rel);
         if (!isPathInsideDir(outPath, dest.absolutePath())) {
-            if (errorMessage) {
-                *errorMessage = QString("Escapes destination: %1").arg(rel);
-            }
-            return false;
+            return std::unexpected(QString("Escapes destination: %1").arg(rel));
         }
 
         const auto fileType = archive_entry_filetype(entry);
@@ -101,10 +90,7 @@ bool extractArchive(const QString &archivePath, const QString &destDir,
         QDir().mkpath(QFileInfo(outPath).absolutePath());
         QFile outFile(outPath);
         if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            if (errorMessage) {
-                *errorMessage = QString("Cannot write: %1").arg(outPath);
-            }
-            return false;
+            return std::unexpected(QString("Cannot write: %1").arg(outPath));
         }
 
         const void *buffer = nullptr;
@@ -118,16 +104,14 @@ bool extractArchive(const QString &archivePath, const QString &destDir,
                               static_cast<qint64>(size)) !=
                 static_cast<qint64>(size))
             {
-                if (errorMessage) {
-                    *errorMessage = QString("Write error: %1").arg(outPath);
-                }
-                return false;
+                return std::unexpected(
+                    QString("Write error: %1").arg(outPath));
             }
         }
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 
-    return true;
+    return {};
 }
 
 } // namespace talkinput

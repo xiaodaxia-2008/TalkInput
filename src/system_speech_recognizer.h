@@ -19,7 +19,8 @@ public:
     explicit SystemSpeechRecognizer(QObject *parent = nullptr);
     ~SystemSpeechRecognizer() override;
 
-    bool start(const nlohmann::json &config, QString *errorMessage) override;
+    std::expected<void, QString>
+    start(const nlohmann::json &config) override;
     void stop() override;
     bool isRunning() const override;
     bool isStreaming() const override;

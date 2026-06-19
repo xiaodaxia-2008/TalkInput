@@ -19,13 +19,14 @@ OnlineSpeechRecognizer::~OnlineSpeechRecognizer()
     stop();
 }
 
-bool OnlineSpeechRecognizer::start(const nlohmann::json &config,
-                                     QString *errorMessage)
+std::expected<void, QString>
+OnlineSpeechRecognizer::start(const nlohmann::json &config)
 {
     stop();
 
-    if (!prepareRecognizer(config, errorMessage)) {
-        return false;
+    auto prepResult = prepareRecognizer(config);
+    if (!prepResult) {
+        return std::unexpected(prepResult.error());
     }
 
     const nlohmann::json params =
@@ -36,9 +37,10 @@ bool OnlineSpeechRecognizer::start(const nlohmann::json &config,
     recognizerConfig.feat_config.sample_rate = jsonInt(params, "sampleRate", 16000);
     recognizerConfig.feat_config.feature_dim = jsonInt(params, "featureDim", 80);
 
-    if (!configureModel(config, &recognizerConfig, errorMessage)) {
+    auto modelResult = configureModel(config, &recognizerConfig);
+    if (!modelResult) {
         stop();
-        return false;
+        return std::unexpected(modelResult.error());
     }
 
     recognizerConfig.model_config.provider = "cpu";
@@ -71,24 +73,18 @@ bool OnlineSpeechRecognizer::start(const nlohmann::json &config,
     m_recognizer = SherpaOnnxCreateOnlineRecognizer(&recognizerConfig);
     if (!m_recognizer) {
         stop();
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("Failed to create online recognizer.");
-        }
-        return false;
+        return std::unexpected(
+            QStringLiteral("Failed to create online recognizer."));
     }
 
     m_stream = SherpaOnnxCreateOnlineStream(m_recognizer);
     if (!m_stream) {
         stop();
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Failed to create online stream.");
-        }
-        return false;
+        return std::unexpected(
+            QStringLiteral("Failed to create online stream."));
     }
 
-    m_lastText.clear();
-    return true;
+    return {};
 }
 
 bool OnlineSpeechRecognizer::supportsModifiedBeamSearch() const

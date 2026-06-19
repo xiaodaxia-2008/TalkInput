@@ -5,24 +5,20 @@
 namespace talkinput
 {
 
-bool SenseVoiceSpeechRecognizer::configureModel(
+std::expected<void, QString> SenseVoiceSpeechRecognizer::configureModel(
     const nlohmann::json &config,
-    SherpaOnnxOfflineRecognizerConfig *recognizer, QString *errorMessage)
+    SherpaOnnxOfflineRecognizerConfig *recognizer)
 {
-    QString model;
-    QString tokens;
-    if (!configuredModelPath(config, "senseVoiceModelFile", &model,
-                             errorMessage) ||
-        !configuredModelPath(config, "tokensFile", &tokens, errorMessage))
-    {
-        return false;
-    }
+    auto modelResult = configuredModelPath(config, "senseVoiceModelFile");
+    if (!modelResult) return std::unexpected(modelResult.error());
+    auto tokensResult = configuredModelPath(config, "tokensFile");
+    if (!tokensResult) return std::unexpected(tokensResult.error());
 
     const nlohmann::json params =
         config.value("params", nlohmann::json::object());
 
-    m_modelPath = model.toUtf8().toStdString();
-    m_tokensPath = tokens.toUtf8().toStdString();
+    m_modelPath = modelResult->toUtf8().toStdString();
+    m_tokensPath = tokensResult->toUtf8().toStdString();
     m_language = jsonString(params, "language", "zh").toUtf8().toStdString();
 
     recognizer->model_config.sense_voice.model = m_modelPath.c_str();
@@ -30,7 +26,7 @@ bool SenseVoiceSpeechRecognizer::configureModel(
     recognizer->model_config.sense_voice.use_itn =
         jsonBool(params, "senseVoiceUseItn", true) ? 1 : 0;
     recognizer->model_config.tokens = m_tokensPath.c_str();
-    return true;
+    return {};
 }
 
 } // namespace talkinput

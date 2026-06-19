@@ -16,9 +16,9 @@ public:
     }
 
 protected:
-    bool configureModel(const nlohmann::json &config,
-                        SherpaOnnxOfflineRecognizerConfig *recognizer,
-                        QString *errorMessage) override;
+    std::expected<void, QString>
+    configureModel(const nlohmann::json &config,
+                   SherpaOnnxOfflineRecognizerConfig *recognizer) override;
 
 private:
     std::string m_modelPath;

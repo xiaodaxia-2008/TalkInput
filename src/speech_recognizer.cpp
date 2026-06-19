@@ -64,27 +64,24 @@ SpeechRecognizer::~SpeechRecognizer()
     stopPunctuation();
 }
 
-bool SpeechRecognizer::prepareRecognizer(const nlohmann::json &config,
-                                         QString *errorMessage)
+std::expected<void, QString>
+SpeechRecognizer::prepareRecognizer(const nlohmann::json &config)
 {
     stopPunctuation();
 
     const QString modelDir = jsonString(config, "modelDir");
     if (modelDir.trimmed().isEmpty()) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Model directory is empty.");
-        }
-        return false;
+        return std::unexpected(QStringLiteral("Model directory is empty."));
     }
 
     const QString punctPath = configuredPunctuationModelPath(config);
     if (punctPath.isEmpty()) {
-        return true;
+        return {};
     }
 
     if (!QFileInfo::exists(punctPath)) {
         SPDLOG_WARN("Punctuation model not found: {}", punctPath);
-        return true;
+        return {};
     }
 
     const int numThreads = jsonInt(config.value("params", nlohmann::json::object()),
@@ -105,7 +102,7 @@ bool SpeechRecognizer::prepareRecognizer(const nlohmann::json &config,
         SPDLOG_INFO("Punctuation model loaded: {}", punctPath);
     }
 
-    return true;
+    return {};
 }
 
 void SpeechRecognizer::stopPunctuation()
@@ -140,65 +137,54 @@ QString SpeechRecognizer::modelPath(const QString &modelDir,
     return QDir(modelDir).filePath(fileName);
 }
 
-bool SpeechRecognizer::configuredModelPath(const nlohmann::json &config,
-                                           const char *configField,
-                                           QString *path, QString *errorMessage)
+std::expected<QString, QString>
+SpeechRecognizer::configuredModelPath(const nlohmann::json &config,
+                                      const char *configField)
 {
     const QString resolved = jsonString(
         config.value("files", nlohmann::json::object()), configField);
     if (resolved.isEmpty()) {
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("Model file not configured: %1")
-                    .arg(QString::fromLatin1(configField));
-        }
-        return false;
+        return std::unexpected(
+            QStringLiteral("Model file not configured: %1")
+                .arg(QString::fromLatin1(configField)));
     }
 
     const QString modelDir = jsonString(config, "modelDir");
     const QString absolutePath = modelPath(modelDir, resolved);
 
     if (!QFileInfo::exists(absolutePath)) {
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("Required model file is missing: %1")
-                    .arg(QDir::toNativeSeparators(absolutePath));
-        }
-        return false;
+        return std::unexpected(
+            QStringLiteral("Required model file is missing: %1")
+                .arg(QDir::toNativeSeparators(absolutePath)));
     }
 
-    if (path) {
-        *path = absolutePath;
-    }
-    return true;
+    return absolutePath;
 }
 
-bool SpeechRecognizer::fileExists(const QString &path, QString *errorMessage)
+std::expected<void, QString>
+SpeechRecognizer::fileExists(const QString &path)
 {
     const QFileInfo info(path);
     if (info.exists() && info.isFile()) {
-        return true;
+        return {};
     }
 
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("Required model file is missing: %1")
-                            .arg(QDir::toNativeSeparators(path));
-    }
-    return false;
+    return std::unexpected(
+        QStringLiteral("Required model file is missing: %1")
+            .arg(QDir::toNativeSeparators(path)));
 }
 
-bool SpeechRecognizer::pathExists(const QString &path, QString *errorMessage)
+std::expected<void, QString>
+SpeechRecognizer::pathExists(const QString &path)
 {
     const QFileInfo info(path);
     if (info.exists()) {
-        return true;
+        return {};
     }
 
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("Required model path is missing: %1")
-                            .arg(QDir::toNativeSeparators(path));
-    }
-    return false;
+    return std::unexpected(
+        QStringLiteral("Required model path is missing: %1")
+            .arg(QDir::toNativeSeparators(path)));
 }
 
 QString SpeechRecognizer::decodeSherpaText(const char *text)
@@ -300,46 +286,41 @@ QString hotwordsFromConfig(const nlohmann::json &hotwordsConfig)
 
 bool systemSpeechRecognizerSupported();
 
-std::unique_ptr<SpeechRecognizer>
+std::expected<std::unique_ptr<SpeechRecognizer>, QString>
 SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
                                    const QString &modelDir,
                                    const nlohmann::json &hotwordsConfig,
-                                   QString *errorMessage, QObject *parent)
+                                   QObject *parent)
 {
     const QString typeName = jsonString(preset, "type");
     const auto type = typeFromString(typeName);
     if (!type) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("Unsupported model type: %1").arg(typeName);
-        return nullptr;
+        return std::unexpected(
+            QStringLiteral("Unsupported model type: %1").arg(typeName));
     }
 
     // System recognizer is a special case — no files, no directory
     if (*type == SpeechRecognizer::Type::System) {
         if (!systemSpeechRecognizerSupported()) {
-            if (errorMessage)
-                *errorMessage = QStringLiteral(
-                    "System speech recognition is not available on this platform.");
-            return nullptr;
+            return std::unexpected(QStringLiteral(
+                "System speech recognition is not available on this platform."));
         }
         auto r = createSpeechRecognizer(*type, parent);
-        if (!r) return nullptr;
-        if (!r->start(nlohmann::json::object(), errorMessage)) return nullptr;
+        if (!r) return std::unexpected(QString());
+        auto startResult = r->start(nlohmann::json::object());
+        if (!startResult) return std::unexpected(startResult.error());
         return r;
     }
 
     if (modelDir.isEmpty()) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("Model directory not set.");
-        return nullptr;
+        return std::unexpected(QStringLiteral("Model directory not set."));
     }
 
     nlohmann::json config = preset;
     config["modelDir"] = modelDir;
 
-    // Resolve absolute paths for model files
-    const nlohmann::json files = config.value("files", nlohmann::json::object());
     nlohmann::json resolvedFiles = nlohmann::json::object();
+    const nlohmann::json files = config.value("files", nlohmann::json::object());
     for (auto it = files.begin(); it != files.end(); ++it) {
         if (!it->is_string()) continue;
         const QString relative = QString::fromStdString(it->get<std::string>());
@@ -347,15 +328,15 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
     }
     config["files"] = resolvedFiles;
 
-    // Inject hotwords
     const bool hotwordsSupport = config.value("hotwordsSupport", false);
     config["hotwordsText"] =
         buildHotwordsText(hotwordsFromConfig(hotwordsConfig), hotwordsSupport)
             .toStdString();
 
     auto r = createSpeechRecognizer(*type, parent);
-    if (!r) return nullptr;
-    if (!r->start(config, errorMessage)) return nullptr;
+    if (!r) return std::unexpected(QString());
+    auto startResult = r->start(config);
+    if (!startResult) return std::unexpected(startResult.error());
     return r;
 }
 

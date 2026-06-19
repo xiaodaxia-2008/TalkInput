@@ -110,8 +110,8 @@ public:
         stop();
     }
 
-    bool start(const nlohmann::json &config, QString *errorMessage,
-               QPointer<SystemSpeechRecognizer> context)
+    std::expected<void, QString>
+    start(const nlohmann::json &config, QPointer<SystemSpeechRecognizer> context)
     {
         stop();
 
@@ -147,12 +147,9 @@ public:
             if (compilationResult.Status() !=
                 Speech::SpeechRecognitionResultStatus::Success)
             {
-                if (errorMessage) {
-                    *errorMessage =
-                        QStringLiteral("Speech grammar compilation failed");
-                }
                 SPDLOG_WARN("System recognizer: grammar compilation failed");
-                return false;
+                return std::unexpected(
+                    QStringLiteral("Speech grammar compilation failed"));
             }
 
             // Hook HypothesisGenerated event on the recognizer (partial
@@ -223,15 +220,12 @@ public:
             m_running = true;
 
             SPDLOG_INFO("System recognizer started");
-            return true;
+            return {};
         }
         catch (const winrt::hresult_error &e) {
             const QString msg = QString::fromStdWString(e.message().c_str());
             SPDLOG_WARN("System recognizer start failed: {}", msg);
-            if (errorMessage) {
-                *errorMessage = msg;
-            }
-            return false;
+            return std::unexpected(msg);
         }
     }
 
@@ -302,12 +296,11 @@ SystemSpeechRecognizer::SystemSpeechRecognizer(QObject *parent)
 
 SystemSpeechRecognizer::~SystemSpeechRecognizer() = default;
 
-bool SystemSpeechRecognizer::start(const nlohmann::json &config,
-                                   QString *errorMessage)
+std::expected<void, QString>
+SystemSpeechRecognizer::start(const nlohmann::json &config)
 {
-    Q_UNUSED(errorMessage);
     m_config = config;
-    return true;
+    return {};
 }
 
 void SystemSpeechRecognizer::stop()
@@ -341,12 +334,12 @@ void SystemSpeechRecognizer::resetStream()
         return;
     }
 
-    QString error;
-    if (!m_impl->start(m_config, &error, this)) {
-        SPDLOG_WARN("System recognizer session start failed: {}", error);
+    auto startResult = m_impl->start(m_config, this);
+    if (!startResult) {
+        SPDLOG_WARN("System recognizer session start failed: {}", startResult.error());
         spdlog::get("statusbar")
             ->error("{}",
-                    tr("System speech recognition failed: %1").arg(error));
+                    tr("System speech recognition failed: %1").arg(startResult.error()));
     }
 }
 

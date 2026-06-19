@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QTimer>
+#include <expected>
 #include <memory>
 
 class QNetworkReply;
@@ -46,7 +47,7 @@ private:
     void prepare();
     void beginDownload(DownloadKind kind, const QUrl &url, const QString &path);
     void onDownloadFinished(QNetworkReply *reply);
-    bool extractLlamaArchive(QString *errorMessage);
+    std::expected<void, QString> extractLlamaArchive();
     void startServer();
     void pollHealth();
 
