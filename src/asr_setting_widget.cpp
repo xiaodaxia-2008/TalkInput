@@ -37,9 +37,14 @@ namespace
 
 QString llmProviderId(const QComboBox *combo)
 {
-    const auto data = combo->currentData().toByteArray();
-    if (data.isEmpty()) return {};
-    return jsonString(nlohmann::json::parse(data.constData()), "id");
+    return combo->currentData().toString();
+}
+
+nlohmann::json llmProviderPreset(const QComboBox *combo)
+{
+    const QString id = llmProviderId(combo);
+    if (id.isEmpty()) return {};
+    return appConfigValue(("/llmPresets/" + id).toStdString());
 }
 
 void saveLlmSetting(const QComboBox *combo, const QString &key,
@@ -71,20 +76,6 @@ void applyProviderToUi(const nlohmann::json &provider, QLineEdit *endpointEdit,
     modelCombo->setEditText(currentModel);
 
     apiKeyEdit->setText(jsonString(provider, "apiKey"));
-}
-
-void persistProvider(const nlohmann::json &provider)
-{
-    const QString id = jsonString(provider, "id");
-    if (id.isEmpty()) return;
-
-    setAppConfigValue("/settings/llm/providerId", id.toStdString());
-
-    const QString prefix = QStringLiteral("/llmPresets/%1").arg(id);
-    setAppConfigValue((prefix + QStringLiteral("/endpoint")).toStdString(),
-                      jsonString(provider, "endpoint").trimmed());
-    setAppConfigValue((prefix + QStringLiteral("/currentModel")).toStdString(),
-                      jsonString(provider, "currentModel").trimmed());
 }
 
 QString asrModelLabel(const nlohmann::json &m)
@@ -148,25 +139,26 @@ void AsrSettingWidget::initLlmProviders()
     modelCombo->lineEdit()->setPlaceholderText(
         tr("Model name sent to the LLM service"));
 
-    // Populate
+    // Populate — store only the provider ID, same as OCR combo
     const nlohmann::json presets = appConfigValue("/llmPresets");
     for (const auto &[key, preset] : presets.items()) {
         if (!preset.is_object()) continue;
-        combo->addItem(jsonString(preset, "name"),
-                       QByteArray::fromStdString(preset.dump()));
+        const QString id = jsonString(preset, "id");
+        if (!id.isEmpty())
+            combo->addItem(jsonString(preset, "name"), id);
     }
 
-    // Provider changed → apply UI + persist
-    connect(combo, &QComboBox::currentIndexChanged, this,
-            [=](int index) {
-                const auto p = nlohmann::json::parse(
-                    combo->itemData(index).toByteArray().constData());
-                applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
-                persistProvider(p);
-                spdlog::get("statusbar")
-                    ->info("{}", tr("LLM provider saved: %1")
-                                     .arg(combo->itemText(index)));
-            });
+    // Provider changed → apply UI + persist selection
+    connect(combo, &QComboBox::currentIndexChanged, this, [=]() {
+        const auto p = llmProviderPreset(combo);
+        if (!p.is_object()) return;
+        applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
+        setAppConfigValue("/settings/llm/providerId",
+                          llmProviderId(combo).toStdString());
+        spdlog::get("statusbar")->info(
+            "{}",
+            tr("LLM provider saved: %1").arg(combo->currentText()));
+    });
 
     // Endpoint edited
     connect(endpointEdit, &QLineEdit::editingFinished, this, [=]() {
@@ -192,26 +184,14 @@ void AsrSettingWidget::initLlmProviders()
         spdlog::get("statusbar")->info("{}", tr("LLM API key saved"));
     });
 
-    // Restore saved
+    // Restore saved provider
     const QString savedId = appConfigString("/settings/llm/providerId");
-    int idx = -1;
-    for (int i = 0; i < combo->count(); ++i) {
-        const auto d = combo->itemData(i).toByteArray();
-        if (d.isEmpty()) continue;
-        if (jsonString(nlohmann::json::parse(d.constData()), "id") == savedId) {
-            idx = i;
-            break;
-        }
-    }
-    if (idx < 0) idx = 0;
-    combo->setCurrentIndex(idx);
+    const int idx = combo->findData(savedId);
+    if (idx >= 0) combo->setCurrentIndex(idx);
 
-    const auto savedData = combo->currentData().toByteArray();
-    if (!savedData.isEmpty()) {
-        applyProviderToUi(
-            nlohmann::json::parse(savedData.constData()), endpointEdit,
-            modelCombo, apiKeyEdit);
-    }
+    const auto p = llmProviderPreset(combo);
+    if (p.is_object())
+        applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
