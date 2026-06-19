@@ -4,7 +4,6 @@
 
 #include <QAudioFormat>
 #include <QByteArray>
-#include <QImage>
 #include <QObject>
 
 #include <memory>
@@ -17,8 +16,7 @@ class QWidget;
 namespace talkinput
 {
 
-class LlmPostProcessor;
-class OcrRecognizer;
+class VoiceTextProcessor;
 
 class VoiceInputController final : public QObject
 {
@@ -66,15 +64,13 @@ private:
     void unregisterHotKey();
     void onResult(const QString &text, bool isFinal);
     void postProcessFinalText(const QString &text);
-    QImage captureFocusedContextImage() const;
     void injectFinalText(const QString &text);
     void sendText(const QString &text);
     void showOverlay();
     void hideOverlay();
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
-    LlmPostProcessor *m_llmPostProcessor = nullptr;
-    OcrRecognizer *m_ocrRecognizer = nullptr;
+    VoiceTextProcessor *m_textProcessor = nullptr;
 
     std::unique_ptr<QAudioSource> m_audioSource;
     QIODevice *m_audioDevice = nullptr;

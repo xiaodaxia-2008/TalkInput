@@ -1,26 +1,20 @@
 #include "voice_input_controller.h"
-#include "app_config.h"
 #include "asr_config.h"
 #include "audio_utils.h"
-#include "llm_post_processor.h"
 #include "logging.h"
-#include "ocr_config.h"
-#include "ocr_recognizer.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
-#include "utils.h"
+#include "voice_text_processor.h"
 
 #include <QAudioDevice>
 #include <QAudioSource>
-#include <QDateTime>
-#include <QDir>
+#include <QCursor>
 #include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHotkey>
 #include <QLabel>
 #include <QMediaDevices>
-#include <QPixmap>
 #include <QPropertyAnimation>
 #include <QScreen>
 #include <QTimer>
@@ -32,43 +26,6 @@
 
 namespace
 {
-
-void saveOcrDebugImage(const QImage &image)
-{
-    if (image.isNull()) {
-        return;
-    }
-
-    const QString dir = QDir(talkinput::appDataDir()).filePath("ocr");
-    QDir().mkpath(dir);
-    const QString timestamp =
-        QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
-    const QString path =
-        QDir(dir).filePath(QString("ocr-context-%1.png").arg(timestamp));
-    const QString latestPath = QDir(dir).filePath("ocr-context-latest.png");
-
-    if (image.save(path, "PNG")) {
-        image.save(latestPath, "PNG");
-        SPDLOG_DEBUG("OCR context debug screenshot saved: {}", path);
-    }
-    else {
-        SPDLOG_WARN("OCR context debug screenshot save failed: {}", path);
-    }
-}
-
-QScreen *screenByName(const QString &name)
-{
-    if (name.isEmpty()) {
-        return nullptr;
-    }
-
-    for (QScreen *screen : QGuiApplication::screens()) {
-        if (screen && screen->name().compare(name, Qt::CaseInsensitive) == 0) {
-            return screen;
-        }
-    }
-    return nullptr;
-}
 
 #ifdef Q_OS_WIN
 static void enableAcrylic(HWND hwnd)
@@ -223,13 +180,7 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
     m_overlay = std::make_unique<OverlayWindow>();
-    m_llmPostProcessor = new LlmPostProcessor(this);
-    QString ocrError;
-    auto ocr = OcrRecognizer::createFromConfig(currentOcrPreset(), this);
-    if (!ocr) {
-        SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocr.error());
-    }
-    m_ocrRecognizer = ocr->release();
+    m_textProcessor = new VoiceTextProcessor(this);
     registerHotKey();
 }
 
@@ -364,114 +315,10 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
 
 void VoiceInputController::postProcessFinalText(const QString &text)
 {
-    const QString finalText = text.trimmed();
-    if (finalText.isEmpty()) {
-        return;
-    }
-
-    auto submitToLlm = [this, finalText](const QString &ocrContext) {
-        if (m_llmPostProcessor->isEnabled()) {
-            SPDLOG_DEBUG("OCR context sent to LLM: {}", ocrContext.trimmed());
-            spdlog::get("statusbar")
-                ->info("{}", tr("Post-processing recognition result..."));
-        }
-        m_llmPostProcessor->postProcess(
-            finalText, ocrContext, currentHotwordsText(), this,
-            [this, finalText](const QString &processedText) {
-                SPDLOG_DEBUG(
-                    "Voice input final text after LLM: input='{}' output='{}'",
-                    finalText, processedText);
-                injectFinalText(processedText.trimmed());
-            });
-    };
-
-    const bool llmEnabled = m_llmPostProcessor->isEnabled();
-    const bool ocrEnabled = ocrContextEnabledForAsr();
-    const bool ocrServiceAvailable =
-        m_ocrRecognizer && m_ocrRecognizer->isAvailable();
-    SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "
-                 "ocrServiceAvailable={}",
-                 llmEnabled, ocrEnabled, ocrServiceAvailable);
-
-    if (!llmEnabled) {
-        SPDLOG_DEBUG("OCR context skipped: LLM post-processing is disabled");
-        submitToLlm({});
-        return;
-    }
-    if (!ocrEnabled) {
-        SPDLOG_DEBUG("OCR context skipped: OCR focused context is disabled");
-        submitToLlm({});
-        return;
-    }
-    if (!ocrServiceAvailable) {
-        SPDLOG_DEBUG("OCR context skipped: OCR service is unavailable");
-        submitToLlm({});
-        return;
-    }
-
-    const QImage image = captureFocusedContextImage();
-    if (image.isNull()) {
-        SPDLOG_DEBUG("OCR context skipped: no focused screenshot");
-        submitToLlm({});
-        return;
-    }
-
-    SPDLOG_DEBUG("OCR context screenshot captured: {}x{}", image.width(),
-                 image.height());
-    spdlog::get("statusbar")
-        ->info("{}", tr("Reading focused input context..."));
-    m_ocrRecognizer->recognizeText(
-        image, this, [submitToLlm](const QString &contextText) mutable {
-            const QString result = contextText.trimmed();
-            SPDLOG_DEBUG("OCR context result received: {}", result);
-            submitToLlm(result);
+    m_textProcessor->processFinalText(
+        text, this, [this](const QString &processedText) {
+            injectFinalText(processedText.trimmed());
         });
-}
-
-QImage VoiceInputController::captureFocusedContextImage() const
-{
-    if (m_ocrRecognizer) {
-
-        const QImage focusedWindowImage =
-            m_ocrRecognizer->captureFocusedTextInputImage();
-        if (!focusedWindowImage.isNull()) {
-            SPDLOG_DEBUG("OCR context focused window screenshot captured: "
-                         "{}x{}",
-                         focusedWindowImage.width(),
-                         focusedWindowImage.height());
-            saveOcrDebugImage(focusedWindowImage);
-            return focusedWindowImage;
-        }
-        SPDLOG_DEBUG("OCR context focused window screenshot failed; falling "
-                     "back to full screen");
-    }
-
-    const QString screenName =
-        m_ocrRecognizer ? m_ocrRecognizer->focusedTextInputScreenName()
-                        : QString();
-    QScreen *screen = screenByName(screenName);
-    if (screen) {
-        SPDLOG_DEBUG("OCR context matched focused screen '{}'", screen->name());
-    }
-    if (!screen) {
-        screen = QGuiApplication::screenAt(QCursor::pos());
-    }
-    if (!screen) {
-        screen = QGuiApplication::primaryScreen();
-    }
-    if (!screen) {
-        SPDLOG_DEBUG("OCR context screenshot skipped: no screen");
-        return {};
-    }
-
-    const QPixmap pixmap = screen->grabWindow(0);
-    const QImage image = pixmap.toImage();
-    SPDLOG_DEBUG("OCR context using full-screen fallback on screen '{}': "
-                 "{}x{} dpr={}",
-                 screen->name(), pixmap.width(), pixmap.height(),
-                 pixmap.devicePixelRatio());
-    saveOcrDebugImage(image);
-    return image;
 }
 
 void VoiceInputController::injectFinalText(const QString &text)
