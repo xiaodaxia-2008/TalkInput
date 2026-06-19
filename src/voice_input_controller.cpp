@@ -395,7 +395,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
         }
         const QString hotwords = []() -> QString {
             const nlohmann::json hw =
-                talkinput::appConfigValue("/settings/asr/hotwords");
+                talkinput::appConfigValue("/settings/hotwords");
             QStringList lines;
             if (hw.is_array()) {
                 for (const auto &item : hw) {
@@ -421,7 +421,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
     const bool llmEnabled = m_llmPostProcessor->isEnabled();
     const bool ocrEnabled =
-        appConfigBool("/settings/ocr/useFocusedInputContext", false);
+        appConfigBool("/settings/ocr/ocrContextEnableForAsr", false);
     const bool ocrServiceAvailable =
         m_ocrService && m_ocrService->isAvailable();
     SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "

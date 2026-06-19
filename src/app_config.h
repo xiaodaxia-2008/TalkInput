@@ -19,7 +19,8 @@ void setAppConfigValue(std::string_view path, const nlohmann::json &value);
 bool resetAppConfigToDefaults();
 bool saveAppConfig();
 
-// Find an ASR preset in /asrPresets by its "name" field.
-nlohmann::json findAsrPresetByName(const QString &name);
+nlohmann::json findAsrPresetById(const QString &id);
+nlohmann::json findLlmPresetById(const QString &id);
+QString findAsrPresetIdByName(const QString &name);
 
 } // namespace talkinput

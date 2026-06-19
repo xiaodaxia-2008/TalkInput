@@ -47,7 +47,7 @@ QString cacheDir()
 
 const nlohmann::json llmProvidersJson()
 {
-    return talkinput::appConfigValue("/llmPostProcessing/providers");
+    return talkinput::appConfigValue("/llmPresets");
 }
 
 nlohmann::json firstLlmProviderJson()
@@ -368,8 +368,8 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             });
     connect(promptEditBtn, &QPushButton::clicked, this, [this]() {
         QDialog dialog(this);
-        dialog.setWindowTitle(tr("LLM Prompts"));
-        dialog.resize(580, 520);
+        dialog.setWindowTitle(tr("LLM User Prompt"));
+        dialog.resize(580, 360);
 
         auto *layout = new QVBoxLayout(&dialog);
         layout->setContentsMargins(16, 16, 16, 16);
@@ -378,24 +378,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         const QString hint = tr("Available variables: {{input}}, {{context}}, "
                                 "{{hotwords}}");
 
-        // -- System Prompt --
-        auto *sysLabel = new QLabel(QString("<b>%1</b><br><small>%2</small>")
-                                        .arg(tr("System Prompt"), hint),
-                                    &dialog);
-        sysLabel->setWordWrap(true);
-        layout->addWidget(sysLabel);
-
-        auto *sysEditor = new QTextEdit(&dialog);
-        sysEditor->setAcceptRichText(false);
-        sysEditor->setPlaceholderText(
-            tr("\344\276\213\345\246\202\357\274\232\344\275\240\346\230"
-               "\257\344\270\200\344\270\252\346\234\211\345\270\256\345"
-               "\212\251\347\232\204\345\212\251\346\211\213"));
-        sysEditor->setPlainText(currentLlmSystemPrompt());
-        sysEditor->setMaximumHeight(150);
-        layout->addWidget(sysEditor);
-
-        // -- User Prompt --
         auto *usrLabel = new QLabel(QString("<b>%1</b><br><small>%2</small>")
                                         .arg(tr("User Prompt"), hint),
                                     &dialog);
@@ -407,8 +389,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         usrEditor->setPlaceholderText(
             tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
         usrEditor->setPlainText(currentLlmUserPrompt());
-        usrEditor->setMaximumHeight(150);
-        layout->addWidget(usrEditor);
+        layout->addWidget(usrEditor, 1);
 
         auto *buttons = new QDialogButtonBox(&dialog);
         buttons->addButton(QDialogButtonBox::Save);
@@ -423,8 +404,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             return;
         }
 
-        setAppConfigValue("/settings/llm/systemPrompt",
-                          sysEditor->toPlainText().trimmed());
         setAppConfigValue("/settings/llm/userPrompt",
                           usrEditor->toPlainText().trimmed());
         refreshPromptLabel();
@@ -437,10 +416,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     auto *llmPostProcessCheck = m_ui->llmPostProcessCheck;
     llmPostProcessCheck->setChecked(
-        appConfigBool("/settings/llm/postProcessingEnabled", false));
+        appConfigBool("/settings/llm/llmPostProcessEnableForAsr", false));
     connect(
         llmPostProcessCheck, &QCheckBox::toggled, this, [this](bool checked) {
-            setAppConfigValue("/settings/llm/postProcessingEnabled", checked);
+            setAppConfigValue("/settings/llm/llmPostProcessEnableForAsr", checked);
             spdlog::get("statusbar")
                 ->info("{}", checked ? tr("LLM post-processing enabled.")
                                      : tr("LLM post-processing disabled."));
@@ -448,9 +427,9 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
     auto *ocrContextCheck = m_ui->ocrContextCheck;
     ocrContextCheck->setChecked(
-        appConfigBool("/settings/ocr/useFocusedInputContext", false));
+        appConfigBool("/settings/ocr/ocrContextEnableForAsr", false));
     connect(ocrContextCheck, &QCheckBox::toggled, this, [this](bool checked) {
-        setAppConfigValue("/settings/ocr/useFocusedInputContext", checked);
+        setAppConfigValue("/settings/ocr/ocrContextEnableForAsr", checked);
         spdlog::get("statusbar")
             ->info("{}", checked ? tr("OCR context enabled.")
                                  : tr("OCR context disabled."));
@@ -487,15 +466,15 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
     }
 
-    // Restore saved model selection by name
-    const QString savedAsrName =
-        talkinput::appConfigString("/settings/asr/name");
+    // Restore saved model selection by providerId
+    const QString savedAsrId =
+        talkinput::appConfigString("/settings/asr/providerId");
     int restoreIndex = -1;
-    if (!savedAsrName.isEmpty()) {
+    if (!savedAsrId.isEmpty()) {
         for (int ci = 0; ci < m_ui->modelCombo->count(); ++ci) {
             const nlohmann::json model =
                 modelJsonAtPointer(m_ui->modelCombo->itemData(ci).toString());
-            if (modelJsonString(model, "name") == savedAsrName) {
+            if (modelJsonString(model, "id") == savedAsrId) {
                 restoreIndex = ci;
                 break;
             }
@@ -545,13 +524,10 @@ void AsrSettingWidget::changeEvent(QEvent *event)
 
 void AsrSettingWidget::refreshPromptLabel()
 {
-    const QString sysPrompt = currentLlmSystemPrompt().simplified();
     const QString usrPrompt = currentLlmUserPrompt().simplified();
     m_ui->promptLabel->setText(
-        QString("[System] %1 \342\200\246 [User] %2 \342\200\246")
-            .arg(sysPrompt.left(40), usrPrompt.left(40)));
-    m_ui->promptLabel->setToolTip(
-        QString("System: %1\nUser: %2").arg(sysPrompt, usrPrompt));
+        QString("[User] %1 \342\200\246").arg(usrPrompt.left(40)));
+    m_ui->promptLabel->setToolTip(QString("User: %1").arg(usrPrompt));
 }
 
 // ── Model selection ──────────────────────────────────────────────
@@ -778,7 +754,8 @@ void AsrSettingWidget::activateModel(const QString &modelPointer)
     }
 
     SPDLOG_INFO("Recognition model set: {} ({})", modelName, dir);
-    setAppConfigValue("/settings/asr/name", modelName);
+    setAppConfigValue("/settings/asr/providerId",
+                      modelJsonString(m, "id"));
     emit modelSelected(dir, modelName, modelType);
     spdlog::get("statusbar")
         ->info("{}", tr("Model selected: %1").arg(modelName));
@@ -817,7 +794,7 @@ void AsrSettingWidget::onEditHotwords()
     // Read hotwords as array
     {
         const nlohmann::json hw =
-            talkinput::appConfigValue("/settings/asr/hotwords");
+            talkinput::appConfigValue("/settings/hotwords");
         QStringList lines;
         if (hw.is_array()) {
             for (const auto &item : hw) {
@@ -854,7 +831,7 @@ void AsrSettingWidget::onEditHotwords()
                 arr.push_back(trimmed.toStdString());
             }
         }
-        setAppConfigValue("/settings/asr/hotwords", std::move(arr));
+        setAppConfigValue("/settings/hotwords", std::move(arr));
     }
     spdlog::get("statusbar")->info("{}", tr("Hot words saved"));
     emit hotwordsChanged();

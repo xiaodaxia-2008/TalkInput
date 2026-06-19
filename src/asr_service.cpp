@@ -168,7 +168,7 @@ void AsrService::loadModel()
 
     const bool hotwordsSupport = config.value("hotwordsSupport", false);
     {
-        const nlohmann::json hw = appConfigValue("/settings/asr/hotwords");
+        const nlohmann::json hw = appConfigValue("/settings/hotwords");
         QStringList lines;
         if (hw.is_array()) {
             for (const auto &item : hw) {

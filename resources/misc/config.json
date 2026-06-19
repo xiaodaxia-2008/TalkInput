@@ -1,6 +1,27 @@
 {
+  "settings": {
+    "app": {
+      "language": "system",
+      "startMinimized": false
+    },
+    "hotwords": ["TalkInput", "开口输入法"],
+    "asr": {
+      "providerId": "streaming-paraformer-bilingual-zh-en"
+    },
+    "ocr": {
+      "providerId": "system-ocr",
+      "ocrContextEnableForAsr": false
+    },
+    "llm": {
+      "providerId": "llama.cpp",
+      "llmPostProcessEnableForAsr": false,
+      "systemPrompt": "You are a helpful assistant",
+      "userPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}"
+    }
+  },
   "asrPresets": [
     {
+      "id": "streaming-paraformer-bilingual-zh-en",
       "name": "Paraformer",
       "type": "StreamingParaformer",
       "languages": "zh,en",
@@ -27,13 +48,13 @@
         "modelDirName": "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
         "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2",
         "size": 65011712,
-        "paramCount": 0,
         "files": {
           "punctuationModelFile": "model.int8.onnx"
         }
       }
     },
     {
+      "id": "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
       "name": "SenseVoice",
       "type": "SenseVoice",
       "languages": "multilingual",
@@ -57,6 +78,7 @@
       }
     },
     {
+      "id": "funasr-nano-int8-2025-12-30",
       "name": "FunASR Nano",
       "type": "FunASRNano",
       "languages": "zh",
@@ -88,7 +110,8 @@
       }
     },
     {
-      "name": "System Speech",
+      "id": "system-speech-recognizer",
+      "name": "System",
       "type": "System",
       "languages": "system",
       "modelDirName": "",
@@ -101,81 +124,58 @@
       "files": {}
     }
   ],
-  "llmPostProcessing": {
-    "providers": [
-      {
-        "id": "llama.cpp",
-        "name": "llama.cpp",
-        "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
-        "model": "Qwen3.5-2B-Q4_K_M",
-        "models": ["Qwen3.5-2B-Q4_K_M"],
-        "modelsInfo": {
-          "Qwen3.5-2B-Q4_K_M": {
-            "name": "Qwen3.5 2B Q4_K_M",
-            "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
-            "fileName": "Qwen3.5-2B-Q4_K_M.gguf",
-            "size": 1280835840
-          }
-        },
-        "managedLocalService": true
-      },
-      {
-        "id": "deepseek",
-        "name": "DeepSeek",
-        "endpoint": "https://api.deepseek.com/v1/chat/completions",
-        "model": "deepseek-v4-flash",
-        "models": ["deepseek-v4-flash", "deepseek-v4-pro"],
-        "pricing": {
-          "deepseek-v4-flash": {
-            "inputPer1M": 0.1,
-            "outputPer1M": 0.4,
-            "cacheHitInputPer1M": 0.07,
-            "cacheMissInputPer1M": 0.27
-          },
-          "deepseek-v4-pro": {
-            "inputPer1M": 0.27,
-            "outputPer1M": 1.1,
-            "cacheHitInputPer1M": 0.07,
-            "cacheMissInputPer1M": 0.27
-          }
+  "llmPresets": [
+    {
+      "id": "llama.cpp",
+      "name": "llama.cpp",
+      "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
+      "currentModel": "Qwen3.5-2B-Q4_K_M",
+      "models": ["Qwen3.5-2B-Q4_K_M"],
+      "modelsInfo": {
+        "Qwen3.5-2B-Q4_K_M": {
+          "name": "Qwen3.5 2B Q4_K_M",
+          "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
+          "fileName": "Qwen3.5-2B-Q4_K_M.gguf",
+          "size": 1280835840
         }
       },
-      {
-        "id": "custom",
-        "name": "Custom",
-        "endpoint": "",
-        "model": "",
-        "models": [],
-        "custom": true
-      }
-    ]
-  },
-  "settings": {
-    "app": {
-      "language": "system",
-      "startMinimized": false
+      "managedLocalService": true
     },
-    "asr": {
-      "name": "Paraformer",
-      "hotwords": ["TalkInput", "开口输入法"]
-    },
-    "llm": {
-      "providerId": "llama.cpp",
-      "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
-      "model": "Qwen3.5-2B-Q4_K_M",
-      "providerModels": {
-        "llama.cpp": "Qwen3.5-2B-Q4_K_M",
-        "deepseek": "deepseek-v4-flash"
-      },
-      "customEndpoint": "",
-      "customModel": "",
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "currentModel": "deepseek-v4-flash",
+      "models": ["deepseek-v4-flash", "deepseek-v4-pro"],
       "apiKey": "",
-      "postProcessingEnabled": false,
-      "systemPrompt": "你是一个有用的的智能助手",
-      "userPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}"
+      "pricing": {
+        "deepseek-v4-flash": {
+          "inputPer1M": 0.1,
+          "outputPer1M": 0.4,
+          "cacheHitInputPer1M": 0.07,
+          "cacheMissInputPer1M": 0.27
+        },
+        "deepseek-v4-pro": {
+          "inputPer1M": 0.27,
+          "outputPer1M": 1.1,
+          "cacheHitInputPer1M": 0.07,
+          "cacheMissInputPer1M": 0.27
+        }
+      }
     },
-    "ocr": {
-      "useFocusedInputContext": false
+    {
+      "id": "custom",
+      "name": "Custom",
+      "endpoint": "",
+      "apiKey": "",
+      "currentModel": "",
+      "models": []
     }
-  }
+  ],
+  "ocrPresets": [
+    {
+      "id": "system-ocr",
+      "name": "System"
+    }
+  ]
 }

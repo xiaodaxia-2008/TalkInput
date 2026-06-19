@@ -218,9 +218,9 @@ void MainWindow::setupUi()
             &MainWindow::quitApplication);
 
     // ── Restore persisted state & load model ────────────────────
-    const QString savedAsrName = appConfigString("/settings/asr/name");
-    if (!savedAsrName.isEmpty()) {
-        const nlohmann::json preset = findAsrPresetByName(savedAsrName);
+    const QString savedAsrId = appConfigString("/settings/asr/providerId");
+    if (!savedAsrId.isEmpty()) {
+        const nlohmann::json preset = findAsrPresetById(savedAsrId);
         const QString type = jsonString(preset, "type");
         const QString dir = type == QStringLiteral("System")
                                 ? QString()
@@ -390,7 +390,8 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
                 m_currentModelDirectory);
 
-    setAppConfigValue("/settings/asr/name", m_currentModelName);
+    setAppConfigValue("/settings/asr/providerId",
+                      findAsrPresetIdByName(m_currentModelName));
 
     if (m_asrService) {
         m_asrService->setModelDirectory(m_currentModelDirectory);
@@ -580,9 +581,9 @@ void MainWindow::resetUserSettings()
 
     setupAsrSettingWidget();
 
-    const QString savedAsrName = appConfigString("/settings/asr/name");
-    if (!savedAsrName.isEmpty()) {
-        const nlohmann::json preset = findAsrPresetByName(savedAsrName);
+    const QString savedAsrId = appConfigString("/settings/asr/providerId");
+    if (!savedAsrId.isEmpty()) {
+        const nlohmann::json preset = findAsrPresetById(savedAsrId);
         const QString type = jsonString(preset, "type");
         const QString dir = type == QStringLiteral("System")
                                 ? QString()

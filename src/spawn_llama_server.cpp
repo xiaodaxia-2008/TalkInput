@@ -59,7 +59,7 @@ struct LocalModelInfo
 LocalModelInfo localModelInfo()
 {
     const nlohmann::json providers =
-        talkinput::appConfigValue("/llmPostProcessing/providers");
+        talkinput::appConfigValue("/llmPresets");
     if (!providers.is_array()) {
         return {};
     }
@@ -90,20 +90,8 @@ LocalModelInfo localModelInfo()
         return {};
     }
 
-    // Determine the configured model name (same precedence as the
-    // post-processor): per-provider override > global model > provider default.
-    QString model;
-    if (!providerId.isEmpty()) {
-        model = talkinput::appConfigString("/settings/llm/providerModels/" +
-                                           providerId.toStdString())
-                    .trimmed();
-    }
-    if (model.isEmpty()) {
-        model = talkinput::appConfigString("/settings/llm/model").trimmed();
-    }
-    if (model.isEmpty()) {
-        model = qs(provider.value("model", std::string()));
-    }
+    // Use the preset's currentModel directly
+    QString model = qs(provider.value("currentModel", std::string()));
     if (model.isEmpty()) {
         return {};
     }
