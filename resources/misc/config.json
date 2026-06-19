@@ -154,15 +154,15 @@
       "pricing": {
         "deepseek-v4-flash": {
           "inputPer1M": 1.0,
-          "outputPer1M": 4.0,
-          "cacheHitInputPer1M": 0.1,
+          "outputPer1M": 2.0,
+          "cacheHitInputPer1M": 0.02,
           "cacheMissInputPer1M": 1.0
         },
         "deepseek-v4-pro": {
-          "inputPer1M": 2.0,
-          "outputPer1M": 8.0,
-          "cacheHitInputPer1M": 0.5,
-          "cacheMissInputPer1M": 2.0
+          "inputPer1M": 3.0,
+          "outputPer1M": 6.0,
+          "cacheHitInputPer1M": 0.025,
+          "cacheMissInputPer1M": 3.0
         }
       }
     },
