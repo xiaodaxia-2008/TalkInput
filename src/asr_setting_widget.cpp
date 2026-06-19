@@ -179,10 +179,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         providerCombo->addItem(qs(provider.value("name", std::string())),
                                qs(provider.value("id", std::string())));
     }
-    const QString savedLlmId =
-        talkinput::appConfigString("/settings/llm/providerId");
-    int llmIdx = providerCombo->findData(savedLlmId);
-    if (llmIdx >= 0) providerCombo->setCurrentIndex(llmIdx);
 
     auto *endpointEdit = m_ui->endpointEdit;
     auto *modelCombo = m_ui->llmModelCombo;
@@ -309,6 +305,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 }
                 spdlog::get("statusbar")->info("{}", tr("LLM API key saved"));
             });
+
+    // Restore saved LLM provider
+    const QString savedLlmId =
+        talkinput::appConfigString("/settings/llm/providerId");
+    int llmIdx = providerCombo->findData(savedLlmId);
+    if (llmIdx >= 0) providerCombo->setCurrentIndex(llmIdx);
 
     // ── Prompt edit button ──────────────────────────────────────
     auto *promptBtn = m_ui->promptEditButton;
