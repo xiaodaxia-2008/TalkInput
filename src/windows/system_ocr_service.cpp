@@ -288,12 +288,13 @@ void initWinrtApartment()
     }
 
     try {
-        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        winrt::init_apartment(winrt::apartment_type::single_threaded);
     }
     catch (const winrt::hresult_error &e) {
         if (e.code() != RPC_E_CHANGED_MODE) {
             throw;
         }
+        winrt::init_apartment(winrt::apartment_type::multi_threaded);
     }
     initialized = true;
 }

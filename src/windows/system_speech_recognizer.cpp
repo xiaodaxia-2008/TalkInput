@@ -32,13 +32,19 @@ void initWinrtApartment()
         return;
     }
 
+    // Qt initializes the main thread as STA. Try STA first so
+    // winrt::init_apartment can complete its internal initialization
+    // instead of throwing RPC_E_CHANGED_MODE and leaving WinRT uninitialised.
     try {
-        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        winrt::init_apartment(winrt::apartment_type::single_threaded);
     }
     catch (const winrt::hresult_error &e) {
         if (e.code() != RPC_E_CHANGED_MODE) {
             throw;
         }
+        // Thread was initialised as MTA (e.g. background worker);
+        // match the apartment type.
+        winrt::init_apartment(winrt::apartment_type::multi_threaded);
     }
     initialized = true;
 }
@@ -195,11 +201,8 @@ public:
                     }
                 });
 
-            // Start continuous recognition
-            m_stopRequested = false;
-            session.StartAsync().get();
-            m_running = true;
-
+            // Register Completed before StartAsync so we never miss the
+            // session-completion event — even if it fires immediately.
             m_completedToken = session.Completed([this](auto &&, auto &&args) {
                 m_running = false;
                 const QString status = completedStatusName(args.Status());
@@ -213,6 +216,11 @@ public:
                     SPDLOG_WARN("System recognizer completed: {}", status);
                 }
             });
+
+            // Start continuous recognition
+            m_stopRequested = false;
+            session.StartAsync().get();
+            m_running = true;
 
             SPDLOG_INFO("System recognizer started");
             return true;
