@@ -198,4 +198,19 @@ bool saveAppConfig()
     return writeConfigNow();
 }
 
+nlohmann::json findAsrPresetByName(const QString &name)
+{
+    const nlohmann::json presets = appConfigValue("/asrPresets");
+    if (!presets.is_array()) {
+        return nlohmann::json::object();
+    }
+    const std::string nameStr = name.toStdString();
+    for (const auto &preset : presets) {
+        if (preset.is_object() && preset.value("name", std::string()) == nameStr) {
+            return preset;
+        }
+    }
+    return nlohmann::json::object();
+}
+
 } // namespace talkinput

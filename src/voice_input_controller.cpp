@@ -393,7 +393,26 @@ void VoiceInputController::postProcessFinalText(const QString &text)
             spdlog::get("statusbar")
                 ->info("{}", tr("Post-processing recognition result..."));
         }
-        const QString hotwords = appConfigString("/settings/model/hotwords");
+        const QString hotwords = []() -> QString {
+            const nlohmann::json hw =
+                talkinput::appConfigValue("/settings/asr/hotwords");
+            if (hw.is_array()) {
+                QStringList lines;
+                for (const auto &item : hw) {
+                    if (item.is_string()) {
+                        const QString s =
+                            QString::fromStdString(item.get<std::string>())
+                                .trimmed();
+                        if (!s.isEmpty()) lines.append(s);
+                    }
+                }
+                return lines.join(QLatin1Char('\n'));
+            }
+            if (hw.is_string()) {
+                return QString::fromStdString(hw.get<std::string>());
+            }
+            return QString();
+        }();
         m_llmPostProcessor->postProcess(
             finalText, ocrContext, hotwords, this,
             [this, finalText](const QString &processedText) {

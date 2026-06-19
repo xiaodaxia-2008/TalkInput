@@ -1,17 +1,37 @@
 {
   "asrPresets": [
     {
-      "name": "System Speech",
-      "type": "System",
-      "languages": "system",
-      "modelDirName": "",
-      "url": "",
-      "size": 0,
+      "name": "Paraformer",
+      "type": "StreamingParaformer",
+      "languages": "zh,en",
+      "modelDirName": "sherpa-onnx-streaming-paraformer-bilingual-zh-en",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2",
+      "size": 62914560,
       "paramCount": 0,
       "streamingSupport": true,
       "hotwordsSupport": false,
-      "params": {},
-      "files": {}
+      "params": {
+        "sampleRate": 16000,
+        "featureDim": 80,
+        "numThreads": 2,
+        "modelingUnit": "cjkchar",
+        "hotwordsScore": 1.5
+      },
+      "files": {
+        "encoderFile": "encoder.int8.onnx",
+        "decoderFile": "decoder.int8.onnx",
+        "tokensFile": "tokens.txt"
+      },
+      "postPunctuationModel": {
+        "languages": "zh,en",
+        "modelDirName": "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2",
+        "size": 65011712,
+        "paramCount": 0,
+        "files": {
+          "punctuationModelFile": "model.int8.onnx"
+        }
+      }
     },
     {
       "name": "SenseVoice",
@@ -68,37 +88,17 @@
       }
     },
     {
-      "name": "Paraformer",
-      "type": "StreamingParaformer",
-      "languages": "zh,en",
-      "modelDirName": "sherpa-onnx-streaming-paraformer-bilingual-zh-en",
-      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2",
-      "size": 62914560,
+      "name": "System Speech",
+      "type": "System",
+      "languages": "system",
+      "modelDirName": "",
+      "url": "",
+      "size": 0,
       "paramCount": 0,
       "streamingSupport": true,
       "hotwordsSupport": false,
-      "params": {
-        "sampleRate": 16000,
-        "featureDim": 80,
-        "numThreads": 2,
-        "modelingUnit": "cjkchar",
-        "hotwordsScore": 1.5
-      },
-      "files": {
-        "encoderFile": "encoder.int8.onnx",
-        "decoderFile": "decoder.int8.onnx",
-        "tokensFile": "tokens.txt"
-      },
-      "postPunctuationModel": {
-        "languages": "zh,en",
-        "modelDirName": "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
-        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2",
-        "size": 65011712,
-        "paramCount": 0,
-        "files": {
-          "punctuationModelFile": "model.int8.onnx"
-        }
-      }
+      "params": {},
+      "files": {}
     }
   ],
   "llmPostProcessing": {
@@ -155,11 +155,9 @@
       "language": "system",
       "startMinimized": false
     },
-    "model": {
-      "directory": "",
-      "name": "",
-      "type": "",
-      "hotwords": ""
+    "asr": {
+      "name": "Paraformer",
+      "hotwords": ["TalkInput", "开口输入法"]
     },
     "llm": {
       "providerId": "llama.cpp",

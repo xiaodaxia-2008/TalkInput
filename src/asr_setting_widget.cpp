@@ -494,26 +494,15 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
     }
 
-    // Restore saved model selection (by modelDirName)
-    const QString savedDirName =
-        QFileInfo(appConfigString("/settings/model/directory")).fileName();
-    const QString savedType = appConfigString("/settings/model/type");
+    // Restore saved model selection by name
+    const QString savedAsrName =
+        talkinput::appConfigString("/settings/asr/name");
     int restoreIndex = -1;
-    if (savedType == QStringLiteral("System")) {
+    if (!savedAsrName.isEmpty()) {
         for (int ci = 0; ci < m_ui->modelCombo->count(); ++ci) {
             const nlohmann::json model =
                 modelJsonAtPointer(m_ui->modelCombo->itemData(ci).toString());
-            if (modelJsonString(model, "type") == savedType) {
-                restoreIndex = ci;
-                break;
-            }
-        }
-    }
-    else if (!savedDirName.isEmpty()) {
-        for (int ci = 0; ci < m_ui->modelCombo->count(); ++ci) {
-            const nlohmann::json model =
-                modelJsonAtPointer(m_ui->modelCombo->itemData(ci).toString());
-            if (modelJsonString(model, "modelDirName") == savedDirName) {
+            if (modelJsonString(model, "name") == savedAsrName) {
                 restoreIndex = ci;
                 break;
             }
@@ -800,9 +789,7 @@ void AsrSettingWidget::activateModel(const QString &modelPointer)
     }
 
     SPDLOG_INFO("Recognition model set: {} ({})", modelName, dir);
-    setAppConfigValue("/settings/model/directory", dir);
-    setAppConfigValue("/settings/model/name", modelName);
-    setAppConfigValue("/settings/model/type", modelType);
+    setAppConfigValue("/settings/asr/name", modelName);
     emit modelSelected(dir, modelName, modelType);
     spdlog::get("statusbar")
         ->info("{}", tr("Model selected: %1").arg(modelName));
@@ -901,7 +888,29 @@ void AsrSettingWidget::onEditHotwords()
     auto *editor = new QTextEdit(&dialog);
     editor->setAcceptRichText(false);
     editor->setPlaceholderText(tr("Enter hot words, one per line"));
-    editor->setPlainText(appConfigString("/settings/model/hotwords"));
+
+    // Read hotwords — supports new (array) and legacy (string) formats
+    {
+        const nlohmann::json hw =
+            talkinput::appConfigValue("/settings/asr/hotwords");
+        QString text;
+        if (hw.is_array()) {
+            QStringList lines;
+            for (const auto &item : hw) {
+                if (item.is_string()) {
+                    const QString s =
+                        QString::fromStdString(item.get<std::string>())
+                            .trimmed();
+                    if (!s.isEmpty()) lines.append(s);
+                }
+            }
+            text = lines.join(QLatin1Char('\n'));
+        }
+        else if (hw.is_string()) {
+            text = QString::fromStdString(hw.get<std::string>());
+        }
+        editor->setPlainText(text);
+    }
     layout->addWidget(editor, 1);
 
     auto *buttons = new QDialogButtonBox(
@@ -914,8 +923,19 @@ void AsrSettingWidget::onEditHotwords()
         return;
     }
 
-    setAppConfigValue("/settings/model/hotwords",
-                      editor->toPlainText().trimmed());
+    // Save hotwords as array
+    {
+        nlohmann::json arr = nlohmann::json::array();
+        const QStringList lines =
+            editor->toPlainText().trimmed().split(QLatin1Char('\n'));
+        for (const QString &line : lines) {
+            const QString trimmed = line.trimmed();
+            if (!trimmed.isEmpty()) {
+                arr.push_back(trimmed.toStdString());
+            }
+        }
+        setAppConfigValue("/settings/asr/hotwords", std::move(arr));
+    }
     spdlog::get("statusbar")->info("{}", tr("Hot words saved."));
     emit hotwordsChanged();
 }

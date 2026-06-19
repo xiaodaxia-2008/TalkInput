@@ -167,10 +167,27 @@ void AsrService::loadModel()
     // recognizer resolves its model path internally after ASR results.
 
     const bool hotwordsSupport = config.value("hotwordsSupport", false);
-    config["hotwordsText"] =
-        buildHotwordsText(appConfigString("/settings/model/hotwords"),
-                          hotwordsSupport)
-            .toStdString();
+    {
+        const nlohmann::json hw = appConfigValue("/settings/asr/hotwords");
+        QString raw;
+        if (hw.is_array()) {
+            QStringList lines;
+            for (const auto &item : hw) {
+                if (item.is_string()) {
+                    const QString s =
+                        QString::fromStdString(item.get<std::string>())
+                            .trimmed();
+                    if (!s.isEmpty()) lines.append(s);
+                }
+            }
+            raw = lines.join(QLatin1Char('\n'));
+        }
+        else if (hw.is_string()) {
+            raw = QString::fromStdString(hw.get<std::string>());
+        }
+        config["hotwordsText"] =
+            buildHotwordsText(raw, hotwordsSupport).toStdString();
+    }
 
     SPDLOG_INFO("AsrService: configured recognizer {}", typeName);
 

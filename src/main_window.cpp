@@ -5,6 +5,7 @@
 #include "history_widget.h"
 #include "logging.h"
 #include "ui_main_window.h"
+#include "utils.h"
 
 #include <QAction>
 #include <QApplication>
@@ -215,13 +216,22 @@ void MainWindow::setupUi()
             &MainWindow::quitApplication);
 
     // ── Restore persisted state & load model ────────────────────
-    const QString savedDir = appConfigString("/settings/model/directory");
-    const QString savedName = appConfigString("/settings/model/name");
-    const QString savedType = appConfigString("/settings/model/type");
-    if (!savedDir.isEmpty() || savedType == QStringLiteral("System")) {
-        SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", savedDir);
-        setRecognitionModel(savedDir, savedName, savedType);
-        SPDLOG_INFO("Restored model: {} ({})", savedName, savedDir);
+    const QString savedAsrName = appConfigString("/settings/asr/name");
+    if (!savedAsrName.isEmpty()) {
+        const nlohmann::json preset = findAsrPresetByName(savedAsrName);
+        const QString type = jsonString(preset, "type");
+        const QString dir = type == QStringLiteral("System")
+                                ? QString()
+                                : QDir(talkinput::appDataDir())
+                                      .filePath(QStringLiteral("models/%1")
+                                                    .arg(jsonString(
+                                                        preset, "modelDirName")));
+        const QString name = jsonString(preset, "name");
+        if (!name.isEmpty()) {
+            SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", name);
+            setRecognitionModel(dir, name, type);
+            SPDLOG_INFO("Restored model: {} ({})", name, dir);
+        }
     }
 
     SPDLOG_DEBUG("MainWindow::setupUi: end");
@@ -376,9 +386,7 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
                 m_currentModelDirectory);
 
-    setAppConfigValue("/settings/model/directory", m_currentModelDirectory);
-    setAppConfigValue("/settings/model/name", m_currentModelName);
-    setAppConfigValue("/settings/model/type", m_currentModelType);
+    setAppConfigValue("/settings/asr/name", m_currentModelName);
 
     if (m_asrService) {
         m_asrService->setModelDirectory(m_currentModelDirectory);
@@ -568,11 +576,20 @@ void MainWindow::resetUserSettings()
 
     setupAsrSettingWidget();
 
-    const QString savedDir = appConfigString("/settings/model/directory");
-    const QString savedName = appConfigString("/settings/model/name");
-    const QString savedType = appConfigString("/settings/model/type");
-    if (!savedDir.isEmpty() || savedType == QStringLiteral("System")) {
-        setRecognitionModel(savedDir, savedName, savedType);
+    const QString savedAsrName = appConfigString("/settings/asr/name");
+    if (!savedAsrName.isEmpty()) {
+        const nlohmann::json preset = findAsrPresetByName(savedAsrName);
+        const QString type = jsonString(preset, "type");
+        const QString dir = type == QStringLiteral("System")
+                                ? QString()
+                                : QDir(talkinput::appDataDir())
+                                      .filePath(QStringLiteral("models/%1")
+                                                    .arg(jsonString(
+                                                        preset, "modelDirName")));
+        const QString name = jsonString(preset, "name");
+        if (!name.isEmpty()) {
+            setRecognitionModel(dir, name, type);
+        }
     }
     else {
         m_currentModelDirectory.clear();
