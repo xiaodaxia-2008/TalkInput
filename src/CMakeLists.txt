@@ -77,9 +77,6 @@ qt_add_resources(TalkInput resources
 )
 
 qt_add_translations(TalkInput
-    TS_FILES
-        TalkInput_zh.ts
-        TalkInput_en.ts
     LUPDATE_OPTIONS -no-obsolete
 )
 
