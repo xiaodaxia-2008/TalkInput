@@ -1,5 +1,6 @@
 #include "llm_post_processor.h"
 #include "app_config.h"
+#include "llm_config.h"
 #include "logging.h"
 
 #include <QByteArray>
@@ -29,37 +30,12 @@ QString extractOcrWords(const QString &text)
     return words.join(' ');
 }
 
-std::string llmProviderModelKey(const QString &providerId)
-{
-    return "/settings/llm/providerModels/" + providerId.toStdString();
-}
-
-QString qs(const std::string &value)
-{
-    return QString::fromStdString(value);
-}
-
 QNetworkRequest makeRequest(const QUrl &url)
 {
     QNetworkRequest request(url);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     return request;
-}
-
-nlohmann::json firstLlmProviderJson()
-{
-    const nlohmann::json providers = talkinput::appConfigValue("/llmPresets");
-    if (providers.is_object() && !providers.empty()) {
-        return providers.begin().value();
-    }
-    return nlohmann::json::object();
-}
-
-nlohmann::json findLlmProviderJson(const QString &id)
-{
-    return talkinput::appConfigValue(
-        ("/llmPresets/" + id).toStdString());
 }
 
 } // namespace
@@ -118,43 +94,9 @@ void LlmPostProcessor::postProcess(const QString &text,
     ensureReady();
 }
 
-nlohmann::json LlmPostProcessor::configuredProvider() const
-{
-    const QString providerId =
-        appConfigString("/settings/llm/providerId").trimmed();
-    if (!providerId.isEmpty()) {
-        nlohmann::json provider = appConfigValue(
-            ("/llmPresets/" + providerId).toStdString());
-        if (provider.is_object() && !provider.empty()) {
-            return provider;
-        }
-    }
-    return firstLlmProviderJson();
-}
-
-QString LlmPostProcessor::configuredEndpoint() const
-{
-    return qs(configuredProvider().value("endpoint", std::string())).trimmed();
-}
-
-QString LlmPostProcessor::configuredModel() const
-{
-    return qs(configuredProvider().value("currentModel", std::string())).trimmed();
-}
-
-QString LlmPostProcessor::configuredApiKey() const
-{
-    return qs(configuredProvider().value("apiKey", std::string())).trimmed();
-}
-
-bool LlmPostProcessor::usesManagedLocalService() const
-{
-    return configuredProvider().value("managedLocalService", false);
-}
-
 void LlmPostProcessor::ensureReady()
 {
-    if (!usesManagedLocalService()) {
+    if (!llmProviderUsesManagedLocalService(currentLlmProviderPreset())) {
         drainQueue();
         return;
     }
@@ -198,23 +140,26 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     userPrompt.replace("{{context}}", cleanedContext);
     userPrompt.replace("{{hotwords}}", request.hotwords);
 
+    const nlohmann::json provider = currentLlmProviderPreset();
+    const QString model = llmProviderModel(provider);
     nlohmann::json payload = {{"messages",
                                {{{"role", "system"}, {"content", systemPrompt}},
                                 {{"role", "user"}, {"content", userPrompt}}}},
-                              {"model", configuredModel()},
+                              {"model", model},
                               {"reasoning_effort", "low"},
                               {"extra_body", {"thinking", {"type", "enabled"}}},
                               {"temperature", 0.1},
                               {"max_tokens", 2000},
                               {"stream", false}};
-    if (usesManagedLocalService()) {
+    if (llmProviderUsesManagedLocalService(provider)) {
         payload["chat_template_kwargs"] = {{"enable_thinking", false}};
     }
 
-    QNetworkRequest networkRequest = makeRequest(QUrl(configuredEndpoint()));
+    QNetworkRequest networkRequest =
+        makeRequest(QUrl(llmProviderEndpoint(provider)));
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,
                              "application/json");
-    const QString apiKey = configuredApiKey();
+    const QString apiKey = llmProviderApiKey(provider);
     if (!apiKey.isEmpty()) {
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
@@ -224,8 +169,7 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     const std::string requestJson = payload.dump();
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
 
-    const std::string modelName = configuredModel().toStdString();
-    const nlohmann::json provider = configuredProvider();
+    const std::string modelName = model.toStdString();
     const nlohmann::json providerPricing =
         provider.value("pricing", nlohmann::json::object());
     const nlohmann::json pricing =

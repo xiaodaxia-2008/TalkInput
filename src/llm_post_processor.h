@@ -41,11 +41,6 @@ private:
         Callback callback;
     };
 
-    nlohmann::json configuredProvider() const;
-    QString configuredEndpoint() const;
-    QString configuredModel() const;
-    QString configuredApiKey() const;
-    bool usesManagedLocalService() const;
     void shutdown();
 
     void ensureReady();

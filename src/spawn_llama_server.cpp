@@ -1,6 +1,6 @@
 #include "spawn_llama_server.h"
-#include "app_config.h"
 #include "archive_utils.h"
+#include "llm_config.h"
 #include "logging.h"
 #include "utils.h"
 
@@ -26,23 +26,16 @@ struct LocalServiceInfo
 
 LocalServiceInfo localServiceInfo()
 {
-    const auto provider = talkinput::appConfigValue(
-        ("/llmPresets/" +
-         talkinput::appConfigString("/settings/llm/providerId").trimmed())
-            .toStdString());
+    const auto provider = talkinput::currentLlmProviderPreset();
     return {
         .port = jsonInt(provider, "localServicePort", 8765),
-        .maxHealthAttempts = jsonInt(provider, "localServiceMaxHealthAttempts", 120),
+        .maxHealthAttempts =
+            jsonInt(provider, "localServiceMaxHealthAttempts", 120),
         .archiveUrl = QUrl(jsonString(
             provider, "localServiceArchiveUrl",
             QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/"
                            "download/b9685/llama-b9685-bin-win-cpu-x64.zip"))),
     };
-}
-
-QString qs(const std::string &value)
-{
-    return QString::fromStdString(value);
 }
 
 QNetworkRequest makeRequest(const QUrl &url)
@@ -54,8 +47,7 @@ QNetworkRequest makeRequest(const QUrl &url)
 }
 
 // Resolve the local GGUF model info (fileName + url) for the configured
-// managed-local LLM provider, reading directly from appConfig so there is a
-// single source of truth. Returns empty fields if not configured.
+// managed-local LLM provider. Returns empty fields if not configured.
 struct LocalModelInfo
 {
     QString fileName;
@@ -64,26 +56,12 @@ struct LocalModelInfo
 
 LocalModelInfo localModelInfo()
 {
-    const QString providerId =
-        talkinput::appConfigString("/settings/llm/providerId").trimmed();
-    nlohmann::json provider = talkinput::appConfigValue(
-        ("/llmPresets/" + providerId).toStdString());
-
-    // Fall back to the first provider
-    if (!provider.is_object() || provider.empty()) {
-        const nlohmann::json providers =
-            talkinput::appConfigValue("/llmPresets");
-        if (providers.is_object() && !providers.empty()) {
-            provider = providers.begin().value();
-        }
-    }
-
+    const nlohmann::json provider = talkinput::currentLlmProviderPreset();
     if (!provider.is_object() || provider.empty()) {
         return {};
     }
 
-    // Use the preset's currentModel directly
-    QString model = qs(provider.value("currentModel", std::string()));
+    const QString model = talkinput::llmProviderModel(provider);
     if (model.isEmpty()) {
         return {};
     }
@@ -98,8 +76,7 @@ LocalModelInfo localModelInfo()
         return {};
     }
 
-    return {qs(info.value("fileName", std::string())),
-            qs(info.value("url", std::string()))};
+    return {jsonString(info, "fileName"), jsonString(info, "url")};
 }
 
 } // namespace
@@ -344,8 +321,8 @@ void LlamaServerManager::onDownloadFinished(QNetworkReply *reply)
         spdlog::get("statusbar")->info("{}", tr("Extracting LLM runtime..."));
         auto extractResult = extractLlamaArchive();
         if (!extractResult) {
-            emit this->failed(
-                tr("LLM runtime extraction failed: %1").arg(extractResult.error()));
+            emit this->failed(tr("LLM runtime extraction failed: %1")
+                                  .arg(extractResult.error()));
             return;
         }
     }

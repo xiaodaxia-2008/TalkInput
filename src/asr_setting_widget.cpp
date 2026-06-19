@@ -1,6 +1,7 @@
 #include "asr_setting_widget.h"
 #include "app_config.h"
 #include "asr_config.h"
+#include "llm_config.h"
 #include "logging.h"
 #include "model_download_manager.h"
 #include "ui_asr_setting_widget.h"
@@ -36,22 +37,13 @@ QString llmProviderId(const QComboBox *combo)
 
 nlohmann::json llmProviderPreset(const QComboBox *combo)
 {
-    const QString id = llmProviderId(combo);
-    if (id.isEmpty()) {
-        return {};
-    }
-    return appConfigValue(("/llmPresets/" + id).toStdString());
+    return talkinput::llmProviderPreset(llmProviderId(combo));
 }
 
 void saveLlmSetting(const QComboBox *combo, const QString &key,
                     const QString &value)
 {
-    const QString id = llmProviderId(combo);
-    if (id.isEmpty()) {
-        return;
-    }
-    setAppConfigValue(
-        QStringLiteral("/llmPresets/%1/%2").arg(id, key).toStdString(), value);
+    setLlmProviderSetting(llmProviderId(combo), key, value);
 }
 
 void applyProviderToUi(const nlohmann::json &provider, QLineEdit *endpointEdit,
@@ -61,9 +53,9 @@ void applyProviderToUi(const nlohmann::json &provider, QLineEdit *endpointEdit,
     const QSignalBlocker mBlocker(modelCombo);
     const QSignalBlocker akBlocker(apiKeyEdit);
 
-    endpointEdit->setText(jsonString(provider, "endpoint").trimmed());
+    endpointEdit->setText(llmProviderEndpoint(provider));
 
-    const QString currentModel = jsonString(provider, "currentModel").trimmed();
+    const QString currentModel = llmProviderModel(provider);
     modelCombo->clear();
     for (const auto &m : provider.value("models", nlohmann::json::array())) {
         if (m.is_string()) {
@@ -75,7 +67,7 @@ void applyProviderToUi(const nlohmann::json &provider, QLineEdit *endpointEdit,
     }
     modelCombo->setEditText(currentModel);
 
-    apiKeyEdit->setText(jsonString(provider, "apiKey"));
+    apiKeyEdit->setText(llmProviderApiKey(provider));
 }
 
 QString asrModelLabel(const nlohmann::json &m)
@@ -169,7 +161,7 @@ void AsrSettingWidget::initLlmProviders()
         tr("Model name sent to the LLM service"));
 
     // Populate — store only the provider ID
-    const nlohmann::json presets = appConfigValue("/llmPresets");
+    const nlohmann::json presets = llmPresets();
     for (const auto &[key, preset] : presets.items()) {
         if (!preset.is_object()) {
             continue;
@@ -206,7 +198,7 @@ void AsrSettingWidget::initLlmProviders()
     });
 
     // Restore saved provider (before connecting signal to avoid double-fire)
-    const QString savedId = appConfigString("/settings/llm/providerId");
+    const QString savedId = currentLlmProviderId();
     const int idx = combo->findData(savedId);
     if (idx >= 0) {
         combo->setCurrentIndex(idx);
@@ -231,8 +223,7 @@ void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
 
     applyProviderToUi(p, m_ui->endpointEdit, m_ui->llmModelCombo,
                       m_ui->apiKeyEdit);
-    setAppConfigValue("/settings/llm/providerId",
-                      llmProviderId(combo).toStdString());
+    setCurrentLlmProviderId(llmProviderId(combo));
     spdlog::get("statusbar")
         ->info("{}", tr("LLM provider saved: %1").arg(combo->currentText()));
 }

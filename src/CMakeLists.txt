@@ -26,6 +26,8 @@ add_executable(TalkInput
     history_widget.cpp
     history_widget.h
     history_widget.ui
+    llm_config.cpp
+    llm_config.h
     llm_post_processor.cpp
     llm_post_processor.h
     model_download_manager.cpp
