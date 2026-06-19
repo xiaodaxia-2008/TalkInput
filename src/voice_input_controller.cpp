@@ -1,5 +1,6 @@
 #include "voice_input_controller.h"
 #include "app_config.h"
+#include "asr_config.h"
 #include "audio_utils.h"
 #include "llm_post_processor.h"
 #include "logging.h"
@@ -574,13 +575,7 @@ void VoiceInputController::loadModel(const nlohmann::json &preset)
 {
     unloadModel();
 
-    const QString type = jsonString(preset, "type");
-    const QString modelDirName = jsonString(preset, "modelDirName");
-    const QString modelDir =
-        type == QStringLiteral("System")
-            ? QString()
-            : QDir(talkinput::appDataDir())
-                  .filePath(QStringLiteral("models/%1").arg(modelDirName));
+    const QString modelDir = asrModelDir(preset);
 
     auto recognizer = SpeechRecognizer::createFromConfig(
         preset, modelDir, talkinput::appConfigValue("/settings/hotwords"),
@@ -597,7 +592,7 @@ void VoiceInputController::loadModel(const nlohmann::json &preset)
     m_recognizer = std::move(*recognizer);
 
     // Persist providerId
-    setAppConfigValue("/settings/asr/providerId", jsonString(preset, "id"));
+    setCurrentAsrProviderId(jsonString(preset, "id"));
 
     emit modelLoadResult(true, {});
 }

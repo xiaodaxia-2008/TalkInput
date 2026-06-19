@@ -1,6 +1,7 @@
 #include "asr_setting_widget.h"
 #include "app_config.h"
 #include "archive_utils.h"
+#include "asr_config.h"
 #include "logging.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
@@ -420,7 +421,7 @@ void AsrSettingWidget::initAsrModel()
 {
     auto *combo = m_ui->modelCombo;
 
-    const nlohmann::json presets = appConfigValue("/asrPresets");
+    const nlohmann::json presets = asrPresets();
     if (presets.is_object()) {
         for (const auto &[key, p] : presets.items()) {
             if (!p.is_object()) {
@@ -433,7 +434,7 @@ void AsrSettingWidget::initAsrModel()
     }
 
     // Restore saved selection
-    const QString savedId = appConfigString("/settings/asr/providerId");
+    const QString savedId = currentAsrProviderId();
     int restoreIdx = -1;
     if (!savedId.isEmpty()) {
         for (int i = 0; i < combo->count(); ++i) {
@@ -472,8 +473,7 @@ void AsrSettingWidget::onAsrModelChanged(int index)
     }
 
     const QString modelId = jsonString(m, "id");
-    const bool isActive =
-        (modelId == appConfigString("/settings/asr/providerId"));
+    const bool isActive = (modelId == currentAsrProviderId());
 
     QString label = asrModelLabel(m);
     if (isActive) {
@@ -513,9 +513,9 @@ void AsrSettingWidget::onUseAsrModel()
     }
 
     const QString modelId = jsonString(m, "id");
-    const bool isSystem = jsonString(m, "type") == QLatin1StringView("System");
+    const bool isSystem = isSystemAsrPreset(m);
 
-    if (!isSystem && !isAsrModelInstalled(m)) {
+    if (!isSystem && !isAsrPresetInstalled(m)) {
         // Queue download, then load on completion
         const QUrl url(jsonString(m, "url"));
         if (url.isEmpty()) {
@@ -534,14 +534,14 @@ void AsrSettingWidget::onUseAsrModel()
         const nlohmann::json punct =
             m.value("postPunctuationModel", nlohmann::json::object());
         if (punct.is_object() && !punct.empty() &&
-            !isAsrModelInstalled(punct) &&
+            !isAsrPresetInstalled(punct) &&
             !QUrl(jsonString(punct, "url")).isEmpty())
         {
             m_downloadQueue.enqueue(ptr +
                                     QStringLiteral("/postPunctuationModel"));
         }
 
-        setAppConfigValue("/settings/asr/providerId", modelId.toStdString());
+        setCurrentAsrProviderId(modelId);
         spdlog::get("statusbar")
             ->info("{}", tr("Downloading %1...").arg(jsonString(m, "name")));
         startModelDownload(m_downloadQueue.dequeue());
@@ -553,28 +553,10 @@ void AsrSettingWidget::onUseAsrModel()
     if (vc) {
         vc->loadModel(m);
     }
-    setAppConfigValue("/settings/asr/providerId", modelId.toStdString());
+    setCurrentAsrProviderId(modelId);
     refreshAsrStatus();
     spdlog::get("statusbar")
         ->info("{}", tr("Model loaded: %1").arg(jsonString(m, "name")));
-}
-
-bool AsrSettingWidget::isAsrModelInstalled(const nlohmann::json &model) const
-{
-    if (!model.is_object()) {
-        return false;
-    }
-    const QString type = jsonString(model, "type");
-    if (type.isEmpty() || type == QLatin1StringView("System")) {
-        return true;
-    }
-    const QString dirName = jsonString(model, "modelDirName");
-    if (dirName.isEmpty()) {
-        return false;
-    }
-
-    const QString path = appDataDir() + QStringLiteral("/models/") + dirName;
-    return QFileInfo(path).isDir();
 }
 
 void AsrSettingWidget::startModelDownload(const QString &modelPointer)
@@ -661,7 +643,7 @@ void AsrSettingWidget::onModelDownloadFinished()
 
     refreshAsrStatus();
 
-    if (appConfigString("/settings/asr/providerId") == jsonString(m, "id")) {
+    if (currentAsrProviderId() == jsonString(m, "id")) {
         auto *vc = VoiceInputController::instance();
         if (vc) {
             vc->loadModel(m);

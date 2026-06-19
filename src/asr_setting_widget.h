@@ -56,7 +56,6 @@ private:
     // Download helpers
     void startModelDownload(const QString &modelPointer);
     void onModelDownloadFinished();
-    bool isAsrModelInstalled(const nlohmann::json &model) const;
     QString currentAsrPresetPath() const;
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
