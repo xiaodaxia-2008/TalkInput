@@ -1,6 +1,6 @@
-#include "system_ocr_recognizer.h"
+#include "../system_ocr_recognizer.h"
 
-#include "logging.h"
+#include "../logging.h"
 
 namespace talkinput
 {

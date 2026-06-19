@@ -1,7 +1,7 @@
-#include "system_ocr_recognizer.h"
+#include "../system_ocr_recognizer.h"
 
-#include "logging.h"
-#include "utils.h"
+#include "../logging.h"
+#include "../utils.h"
 
 #include <QBuffer>
 #include <QDir>

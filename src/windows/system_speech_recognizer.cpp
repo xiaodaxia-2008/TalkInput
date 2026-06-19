@@ -1,5 +1,5 @@
-#include "system_speech_recognizer.h"
-#include "logging.h"
+#include "../system_speech_recognizer.h"
+#include "../logging.h"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN

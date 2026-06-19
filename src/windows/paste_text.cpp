@@ -1,4 +1,4 @@
-#include "paste_text.h"
+#include "../paste_text.h"
 
 #include <QClipboard>
 #include <QApplication>
