@@ -217,10 +217,17 @@ private:
 namespace talkinput
 {
 
-VoiceInputController::VoiceInputController(RecognitionHistory *history,
-                                           QObject *parent)
-    : QObject(parent), m_history(history)
+static VoiceInputController *s_instance = nullptr;
+
+VoiceInputController *VoiceInputController::instance()
 {
+    return s_instance;
+}
+
+VoiceInputController::VoiceInputController(QObject *parent)
+    : QObject(parent)
+{
+    s_instance = this;
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
     m_ocrService = createOcrService(this);
@@ -231,6 +238,7 @@ VoiceInputController::~VoiceInputController()
 {
     stopListening();
     unregisterHotKey();
+    s_instance = nullptr;
 }
 
 bool VoiceInputController::nativeEventFilter(const QByteArray &eventType,
@@ -508,9 +516,6 @@ void VoiceInputController::injectFinalText(const QString &text)
     }
 
     sendText(text);
-    if (m_history) {
-        m_history->addEntry(text);
-    }
     emit finalTextCommitted(text);
     SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
 }
@@ -764,15 +769,22 @@ QByteArray VoiceInputController::convertToPcm16(const QByteArray &audioData,
 
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
-void VoiceInputController::loadModel(const nlohmann::json &preset,
-                                     const QString &modelDir,
-                                     const nlohmann::json &hotwordsConfig)
+void VoiceInputController::loadModel(const nlohmann::json &preset)
 {
     unloadModel();
 
+    const QString type = jsonString(preset, "type");
+    const QString modelDirName = jsonString(preset, "modelDirName");
+    const QString modelDir =
+        type == QStringLiteral("System")
+            ? QString()
+            : QDir(talkinput::appDataDir())
+                  .filePath(QStringLiteral("models/%1").arg(modelDirName));
+
     QString error;
     auto recognizer =
-        SpeechRecognizer::createFromConfig(preset, modelDir, hotwordsConfig,
+        SpeechRecognizer::createFromConfig(preset, modelDir,
+                                           talkinput::appConfigValue("/settings/hotwords"),
                                            &error, this);
     if (!recognizer) {
         SPDLOG_ERROR("VoiceInputController: model load failed: {}", error);
@@ -783,6 +795,11 @@ void VoiceInputController::loadModel(const nlohmann::json &preset,
     connect(recognizer.get(), &SpeechRecognizer::resultChanged, this,
             &VoiceInputController::onResult);
     m_recognizer = std::move(recognizer);
+
+    // Persist providerId
+    setAppConfigValue("/settings/asr/providerId",
+                      jsonString(preset, "id"));
+
     emit modelLoadResult(true, {});
 }
 

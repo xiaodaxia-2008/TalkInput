@@ -1,6 +1,5 @@
 #pragma once
 
-#include "recognition_history.h"
 #include "speech_recognizer.h"
 
 #include <QAbstractNativeEventFilter>
@@ -27,8 +26,9 @@ class VoiceInputController final : public QObject,
     Q_OBJECT
 
 public:
-    explicit VoiceInputController(RecognitionHistory *history,
-                                  QObject *parent = nullptr);
+    static VoiceInputController *instance();
+
+    explicit VoiceInputController(QObject *parent = nullptr);
     ~VoiceInputController() override;
 
     bool nativeEventFilter(const QByteArray &eventType, void *message,
@@ -47,8 +47,7 @@ signals:
 public slots:
     bool startListening();
     void stopListening();
-    void loadModel(const nlohmann::json &preset, const QString &modelDir,
-                   const nlohmann::json &hotwordsConfig);
+    void loadModel(const nlohmann::json &preset);
     void unloadModel();
     void startSession();
     void feedAudio(const QByteArray &pcm16, int sampleRate, int channels);
@@ -68,7 +67,6 @@ private:
                               const QAudioFormat &format);
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
-    RecognitionHistory *m_history;
     LlmPostProcessor *m_llmPostProcessor = nullptr;
     OcrService *m_ocrService = nullptr;
 

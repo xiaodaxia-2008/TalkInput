@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
+#include "voice_input_controller.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -770,9 +771,10 @@ void AsrSettingWidget::activateModel(const QString &modelPointer)
     }
 
     SPDLOG_INFO("Recognition model set: {} ({})", modelName, dir);
-    setAppConfigValue("/settings/asr/providerId",
-                      modelJsonString(m, "id"));
-    emit modelSelected(dir, modelName, modelType);
+    auto *vc = VoiceInputController::instance();
+    if (vc) {
+        vc->loadModel(m);
+    }
     spdlog::get("statusbar")
         ->info("{}", tr("Model selected: %1").arg(modelName));
 }

@@ -94,7 +94,7 @@ void MainWindow::setupUi()
 
     // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
     SPDLOG_DEBUG("MainWindow::setupUi: creating VoiceInputController");
-    m_voiceInput = new VoiceInputController(&m_history, this);
+    m_voiceInput = new VoiceInputController(this);
     qApp->installNativeEventFilter(m_voiceInput);
 
     connect(m_voiceInput, &VoiceInputController::modelLoadResult, this,
@@ -213,7 +213,10 @@ void MainWindow::setupUi()
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
             SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", name);
-            setRecognitionModel(dir, name, type);
+            m_currentModelName = name;
+            m_currentModelDirectory = dir;
+            m_currentModelType = type;
+            m_voiceInput->loadModel(preset);
             SPDLOG_INFO("Restored model: {} ({})", name, dir);
         }
     }
@@ -236,12 +239,7 @@ void MainWindow::setupAsrSettingWidget()
     SPDLOG_DEBUG("MainWindow::setupAsrSettingWidget: widget added");
 
     connect(
-        m_asrSettingWidget, &AsrSettingWidget::modelSelected, this,
-        [this](const QString &dir, const QString &name, const QString &type) {
-            setRecognitionModel(dir, name, type);
-            m_ui->tabWidget->setCurrentWidget(m_ui->historyTab);
-        });
-    connect(m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
+        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
             [this]() {
                 if (m_currentModelDirectory.isEmpty()) {
                     return;
@@ -251,11 +249,9 @@ void MainWindow::setupAsrSettingWidget()
                     ->info("{}", tr("Hot words saved, reloading model..."));
                 if (m_voiceInput) {
                     const nlohmann::json preset = findAsrPresetById(
-                        findAsrPresetIdByName(m_currentModelName));
+                        appConfigString("/settings/asr/providerId"));
                     if (preset.is_object()) {
-                        m_voiceInput->loadModel(
-                            preset, m_currentModelDirectory,
-                            appConfigValue("/settings/hotwords"));
+                        m_voiceInput->loadModel(preset);
                     }
                 }
             });
@@ -343,52 +339,6 @@ void MainWindow::updateControls(bool listening)
         }
         if (m_historyWidget) {
             m_historyWidget->setListening(false);
-        }
-    }
-}
-
-void MainWindow::setRecognitionModel(const QString &modelDirectory,
-                                     const QString &modelName,
-                                     const QString &modelType)
-{
-    const QString normalizedDirectory =
-        QDir::fromNativeSeparators(modelDirectory.trimmed());
-    m_currentModelDirectory = normalizedDirectory.isEmpty()
-                                  ? QString()
-                                  : QDir::cleanPath(normalizedDirectory);
-    m_currentModelName = modelName.trimmed();
-    m_currentModelType = modelType.trimmed();
-
-    if (m_currentModelName.isEmpty()) {
-        m_currentModelName =
-            m_currentModelType == QStringLiteral("System")
-                ? tr("System Speech")
-                : QFileInfo(m_currentModelDirectory).fileName();
-    }
-
-    if (m_currentModelDirectory.isEmpty() &&
-        m_currentModelType != QStringLiteral("System"))
-    {
-        spdlog::get("statusbar")->info("{}", tr("No model selected"));
-    }
-    else {
-        spdlog::get("statusbar")->info(
-            "{}",
-            tr("Loading %1...").arg(m_currentModelName));
-    }
-    SPDLOG_INFO("Recognition model set: {} ({})", m_currentModelName,
-                m_currentModelDirectory);
-
-    setAppConfigValue("/settings/asr/providerId",
-                      findAsrPresetIdByName(m_currentModelName));
-
-    if (m_voiceInput) {
-        const nlohmann::json preset =
-            findAsrPresetById(findAsrPresetIdByName(m_currentModelName));
-        if (preset.is_object()) {
-            m_voiceInput->loadModel(
-                preset, m_currentModelDirectory,
-                appConfigValue("/settings/hotwords"));
         }
     }
 }
@@ -582,7 +532,10 @@ void MainWindow::resetUserSettings()
                                                         preset, "modelDirName")));
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
-            setRecognitionModel(dir, name, type);
+            m_currentModelName = name;
+            m_currentModelDirectory = dir;
+            m_currentModelType = type;
+            m_voiceInput->loadModel(preset);
         }
     }
     else {

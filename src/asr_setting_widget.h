@@ -33,8 +33,6 @@ protected:
     void changeEvent(QEvent *event) override;
 
 signals:
-    void modelSelected(const QString &modelDirectory, const QString &modelName,
-                       const QString &modelType);
     void hotwordsChanged();
 
 private:
