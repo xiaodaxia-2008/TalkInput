@@ -19,6 +19,10 @@ pwsh msvc.ps1 cmake --build build -t update_translations
 
 Then search unfinished items in `src/TalkInput_zh.ts` and update them.
 
+## format
+
+- 使用 clang-foramt 格式化 .h/.cpp 文件，不要使用它格式化 CMakeLists.txt 
+
 ## Icon
 
 `resources/icons/*.svg` — SVG icons (Feather-style, 24×24 viewBox, `stroke="#333"`, 2px), loaded via qt_add_resources with `PREFIX "/"` and accessed as `:/resources/icons/xxx.svg`.
