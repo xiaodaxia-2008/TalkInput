@@ -104,9 +104,12 @@ void MainWindow::setupUi()
                         ->error("{}", tr("Model load failed: %1").arg(error));
                 }
                 else {
+                    const auto preset = findAsrPresetById(
+                        appConfigString("/settings/asr/providerId"));
                     spdlog::get("statusbar")->info(
                         "{}",
-                        tr("Model ready: %1").arg(m_currentModelName));
+                        tr("Model ready: %1")
+                            .arg(jsonString(preset, "name")));
                 }
             });
 
@@ -148,8 +151,7 @@ void MainWindow::setupUi()
     SPDLOG_DEBUG("MainWindow::setupUi: setting up tray icon");
     setupTrayIcon();
 
-    m_currentLanguage = currentAppLanguage();
-    if (m_currentLanguage == QStringLiteral("en")) {
+    if (currentAppLanguage() == QStringLiteral("en")) {
         m_ui->actionEnglish->setChecked(true);
     }
     else {
@@ -214,9 +216,6 @@ void MainWindow::setupUi()
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
             SPDLOG_DEBUG("MainWindow::setupUi: restoring saved model {}", name);
-            m_currentModelName = name;
-            m_currentModelDirectory = dir;
-            m_currentModelType = type;
             m_voiceInput->loadModel(preset);
             SPDLOG_INFO("Restored model: {} ({})", name, dir);
         }
@@ -242,9 +241,6 @@ void MainWindow::setupAsrSettingWidget()
     connect(
         m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
             [this]() {
-                if (m_currentModelDirectory.isEmpty()) {
-                    return;
-                }
                 SPDLOG_INFO("Hot words changed, reloading ASR model...");
                 spdlog::get("statusbar")
                     ->info("{}", tr("Hot words saved, reloading model..."));
@@ -316,24 +312,36 @@ void MainWindow::updateControls(bool listening)
             QIcon(":/resources/icons/stop.svg"));
         m_ui->actionStartRecognition->setText(tr("Stop recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
+        const QString name = jsonString(
+            findAsrPresetById(appConfigString("/settings/asr/providerId")),
+            "name");
         spdlog::get("statusbar")
-            ->info("{}", m_currentModelName.isEmpty()
+            ->info("{}", name.isEmpty()
                              ? tr("Listening...")
-                             : tr("Listening — %1").arg(m_currentModelName));
+                             : tr("Listening — %1").arg(name));
     }
     else {
         m_ui->actionStartRecognition->setIcon(
             QIcon(":/resources/icons/mic.svg"));
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
-        if (m_currentModelDirectory.isEmpty() &&
-            m_currentModelType != QStringLiteral("System"))
+        const QString type = jsonString(
+            findAsrPresetById(appConfigString("/settings/asr/providerId")),
+            "type");
+        if (!m_voiceInput->isModelLoaded() &&
+            type != QStringLiteral("System"))
         {
             spdlog::get("statusbar")->info("{}", tr("No model selected"));
         }
         else {
             spdlog::get("statusbar")
-                ->info("{}", tr("Model: %1").arg(m_currentModelName));
+                ->info("{}",
+                       tr("Model: %1")
+                           .arg(jsonString(
+                               findAsrPresetById(
+                                   appConfigString(
+                                       "/settings/asr/providerId")),
+                               "name")));
         }
     }
 }
@@ -451,7 +459,6 @@ void MainWindow::quitApplication()
 
 void MainWindow::onSwitchLanguage(const QString &lang)
 {
-    m_currentLanguage = lang;
     setAppConfigValue("/settings/app/language", lang);
     installAppTranslations(lang, this, m_appTranslator, m_qtTranslator);
 }
@@ -469,6 +476,7 @@ void MainWindow::resetUserSettings()
         return;
     }
 
+    const QString langBefore = currentAppLanguage();
     if (!resetAppConfigToDefaults()) {
         QMessageBox::warning(this, tr("Reset Settings"),
                              tr("Failed to reset settings."));
@@ -476,7 +484,7 @@ void MainWindow::resetUserSettings()
     }
 
     const QString resetLanguage = currentAppLanguage();
-    if (m_currentLanguage != resetLanguage) {
+    if (langBefore != resetLanguage) {
         onSwitchLanguage(resetLanguage);
     }
 
@@ -504,16 +512,10 @@ void MainWindow::resetUserSettings()
                                                         preset, "modelDirName")));
         const QString name = jsonString(preset, "name");
         if (!name.isEmpty()) {
-            m_currentModelName = name;
-            m_currentModelDirectory = dir;
-            m_currentModelType = type;
             m_voiceInput->loadModel(preset);
         }
     }
     else {
-        m_currentModelDirectory.clear();
-        m_currentModelName.clear();
-        m_currentModelType.clear();
         if (m_voiceInput) {
             m_voiceInput->unloadModel();
         }

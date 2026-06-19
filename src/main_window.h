@@ -51,11 +51,6 @@ private:
     VoiceInputController *m_voiceInput = nullptr;
     RecognitionHistory m_history;
 
-    QString m_currentModelDirectory;
-    QString m_currentModelName;
-    QString m_currentModelType;
-    QString m_currentLanguage;
-
     QSystemTrayIcon *m_trayIcon = nullptr;
     QTranslator *m_appTranslator = nullptr;
     QTranslator *m_qtTranslator = nullptr;
