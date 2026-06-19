@@ -313,7 +313,11 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     if (llmIdx >= 0) {
         providerCombo->setCurrentIndex(llmIdx);
     }
-    applyProvider(providerAt(providerCombo->currentIndex()), false);
+    const auto savedProvider = findLlmProviderJson(
+        providerCombo->currentData().toString());
+    if (savedProvider.is_object() && !savedProvider.empty()) {
+        applyProvider(savedProvider, false);
+    }
 
     // ── Prompt edit button ──────────────────────────────────────
     auto *promptBtn = m_ui->promptEditButton;
