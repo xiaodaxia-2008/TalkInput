@@ -1,51 +1,58 @@
 #pragma once
 
 #include "recognition_history.h"
+#include "speech_recognizer.h"
+
 #include <QAbstractNativeEventFilter>
 #include <QAudioFormat>
 #include <QByteArray>
 #include <QImage>
 #include <QObject>
+
 #include <memory>
 
 class QAudioSource;
 class QIODevice;
-class QTimer;
 class QWidget;
 
 namespace talkinput
 {
 
-class AsrService;
 class LlmPostProcessor;
 class OcrService;
 
 class VoiceInputController final : public QObject,
-                                   public QAbstractNativeEventFilter
+                                    public QAbstractNativeEventFilter
 {
     Q_OBJECT
 
 public:
-    explicit VoiceInputController(AsrService *asrService,
-                                  RecognitionHistory *history,
+    explicit VoiceInputController(RecognitionHistory *history,
                                   QObject *parent = nullptr);
     ~VoiceInputController() override;
 
     bool nativeEventFilter(const QByteArray &eventType, void *message,
                            qintptr *result) override;
 
-    bool isListening() const
-    {
-        return m_isListening;
-    }
+    bool isListening() const { return m_isListening; }
+    bool isModelLoaded() const { return m_recognizer != nullptr; }
+    bool acceptsExternalAudio() const;
+    SpeechRecognizer *recognizer() const { return m_recognizer.get(); }
 
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);
+    void modelLoadResult(bool success, const QString &error);
 
 public slots:
     bool startListening();
     void stopListening();
+    void loadModel(const nlohmann::json &preset, const QString &modelDir,
+                   const nlohmann::json &hotwordsConfig);
+    void unloadModel();
+    void startSession();
+    void feedAudio(const QByteArray &pcm16, int sampleRate, int channels);
+    void finishSession();
 
 private:
     void registerHotKey();
@@ -60,7 +67,7 @@ private:
     QByteArray convertToPcm16(const QByteArray &data,
                               const QAudioFormat &format);
 
-    AsrService *m_asrService;
+    std::unique_ptr<SpeechRecognizer> m_recognizer;
     RecognitionHistory *m_history;
     LlmPostProcessor *m_llmPostProcessor = nullptr;
     OcrService *m_ocrService = nullptr;

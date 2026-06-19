@@ -8,8 +8,6 @@ add_executable(TalkInput
     main_window.ui
     voice_input_controller.cpp
     voice_input_controller.h
-    asr_service.cpp
-    asr_service.h
     app_config.cpp
     app_config.h
     app_language.cpp

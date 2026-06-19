@@ -1,6 +1,5 @@
 #pragma once
 
-#include "asr_service.h"
 #include "recognition_history.h"
 #include "voice_input_controller.h"
 
@@ -10,7 +9,6 @@
 #include <memory>
 
 class QSystemTrayIcon;
-class QThread;
 
 namespace Ui
 {
@@ -55,8 +53,6 @@ private:
     AsrSettingWidget *m_asrSettingWidget = nullptr;
     HistoryWidget *m_historyWidget = nullptr;
     VoiceInputController *m_voiceInput = nullptr;
-    AsrService *m_asrService = nullptr;
-    QThread *m_asrThread = nullptr;
     RecognitionHistory m_history;
 
     QString m_currentModelDirectory;

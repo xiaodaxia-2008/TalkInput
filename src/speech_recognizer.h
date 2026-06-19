@@ -43,6 +43,13 @@ public:
     virtual void resetStream() = 0;
     virtual bool acceptsExternalAudio() const;
 
+    // Create a recognizer from an asrPreset entry + current settings.
+    // Returns nullptr and fills *errorMessage on failure.
+    static std::unique_ptr<SpeechRecognizer>
+    createFromConfig(const nlohmann::json &preset, const QString &modelDir,
+                     const nlohmann::json &hotwordsConfig, QString *errorMessage,
+                     QObject *parent = nullptr);
+
 signals:
     void logMessage(const QString &message);
     void resultChanged(const QString &text, bool isFinal);

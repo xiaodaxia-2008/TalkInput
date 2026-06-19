@@ -1,6 +1,5 @@
 #include "voice_input_controller.h"
 #include "app_config.h"
-#include "asr_service.h"
 #include "llm_post_processor.h"
 #include "logging.h"
 #include "ocr_service.h"
@@ -218,18 +217,14 @@ private:
 namespace talkinput
 {
 
-VoiceInputController::VoiceInputController(AsrService *asrService,
-                                           RecognitionHistory *history,
+VoiceInputController::VoiceInputController(RecognitionHistory *history,
                                            QObject *parent)
-    : QObject(parent), m_asrService(asrService), m_history(history)
+    : QObject(parent), m_history(history)
 {
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
     m_ocrService = createOcrService(this);
     registerHotKey();
-
-    connect(m_asrService, &AsrService::resultChanged, this,
-            &VoiceInputController::onResult);
 }
 
 VoiceInputController::~VoiceInputController()
@@ -266,7 +261,7 @@ bool VoiceInputController::startListening()
         return false;
     }
 
-    if (!m_asrService->isModelLoaded()) {
+    if (!m_recognizer) {
         SPDLOG_WARN("ASR model not loaded");
         spdlog::get("statusbar")
             ->info("{}",
@@ -274,10 +269,9 @@ bool VoiceInputController::startListening()
         return false;
     }
 
-    QMetaObject::invokeMethod(m_asrService, "startSession",
-                              Qt::QueuedConnection);
+    m_recognizer->resetStream();
 
-    if (!m_asrService->acceptsExternalAudio()) {
+    if (!m_recognizer->acceptsExternalAudio()) {
         m_isListening = true;
         m_lastResult.clear();
         showOverlay();
@@ -325,13 +319,10 @@ bool VoiceInputController::startListening()
         }
         const QByteArray audioData = m_audioDevice->readAll();
         const QByteArray pcm16 = convertToPcm16(audioData, m_audioFormat);
-        QMetaObject::invokeMethod(
-            m_asrService,
-            [this, pcm16]() {
-                m_asrService->feedAudio(pcm16, m_audioFormat.sampleRate(),
-                                        m_audioFormat.channelCount());
-            },
-            Qt::QueuedConnection);
+        if (m_recognizer) {
+            m_recognizer->acceptPcm16(pcm16, m_audioFormat.sampleRate(),
+                                      m_audioFormat.channelCount());
+        }
     });
 
     m_isListening = true;
@@ -352,9 +343,12 @@ void VoiceInputController::stopListening()
     m_audioDevice = nullptr;
     m_audioSource.reset();
 
-    // Finish the session on the worker thread
-    QMetaObject::invokeMethod(m_asrService, "finishSession",
-                              Qt::QueuedConnection);
+    if (m_recognizer && m_recognizer->isRunning()) {
+        m_recognizer->finish();
+        if (m_recognizer->acceptsExternalAudio()) {
+            m_recognizer->resetStream();
+        }
+    }
 
     m_isListening = false;
     m_pendingResult = true;
@@ -766,6 +760,68 @@ QByteArray VoiceInputController::convertToPcm16(const QByteArray &audioData,
     }
 
     return pcm16;
+}
+
+// ── SpeechRecognizer lifecycle ──────────────────────────────────
+
+void VoiceInputController::loadModel(const nlohmann::json &preset,
+                                     const QString &modelDir,
+                                     const nlohmann::json &hotwordsConfig)
+{
+    unloadModel();
+
+    QString error;
+    auto recognizer =
+        SpeechRecognizer::createFromConfig(preset, modelDir, hotwordsConfig,
+                                           &error, this);
+    if (!recognizer) {
+        SPDLOG_ERROR("VoiceInputController: model load failed: {}", error);
+        emit modelLoadResult(false, error);
+        return;
+    }
+
+    connect(recognizer.get(), &SpeechRecognizer::resultChanged, this,
+            &VoiceInputController::onResult);
+    m_recognizer = std::move(recognizer);
+    emit modelLoadResult(true, {});
+}
+
+void VoiceInputController::unloadModel()
+{
+    if (m_recognizer && m_recognizer->isRunning()) {
+        m_recognizer->stop();
+    }
+    m_recognizer.reset();
+}
+
+void VoiceInputController::startSession()
+{
+    if (m_recognizer) {
+        m_recognizer->resetStream();
+    }
+}
+
+void VoiceInputController::feedAudio(const QByteArray &pcm16, int sampleRate,
+                                     int channels)
+{
+    if (m_recognizer) {
+        m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
+    }
+}
+
+void VoiceInputController::finishSession()
+{
+    if (m_recognizer && m_recognizer->isRunning()) {
+        m_recognizer->finish();
+        if (m_recognizer->acceptsExternalAudio()) {
+            m_recognizer->resetStream();
+        }
+    }
+}
+
+bool VoiceInputController::acceptsExternalAudio() const
+{
+    return !m_recognizer || m_recognizer->acceptsExternalAudio();
 }
 
 } // namespace talkinput

@@ -59,13 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
     SPDLOG_DEBUG("MainWindow: constructor end");
 }
 
-MainWindow::~MainWindow()
-{
-    if (m_asrThread) {
-        m_asrThread->quit();
-        m_asrThread->wait(5000);
-    }
-}
+MainWindow::~MainWindow() = default;
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
@@ -98,19 +92,12 @@ void MainWindow::setupUi()
     installStatusBarLogger(statusBar());
     SPDLOG_DEBUG("MainWindow::setupUi: ui setup complete");
 
-    // ── ASR Service (persistent worker thread) ────────────────
-    SPDLOG_DEBUG("MainWindow::setupUi: creating ASR service thread");
-    m_asrService = new AsrService();
-    m_asrThread = new QThread(this);
-    m_asrService->moveToThread(m_asrThread);
-    connect(m_asrThread, &QThread::finished, m_asrService,
-            &QObject::deleteLater);
-    m_asrThread->start();
-    SPDLOG_DEBUG("MainWindow::setupUi: ASR service thread started");
+    // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
+    SPDLOG_DEBUG("MainWindow::setupUi: creating VoiceInputController");
+    m_voiceInput = new VoiceInputController(&m_history, this);
+    qApp->installNativeEventFilter(m_voiceInput);
 
-    connect(m_asrService, &AsrService::resultChanged, this,
-            &MainWindow::onResult);
-    connect(m_asrService, &AsrService::modelLoadResult, this,
+    connect(m_voiceInput, &VoiceInputController::modelLoadResult, this,
             [this](bool success, const QString &error) {
                 if (!success) {
                     spdlog::get("statusbar")
@@ -146,20 +133,15 @@ void MainWindow::setupUi()
     spdlog::get("statusbar")->info("{}", tr("Loading model..."));
     SPDLOG_INFO("Starting ASR service");
 
-    // ── VoiceInputController (global hotkey, overlay, text injection) ─
-    SPDLOG_DEBUG("MainWindow::setupUi: creating VoiceInputController");
-    m_voiceInput = new VoiceInputController(m_asrService, &m_history, this);
-    qApp->installNativeEventFilter(m_voiceInput);
-
-    connect(m_voiceInput, &VoiceInputController::listeningChanged, this,
-            [this](bool listening) { updateControls(listening); });
+    // resultChanged comes from VoiceInputController → onResult
     connect(m_voiceInput, &VoiceInputController::finalTextCommitted, this,
             [this](const QString &text) {
                 if (m_historyWidget) {
                     m_historyWidget->setRealtimeText(text);
-                    m_historyWidget->refreshHistory();
                 }
             });
+    connect(m_voiceInput, &VoiceInputController::listeningChanged, this,
+            [this](bool listening) { updateControls(listening); });
 
     // ── System tray ────────────────────────────────────────────
     SPDLOG_DEBUG("MainWindow::setupUi: setting up tray icon");
@@ -267,8 +249,15 @@ void MainWindow::setupAsrSettingWidget()
                 SPDLOG_INFO("Hot words changed, reloading ASR model...");
                 spdlog::get("statusbar")
                     ->info("{}", tr("Hot words saved, reloading model..."));
-                QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                          Qt::QueuedConnection);
+                if (m_voiceInput) {
+                    const nlohmann::json preset = findAsrPresetById(
+                        findAsrPresetIdByName(m_currentModelName));
+                    if (preset.is_object()) {
+                        m_voiceInput->loadModel(
+                            preset, m_currentModelDirectory,
+                            appConfigValue("/settings/hotwords"));
+                    }
+                }
             });
 }
 
@@ -303,7 +292,7 @@ void MainWindow::setupTrayIcon()
 
 void MainWindow::startListening()
 {
-    if (!m_asrService->isModelLoaded()) {
+    if (!m_voiceInput->isModelLoaded()) {
         QMessageBox::warning(
             this, tr("Speech recognition"),
             tr("Model is still loading.\n\n"
@@ -393,11 +382,14 @@ void MainWindow::setRecognitionModel(const QString &modelDirectory,
     setAppConfigValue("/settings/asr/providerId",
                       findAsrPresetIdByName(m_currentModelName));
 
-    if (m_asrService) {
-        m_asrService->setModelDirectory(m_currentModelDirectory);
-        m_asrService->setModelType(m_currentModelType);
-        QMetaObject::invokeMethod(m_asrService, "loadModel",
-                                  Qt::QueuedConnection);
+    if (m_voiceInput) {
+        const nlohmann::json preset =
+            findAsrPresetById(findAsrPresetIdByName(m_currentModelName));
+        if (preset.is_object()) {
+            m_voiceInput->loadModel(
+                preset, m_currentModelDirectory,
+                appConfigValue("/settings/hotwords"));
+        }
     }
 }
 
@@ -426,7 +418,7 @@ void MainWindow::onResult(const QString &text, bool isFinal)
 
 void MainWindow::onRecognizeFile()
 {
-    if (m_asrService && !m_asrService->acceptsExternalAudio()) {
+    if (m_voiceInput && !m_voiceInput->acceptsExternalAudio()) {
         spdlog::get("statusbar")
             ->info("{}", tr("Selected recognizer does not support audio file "
                             "recognition."));
@@ -521,14 +513,11 @@ void MainWindow::onRecognizeFile()
     SPDLOG_INFO("Decoded {} bytes of PCM16 from {} at {} Hz channels {}",
                 allPcm.size(), path, decodedSampleRate, decodedChannels);
 
-    QMetaObject::invokeMethod(
-        m_asrService,
-        [this, allPcm, decodedSampleRate, decodedChannels]() {
-            m_asrService->startSession();
-            m_asrService->feedAudio(allPcm, decodedSampleRate, decodedChannels);
-            m_asrService->finishSession();
-        },
-        Qt::QueuedConnection);
+    if (m_voiceInput) {
+        m_voiceInput->startSession();
+        m_voiceInput->feedAudio(allPcm, decodedSampleRate, decodedChannels);
+        m_voiceInput->finishSession();
+    }
     spdlog::get("statusbar")->info("{}", tr("Recognition sent to ASR engine"));
 }
 
@@ -600,11 +589,8 @@ void MainWindow::resetUserSettings()
         m_currentModelDirectory.clear();
         m_currentModelName.clear();
         m_currentModelType.clear();
-        if (m_asrService) {
-            m_asrService->setModelDirectory({});
-            m_asrService->setModelType({});
-            QMetaObject::invokeMethod(m_asrService, "unloadModel",
-                                      Qt::QueuedConnection);
+        if (m_voiceInput) {
+            m_voiceInput->unloadModel();
         }
         spdlog::get("statusbar")->info("{}", tr("No model selected"));
     }

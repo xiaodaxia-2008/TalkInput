@@ -1,5 +1,6 @@
 #include "speech_recognizer.h"
 
+#include "app_config.h"
 #include "logging.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
@@ -11,10 +12,12 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QStringList>
 #include <QtEndian>
 
 #include <algorithm>
 #include <cstring>
+#include <optional>
 
 namespace talkinput
 {
@@ -239,6 +242,128 @@ int SpeechRecognizer::appendPcm16AsMonoFloat(const QByteArray &audioData,
 bool SpeechRecognizer::acceptsExternalAudio() const
 {
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// Static factory
+// ---------------------------------------------------------------------------
+namespace
+{
+
+std::optional<SpeechRecognizer::Type> typeFromString(const QString &str)
+{
+    if (str == QStringLiteral("SenseVoice"))
+        return SpeechRecognizer::Type::SenseVoice;
+    if (str == QStringLiteral("FunASRNano"))
+        return SpeechRecognizer::Type::FunASRNano;
+    if (str == QStringLiteral("StreamingParaformer"))
+        return SpeechRecognizer::Type::StreamingParaformer;
+    if (str == QStringLiteral("System"))
+        return SpeechRecognizer::Type::System;
+    return std::nullopt;
+}
+
+QStringList hotwordLines(const QString &raw)
+{
+    QStringList lines;
+    for (QString line : raw.split(QLatin1Char('\n'))) {
+        line.remove(QLatin1Char('\r'));
+        line = line.trimmed();
+        if (!line.isEmpty()) lines.append(line);
+    }
+    return lines;
+}
+
+QString buildHotwordsText(const QString &raw, bool hotwordsSupport)
+{
+    const QStringList lines = hotwordLines(raw);
+    if (lines.isEmpty() || !hotwordsSupport) return {};
+    return lines.join(QLatin1Char('\n'));
+}
+
+QString hotwordsFromConfig(const nlohmann::json &hotwordsConfig)
+{
+    QStringList lines;
+    if (hotwordsConfig.is_array()) {
+        for (const auto &item : hotwordsConfig) {
+            if (item.is_string()) {
+                const QString s =
+                    QString::fromStdString(item.get<std::string>()).trimmed();
+                if (!s.isEmpty()) lines.append(s);
+            }
+        }
+    }
+    return lines.join(QLatin1Char('\n'));
+}
+
+bool systemSpeechRecognizerSupported()
+{
+#if defined(Q_OS_WIN)
+    return true;
+#else
+    return false;
+#endif
+}
+
+} // namespace
+
+std::unique_ptr<SpeechRecognizer>
+SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
+                                   const QString &modelDir,
+                                   const nlohmann::json &hotwordsConfig,
+                                   QString *errorMessage, QObject *parent)
+{
+    const QString typeName = jsonString(preset, "type");
+    const auto type = typeFromString(typeName);
+    if (!type) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("Unsupported model type: %1").arg(typeName);
+        return nullptr;
+    }
+
+    // System recognizer is a special case — no files, no directory
+    if (*type == SpeechRecognizer::Type::System) {
+        if (!systemSpeechRecognizerSupported()) {
+            if (errorMessage)
+                *errorMessage = QStringLiteral(
+                    "System speech recognition is not available on this platform.");
+            return nullptr;
+        }
+        auto r = createSpeechRecognizer(*type, parent);
+        if (!r) return nullptr;
+        if (!r->start(nlohmann::json::object(), errorMessage)) return nullptr;
+        return r;
+    }
+
+    if (modelDir.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("Model directory not set.");
+        return nullptr;
+    }
+
+    nlohmann::json config = preset;
+    config["modelDir"] = modelDir;
+
+    // Resolve absolute paths for model files
+    const nlohmann::json files = config.value("files", nlohmann::json::object());
+    nlohmann::json resolvedFiles = nlohmann::json::object();
+    for (auto it = files.begin(); it != files.end(); ++it) {
+        if (!it->is_string()) continue;
+        const QString relative = QString::fromStdString(it->get<std::string>());
+        resolvedFiles[it.key()] = QDir(modelDir).filePath(relative).toStdString();
+    }
+    config["files"] = resolvedFiles;
+
+    // Inject hotwords
+    const bool hotwordsSupport = config.value("hotwordsSupport", false);
+    config["hotwordsText"] =
+        buildHotwordsText(hotwordsFromConfig(hotwordsConfig), hotwordsSupport)
+            .toStdString();
+
+    auto r = createSpeechRecognizer(*type, parent);
+    if (!r) return nullptr;
+    if (!r->start(config, errorMessage)) return nullptr;
+    return r;
 }
 
 std::unique_ptr<SpeechRecognizer>
