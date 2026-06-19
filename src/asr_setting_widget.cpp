@@ -230,15 +230,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         }
     };
 
-    {
-        const QString id = providerCombo->currentData().toString();
-        if (!id.isEmpty()) {
-            const auto preset = talkinput::appConfigValue(
-                QStringLiteral("/llmPresets/%1").arg(id).toStdString());
-            apiKeyEdit->setText(qs(preset.value("apiKey", std::string())));
-        }
-    }
-
     connect(providerCombo, &QComboBox::currentIndexChanged, this,
             [this, providerCombo, providerAt, applyProvider, apiKeyEdit](
                 int index) {
@@ -309,14 +300,19 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     // Restore saved LLM provider
     const QString savedLlmId =
         talkinput::appConfigString("/settings/llm/providerId");
-    int llmIdx = providerCombo->findData(savedLlmId);
+    const int llmIdx = providerCombo->findData(savedLlmId);
     if (llmIdx >= 0) {
         providerCombo->setCurrentIndex(llmIdx);
+    }
+    else {
+        providerCombo->setCurrentIndex(0);
     }
     const auto savedProvider = findLlmProviderJson(
         providerCombo->currentData().toString());
     if (savedProvider.is_object() && !savedProvider.empty()) {
         applyProvider(savedProvider, false);
+        apiKeyEdit->setText(
+            qs(savedProvider.value("apiKey", std::string())));
     }
 
     // ── Prompt edit button ──────────────────────────────────────
