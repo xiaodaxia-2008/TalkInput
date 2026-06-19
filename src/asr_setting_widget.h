@@ -40,6 +40,7 @@ private:
     void refreshStatus();
     void onUseCurrent();
     void onEditHotwords();
+    void onEditPrompt();
 
     // Download helpers
     void startModelDownload(const QString &modelPointer);

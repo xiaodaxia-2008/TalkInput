@@ -179,43 +179,50 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QLineEdit" name="endpointEdit">
-        <property name="placeholderText">
-         <string>https://api.openai.com</string>
+       <layout class="QHBoxLayout" name="endpointModelRow">
+        <property name="spacing">
+         <number>8</number>
         </property>
-       </widget>
+        <item>
+         <widget class="QLineEdit" name="endpointEdit">
+          <property name="placeholderText">
+           <string>https://api.openai.com</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="llmModelFormLabel">
+          <property name="text">
+           <string>Model:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="llmModelCombo">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+          <property name="insertPolicy">
+           <enum>QComboBox::NoInsert</enum>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item row="2" column="0">
-       <widget class="QLabel" name="llmModelFormLabel">
-        <property name="text">
-         <string>Model</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QComboBox" name="llmModelCombo">
-        <property name="editable">
-         <bool>true</bool>
-        </property>
-        <property name="insertPolicy">
-         <enum>QComboBox::NoInsert</enum>
-        </property>
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
        <widget class="QLabel" name="apiKeyFormLabel">
         <property name="text">
          <string>API Key</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="2" column="1">
        <widget class="QLineEdit" name="apiKeyEdit">
         <property name="echoMode">
          <enum>QLineEdit::Password</enum>
@@ -224,6 +231,40 @@
          <string>sk-...</string>
         </property>
        </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="promptFormLabel">
+        <property name="text">
+         <string>Prompt</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <layout class="QHBoxLayout" name="promptLayout">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="promptLabel">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="textInteractionFlags">
+           <set>Qt::TextSelectableByMouse</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="promptEditButton">
+          <property name="toolTip">
+           <string>Edit user prompt</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -245,9 +286,6 @@
      </item>
      <item>
       <widget class="QCheckBox" name="llmPostProcessCheck">
-       <property name="toolTip">
-        <string>Use LLM to polish final recognition text</string>
-       </property>
        <property name="text">
         <string>LLM Polish</string>
        </property>
@@ -255,9 +293,6 @@
      </item>
      <item>
       <widget class="QCheckBox" name="ocrContextCheck">
-       <property name="toolTip">
-        <string>Use OCR text around the focused input as LLM context</string>
-       </property>
        <property name="text">
         <string>OCR Context</string>
        </property>

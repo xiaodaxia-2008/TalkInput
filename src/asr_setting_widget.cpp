@@ -309,6 +309,17 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 spdlog::get("statusbar")->info("{}", tr("LLM API key saved"));
             });
 
+    // ── Prompt edit button ──────────────────────────────────────
+    auto *promptBtn = m_ui->promptEditButton;
+    connect(promptBtn, &QPushButton::clicked, this,
+            &AsrSettingWidget::onEditPrompt);
+    {
+        const QString usr = talkinput::appConfigString("/settings/llm/userPrompt");
+        m_ui->promptLabel->setText(
+            QString("%1 \342\200\246").arg(usr.simplified().left(50)));
+        m_ui->promptLabel->setToolTip(usr);
+    }
+
     // ── OCR provider combo ───────────────────────────────────────
     auto *ocrCombo = m_ui->ocrCombo;
     const nlohmann::json ocrPresets =
@@ -438,23 +449,24 @@ void AsrSettingWidget::onModelChanged(int index)
     const qint64 modelSize = modelJsonInt64(m, "size");
     const QString sizeStr = modelSize > 0 ? QString(" (%1)").arg(formatSize(modelSize)) : QString();
 
-    // Info label
-    QString infoLines;
-    infoLines += tr("Name: %1").arg(modelName);
-    if (!isSystem) {
-        infoLines += QStringLiteral("\n") + tr("Type: %1 %2").arg(streamingLabel(modelJsonBool(m, "streamingSupport")), sizeStr);
-    }
-    infoLines += QStringLiteral("\n") + tr("Languages: %1").arg(languageDisplay(modelJsonString(m, "languages")));
-    if (isActive) {
-        infoLines += QStringLiteral("\n") + tr("Status: loaded");
-    }
-    else if (installed || isSystem) {
-        infoLines += QStringLiteral("\n") + tr("Status: available");
-    }
-    else {
-        infoLines += QStringLiteral("\n") + tr("Status: not installed");
-    }
-    m_ui->statusLabel->setText(infoLines);
+    // Info label — one line summary
+    QString info;
+    info += streamingLabel(modelJsonBool(m, "streamingSupport"));
+    if (!isSystem && modelSize > 0) info += QStringLiteral(" | ") + sizeStr.trimmed();
+    info += QStringLiteral(" | ") + languageDisplay(modelJsonString(m, "languages"));
+    if (isActive) info += QStringLiteral(" | ") + tr("activated");
+    else if (installed || isSystem) info += QStringLiteral(" | ") + tr("available");
+    else info += QStringLiteral(" | ") + tr("not installed");
+    m_ui->statusLabel->setText(info);
+
+    // Combo item label: add "(Activated)" suffix for loaded model
+    // Store the original base label in item data to allow clean toggling
+    const QString baseLabel = QStringLiteral("%1 - %2 - %3")
+        .arg(modelName, streamingLabel(modelJsonBool(m, "streamingSupport")),
+             languageDisplay(modelJsonString(m, "languages")));
+    m_ui->modelCombo->setItemText(index, isActive
+                                      ? baseLabel + QStringLiteral(" (Activated)")
+                                      : baseLabel);
 
     // Use button
     m_ui->useButton->setEnabled(!isActive);
@@ -623,6 +635,47 @@ void AsrSettingWidget::onDownloadFinished()
     else {
         spdlog::get("statusbar")->info("{}", tr("Downloaded: %1").arg(modelName));
     }
+}
+
+// ── Prompt edit dialog ──────────────────────────────────────────
+
+void AsrSettingWidget::onEditPrompt()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("User Prompt"));
+    dialog.resize(580, 360);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(10);
+
+    const QString hint = tr("Available variables: {{input}}, {{context}}, {{hotwords}}");
+    auto *label = new QLabel(QString("<b>%1</b><br><small>%2</small>")
+                                 .arg(tr("User Prompt"), hint), &dialog);
+    label->setWordWrap(true);
+    layout->addWidget(label);
+
+    auto *editor = new QTextEdit(&dialog);
+    editor->setAcceptRichText(false);
+    editor->setPlaceholderText(
+        tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
+    editor->setPlainText(talkinput::appConfigString("/settings/llm/userPrompt"));
+    layout->addWidget(editor, 1);
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    const QString text = editor->toPlainText().trimmed();
+    setAppConfigValue("/settings/llm/userPrompt", text);
+    m_ui->promptLabel->setText(
+        QString("%1 \342\200\246").arg(text.simplified().left(50)));
+    m_ui->promptLabel->setToolTip(text);
+    spdlog::get("statusbar")->info("{}", tr("LLM prompt saved"));
 }
 
 // ── Hotwords dialog ──────────────────────────────────────────────
