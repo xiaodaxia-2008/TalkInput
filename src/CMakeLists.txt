@@ -24,6 +24,8 @@ add_executable(TalkInput
     history_widget.ui
     llm_post_processor.cpp
     llm_post_processor.h
+    rapid_ocr_recognizer.cpp
+    rapid_ocr_recognizer.h
     spawn_llama_server.cpp
     spawn_llama_server.h
     ocr_recognizer.cpp
@@ -141,6 +143,11 @@ install(TARGETS TalkInput
     COMPONENT Runtime
 )
 
+install(DIRECTORY scripts/
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/scripts
+    COMPONENT Runtime
+)
+
 if(WIN32)
     add_custom_command(TARGET TalkInput
         POST_BUILD
@@ -150,5 +157,13 @@ if(WIN32)
         COMMAND_EXPAND_LISTS
     )
 endif()
+
+add_custom_command(TARGET TalkInput POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+    $<TARGET_FILE_DIR:TalkInput>/scripts
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/rapidocr.py
+    $<TARGET_FILE_DIR:TalkInput>/scripts/rapidocr.py
+)
 
 add_subdirectory(tests)

@@ -9,7 +9,7 @@
       "providerId": "streaming-paraformer-bilingual-zh-en"
     },
     "ocr": {
-      "providerId": "system-ocr",
+      "providerId": "rapid-ocr",
       "ocrContextEnableForAsr": false
     },
     "llm": {
@@ -180,6 +180,11 @@
       "id": "system-ocr",
       "name": "System",
       "type": "System"
+    },
+    "rapid-ocr": {
+      "id": "rapid-ocr",
+      "name": "RapidOCR",
+      "type": "RapidOcr"
     }
   }
 }

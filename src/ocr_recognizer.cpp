@@ -1,4 +1,5 @@
 #include "ocr_recognizer.h"
+#include "rapid_ocr_recognizer.h"
 #include "system_ocr_recognizer.h"
 
 namespace talkinput
@@ -37,6 +38,9 @@ OcrRecognizer::createFromConfig(const nlohmann::json &preset, QObject *parent)
 
     if (typeName == QStringLiteral("System")) {
         return std::make_unique<SystemOcrRecognizer>(parent);
+    }
+    if (typeName == QStringLiteral("RapidOcr")) {
+        return std::make_unique<RapidOcrRecognizer>(parent);
     }
 
     return std::unexpected(
