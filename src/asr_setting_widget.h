@@ -3,7 +3,7 @@
 #include "json_utils.h"
 
 #include <QQueue>
-#include <QVector>
+#include <QString>
 #include <QWidget>
 #include <memory>
 
@@ -38,21 +38,15 @@ private:
     void onDownloadCurrent();
     void onDeleteCurrent();
     void onUseCurrent();
-    void activateModel(int modelRow);
+    void activateModel(const QString &modelPointer);
     void onUseArchive();
     void onOpenDir();
     void onEditHotwords();
     void onDownloadFinished();
 
-    void startModelDownload(int row);
-    int findModelRowByDirName(const QString &dirName) const;
-    bool isInstalled(int row) const;
-    int currentModelRow() const;
-
-    QVector<nlohmann::json> m_models;
-
-    // Maps combo index → m_models index for ASR (non-punctuation) models
-    QVector<int> m_asrModelIndices;
+    void startModelDownload(const QString &modelPointer);
+    bool isInstalled(const nlohmann::json &model) const;
+    QString currentModelPointer() const;
 
     // UI
     QComboBox *m_modelCombo = nullptr;
@@ -67,8 +61,8 @@ private:
     std::unique_ptr<QFile> m_activeDownloadFile;
     QString m_activeDownloadPath;
     QString m_activeDownloadTempPath;
-    int m_downloadTargetRow = -1;
-    QQueue<int> m_downloadQueue;
+    QString m_downloadTargetPointer;
+    QQueue<QString> m_downloadQueue;
 };
 
 } // namespace talkinput
