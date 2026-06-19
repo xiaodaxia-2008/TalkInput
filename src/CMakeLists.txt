@@ -103,7 +103,7 @@ target_link_libraries(TalkInput
 )
 
 if(WIN32)
-    target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore)
+    target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore imm32)
     target_sources(TalkInput PRIVATE
         windows/paste_text.cpp
         windows/port_killer.cpp

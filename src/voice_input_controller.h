@@ -2,7 +2,6 @@
 
 #include "speech_recognizer.h"
 
-#include <QAbstractNativeEventFilter>
 #include <QAudioFormat>
 #include <QByteArray>
 #include <QImage>
@@ -11,6 +10,7 @@
 #include <memory>
 
 class QAudioSource;
+class QHotkey;
 class QIODevice;
 class QWidget;
 
@@ -20,8 +20,7 @@ namespace talkinput
 class LlmPostProcessor;
 class OcrRecognizer;
 
-class VoiceInputController final : public QObject,
-                                   public QAbstractNativeEventFilter
+class VoiceInputController final : public QObject
 {
     Q_OBJECT
 
@@ -30,9 +29,6 @@ public:
 
     explicit VoiceInputController(QObject *parent = nullptr);
     ~VoiceInputController() override;
-
-    bool nativeEventFilter(const QByteArray &eventType, void *message,
-                           qintptr *result) override;
 
     bool isListening() const
     {
@@ -83,7 +79,7 @@ private:
     std::unique_ptr<QAudioSource> m_audioSource;
     QIODevice *m_audioDevice = nullptr;
     QAudioFormat m_audioFormat;
-    int m_hotKeyId = 0;
+    QHotkey *m_hotkey = nullptr;
     bool m_isListening = false;
 
     std::unique_ptr<QWidget> m_overlay;

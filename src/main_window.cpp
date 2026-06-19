@@ -77,7 +77,6 @@ void MainWindow::setupUi()
     // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
     SPDLOG_DEBUG("setupUi: creating VoiceInputController");
     m_voiceInput = new VoiceInputController(this);
-    qApp->installNativeEventFilter(m_voiceInput);
 
     connect(
         m_voiceInput, &VoiceInputController::modelLoadResult, this,

@@ -16,6 +16,7 @@
 #include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QHotkey>
 #include <QLabel>
 #include <QMediaDevices>
 #include <QPixmap>
@@ -23,10 +24,10 @@
 #include <QScreen>
 #include <QTimer>
 
+#ifdef Q_OS_WIN
 #define NOMINMAX
-#include <imm.h>
 #include <windows.h>
-#pragma comment(lib, "imm32")
+#endif
 
 namespace
 {
@@ -68,8 +69,7 @@ QScreen *screenByName(const QString &name)
     return nullptr;
 }
 
-// ── Win32 acrylic blur helper ──────────────────────────────────
-
+#ifdef Q_OS_WIN
 static void enableAcrylic(HWND hwnd)
 {
     HMODULE hUser = GetModuleHandleW(L"user32.dll");
@@ -104,6 +104,19 @@ static void enableAcrylic(HWND hwnd)
     WinCompAttrData wcad = {19, &accent, sizeof(accent)};
     func(hwnd, &wcad);
 }
+
+void applyNativeOverlayEffects(QWidget *widget)
+{
+    HWND hwnd = reinterpret_cast<HWND>(widget->winId());
+    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    enableAcrylic(hwnd);
+}
+#else
+void applyNativeOverlayEffects(QWidget *)
+{
+}
+#endif
 
 // ── Overlay window with marquee ────────────────────────────────
 
@@ -152,10 +165,7 @@ public:
         raise();
         positionOnActiveScreen();
 
-        HWND hwnd = reinterpret_cast<HWND>(winId());
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        enableAcrylic(hwnd);
+        applyNativeOverlayEffects(this);
     }
 
     void stopAnimation()
@@ -238,25 +248,6 @@ VoiceInputController::~VoiceInputController()
     stopListening();
     unregisterHotKey();
     s_instance = nullptr;
-}
-
-bool VoiceInputController::nativeEventFilter(const QByteArray &eventType,
-                                             void *message, qintptr *result)
-{
-    Q_UNUSED(result);
-    if (eventType == "windows_generic_MSG") {
-        auto *msg = static_cast<MSG *>(message);
-        if (msg->message == WM_HOTKEY && msg->wParam == m_hotKeyId) {
-            if (m_isListening) {
-                stopListening();
-            }
-            else {
-                startListening();
-            }
-            return true;
-        }
-    }
-    return false;
 }
 
 bool VoiceInputController::startListening()
@@ -532,11 +523,24 @@ void VoiceInputController::hideOverlay()
 
 void VoiceInputController::registerHotKey()
 {
-    m_hotKeyId = 1;
-    if (!RegisterHotKey(nullptr, m_hotKeyId,
-                        MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'L'))
-    {
-        SPDLOG_WARN("Failed to register global hotkey (Ctrl+Alt+L)");
+    if (!QHotkey::isPlatformSupported()) {
+        SPDLOG_WARN("Global hotkeys are not supported on this platform");
+        return;
+    }
+
+    m_hotkey =
+        new QHotkey(QKeySequence(QStringLiteral("Ctrl+Alt+L")), true, this);
+    connect(m_hotkey, &QHotkey::activated, this, [this]() {
+        if (m_isListening) {
+            stopListening();
+        }
+        else {
+            startListening();
+        }
+    });
+
+    if (!m_hotkey->isRegistered()) {
+        SPDLOG_WARN("Failed to register global hotkey: Ctrl+Alt+L");
     }
     else {
         SPDLOG_INFO("Global hotkey registered: Ctrl+Alt+L");
@@ -545,9 +549,10 @@ void VoiceInputController::registerHotKey()
 
 void VoiceInputController::unregisterHotKey()
 {
-    if (m_hotKeyId != 0) {
-        UnregisterHotKey(nullptr, m_hotKeyId);
-        m_hotKeyId = 0;
+    if (m_hotkey) {
+        m_hotkey->setRegistered(false);
+        delete m_hotkey;
+        m_hotkey = nullptr;
     }
 }
 
