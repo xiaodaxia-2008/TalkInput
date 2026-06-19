@@ -203,7 +203,7 @@ static int runFile(int langId, const std::wstring &wavPath)
 
     HRESULT hr = S_OK;
 
-    // Open WAV stream
+    // Open WAV stream (auto-detect format)
     CComPtr<ISpStream> cpStream;
     hr = cpStream.CoCreateInstance(CLSID_SpStream);
     if (FAILED(hr)) {
@@ -219,6 +219,7 @@ static int runFile(int langId, const std::wstring &wavPath)
                    << std::endl;
         return 1;
     }
+    std::wcout << L"[ok] WAV file opened" << std::endl;
 
     // Create in-process recognizer
     CComPtr<ISpRecognizer> cpRecognizer;
@@ -266,9 +267,9 @@ static int runFile(int langId, const std::wstring &wavPath)
     // Notification setup
     cpRecoContext->SetInterest(
         SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION) |
-            SPFEI(SPEI_END_SR_STREAM),
+            SPFEI(SPEI_END_SR_STREAM) | SPFEI(SPEI_START_SR_STREAM),
         SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_FALSE_RECOGNITION) |
-            SPFEI(SPEI_END_SR_STREAM));
+            SPFEI(SPEI_END_SR_STREAM) | SPFEI(SPEI_START_SR_STREAM));
     cpRecoContext->SetNotifyWin32Event();
 
     // Activate
@@ -277,11 +278,14 @@ static int runFile(int langId, const std::wstring &wavPath)
     std::wcout << L"[ok] Transcribing..." << std::endl;
 
     BOOL done = FALSE;
+    int recognitionCount = 0;
+    int falseRecoCount = 0;
     while (!done && cpRecoContext->WaitForNotifyEvent(60000) == S_OK) {
         CSpEvent spEvent;
         while (!done && spEvent.GetFrom(cpRecoContext) == S_OK) {
             switch (spEvent.eEventId) {
             case SPEI_RECOGNITION: {
+                recognitionCount++;
                 CComPtr<ISpRecoResult> result = spEvent.RecoResult();
                 SPPHRASE *phrase = nullptr;
                 if (SUCCEEDED(result->GetPhrase(&phrase)) && phrase) {
@@ -292,20 +296,33 @@ static int runFile(int langId, const std::wstring &wavPath)
                                 << phrase->pElements[i].pszDisplayText;
                         }
                     }
-                    std::wcout << std::endl;
+                    std::wcout << L" (" << phrase->Rule.ulCountOfElements
+                               << L" elements)" << std::endl;
                     CoTaskMemFree(phrase);
                 }
                 break;
             }
             case SPEI_FALSE_RECOGNITION:
+                falseRecoCount++;
                 break;
             case SPEI_END_SR_STREAM:
                 done = TRUE;
+                break;
+            case SPEI_START_SR_STREAM:
+                std::wcout << L"  [stream] Audio stream started" << std::endl;
+                break;
+            default:
+                std::wcout << L"  [event] 0x" << std::hex
+                           << spEvent.eEventId << std::dec << std::endl;
                 break;
             }
             spEvent.Clear();
         }
     }
+
+    std::wcout << L"[debug] Recognitions: " << recognitionCount
+               << L", false: " << falseRecoCount
+               << L", done: " << (done ? L"yes" : L"no") << std::endl;
 
     cpRecoGrammar->SetDictationState(SPRS_INACTIVE);
     cpRecoGrammar->UnloadDictation();
