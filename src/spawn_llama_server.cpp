@@ -17,11 +17,33 @@
 namespace
 {
 
-constexpr int ServerPort = 8765;
-constexpr int MaxHealthAttempts = 120;
-const QUrl LlamaArchiveUrl(
-    "https://github.com/ggml-org/llama.cpp/releases/download/b9685/"
-    "llama-b9685-bin-win-cpu-x64.zip");
+struct LocalServiceInfo
+{
+    int port = 8765;
+    int maxHealthAttempts = 120;
+    QUrl archiveUrl;
+};
+
+LocalServiceInfo localServiceInfo()
+{
+    LocalServiceInfo info;
+    const auto provider = talkinput::appConfigValue("/llmPresets");
+    if (!provider.is_array()) return info;
+
+    const QString id =
+        talkinput::appConfigString("/settings/llm/providerId").trimmed();
+    for (const auto &p : provider) {
+        if (!p.is_object()) continue;
+        if (p.value("id", std::string()) != id.toStdString()) continue;
+        info.port = p.value("localServicePort", 8765);
+        info.maxHealthAttempts = p.value("localServiceMaxHealthAttempts", 120);
+        const std::string url =
+            p.value("localServiceArchiveUrl", std::string());
+        if (!url.empty()) info.archiveUrl = QUrl(QString::fromStdString(url));
+        break;
+    }
+    return info;
+}
 
 QString qs(const std::string &value)
 {
@@ -242,14 +264,16 @@ void LlamaServerManager::prepare()
         return;
     }
 
-    stopProcessListeningOnPort(ServerPort);
+    const auto service = localServiceInfo();
+
+    stopProcessListeningOnPort(service.port);
 
     QDir().mkpath(llamaDir());
     QDir().mkpath(modelDir());
 
     if (serverExecutablePath().isEmpty()) {
         spdlog::get("statusbar")->info("{}", tr("Downloading LLM runtime..."));
-        beginDownload(DownloadKind::LlamaArchive, LlamaArchiveUrl,
+        beginDownload(DownloadKind::LlamaArchive, service.archiveUrl,
                       llamaArchivePath());
         return;
     }
@@ -374,10 +398,11 @@ void LlamaServerManager::startServer()
 
     m_preparing = true;
     m_ready = false;
+    const auto service = localServiceInfo();
     m_server.setProgram(executable);
     m_server.setWorkingDirectory(QFileInfo(executable).absolutePath());
     m_server.setArguments({"-m", modelPath(), "--host", "127.0.0.1", "--port",
-                           QString::number(ServerPort), "-c", "1024"});
+                           QString::number(service.port), "-c", "1024"});
 
     spdlog::get("statusbar")->info("{}", tr("Starting LLM service..."));
     SPDLOG_INFO("Starting llama-server: {}", executable);
@@ -388,15 +413,17 @@ void LlamaServerManager::startServer()
 
 void LlamaServerManager::pollHealth()
 {
+    const auto service = localServiceInfo();
+
     ++m_healthAttempts;
-    if (m_healthAttempts > MaxHealthAttempts) {
+    if (m_healthAttempts > service.maxHealthAttempts) {
         m_healthTimer.stop();
         emit failed(tr("LLM service did not become ready."));
         return;
     }
 
     QNetworkRequest request = makeRequest(
-        QUrl(QString("http://127.0.0.1:%1/health").arg(ServerPort)));
+        QUrl(QString("http://127.0.0.1:%1/health").arg(service.port)));
     auto *reply = m_network.get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         const bool ok = reply->error() == QNetworkReply::NoError;

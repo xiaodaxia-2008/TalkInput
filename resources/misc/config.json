@@ -139,7 +139,10 @@
           "size": 1280835840
         }
       },
-      "managedLocalService": true
+      "managedLocalService": true,
+      "localServicePort": 8765,
+      "localServiceMaxHealthAttempts": 120,
+      "localServiceArchiveUrl": "https://github.com/ggml-org/llama.cpp/releases/download/b9685/llama-b9685-bin-win-cpu-x64.zip"
     },
     {
       "id": "deepseek",
