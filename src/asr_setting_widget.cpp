@@ -445,23 +445,9 @@ void AsrSettingWidget::onModelChanged(int index)
         modelJsonAtPointer(m_ui->modelCombo->itemData(index).toString());
     if (!m.is_object()) return;
 
-    const bool installed = isInstalled(m);
     const QString modelName = modelJsonString(m, "name");
     const QString modelId = modelJsonString(m, "id");
     const bool isActive = (modelId == m_activeAsrId);
-    const bool isSystem = modelJsonString(m, "type") == QStringLiteral("System");
-    const qint64 modelSize = modelJsonInt64(m, "size");
-    const QString sizeStr = modelSize > 0 ? QString(" (%1)").arg(formatSize(modelSize)) : QString();
-
-    // Info label — one line summary
-    QString info;
-    info += streamingLabel(modelJsonBool(m, "streamingSupport"));
-    if (!isSystem && modelSize > 0) info += QStringLiteral(" | ") + sizeStr.trimmed();
-    info += QStringLiteral(" | ") + languageDisplay(modelJsonString(m, "languages"));
-    if (isActive) info += QStringLiteral(" | ") + tr("activated");
-    else if (installed || isSystem) info += QStringLiteral(" | ") + tr("available");
-    else info += QStringLiteral(" | ") + tr("not installed");
-    m_ui->statusLabel->setText(info);
 
     // Combo item label: add "(Activated)" suffix for loaded model
     // Store the original base label in item data to allow clean toggling
