@@ -31,16 +31,6 @@ QImage OcrRecognizer::captureFocusedTextInputImage() const
 }
 
 std::unique_ptr<OcrRecognizer>
-createOcrRecognizer(OcrRecognizer::Type type, QObject *parent)
-{
-    switch (type) {
-    case OcrRecognizer::Type::System:
-        return std::make_unique<SystemOcrRecognizer>(parent);
-    }
-    return nullptr;
-}
-
-std::unique_ptr<OcrRecognizer>
 OcrRecognizer::createFromConfig(const nlohmann::json &preset,
                                 QString *errorMessage, QObject *parent)
 {
@@ -58,7 +48,11 @@ OcrRecognizer::createFromConfig(const nlohmann::json &preset,
         return nullptr;
     }
 
-    return createOcrRecognizer(*type, parent);
+    switch (*type) {
+    case Type::System:
+        return std::make_unique<SystemOcrRecognizer>(parent);
+    }
+    return nullptr;
 }
 
 } // namespace talkinput

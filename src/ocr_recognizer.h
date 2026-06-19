@@ -41,7 +41,4 @@ public:
                      QObject *parent = nullptr);
 };
 
-std::unique_ptr<OcrRecognizer>
-createOcrRecognizer(OcrRecognizer::Type type, QObject *parent = nullptr);
-
 } // namespace talkinput
