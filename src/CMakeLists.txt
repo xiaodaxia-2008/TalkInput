@@ -76,7 +76,12 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
-qt_add_translations(TalkInput)
+qt_add_translations(TalkInput
+    TS_FILES
+        TalkInput_zh.ts
+        TalkInput_en.ts
+    LUPDATE_OPTIONS -no-obsolete
+)
 
 target_link_libraries(TalkInput
     PRIVATE
