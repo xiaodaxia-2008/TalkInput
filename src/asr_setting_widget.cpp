@@ -44,42 +44,18 @@ QString cacheDir()
     return QDir(talkinput::appDataDir()).filePath(QStringLiteral("models"));
 }
 
-// ---- LLM defaults read directly from appConfig (single source of truth) ----
-
 const nlohmann::json llmProvidersJson()
 {
     return talkinput::appConfigValue("llmPostProcessing/providers");
 }
 
-const nlohmann::json defaultLlmProviderJson()
+nlohmann::json firstLlmProviderJson()
 {
     const nlohmann::json providers = llmProvidersJson();
     if (providers.is_array() && !providers.empty()) {
         return providers.front();
     }
     return nlohmann::json::object();
-}
-
-QString defaultLlmProviderId()
-{
-    const nlohmann::json provider = defaultLlmProviderJson();
-    return qs(provider.value("id", std::string("llama.cpp")));
-}
-
-QString defaultLlmEndpoint()
-{
-    const nlohmann::json provider = defaultLlmProviderJson();
-    return qs(provider.value("endpoint", std::string()));
-}
-
-QString defaultLlmSystemPrompt()
-{
-    return talkinput::appConfigString("llmPostProcessing/systemPrompt");
-}
-
-QString defaultLlmUserPrompt()
-{
-    return talkinput::appConfigString("llmPostProcessing/userPrompt");
 }
 
 QString formatSize(qint64 bytes)
@@ -95,6 +71,21 @@ QString formatSize(qint64 bytes)
 QString llmProviderModelKey(const QString &providerId)
 {
     return QString("settings/llm/providerModels/%1").arg(providerId);
+}
+
+nlohmann::json findLlmProviderJson(const QString &id)
+{
+    const nlohmann::json providers = llmProvidersJson();
+    if (providers.is_array()) {
+        for (const auto &provider : providers) {
+            if (provider.is_object() &&
+                provider.value("id", std::string()) == id.toStdString())
+            {
+                return provider;
+            }
+        }
+    }
+    return nlohmann::json::object();
 }
 
 QString modelJsonString(const nlohmann::json &model, const std::string &key,
@@ -135,22 +126,12 @@ QString postPunctuationDirName(const nlohmann::json &model)
 
 QString currentLlmSystemPrompt()
 {
-    QString prompt =
-        talkinput::appConfigString("settings/llm/systemPrompt").trimmed();
-    if (prompt.isEmpty()) {
-        prompt = defaultLlmSystemPrompt();
-    }
-    return prompt;
+    return talkinput::appConfigString("settings/llm/systemPrompt");
 }
 
 QString currentLlmUserPrompt()
 {
-    QString prompt =
-        talkinput::appConfigString("settings/llm/userPrompt").trimmed();
-    if (prompt.isEmpty()) {
-        prompt = defaultLlmUserPrompt();
-    }
-    return prompt;
+    return talkinput::appConfigString("settings/llm/userPrompt");
 }
 
 QString languageDisplay(const QString &lang)
@@ -291,26 +272,39 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     };
     refreshPromptLabel();
 
-    auto providerAt = [llmProviders](int index) -> nlohmann::json {
-        if (index >= 0 && static_cast<std::size_t>(index) < llmProviders.size())
-        {
-            return llmProviders[static_cast<std::size_t>(index)];
+    auto providerAt = [providerCombo](int index) -> nlohmann::json {
+        if (index >= 0 && index < providerCombo->count()) {
+            const QString providerId = providerCombo->itemData(index).toString();
+            nlohmann::json provider = findLlmProviderJson(providerId);
+            if (provider.is_object() && !provider.empty()) {
+                return provider;
+            }
         }
-        return defaultLlmProviderJson();
+        return firstLlmProviderJson();
     };
     auto applyProvider = [providerCombo, endpointEdit, modelCombo](
                              const nlohmann::json &provider, bool persist) {
         const bool custom = provider.value("custom", false);
         const QString providerId = qs(provider.value("id", std::string()));
-        const QString endpoint =
-            custom ? appConfigString("settings/llm/customEndpoint",
-                                     appConfigString("settings/llm/endpoint"))
-                   : qs(provider.value("endpoint", std::string()));
-        const QString model =
-            custom ? appConfigString("settings/llm/customModel",
-                                     appConfigString("settings/llm/model"))
-                   : appConfigString(llmProviderModelKey(providerId),
-                                     qs(provider.value("model", std::string())));
+        QString endpoint;
+        QString model;
+        if (custom) {
+            endpoint = appConfigString("settings/llm/customEndpoint").trimmed();
+            if (endpoint.isEmpty()) {
+                endpoint = appConfigString("settings/llm/endpoint").trimmed();
+            }
+            model = appConfigString("settings/llm/customModel").trimmed();
+            if (model.isEmpty()) {
+                model = appConfigString("settings/llm/model").trimmed();
+            }
+        }
+        else {
+            endpoint = qs(provider.value("endpoint", std::string())).trimmed();
+            model = appConfigString(llmProviderModelKey(providerId)).trimmed();
+            if (model.isEmpty()) {
+                model = qs(provider.value("model", std::string())).trimmed();
+            }
+        }
 
         {
             const QSignalBlocker endpointBlocker(endpointEdit);
@@ -351,25 +345,15 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     };
 
     {
-        QString providerId =
-            appConfigString("settings/llm/providerId", defaultLlmProviderId());
-        const QString savedEndpoint =
-            appConfigString("settings/llm/endpoint").trimmed();
-        if (!appConfigContains("settings/llm/providerId") &&
-            !savedEndpoint.isEmpty() &&
-            savedEndpoint != defaultLlmEndpoint())
-        {
-            providerId = "custom";
-        }
+        QString providerId = appConfigString("settings/llm/providerId");
         int providerIndex = providerCombo->findData(providerId);
         if (providerIndex < 0) {
-            providerIndex = providerCombo->findData(defaultLlmProviderId());
-        }
-        if (providerIndex < 0 && providerCombo->count() > 0) {
             providerIndex = 0;
         }
-        providerCombo->setCurrentIndex(providerIndex);
-        applyProvider(providerAt(providerIndex), false);
+        if (providerIndex >= 0) {
+            providerCombo->setCurrentIndex(providerIndex);
+            applyProvider(providerAt(providerIndex), false);
+        }
         apiKeyEdit->setText(appConfigString("settings/llm/apiKey"));
     }
 
@@ -468,32 +452,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
             auto *usrEditor = new QTextEdit(&dialog);
             usrEditor->setAcceptRichText(false);
             usrEditor->setPlaceholderText(
-                tr("Leave empty for built-in default template"));
-            usrEditor->setPlainText(appConfigString("settings/llm/userPrompt"));
+                tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
+            usrEditor->setPlainText(currentLlmUserPrompt());
             usrEditor->setMaximumHeight(150);
             layout->addWidget(usrEditor);
 
-            // -- Hint about default template --
-            auto *defaultHint =
-                new QLabel(tr("<small>"
-                              "\347\225\231\347\251\272\345\210\231\344\275\277"
-                              "\347\224\250 config.json "
-                              "\344\270\255\347\232\204\351\273\230\350\256\244"
-                              "\346\250\241\346\235\277\343\200\202</small>"),
-                           &dialog);
-            defaultHint->setWordWrap(true);
-            defaultHint->setStyleSheet("color: gray");
-            layout->addWidget(defaultHint);
-
-            auto *resetBtn = new QPushButton(tr("Reset"));
-            connect(resetBtn, &QPushButton::clicked, &dialog,
-                    [sysEditor, usrEditor]() {
-                        sysEditor->setPlainText(defaultLlmSystemPrompt());
-                        usrEditor->setPlainText(defaultLlmUserPrompt());
-                    });
-
             auto *buttons = new QDialogButtonBox(&dialog);
-            buttons->addButton(resetBtn, QDialogButtonBox::ResetRole);
             buttons->addButton(QDialogButtonBox::Save);
             buttons->addButton(QDialogButtonBox::Cancel);
             connect(buttons, &QDialogButtonBox::accepted, &dialog,

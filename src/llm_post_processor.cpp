@@ -47,14 +47,12 @@ QNetworkRequest makeRequest(const QUrl &url)
     return request;
 }
 
-// ---- LLM defaults read directly from appConfig (single source of truth) ----
-
 const nlohmann::json llmProvidersJson()
 {
     return talkinput::appConfigValue("llmPostProcessing/providers");
 }
 
-const nlohmann::json defaultLlmProviderJson()
+nlohmann::json firstLlmProviderJson()
 {
     const nlohmann::json providers = llmProvidersJson();
     if (providers.is_array() && !providers.empty()) {
@@ -63,32 +61,6 @@ const nlohmann::json defaultLlmProviderJson()
     return nlohmann::json::object();
 }
 
-QString defaultLlmProviderId()
-{
-    return qs(defaultLlmProviderJson().value("id", std::string("llama.cpp")));
-}
-
-QString defaultLlmEndpoint()
-{
-    return qs(defaultLlmProviderJson().value("endpoint", std::string()));
-}
-
-QString defaultLlmModel()
-{
-    return qs(defaultLlmProviderJson().value("model", std::string()));
-}
-
-QString defaultLlmSystemPrompt()
-{
-    return talkinput::appConfigString("llmPostProcessing/systemPrompt");
-}
-
-QString defaultLlmUserPrompt()
-{
-    return talkinput::appConfigString("llmPostProcessing/userPrompt");
-}
-
-// Find a provider by id in the live appConfig; falls back to the first one.
 nlohmann::json findLlmProviderJson(const QString &id)
 {
     const nlohmann::json providers = llmProvidersJson();
@@ -101,7 +73,7 @@ nlohmann::json findLlmProviderJson(const QString &id)
             }
         }
     }
-    return defaultLlmProviderJson();
+    return nlohmann::json::object();
 }
 
 } // namespace
@@ -164,47 +136,51 @@ void LlmPostProcessor::postProcess(const QString &text,
 
 nlohmann::json LlmPostProcessor::configuredProvider() const
 {
-    QString providerId =
-        appConfigString("settings/llm/providerId", defaultLlmProviderId())
-            .trimmed();
-    const QString savedEndpoint =
-        appConfigString("settings/llm/endpoint").trimmed();
-    if (!appConfigContains("settings/llm/providerId") &&
-        !savedEndpoint.isEmpty() && savedEndpoint != defaultLlmEndpoint())
-    {
-        providerId = "custom";
+    const QString providerId =
+        appConfigString("settings/llm/providerId").trimmed();
+    nlohmann::json provider = findLlmProviderJson(providerId);
+    if (provider.is_object() && !provider.empty()) {
+        return provider;
     }
-    return findLlmProviderJson(providerId);
+    return firstLlmProviderJson();
 }
 
 QString LlmPostProcessor::configuredEndpoint() const
 {
-    const nlohmann::json provider = configuredProvider();
-    if (!provider.value("custom", false)) {
-        const QString endpoint =
-            qs(provider.value("endpoint", std::string())).trimmed();
-        return endpoint.isEmpty() ? defaultLlmEndpoint() : endpoint;
+    const QString endpoint =
+        appConfigString("settings/llm/endpoint").trimmed();
+    if (!endpoint.isEmpty()) {
+        return endpoint;
     }
 
-    return appConfigString("settings/llm/endpoint").trimmed();
+    const nlohmann::json provider = configuredProvider();
+    if (provider.value("custom", false)) {
+        return appConfigString("settings/llm/customEndpoint").trimmed();
+    }
+
+    return qs(provider.value("endpoint", std::string())).trimmed();
 }
 
 QString LlmPostProcessor::configuredModel() const
 {
-    const nlohmann::json provider = configuredProvider();
-    const QString providerId = qs(provider.value("id", std::string()));
-    const QString providerModel =
-        appConfigString(llmProviderModelKey(providerId)).trimmed();
-    if (!providerModel.isEmpty()) {
-        return providerModel;
-    }
     const QString configuredModel =
         appConfigString("settings/llm/model").trimmed();
     if (!configuredModel.isEmpty()) {
         return configuredModel;
     }
-    const QString model = qs(provider.value("model", std::string())).trimmed();
-    return model.isEmpty() ? defaultLlmModel() : model;
+
+    const nlohmann::json provider = configuredProvider();
+    const QString providerId = qs(provider.value("id", std::string()));
+    if (provider.value("custom", false)) {
+        return appConfigString("settings/llm/customModel").trimmed();
+    }
+
+    const QString providerModel =
+        appConfigString(llmProviderModelKey(providerId)).trimmed();
+    if (!providerModel.isEmpty()) {
+        return providerModel;
+    }
+    return qs(provider.value("model", std::string())).trimmed();
 }
 
 QString LlmPostProcessor::configuredApiKey() const
@@ -252,20 +228,13 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     const QString cleanedContext = extractOcrWords(request.contextText);
 
     // ---- System prompt (template replacement) ----
-    QString systemPrompt =
-        appConfigString("settings/llm/systemPrompt").trimmed();
-    if (systemPrompt.isEmpty()) {
-        systemPrompt = defaultLlmSystemPrompt().trimmed();
-    }
+    QString systemPrompt = appConfigString("settings/llm/systemPrompt");
     systemPrompt.replace("{{input}}", formattedInput);
     systemPrompt.replace("{{context}}", cleanedContext);
     systemPrompt.replace("{{hotwords}}", request.hotwords);
 
     // ---- User prompt (template replacement) ----
-    QString userPrompt = appConfigString("settings/llm/userPrompt").trimmed();
-    if (userPrompt.isEmpty()) {
-        userPrompt = defaultLlmUserPrompt().trimmed();
-    }
+    QString userPrompt = appConfigString("settings/llm/userPrompt");
     userPrompt.replace("{{input}}", formattedInput);
     userPrompt.replace("{{context}}", cleanedContext);
     userPrompt.replace("{{hotwords}}", request.hotwords);
