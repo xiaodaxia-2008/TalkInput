@@ -251,28 +251,8 @@
    </item>
    <item>
     <layout class="QHBoxLayout" name="bottomRow">
-     <item>
-      <widget class="QPushButton" name="archiveButton">
-       <property name="toolTip">
-        <string>Import and extract a model archive</string>
-       </property>
-       <property name="text">
-        <string>Use Archive</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="openButton">
-       <property name="toolTip">
-        <string>Open model cache directory</string>
-       </property>
-       <property name="text">
-        <string>Open Folder</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="hotwordsButton">
+      <item>
+       <widget class="QPushButton" name="hotwordsButton">
        <property name="toolTip">
         <string>Edit hot words</string>
        </property>

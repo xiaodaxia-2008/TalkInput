@@ -169,9 +169,8 @@ void AsrService::loadModel()
     const bool hotwordsSupport = config.value("hotwordsSupport", false);
     {
         const nlohmann::json hw = appConfigValue("/settings/asr/hotwords");
-        QString raw;
+        QStringList lines;
         if (hw.is_array()) {
-            QStringList lines;
             for (const auto &item : hw) {
                 if (item.is_string()) {
                     const QString s =
@@ -180,13 +179,10 @@ void AsrService::loadModel()
                     if (!s.isEmpty()) lines.append(s);
                 }
             }
-            raw = lines.join(QLatin1Char('\n'));
-        }
-        else if (hw.is_string()) {
-            raw = QString::fromStdString(hw.get<std::string>());
         }
         config["hotwordsText"] =
-            buildHotwordsText(raw, hotwordsSupport).toStdString();
+            buildHotwordsText(lines.join(QLatin1Char('\n')), hotwordsSupport)
+                .toStdString();
     }
 
     SPDLOG_INFO("AsrService: configured recognizer {}", typeName);

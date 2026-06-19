@@ -431,13 +431,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         spdlog::get("statusbar")->info("{}", tr("LLM prompts saved."));
     });
 
-    auto *archiveBtn = m_ui->archiveButton;
-    connect(archiveBtn, &QPushButton::clicked, this,
-            &AsrSettingWidget::onUseArchive);
-
-    auto *openBtn = m_ui->openButton;
-    connect(openBtn, &QPushButton::clicked, this, &AsrSettingWidget::onOpenDir);
-
     auto *hotwordsBtn = m_ui->hotwordsButton;
     connect(hotwordsBtn, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
@@ -529,11 +522,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     }
 
     // Apply icons to bottom buttons
-    setButtonIcon(archiveBtn, ":/resources/icons/folder-plus.svg", 22);
-    setButtonIcon(openBtn, ":/resources/icons/folder.svg", 22);
     setButtonIcon(hotwordsBtn, ":/resources/icons/hotwords.svg", 22);
-    archiveBtn->setProperty("buttonRole", "icon");
-    openBtn->setProperty("buttonRole", "icon");
     hotwordsBtn->setProperty("buttonRole", "icon");
     SPDLOG_DEBUG("AsrSettingWidget: constructor end");
 }
@@ -795,70 +784,6 @@ void AsrSettingWidget::activateModel(const QString &modelPointer)
         ->info("{}", tr("Model selected: %1").arg(modelName));
 }
 
-void AsrSettingWidget::onUseArchive()
-{
-    const QString filter = tr(
-        "Model Archives (*.tar.bz2 *.tar.gz *.tgz *.tar *.zip);;All Files (*)");
-    const QString defaultDir =
-        QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    const QString path = QFileDialog::getOpenFileName(
-        this, tr("Select model archive"), defaultDir, filter);
-    if (path.isEmpty()) {
-        return;
-    }
-
-    QDir dest(cacheDir());
-    if (!dest.exists() && !dest.mkpath(".")) {
-        QMessageBox::warning(this, tr("Error"),
-                             tr("Cannot create model directory."));
-        return;
-    }
-
-    spdlog::get("statusbar")->info("{}", tr("Extracting..."));
-    QCoreApplication::processEvents();
-
-    QString err;
-    if (!extractArchive(path, dest.absolutePath(), &err)) {
-        QMessageBox::warning(this, tr("Extraction failed"),
-                             tr("Failed:\n%1").arg(err));
-        spdlog::get("statusbar")->info("{}", tr("Extraction failed."));
-        return;
-    }
-
-    QString base = QFileInfo(path).fileName();
-    for (const QString &e : {".tar.bz2", ".tar.gz", ".tgz", ".tar", ".zip"}) {
-        if (base.endsWith(e, Qt::CaseInsensitive)) {
-            base.chop(e.size());
-            break;
-        }
-    }
-
-    const QString modelDir = dest.filePath(base);
-    if (QFileInfo(modelDir).isDir()) {
-        SPDLOG_INFO("Extracted model: {}", modelDir);
-        emit modelSelected(modelDir, base, {});
-        spdlog::get("statusbar")
-            ->info("{}",
-                   tr("Extracted: %1").arg(QDir::toNativeSeparators(modelDir)));
-    }
-    else {
-        spdlog::get("statusbar")
-            ->info("{}", tr("Directory not found: %1")
-                             .arg(QDir::toNativeSeparators(modelDir)));
-    }
-
-    refreshStatus();
-}
-
-void AsrSettingWidget::onOpenDir()
-{
-    QDir dir(cacheDir());
-    if (!dir.exists() && !dir.mkpath(QStringLiteral("."))) {
-        return;
-    }
-    QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
-}
-
 void AsrSettingWidget::onEditHotwords()
 {
     QDialog dialog(this);
@@ -889,13 +814,12 @@ void AsrSettingWidget::onEditHotwords()
     editor->setAcceptRichText(false);
     editor->setPlaceholderText(tr("Enter hot words, one per line"));
 
-    // Read hotwords — supports new (array) and legacy (string) formats
+    // Read hotwords as array
     {
         const nlohmann::json hw =
             talkinput::appConfigValue("/settings/asr/hotwords");
-        QString text;
+        QStringList lines;
         if (hw.is_array()) {
-            QStringList lines;
             for (const auto &item : hw) {
                 if (item.is_string()) {
                     const QString s =
@@ -904,12 +828,8 @@ void AsrSettingWidget::onEditHotwords()
                     if (!s.isEmpty()) lines.append(s);
                 }
             }
-            text = lines.join(QLatin1Char('\n'));
         }
-        else if (hw.is_string()) {
-            text = QString::fromStdString(hw.get<std::string>());
-        }
-        editor->setPlainText(text);
+        editor->setPlainText(lines.join(QLatin1Char('\n')));
     }
     layout->addWidget(editor, 1);
 

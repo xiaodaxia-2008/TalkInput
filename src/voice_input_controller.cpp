@@ -396,8 +396,8 @@ void VoiceInputController::postProcessFinalText(const QString &text)
         const QString hotwords = []() -> QString {
             const nlohmann::json hw =
                 talkinput::appConfigValue("/settings/asr/hotwords");
+            QStringList lines;
             if (hw.is_array()) {
-                QStringList lines;
                 for (const auto &item : hw) {
                     if (item.is_string()) {
                         const QString s =
@@ -406,12 +406,8 @@ void VoiceInputController::postProcessFinalText(const QString &text)
                         if (!s.isEmpty()) lines.append(s);
                     }
                 }
-                return lines.join(QLatin1Char('\n'));
             }
-            if (hw.is_string()) {
-                return QString::fromStdString(hw.get<std::string>());
-            }
-            return QString();
+            return lines.join(QLatin1Char('\n'));
         }();
         m_llmPostProcessor->postProcess(
             finalText, ocrContext, hotwords, this,

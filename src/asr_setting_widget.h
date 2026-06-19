@@ -44,8 +44,6 @@ private:
     void onDeleteCurrent();
     void onUseCurrent();
     void activateModel(const QString &modelPointer);
-    void onUseArchive();
-    void onOpenDir();
     void onEditHotwords();
     void onDownloadFinished();
 
