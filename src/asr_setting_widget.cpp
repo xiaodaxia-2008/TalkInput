@@ -401,14 +401,14 @@ void AsrSettingWidget::initAsrModel()
     if (restoreIdx >= 0) combo->setCurrentIndex(restoreIdx);
 
     connect(combo, &QComboBox::currentIndexChanged, this,
-            &AsrSettingWidget::onModelChanged);
+            &AsrSettingWidget::onAsrModelChanged);
     connect(m_ui->useButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseCurrent);
 
-    if (combo->count() > 0) onModelChanged(combo->currentIndex());
+    if (combo->count() > 0) onAsrModelChanged(combo->currentIndex());
 }
 
-void AsrSettingWidget::onModelChanged(int index)
+void AsrSettingWidget::onAsrModelChanged(int index)
 {
     if (index < 0 || index >= m_ui->modelCombo->count()) return;
 
@@ -431,7 +431,7 @@ void AsrSettingWidget::onModelChanged(int index)
 void AsrSettingWidget::refreshStatus()
 {
     if (m_ui->modelCombo->count() > 0)
-        onModelChanged(m_ui->modelCombo->currentIndex());
+        onAsrModelChanged(m_ui->modelCombo->currentIndex());
 }
 
 QString AsrSettingWidget::currentModelPointer() const

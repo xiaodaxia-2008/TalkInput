@@ -37,7 +37,7 @@ signals:
     void hotwordsChanged();
 
 private:
-    void onModelChanged(int index);
+    void onAsrModelChanged(int index);
     void refreshStatus();
     void onUseCurrent();
     void onEditHotwords();
