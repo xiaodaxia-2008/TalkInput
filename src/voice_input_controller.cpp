@@ -2,7 +2,7 @@
 #include "app_config.h"
 #include "llm_post_processor.h"
 #include "logging.h"
-#include "ocr_service.h"
+#include "ocr_recognizer.h"
 #include "paste_text.h"
 #include "scroll_text_display.h"
 #include "utils.h"
@@ -230,7 +230,7 @@ VoiceInputController::VoiceInputController(QObject *parent)
     s_instance = this;
     m_overlay = std::make_unique<OverlayWindow>();
     m_llmPostProcessor = new LlmPostProcessor(this);
-    m_ocrService = createOcrService(this);
+    m_ocrRecognizer = createOcrRecognizer(this);
     registerHotKey();
 }
 
@@ -425,7 +425,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
     const bool ocrEnabled =
         appConfigBool("/settings/ocr/ocrContextEnableForAsr", false);
     const bool ocrServiceAvailable =
-        m_ocrService && m_ocrService->isAvailable();
+        m_ocrRecognizer && m_ocrRecognizer->isAvailable();
     SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "
                  "ocrServiceAvailable={}",
                  llmEnabled, ocrEnabled, ocrServiceAvailable);
@@ -457,7 +457,7 @@ void VoiceInputController::postProcessFinalText(const QString &text)
                  image.height());
     spdlog::get("statusbar")
         ->info("{}", tr("Reading focused input context..."));
-    m_ocrService->recognizeText(
+    m_ocrRecognizer->recognizeText(
         image, this, [submitToLlm](const QString &contextText) mutable {
             const QString result = contextText.trimmed();
             SPDLOG_DEBUG("OCR context result received: {}", result);
@@ -467,9 +467,11 @@ void VoiceInputController::postProcessFinalText(const QString &text)
 
 QImage VoiceInputController::captureFocusedContextImage() const
 {
-    if (m_ocrService) {
+    if (m_ocrRecognizer) {
+
+        
         const QImage focusedWindowImage =
-            m_ocrService->captureFocusedTextInputImage();
+            m_ocrRecognizer->captureFocusedTextInputImage();
         if (!focusedWindowImage.isNull()) {
             SPDLOG_DEBUG("OCR context focused window screenshot captured: "
                          "{}x{}",
@@ -483,7 +485,7 @@ QImage VoiceInputController::captureFocusedContextImage() const
     }
 
     const QString screenName =
-        m_ocrService ? m_ocrService->focusedTextInputScreenName() : QString();
+        m_ocrRecognizer ? m_ocrRecognizer->focusedTextInputScreenName() : QString();
     QScreen *screen = screenByName(screenName);
     if (screen) {
         SPDLOG_DEBUG("OCR context matched focused screen '{}'", screen->name());

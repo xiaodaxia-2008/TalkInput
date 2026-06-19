@@ -416,7 +416,7 @@ QString recognizeWindowsText(QImage image)
 namespace talkinput
 {
 
-SystemOcrService::SystemOcrService(QObject *parent) : OcrService(parent)
+SystemOcrService::SystemOcrService(QObject *parent) : OcrRecognizer(parent)
 {
 }
 

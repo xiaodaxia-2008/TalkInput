@@ -25,8 +25,8 @@ add_executable(TalkInput
     llm_post_processor.h
     spawn_llama_server.cpp
     spawn_llama_server.h
-    ocr_service.cpp
-    ocr_service.h
+    ocr_recognizer.cpp
+    ocr_recognizer.h
     system_ocr_service.h
     speech_recognizer.h
     speech_recognizer.cpp

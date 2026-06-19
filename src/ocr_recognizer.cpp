@@ -1,4 +1,4 @@
-#include "ocr_service.h"
+#include "ocr_recognizer.h"
 
 #include <QMetaObject>
 
@@ -9,28 +9,28 @@
 namespace talkinput
 {
 
-OcrService::OcrService(QObject *parent) : QObject(parent)
+OcrRecognizer::OcrRecognizer(QObject *parent) : QObject(parent)
 {
 }
 
-OcrService::~OcrService() = default;
+OcrRecognizer::~OcrRecognizer() = default;
 
-QRect OcrService::focusedTextInputRect() const
+QRect OcrRecognizer::focusedTextInputRect() const
 {
     return {};
 }
 
-WId OcrService::focusedTextInputWindowId() const
+WId OcrRecognizer::focusedTextInputWindowId() const
 {
     return 0;
 }
 
-QString OcrService::focusedTextInputScreenName() const
+QString OcrRecognizer::focusedTextInputScreenName() const
 {
     return {};
 }
 
-QImage OcrService::captureFocusedTextInputImage() const
+QImage OcrRecognizer::captureFocusedTextInputImage() const
 {
     return {};
 }
@@ -38,10 +38,10 @@ QImage OcrService::captureFocusedTextInputImage() const
 namespace
 {
 
-class NullOcrService final : public OcrService
+class NullOcrRecognizer final : public OcrRecognizer
 {
 public:
-    using OcrService::OcrService;
+    using OcrRecognizer::OcrRecognizer;
 
     bool isAvailable() const override
     {
@@ -63,12 +63,12 @@ public:
 
 } // namespace
 
-OcrService *createOcrService(QObject *parent)
+OcrRecognizer *createOcrRecognizer(QObject *parent)
 {
 #ifdef Q_OS_WIN
     return new SystemOcrService(parent);
 #else
-    return new NullOcrService(parent);
+    return new NullOcrRecognizer(parent);
 #endif
 }
 

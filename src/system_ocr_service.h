@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ocr_service.h"
+#include "ocr_recognizer.h"
 
 namespace talkinput
 {
 
-class SystemOcrService final : public OcrService
+class SystemOcrService final : public OcrRecognizer
 {
     Q_OBJECT
 

@@ -10,15 +10,15 @@
 namespace talkinput
 {
 
-class OcrService : public QObject
+class OcrRecognizer : public QObject
 {
     Q_OBJECT
 
 public:
     using Callback = std::function<void(const QString &)>;
 
-    explicit OcrService(QObject *parent = nullptr);
-    ~OcrService() override;
+    explicit OcrRecognizer(QObject *parent = nullptr);
+    ~OcrRecognizer() override;
 
     virtual bool isAvailable() const = 0;
     virtual QRect focusedTextInputRect() const;
@@ -29,6 +29,6 @@ public:
                                Callback callback) = 0;
 };
 
-OcrService *createOcrService(QObject *parent = nullptr);
+OcrRecognizer *createOcrRecognizer(QObject *parent = nullptr);
 
 } // namespace talkinput

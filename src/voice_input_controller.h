@@ -18,7 +18,7 @@ namespace talkinput
 {
 
 class LlmPostProcessor;
-class OcrService;
+class OcrRecognizer;
 
 class VoiceInputController final : public QObject,
                                     public QAbstractNativeEventFilter
@@ -68,7 +68,7 @@ private:
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
     LlmPostProcessor *m_llmPostProcessor = nullptr;
-    OcrService *m_ocrService = nullptr;
+    OcrRecognizer *m_ocrRecognizer = nullptr;
 
     std::unique_ptr<QAudioSource> m_audioSource;
     QIODevice *m_audioDevice = nullptr;
