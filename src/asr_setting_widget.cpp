@@ -211,7 +211,7 @@ void AsrSettingWidget::initPrompt()
 
     const QString text = appConfigString("/settings/llm/userPrompt");
     m_ui->promptLabel->setText(
-        QString("%1 \342\200\246").arg(text.simplified().left(50)));
+        QStringLiteral("%1 …").arg(text.simplified().left(50)));
     m_ui->promptLabel->setToolTip(text);
 }
 
@@ -252,7 +252,7 @@ void AsrSettingWidget::onEditPrompt()
     const QString text = editor->toPlainText().trimmed();
     setAppConfigValue("/settings/llm/userPrompt", text);
     m_ui->promptLabel->setText(
-        QString("%1 \342\200\246").arg(text.simplified().left(50)));
+        QStringLiteral("%1 …").arg(text.simplified().left(50)));
     m_ui->promptLabel->setToolTip(text);
     spdlog::get("statusbar")->info("{}", tr("LLM prompt saved"));
 }
@@ -303,7 +303,7 @@ void AsrSettingWidget::onEditHotwords()
 
     auto *hintRow = new QHBoxLayout();
     hintRow->setSpacing(8);
-    auto *iconLabel = new QLabel("\360\237\222\241", &dialog);
+    auto *iconLabel = new QLabel("💡", &dialog);
     iconLabel->setObjectName("hotwordsHintIcon");
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFixedSize(20, 20);
