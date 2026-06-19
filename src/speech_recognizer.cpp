@@ -296,16 +296,9 @@ QString hotwordsFromConfig(const nlohmann::json &hotwordsConfig)
     return lines.join(QLatin1Char('\n'));
 }
 
-bool systemSpeechRecognizerSupported()
-{
-#if defined(Q_OS_WIN)
-    return true;
-#else
-    return false;
-#endif
-}
-
 } // namespace
+
+bool systemSpeechRecognizerSupported();
 
 std::unique_ptr<SpeechRecognizer>
 SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
