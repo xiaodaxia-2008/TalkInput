@@ -2,13 +2,10 @@
 #include "utils.h"
 
 #include <QDir>
-#include <QLabel>
 #include <QMetaObject>
 #include <QPointer>
-#include <QSizePolicy>
 #include <QStatusBar>
 #include <QString>
-#include <QStyle>
 
 #include <memory>
 #include <mutex>
@@ -21,23 +18,10 @@ namespace talkinput
 namespace
 {
 
-QString statusLevelName(spdlog::level::level_enum level)
-{
-    switch (level) {
-    case spdlog::level::warn:
-        return QStringLiteral("warning");
-    case spdlog::level::err:
-    case spdlog::level::critical:
-        return QStringLiteral("error");
-    default:
-        return QStringLiteral("info");
-    }
-}
-
 class StatusBarSink final : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
-    explicit StatusBarSink(QLabel *label) : m_label(label)
+    explicit StatusBarSink(QStatusBar *statusBar) : m_statusBar(statusBar)
     {
         set_pattern("%v");
         set_level(spdlog::level::info);
@@ -46,7 +30,7 @@ public:
 protected:
     void sink_it_(const spdlog::details::log_msg &msg) override
     {
-        auto *target = m_label.data();
+        auto *target = m_statusBar.data();
         if (!target) {
             return;
         }
@@ -55,16 +39,12 @@ protected:
         formatter_->format(msg, formatted);
         const QString text = QString::fromUtf8(
             formatted.data(), static_cast<qsizetype>(formatted.size()));
-        const QString level = statusLevelName(msg.level);
-        QPointer<QLabel> label = target;
+        QPointer<QStatusBar> statusBar = target;
         QMetaObject::invokeMethod(
             target,
-            [label, text, level]() {
-                if (label) {
-                    label->setProperty("messageLevel", level);
-                    label->style()->unpolish(label);
-                    label->style()->polish(label);
-                    label->setText(text);
+            [statusBar, text]() {
+                if (statusBar) {
+                    statusBar->showMessage(text);
                 }
             },
             Qt::QueuedConnection);
@@ -75,7 +55,7 @@ protected:
     }
 
 private:
-    QPointer<QLabel> m_label;
+    QPointer<QStatusBar> m_statusBar;
 };
 
 } // namespace
@@ -96,16 +76,7 @@ auto getFileSink()
 
 void installStatusBarLogger(QStatusBar *statusBar)
 {
-    auto *statusLabel = statusBar->findChild<QLabel *>("statusbarLogLabel");
-    if (!statusLabel) {
-        statusLabel = new QLabel(statusBar);
-        statusLabel->setObjectName(QStringLiteral("statusbarLogLabel"));
-        statusLabel->setSizePolicy(QSizePolicy::Expanding,
-                                   QSizePolicy::Preferred);
-        statusBar->addWidget(statusLabel, 1);
-    }
-
-    auto statusBarSink = std::make_shared<StatusBarSink>(statusLabel);
+    auto statusBarSink = std::make_shared<StatusBarSink>(statusBar);
     statusBarSink->set_level(spdlog::level::info);
 
     auto logger = std::make_shared<spdlog::logger>("statusbar");
