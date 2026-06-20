@@ -142,6 +142,9 @@ void MainWindow::setupUi()
     connect(m_ui->actionResetSettings, &QAction::triggered, this,
             &MainWindow::onResetSettings);
 
+    connect(m_ui->actionOpenDataDirectory, &QAction::triggered, this,
+            &MainWindow::onOpenDataDirectory);
+
     connect(m_ui->actionMoreModels, &QAction::triggered, this,
             &MainWindow::onOpenMoreAsrModels);
     connect(m_ui->actionAbout, &QAction::triggered, this,
@@ -375,6 +378,11 @@ void MainWindow::onShowAboutDialog()
                            .arg(QApplication::applicationVersion(),
                                 QStringLiteral(GIT_COMMIT_ID),
                                 QStringLiteral(GIT_COMMIT_DATE)));
+}
+
+void MainWindow::onOpenDataDirectory()
+{
+    QDesktopServices::openUrl(QUrl::fromLocalFile(appDataDir()));
 }
 
 } // namespace talkinput

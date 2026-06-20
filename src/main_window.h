@@ -48,6 +48,7 @@ private:
     void onResetSettings();
     void onOpenMoreAsrModels();
     void onShowAboutDialog();
+    void onOpenDataDirectory();
 
     std::unique_ptr<Ui::MainWindow> m_ui;
     AsrSettingWidget *m_asrSettingWidget = nullptr;

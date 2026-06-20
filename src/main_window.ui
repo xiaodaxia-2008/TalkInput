@@ -107,6 +107,8 @@
     <addaction name="actionStartMinimized"/>
     <addaction name="separator"/>
     <addaction name="actionResetSettings"/>
+    <addaction name="separator"/>
+    <addaction name="actionOpenDataDirectory"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -189,6 +191,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionOpenDataDirectory">
+   <property name="text">
+    <string>Open Data Directory</string>
    </property>
   </action>
   <action name="actionExit">
