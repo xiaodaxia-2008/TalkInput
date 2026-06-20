@@ -63,8 +63,7 @@ bool VoiceInputController::startListening(FinalTextAction finalTextAction)
 {
     SPDLOG_INFO("VoiceInputController: start listening");
 
-    if (m_isListening) {
-        SPDLOG_WARN("Already listening");
+    if (!beginRecognitionFlow(finalTextAction)) {
         return false;
     }
 
@@ -73,13 +72,11 @@ bool VoiceInputController::startListening(FinalTextAction finalTextAction)
         STATUSBAR_INFO("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
+        resetRecognitionFlow();
         return false;
     }
 
     m_recognizerSession->resetRecognitionStream();
-    m_activeFinalTextAction = finalTextAction;
-    m_pendingFinalTextAction = finalTextAction;
-    m_pendingResult = false;
 
     if (!m_recognizerSession->acceptsExternalAudio()) {
         enterListeningState(
@@ -90,6 +87,7 @@ bool VoiceInputController::startListening(FinalTextAction finalTextAction)
     auto captureStarted = m_audioCapture->start();
     if (!captureStarted) {
         STATUSBAR_INFO("{}", captureStarted.error());
+        resetRecognitionFlow();
         return false;
     }
 
@@ -105,36 +103,44 @@ void VoiceInputController::stopListening()
         m_audioCapture->stop();
     }
 
-    const bool expectsFinalResult =
-        m_recognizerSession &&
-        m_recognizerSession->isRecognitionStreamRunning();
-    if (expectsFinalResult) {
-        m_pendingResult = true;
-        m_pendingFinalTextAction = m_activeFinalTextAction;
-    }
-
     if (!m_recognizerSession->finishRunningRecognitionStream()) {
-        m_pendingResult = false;
+        resetRecognitionFlow();
+        return;
     }
 
-    leaveListeningState();
+    if (m_isListening) {
+        leaveListeningState();
+    }
+    if (!m_processingFinalText && m_recognizerSession->acceptsExternalAudio()) {
+        resetRecognitionFlow();
+    }
 }
 
 void VoiceInputController::onResult(const QString &text, bool isFinal)
 {
     if (isFinal) {
         m_lastResult = text;
-        const bool recognizerOwnsAudio =
-            m_recognizerSession && !m_recognizerSession->acceptsExternalAudio();
-        const bool shouldSend =
-            m_pendingResult || !m_isListening || recognizerOwnsAudio;
-        const FinalTextAction finalTextAction = m_pendingResult
-                                                    ? m_pendingFinalTextAction
-                                                    : m_activeFinalTextAction;
-        m_pendingResult = false;
-        if (shouldSend && !text.trimmed().isEmpty()) {
-            postProcessFinalText(text.trimmed(), finalTextAction);
+        if (!m_busy || m_processingFinalText) {
+            return;
         }
+
+        const QString finalText = text.trimmed();
+        if (finalText.isEmpty()) {
+            resetRecognitionFlow();
+            return;
+        }
+
+        m_processingFinalText = true;
+        if (m_isListening) {
+            leaveListeningState();
+        }
+        if (m_recognizerSession &&
+            !m_recognizerSession->acceptsExternalAudio() &&
+            m_recognizerSession->isRecognitionStreamRunning())
+        {
+            m_recognizerSession->finishRunningRecognitionStream();
+        }
+        postProcessFinalText(finalText, m_finalTextAction);
     }
     else if (m_isListening && text != m_lastResult) {
         m_lastResult = text;
@@ -158,6 +164,7 @@ void VoiceInputController::commitFinalText(const QString &text,
                                            FinalTextAction finalTextAction)
 {
     if (text.isEmpty()) {
+        resetRecognitionFlow();
         return;
     }
 
@@ -175,6 +182,7 @@ void VoiceInputController::commitFinalText(const QString &text,
 
     emit finalTextCommitted(text);
     SPDLOG_INFO("VoiceInputController saved final text to history: {}", text);
+    resetRecognitionFlow();
 }
 
 void VoiceInputController::enterListeningState(const char *logMessage)
@@ -207,6 +215,32 @@ void VoiceInputController::hideOverlay()
     }
 }
 
+bool VoiceInputController::beginRecognitionFlow(FinalTextAction finalTextAction)
+{
+    if (m_busy) {
+        SPDLOG_WARN("Recognition flow is busy");
+        STATUSBAR_INFO("{}", tr("Recognition is still processing."));
+        return false;
+    }
+
+    m_busy = true;
+    m_processingFinalText = false;
+    m_finalTextAction = finalTextAction;
+    m_lastResult.clear();
+    return true;
+}
+
+void VoiceInputController::resetRecognitionFlow()
+{
+    if (m_isListening) {
+        leaveListeningState();
+    }
+    m_busy = false;
+    m_processingFinalText = false;
+    m_finalTextAction = FinalTextAction::RecordHistoryOnly;
+    m_lastResult.clear();
+}
+
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
 void VoiceInputController::loadSpeechRecognitionModel(
@@ -229,12 +263,20 @@ void VoiceInputController::unloadSpeechRecognitionModel()
     m_recognizerSession->unloadSpeechRecognitionModel();
 }
 
-void VoiceInputController::startSpeechRecognitionSession()
+bool VoiceInputController::startSpeechRecognitionSession()
 {
+    if (!beginRecognitionFlow(FinalTextAction::RecordHistoryOnly)) {
+        return false;
+    }
+
+    if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
+        SPDLOG_WARN("Speech recognition model not loaded");
+        resetRecognitionFlow();
+        return false;
+    }
+
     m_recognizerSession->resetRecognitionStream();
-    m_activeFinalTextAction = FinalTextAction::RecordHistoryOnly;
-    m_pendingFinalTextAction = FinalTextAction::RecordHistoryOnly;
-    m_pendingResult = false;
+    return true;
 }
 
 void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
@@ -246,16 +288,13 @@ void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
 
 void VoiceInputController::finishSpeechRecognitionSession()
 {
-    const bool expectsFinalResult =
-        m_recognizerSession &&
-        m_recognizerSession->isRecognitionStreamRunning();
-    if (expectsFinalResult) {
-        m_pendingResult = true;
-        m_pendingFinalTextAction = FinalTextAction::RecordHistoryOnly;
+    if (!m_recognizerSession->finishRunningRecognitionStream()) {
+        resetRecognitionFlow();
+        return;
     }
 
-    if (!m_recognizerSession->finishRunningRecognitionStream()) {
-        m_pendingResult = false;
+    if (!m_processingFinalText && m_recognizerSession->acceptsExternalAudio()) {
+        resetRecognitionFlow();
     }
 }
 

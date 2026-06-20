@@ -326,7 +326,9 @@ void MainWindow::onRecognizeFile()
                 decoded->channels);
 
     if (m_voiceInput) {
-        m_voiceInput->startSpeechRecognitionSession();
+        if (!m_voiceInput->startSpeechRecognitionSession()) {
+            return;
+        }
         m_voiceInput->feedSpeechRecognitionAudio(
             decoded->pcm16, decoded->sampleRate, decoded->channels);
         m_voiceInput->finishSpeechRecognitionSession();

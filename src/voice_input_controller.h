@@ -49,7 +49,7 @@ public slots:
     void stopListening();
     void loadSpeechRecognitionModel(const nlohmann::json &preset);
     void unloadSpeechRecognitionModel();
-    void startSpeechRecognitionSession();
+    bool startSpeechRecognitionSession();
     void feedSpeechRecognitionAudio(const QByteArray &pcm16, int sampleRate,
                                     int channels);
     void finishSpeechRecognitionSession();
@@ -70,6 +70,8 @@ private:
     void leaveListeningState();
     void showOverlay();
     void hideOverlay();
+    bool beginRecognitionFlow(FinalTextAction finalTextAction);
+    void resetRecognitionFlow();
 
     std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
     std::unique_ptr<AudioInputCapture> m_audioCapture;
@@ -81,11 +83,9 @@ private:
 
     std::unique_ptr<VoiceOverlay> m_overlay;
     QString m_lastResult;
-    bool m_pendingResult = false;
-    FinalTextAction m_activeFinalTextAction =
-        FinalTextAction::RecordHistoryOnly;
-    FinalTextAction m_pendingFinalTextAction =
-        FinalTextAction::RecordHistoryOnly;
+    bool m_busy = false;
+    bool m_processingFinalText = false;
+    FinalTextAction m_finalTextAction = FinalTextAction::RecordHistoryOnly;
 };
 
 } // namespace talkinput

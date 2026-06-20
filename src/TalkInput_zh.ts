@@ -607,7 +607,7 @@ Please wait for it to load, then try again.</source>
     </message>
     <message>
         <location filename="main_window.cpp" line="289"/>
-        <location filename="main_window.cpp" line="409"/>
+        <location filename="main_window.cpp" line="411"/>
         <source>No speech recognition model selected</source>
         <translation>未选择语音识别模型</translation>
     </message>
@@ -642,18 +642,18 @@ Please wait for it to load, then try again.</source>
         <translation>音频文件解码失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="334"/>
+        <location filename="main_window.cpp" line="336"/>
         <source>Recognition sent to ASR engine</source>
         <translation>已发送到 ASR 引擎</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="353"/>
-        <location filename="main_window.cpp" line="364"/>
+        <location filename="main_window.cpp" line="355"/>
+        <location filename="main_window.cpp" line="366"/>
         <source>Reset Settings</source>
         <translation>重置设置</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="354"/>
+        <location filename="main_window.cpp" line="356"/>
         <source>Reset all user settings in this file to bundled defaults?
 
 %1
@@ -666,12 +666,12 @@ Model downloads and recognition history will not be deleted.</source>
 模型下载和识别历史不会被删除。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="365"/>
+        <location filename="main_window.cpp" line="367"/>
         <source>Failed to reset settings.</source>
         <translation>重置设置失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="388"/>
+        <location filename="main_window.cpp" line="390"/>
         <source>Settings reset to defaults</source>
         <translation>设置已重置为默认</translation>
     </message>
@@ -679,27 +679,27 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::ModelDownloadManager</name>
     <message>
-        <location filename="model_download_manager.cpp" line="29"/>
+        <location filename="model_download_manager.cpp" line="31"/>
         <source>A model download is already running.</source>
         <translation>已有模型下载正在进行。</translation>
     </message>
     <message>
-        <location filename="model_download_manager.cpp" line="50"/>
+        <location filename="model_download_manager.cpp" line="52"/>
         <source>Model preset is invalid.</source>
         <translation>模型预设无效。</translation>
     </message>
     <message>
-        <location filename="model_download_manager.cpp" line="58"/>
+        <location filename="model_download_manager.cpp" line="60"/>
         <source>Model download URL is empty.</source>
         <translation>模型下载 URL 为空。</translation>
     </message>
     <message>
-        <location filename="model_download_manager.cpp" line="66"/>
+        <location filename="model_download_manager.cpp" line="68"/>
         <source>Failed to create model cache directory.</source>
         <translation>创建模型缓存目录失败。</translation>
     </message>
     <message>
-        <location filename="model_download_manager.cpp" line="152"/>
+        <location filename="model_download_manager.cpp" line="154"/>
         <source>Failed to create model directory.</source>
         <translation>创建模型目录失败。</translation>
     </message>
@@ -715,20 +715,25 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::VoiceInputController</name>
     <message>
-        <location filename="voice_input_controller.cpp" line="69"/>
+        <location filename="voice_input_controller.cpp" line="73"/>
         <source>Speech recognition model not loaded yet. Please wait or select a model.</source>
         <translation>语音识别模型尚未加载。请等待或选择模型。</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="222"/>
+        <source>Recognition is still processing.</source>
+        <translation>识别仍在处理中。</translation>
     </message>
 </context>
 <context>
     <name>talkinput::VoiceTextProcessor</name>
     <message>
-        <location filename="voice_text_processor.cpp" line="86"/>
+        <location filename="voice_text_processor.cpp" line="90"/>
         <source>Post-processing recognition result...</source>
         <translation>正在后处理识别结果...</translation>
     </message>
     <message>
-        <location filename="voice_text_processor.cpp" line="134"/>
+        <location filename="voice_text_processor.cpp" line="138"/>
         <source>Reading focused input context...</source>
         <translation>正在读取聚焦输入上下文...</translation>
     </message>
