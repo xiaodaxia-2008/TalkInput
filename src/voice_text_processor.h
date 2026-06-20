@@ -2,11 +2,11 @@
 
 #include "voice_input_controller.h"
 
+#include <QCoro/QCoroTask>
 #include <QImage>
 #include <QObject>
 #include <QString>
 
-#include <functional>
 #include <memory>
 
 namespace talkinput
@@ -20,13 +20,11 @@ class VoiceTextProcessor final : public QObject
     Q_OBJECT
 
 public:
-    using Callback = std::function<void(const QString &)>;
-
     explicit VoiceTextProcessor(QObject *parent = nullptr);
     ~VoiceTextProcessor() override;
 
-    void processFinalText(const QString &text, PipelineMode pipelineMode,
-                          QObject *receiver, Callback callback);
+    QCoro::Task<QString> processFinalText(const QString &text,
+                                          PipelineMode pipelineMode);
 
 private:
     QImage captureFocusedContextImage() const;

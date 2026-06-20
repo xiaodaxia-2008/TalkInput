@@ -2,6 +2,7 @@
 
 #include "json_utils.h"
 
+#include <QCoro/QCoroTask>
 #include <QByteArray>
 #include <QKeySequence>
 #include <QObject>
@@ -76,8 +77,8 @@ private:
     bool startRecording(FinalTextAction finalTextAction,
                         PipelineMode pipelineMode = PipelineMode::AsrLlmOcr);
     void onResult(const QString &text, bool isFinal);
-    void postProcessFinalText(const QString &text,
-                              FinalTextAction finalTextAction);
+    QCoro::Task<void> postProcessFinalText(const QString &text,
+                                           FinalTextAction finalTextAction);
     void commitFinalText(const QString &text, FinalTextAction finalTextAction);
     void enterListeningState(const char *logMessage);
     void leaveListeningState();

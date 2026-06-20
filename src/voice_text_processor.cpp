@@ -6,6 +6,7 @@
 #include "ocr_recognizer.h"
 #include "utils.h"
 
+#include <QCoro/QCoroFuture>
 #include <QCursor>
 #include <QDateTime>
 #include <QDir>
@@ -72,13 +73,12 @@ VoiceTextProcessor::VoiceTextProcessor(QObject *parent) : QObject(parent)
 
 VoiceTextProcessor::~VoiceTextProcessor() = default;
 
-void VoiceTextProcessor::processFinalText(const QString &text,
-                                          PipelineMode pipelineMode,
-                                          QObject *receiver, Callback callback)
+QCoro::Task<QString> VoiceTextProcessor::processFinalText(
+    const QString &text, PipelineMode pipelineMode)
 {
     const QString finalText = text.trimmed();
     if (finalText.isEmpty()) {
-        return;
+        co_return text;
     }
 
     const bool llmEnabled = pipelineMode != PipelineMode::AsrOnly;
@@ -90,54 +90,45 @@ void VoiceTextProcessor::processFinalText(const QString &text,
 
     if (!llmEnabled) {
         SPDLOG_INFO("LLM post-processing skipped: ASR-only mode");
-        if (callback) {
-            callback(finalText);
+        co_return finalText;
+    }
+
+    QString ocrContext;
+    if (ocrEnabled && m_ocrRecognizer && m_ocrRecognizer->isAvailable()) {
+        const QImage image = captureFocusedContextImage();
+        if (!image.isNull()) {
+            SPDLOG_INFO("OCR context screenshot captured: {}x{}",
+                        image.width(), image.height());
+            STATUSBAR_INFO("{}", tr("Reading focused input context..."));
+
+            QPromise<QString> ocrPromise;
+            ocrPromise.start();
+            auto ocrFuture = ocrPromise.future();
+            m_ocrRecognizer->recognizeText(
+                image, this,
+                [&ocrPromise](const QString &contextText) mutable {
+                    if (!ocrPromise.isCanceled()) {
+                        ocrPromise.addResult(contextText.trimmed());
+                        ocrPromise.finish();
+                    }
+                });
+            ocrContext = co_await ocrFuture;
+            SPDLOG_INFO("OCR context result received: {}", ocrContext);
         }
-        return;
+        else {
+            SPDLOG_INFO("OCR context skipped: no focused screenshot");
+        }
+    }
+    else {
+        SPDLOG_INFO("OCR context skipped: {}",
+                     ocrEnabled ? "service unavailable" : "ASR+LLM mode");
     }
 
-    const bool ocrServiceAvailable =
-        m_ocrRecognizer && m_ocrRecognizer->isAvailable();
+    STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
+    const QString result = co_await m_llmPostProcessor->postProcess(
+        finalText, ocrContext, currentHotwordsText());
 
-    if (!ocrEnabled || !ocrServiceAvailable) {
-        SPDLOG_INFO("OCR context skipped: ASR+LLM mode");
-        m_llmPostProcessor->postProcess(
-            finalText, {}, currentHotwordsText(), receiver,
-            [callback = std::move(callback)](const QString &processedText) mutable {
-                if (callback) {
-                    callback(processedText.trimmed());
-                }
-            });
-        return;
-    }
-
-    const QImage image = captureFocusedContextImage();
-    if (image.isNull()) {
-        SPDLOG_INFO("OCR context skipped: no focused screenshot");
-        m_llmPostProcessor->postProcess(
-            finalText, {}, currentHotwordsText(), receiver,
-            [callback = std::move(callback)](const QString &processedText) mutable {
-                if (callback) {
-                    callback(processedText.trimmed());
-                }
-            });
-        return;
-    }
-
-    SPDLOG_INFO("OCR context screenshot captured: {}x{}", image.width(),
-                image.height());
-    STATUSBAR_INFO("{}", tr("Reading focused input context..."));
-    m_ocrRecognizer->recognizeText(
-        image, receiver,
-        [this, finalText, receiver,
-         callback = std::move(callback)](const QString &contextText) mutable {
-            const QString result = contextText.trimmed();
-            SPDLOG_INFO("OCR context result received: {}", result);
-            STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
-            m_llmPostProcessor->postProcess(
-                finalText, result, currentHotwordsText(), receiver,
-                std::move(callback));
-        });
+    co_return result;
 }
 
 QImage VoiceTextProcessor::captureFocusedContextImage() const

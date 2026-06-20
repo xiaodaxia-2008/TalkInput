@@ -3,6 +3,7 @@
 #include "llm_config.h"
 #include "logging.h"
 
+#include <QCoro/QCoroFuture>
 #include <QCoro/QCoroNetworkReply>
 #include <QByteArray>
 #include <QCoreApplication>
@@ -65,26 +66,27 @@ void LlmPostProcessor::shutdown()
     m_serverManager.stop();
 }
 
-void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
-                                   Callback callback)
+QCoro::Task<QString> LlmPostProcessor::postProcess(const QString &text,
+                                                    const QString &contextText,
+                                                    const QString &hotwords)
 {
-    postProcess(text, {}, {}, receiver, std::move(callback));
-}
-
-void LlmPostProcessor::postProcess(const QString &text,
-                                   const QString &contextText,
-                                   const QString &hotwords, QObject *receiver,
-                                   Callback callback)
-{
-    if (text.trimmed().isEmpty()) {
-        callback(text);
-        return;
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        co_return text;
     }
 
-    SPDLOG_DEBUG("LLM post-process queued input: {}", text.trimmed());
-    m_pending.enqueue({text.trimmed(), contextText.trimmed(), hotwords.trimmed(),
-                       receiver, std::move(callback)});
+    SPDLOG_DEBUG("LLM post-process queued input: {}", trimmed);
+
+    auto promise = std::make_unique<QPromise<QString>>();
+    promise->start();
+    QFuture<QString> future = promise->future();
+
+    m_pending.emplace_back(
+        PendingRequest{trimmed, contextText.trimmed(), hotwords.trimmed(),
+                       std::move(promise)});
     ensureReady();
+
+    co_return co_await future;
 }
 
 void LlmPostProcessor::ensureReady()
@@ -104,17 +106,14 @@ void LlmPostProcessor::ensureReady()
 
 void LlmPostProcessor::drainQueue()
 {
-    while (!m_pending.isEmpty()) {
-        sendCompletion(m_pending.dequeue());
+    while (!m_pending.empty()) {
+        sendCompletion(m_pending.front());
+        m_pending.pop_front();
     }
 }
 
-QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
+QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest &request)
 {
-    if (!request.receiver) {
-        co_return;
-    }
-
     QStringList lines = request.text.split('\n', Qt::SkipEmptyParts);
     const QString formattedInput = lines.join(", ");
     const QString cleanedContext = extractOcrWords(request.contextText);
@@ -239,8 +238,9 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
     SPDLOG_DEBUG("LLM post-process output: {}", result);
     reply->deleteLater();
 
-    if (request.receiver && request.callback) {
-        request.callback(result);
+    if (request.promise && !request.promise->isCanceled()) {
+        request.promise->addResult(result);
+        request.promise->finish();
     }
     STATUSBAR_INFO("{}", requestFailed
                               ? tr("LLM post-processing failed; "
@@ -252,11 +252,13 @@ void LlmPostProcessor::failPending(const QString &reason)
 {
     SPDLOG_WARN("LLM post-processor fallback: {}", reason);
     STATUSBAR_INFO("{}", reason);
-    while (!m_pending.isEmpty()) {
-        auto request = m_pending.dequeue();
-        if (request.receiver && request.callback) {
-            request.callback(request.text);
+    while (!m_pending.empty()) {
+        auto &request = m_pending.front();
+        if (request.promise && !request.promise->isCanceled()) {
+            request.promise->addResult(request.text);
+            request.promise->finish();
         }
+        m_pending.pop_front();
     }
 }
 

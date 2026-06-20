@@ -4,14 +4,12 @@
 #include "spawn_llama_server.h"
 
 #include <QCoro/QCoroTask>
+#include <QFuture>
 #include <QNetworkAccessManager>
 #include <QObject>
-#include <QPointer>
-#include <QQueue>
-#include <functional>
+#include <QPromise>
+#include <deque>
 #include <memory>
-
-class QNetworkReply;
 
 namespace talkinput
 {
@@ -21,15 +19,12 @@ class LlmPostProcessor final : public QObject
     Q_OBJECT
 
 public:
-    using Callback = std::function<void(const QString &)>;
-
     explicit LlmPostProcessor(QObject *parent = nullptr);
     ~LlmPostProcessor() override;
 
-    void postProcess(const QString &text, QObject *receiver, Callback callback);
-    void postProcess(const QString &text, const QString &contextText,
-                     const QString &hotwords, QObject *receiver,
-                     Callback callback);
+    QCoro::Task<QString> postProcess(const QString &text,
+                                     const QString &contextText = {},
+                                     const QString &hotwords = {});
 
 private:
     struct PendingRequest
@@ -37,21 +32,20 @@ private:
         QString text;
         QString contextText;
         QString hotwords;
-        QPointer<QObject> receiver;
-        Callback callback;
+        std::unique_ptr<QPromise<QString>> promise;
     };
 
     void shutdown();
 
     void ensureReady();
     void drainQueue();
-    QCoro::Task<void> sendCompletion(PendingRequest request);
+    QCoro::Task<void> sendCompletion(PendingRequest &request);
     void failPending(const QString &reason);
     static QString cleanupResponseText(const QString &text);
 
     QNetworkAccessManager m_network;
     LlamaServerManager m_serverManager;
-    QQueue<PendingRequest> m_pending;
+    std::deque<PendingRequest> m_pending;
 };
 
 } // namespace talkinput

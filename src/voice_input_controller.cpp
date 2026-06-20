@@ -181,15 +181,14 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
     }
 }
 
-void VoiceInputController::postProcessFinalText(const QString &text,
-                                                FinalTextAction finalTextAction)
+QCoro::Task<void> VoiceInputController::postProcessFinalText(
+    const QString &text, FinalTextAction finalTextAction)
 {
     SPDLOG_INFO("VoiceInputController processing final text (mode {})",
                 static_cast<int>(m_pipelineMode));
-    m_textProcessor->processFinalText(text, m_pipelineMode, this,
-        [this, finalTextAction](const QString &processedText) {
-            commitFinalText(processedText.trimmed(), finalTextAction);
-        });
+    const QString result = co_await m_textProcessor->processFinalText(
+        text, m_pipelineMode);
+    commitFinalText(result.trimmed(), finalTextAction);
 }
 
 void VoiceInputController::commitFinalText(const QString &text,
