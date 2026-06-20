@@ -802,7 +802,7 @@ void AsrSettingWidget::initIcons()
 {
     setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", 22);
     m_ui->browserButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->importButton, ":/resources/icons/download.svg", 22);
+    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", 22);
     m_ui->importButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->hotwordsButton, ":/resources/icons/hotwords.svg", 22);
     m_ui->hotwordsButton->setProperty("buttonRole", "icon");
