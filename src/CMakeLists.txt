@@ -192,6 +192,9 @@ add_custom_command(TARGET TalkInput POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/rapidocr_cli.py
     $<TARGET_FILE_DIR:TalkInput>/scripts/rapidocr_cli.py
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/rapidocr_server.py
+    $<TARGET_FILE_DIR:TalkInput>/scripts/rapidocr_server.py
 )
 
 add_subdirectory(tests)

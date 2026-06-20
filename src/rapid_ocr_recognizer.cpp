@@ -3,22 +3,66 @@
 
 #include <QCoreApplication>
 #include <QFileInfo>
-#include <QPointer>
-#include <QProcess>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QTemporaryFile>
+#include <QUrl>
 
 namespace talkinput
 {
 
-bool RapidOcrRecognizer::isAvailable() const
+namespace
 {
-    return QFileInfo::exists(
-        QCoreApplication::applicationDirPath() +
-        QStringLiteral("/scripts/rapidocr_cli.py"));
+
+constexpr int RapidOcrServicePort = 18765;
+constexpr int RapidOcrHealthIntervalMs = 500;
+constexpr int RapidOcrMaxHealthAttempts = 120;
+
+QUrl serviceUrl(const QString &path)
+{
+    return QUrl(QStringLiteral("http://127.0.0.1:%1%2")
+                    .arg(RapidOcrServicePort)
+                    .arg(path));
 }
 
-void RapidOcrRecognizer::recognizeText(const QImage &image,
-                                       QObject *receiver,
+QNetworkRequest jsonRequest(const QUrl &url)
+{
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader,
+                      QStringLiteral("application/json"));
+    return request;
+}
+
+} // namespace
+
+RapidOcrRecognizer::RapidOcrRecognizer(QObject *parent) : OcrRecognizer(parent)
+{
+    m_healthTimer.setInterval(RapidOcrHealthIntervalMs);
+    connect(&m_healthTimer, &QTimer::timeout, this,
+            &RapidOcrRecognizer::pollHealth);
+}
+
+RapidOcrRecognizer::~RapidOcrRecognizer()
+{
+    if (m_service.state() == QProcess::NotRunning) {
+        return;
+    }
+
+    m_service.terminate();
+    if (!m_service.waitForFinished(3000)) {
+        m_service.kill();
+        m_service.waitForFinished(3000);
+    }
+}
+
+bool RapidOcrRecognizer::isAvailable() const
+{
+    return QFileInfo::exists(serverScriptPath());
+}
+
+void RapidOcrRecognizer::recognizeText(const QImage &image, QObject *receiver,
                                        Callback callback)
 {
     if (!receiver || !callback || image.isNull()) {
@@ -45,56 +89,173 @@ void RapidOcrRecognizer::recognizeText(const QImage &image,
     }
     tempFile->close();
 
-    const QString scriptPath =
-        QCoreApplication::applicationDirPath() +
-        QStringLiteral("/scripts/rapidocr_cli.py");
+    m_pendingRequests.push_back({.tempFile = tempFile,
+                                 .path = tempPath,
+                                 .receiver = QPointer<QObject>(receiver),
+                                 .callback = std::move(callback)});
 
-    const QString scriptsDir =
-        QCoreApplication::applicationDirPath() +
-        QStringLiteral("/scripts");
+    ensureServiceStarted();
+    if (m_ready) {
+        flushPendingRequests();
+    }
+}
 
-    auto *process = new QProcess(this);
-    process->setWorkingDirectory(scriptsDir);
-    process->setProgram("uv");
-    process->setArguments({"run", scriptPath, tempPath});
+QString RapidOcrRecognizer::serverScriptPath() const
+{
+    return scriptsDir() + QStringLiteral("/rapidocr_server.py");
+}
 
-    QPointer<QObject> receiverPtr(receiver);
-    auto *tempFilePtr = tempFile;
-    connect(process,
-            QOverload<int, QProcess::ExitStatus>::of(
-                &QProcess::finished),
-            this,
-            [process, tempFilePtr, receiverPtr,
-             callback = std::move(callback)](
-                int exitCode, QProcess::ExitStatus) mutable {
+QString RapidOcrRecognizer::scriptsDir() const
+{
+    return QCoreApplication::applicationDirPath() + QStringLiteral("/scripts");
+}
+
+void RapidOcrRecognizer::ensureServiceStarted()
+{
+    if (m_ready || m_starting) {
+        return;
+    }
+
+    if (m_service.state() != QProcess::NotRunning) {
+        m_starting = true;
+        m_healthAttempts = 0;
+        m_healthTimer.start();
+        return;
+    }
+
+    startService();
+}
+
+void RapidOcrRecognizer::startService()
+{
+    const QString scriptPath = serverScriptPath();
+    if (!QFileInfo::exists(scriptPath)) {
+        SPDLOG_WARN("RapidOcr: service script not found: {}", scriptPath);
+        failPendingRequests();
+        return;
+    }
+
+    connect(
+        &m_service,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+        [this](int exitCode, QProcess::ExitStatus) {
+            const QString stderrText =
+                QString::fromUtf8(m_service.readAllStandardError()).trimmed();
+            SPDLOG_WARN("RapidOcr: service exited with code {}: {}", exitCode,
+                        stderrText);
+            m_ready = false;
+            m_starting = false;
+            m_healthTimer.stop();
+            failPendingRequests();
+        },
+        Qt::UniqueConnection);
+
+    m_starting = true;
+    m_ready = false;
+    m_healthAttempts = 0;
+    m_service.setWorkingDirectory(scriptsDir());
+    m_service.setProgram(QStringLiteral("uv"));
+    m_service.setArguments({QStringLiteral("run"), scriptPath,
+                            QStringLiteral("--port"),
+                            QString::number(RapidOcrServicePort)});
+
+    SPDLOG_INFO("RapidOcr: starting service: uv run {} --port {}", scriptPath,
+                RapidOcrServicePort);
+    m_service.start();
+    m_healthTimer.start();
+}
+
+void RapidOcrRecognizer::pollHealth()
+{
+    ++m_healthAttempts;
+    if (m_healthAttempts > RapidOcrMaxHealthAttempts) {
+        SPDLOG_WARN("RapidOcr: service did not become ready");
+        m_healthTimer.stop();
+        m_starting = false;
+        failPendingRequests();
+        return;
+    }
+
+    auto *reply =
+        m_network.get(jsonRequest(serviceUrl(QStringLiteral("/health"))));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        const bool ok = reply->error() == QNetworkReply::NoError;
+        reply->deleteLater();
+        if (!ok) {
+            return;
+        }
+
+        m_healthTimer.stop();
+        m_starting = false;
+        m_ready = true;
+        SPDLOG_INFO("RapidOcr: service ready");
+        flushPendingRequests();
+    });
+}
+
+void RapidOcrRecognizer::flushPendingRequests()
+{
+    while (!m_pendingRequests.empty()) {
+        auto request = std::move(m_pendingRequests.front());
+        m_pendingRequests.pop_front();
+        dispatchRequest(std::move(request));
+    }
+}
+
+void RapidOcrRecognizer::failPendingRequests()
+{
+    while (!m_pendingRequests.empty()) {
+        auto request = std::move(m_pendingRequests.front());
+        m_pendingRequests.pop_front();
+        delete request.tempFile;
+        completeRequest(request.receiver, std::move(request.callback), {});
+    }
+}
+
+void RapidOcrRecognizer::dispatchRequest(PendingRequest request)
+{
+    QJsonObject body;
+    body.insert(QStringLiteral("path"), request.path);
+
+    auto *reply =
+        m_network.post(jsonRequest(serviceUrl(QStringLiteral("/ocr"))),
+                       QJsonDocument(body).toJson(QJsonDocument::Compact));
+
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, request = std::move(request)]() mutable {
                 QString text;
-                if (exitCode == 0) {
-                    text = QString::fromUtf8(process->readAllStandardOutput())
+                if (reply->error() == QNetworkReply::NoError) {
+                    const auto document =
+                        QJsonDocument::fromJson(reply->readAll());
+                    text = document.object()
+                               .value(QStringLiteral("text"))
+                               .toString()
                                .trimmed();
                 }
                 else {
-                    const QString err =
-                        QString::fromUtf8(
-                            process->readAllStandardError())
-                            .trimmed();
-                    SPDLOG_WARN("RapidOcr: process failed: {}", err);
+                    SPDLOG_WARN("RapidOcr: request failed: {}",
+                                reply->errorString());
+                    m_ready = false;
                 }
 
-                delete tempFilePtr;
-                process->deleteLater();
-
-                if (receiverPtr) {
-                    QMetaObject::invokeMethod(
-                        receiverPtr.data(),
-                        [callback = std::move(callback),
-                         text]() mutable { callback(text); },
-                        Qt::QueuedConnection);
-                }
+                reply->deleteLater();
+                delete request.tempFile;
+                completeRequest(request.receiver, std::move(request.callback),
+                                text);
             });
+}
 
-    SPDLOG_DEBUG("RapidOcr: starting uv run {} {}",
-                 scriptPath, tempPath);
-    process->start();
+void RapidOcrRecognizer::completeRequest(QPointer<QObject> receiver,
+                                         Callback callback, const QString &text)
+{
+    if (!receiver) {
+        return;
+    }
+
+    QMetaObject::invokeMethod(
+        receiver.data(),
+        [callback = std::move(callback), text]() mutable { callback(text); },
+        Qt::QueuedConnection);
 }
 
 } // namespace talkinput
