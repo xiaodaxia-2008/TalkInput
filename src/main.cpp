@@ -22,6 +22,9 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      &talkinput::saveAppConfig);
 
+    talkinput::initLogger();
+    SPDLOG_DEBUG("file logger initialized");
+
     QFile styleFile(":/resources/misc/app.qss");
     if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));

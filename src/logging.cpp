@@ -104,7 +104,8 @@ void installStatusBarLogger(QStatusBar *statusBar)
     auto statusBarSink = std::make_shared<StatusBarSink>(statusLabel);
     statusBarSink->set_level(spdlog::level::info);
 
-    auto logger = std::make_shared<spdlog::logger>("talkinput");
+    auto logger = std::make_shared<spdlog::logger>("statusbar");
+    logger->set_level(spdlog::level::info);
     logger->sinks().push_back(statusBarSink);
     logger->sinks().push_back(getFileSink());
     logger->flush_on(spdlog::level::info);
