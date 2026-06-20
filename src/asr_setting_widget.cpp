@@ -1,9 +1,9 @@
 #include "asr_setting_widget.h"
 #include "app_config.h"
+#include "archive_utils.h"
 #include "asr_config.h"
 #include "llm_config.h"
 #include "logging.h"
-#include "model_download_manager.h"
 #include "ocr_config.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
@@ -13,14 +13,21 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QEvent>
+#include <QFile>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QTextEdit>
+#include <QUrl>
 #include <QVBoxLayout>
 
 namespace talkinput
@@ -519,6 +526,22 @@ QString AsrSettingWidget::currentAsrPresetPath() const
     return m_ui->modelCombo->currentData().toString();
 }
 
+QString AsrSettingWidget::asrPresetPathById(const QString &id) const
+{
+    if (id.isEmpty()) {
+        return {};
+    }
+
+    for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
+        const nlohmann::json preset = asrPresetAt(i);
+        if (jsonString(preset, "id") == id) {
+            return m_ui->modelCombo->itemData(i).toString();
+        }
+    }
+
+    return {};
+}
+
 void AsrSettingWidget::loadActiveAsrPreset()
 {
     auto *vc = VoiceInputController::instance();
@@ -527,57 +550,226 @@ void AsrSettingWidget::loadActiveAsrPreset()
     }
 
     const nlohmann::json preset = talkinput::currentAsrPreset();
-    const QString name = jsonString(preset, "name");
-    if (preset.is_object() && !name.isEmpty()) {
-        SPDLOG_DEBUG("AsrSettingWidget: loading active ASR model {}", name);
-        vc->loadSpeechRecognitionModel(preset);
-        SPDLOG_INFO("Active ASR model loaded: {} ({})", name,
-                    asrModelDir(preset));
+    const QString modelPointer = asrPresetPathById(jsonString(preset, "id"));
+    if (!modelPointer.isEmpty()) {
+        loadAsrPreset(modelPointer);
         return;
     }
 
     vc->unloadSpeechRecognitionModel();
 }
 
-void AsrSettingWidget::loadAsrPreset(const nlohmann::json &preset)
+void AsrSettingWidget::loadAsrPreset(const QString &modelPointer)
 {
+    const nlohmann::json preset = appConfigValue(modelPointer.toStdString());
     auto *vc = VoiceInputController::instance();
-    if (vc) {
-        vc->loadSpeechRecognitionModel(preset);
+    if (!vc) {
+        return;
     }
+
+    const QString name = jsonString(preset, "name");
+    if (!preset.is_object() || name.isEmpty()) {
+        vc->unloadSpeechRecognitionModel();
+        return;
+    }
+
+    if (!isAsrPresetInstalled(preset)) {
+        if (m_asrDownloadReply) {
+            STATUSBAR_INFO("{}", tr("A model download is already running."));
+            return;
+        }
+
+        QString error;
+        if (!enqueueAsrModelDownloads(modelPointer, &error)) {
+            if (!error.isEmpty()) {
+                STATUSBAR_INFO("{}", error);
+            }
+            return;
+        }
+
+        m_requestedAsrModelPointer = modelPointer;
+        startNextAsrModelDownload();
+        return;
+    }
+
+    SPDLOG_DEBUG("AsrSettingWidget: loading ASR model {}", name);
+    vc->loadSpeechRecognitionModel(preset);
+    SPDLOG_INFO("ASR model loaded: {} ({})", name, asrModelDir(preset));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
 // Use / Download
 // ──────────────────────────────────────────────────────────────────────────
 
-ModelDownloadManager &AsrSettingWidget::ensureModelDownloadManager()
+bool AsrSettingWidget::enqueueAsrModelDownloads(const QString &modelPointer,
+                                                QString *errorMessage)
 {
-    if (!m_downloadManager) {
-        m_downloadManager = std::make_unique<ModelDownloadManager>();
-        connect(m_downloadManager.get(), &ModelDownloadManager::downloadStarted,
-                this, [this](const QString &modelName) {
-                    STATUSBAR_INFO("{}",
-                                   tr("Downloading %1...").arg(modelName));
-                });
-        connect(m_downloadManager.get(), &ModelDownloadManager::extracting,
-                this, [this]() { STATUSBAR_INFO("{}", tr("Extracting...")); });
-        connect(m_downloadManager.get(), &ModelDownloadManager::downloadFailed,
-                this, [this](const QString &) {
-                    STATUSBAR_INFO("{}", tr("Download failed"));
-                });
-        connect(m_downloadManager.get(),
-                &ModelDownloadManager::extractionFailed, this,
-                [this](const QString &error) {
-                    QMessageBox::warning(this, tr("Extraction failed"),
-                                         tr("Failed:\n%1").arg(error));
-                    STATUSBAR_INFO("{}", tr("Extraction failed"));
-                });
-        connect(m_downloadManager.get(), &ModelDownloadManager::finished, this,
-                &AsrSettingWidget::onDownloadFinished);
+    const nlohmann::json model = appConfigValue(modelPointer.toStdString());
+    if (!model.is_object()) {
+        if (errorMessage) {
+            *errorMessage = tr("Model preset is invalid.");
+        }
+        return false;
     }
 
-    return *m_downloadManager;
+    const QUrl url(jsonString(model, "url"));
+    if (url.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = tr("Model download URL is empty.");
+        }
+        return false;
+    }
+
+    QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
+    if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
+        if (errorMessage) {
+            *errorMessage = tr("Failed to create model cache directory.");
+        }
+        return false;
+    }
+
+    m_pendingAsrDownloadPointers.clear();
+    if (!isAsrPresetInstalled(model)) {
+        m_pendingAsrDownloadPointers.enqueue(modelPointer);
+    }
+
+    const nlohmann::json punctuationModel =
+        model.value("postPunctuationModel", nlohmann::json::object());
+    if (punctuationModel.is_object() && !punctuationModel.empty() &&
+        !isAsrPresetInstalled(punctuationModel) &&
+        !QUrl(jsonString(punctuationModel, "url")).isEmpty())
+    {
+        m_pendingAsrDownloadPointers.enqueue(
+            modelPointer + QStringLiteral("/postPunctuationModel"));
+    }
+
+    return !m_pendingAsrDownloadPointers.isEmpty();
+}
+
+void AsrSettingWidget::startNextAsrModelDownload()
+{
+    if (m_asrDownloadReply) {
+        STATUSBAR_INFO("{}", tr("A model download is already running."));
+        return;
+    }
+
+    if (m_pendingAsrDownloadPointers.isEmpty()) {
+        onDownloadFinished(m_requestedAsrModelPointer);
+        m_requestedAsrModelPointer.clear();
+        return;
+    }
+
+    m_activeAsrDownloadPointer = m_pendingAsrDownloadPointers.dequeue();
+    const nlohmann::json model =
+        appConfigValue(m_activeAsrDownloadPointer.toStdString());
+    const QUrl url(jsonString(model, "url"));
+    const QString modelName = jsonString(model, "name");
+    const QString archiveName = QFileInfo(url.path()).fileName();
+    const QString modelRoot =
+        QDir(appDataDir()).filePath(QStringLiteral("models"));
+
+    m_activeAsrArchivePath = QDir(modelRoot).filePath(archiveName);
+    m_activeAsrTempPath = m_activeAsrArchivePath + QStringLiteral(".part");
+
+    QFile::remove(m_activeAsrTempPath);
+    m_asrDownloadFile = std::make_unique<QFile>(m_activeAsrTempPath);
+    if (!m_asrDownloadFile->open(QIODevice::WriteOnly)) {
+        STATUSBAR_INFO("{}", tr("Cannot create ASR model download file."));
+        clearAsrModelDownload();
+        return;
+    }
+
+    if (!m_asrDownloadNetwork) {
+        m_asrDownloadNetwork = std::make_unique<QNetworkAccessManager>();
+    }
+
+    STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
+    m_asrDownloadReply = m_asrDownloadNetwork->get(QNetworkRequest(url));
+    connect(m_asrDownloadReply, &QNetworkReply::readyRead, this, [this]() {
+        if (m_asrDownloadReply && m_asrDownloadFile) {
+            m_asrDownloadFile->write(m_asrDownloadReply->readAll());
+        }
+    });
+    connect(m_asrDownloadReply, &QNetworkReply::downloadProgress, this,
+            [this](qint64 received, qint64 total) {
+                if (total <= 0) {
+                    return;
+                }
+                const int percent = static_cast<int>(received * 100 / total);
+                STATUSBAR_INFO("{}",
+                               tr("Downloading ASR model %1%...").arg(percent));
+            });
+    connect(m_asrDownloadReply, &QNetworkReply::finished, this,
+            &AsrSettingWidget::onAsrModelDownloadFinished);
+}
+
+void AsrSettingWidget::onAsrModelDownloadFinished()
+{
+    QNetworkReply *reply = m_asrDownloadReply;
+    m_asrDownloadReply = nullptr;
+
+    const nlohmann::json model =
+        appConfigValue(m_activeAsrDownloadPointer.toStdString());
+    const QString modelName = jsonString(model, "name");
+
+    if (m_asrDownloadFile && reply) {
+        m_asrDownloadFile->write(reply->readAll());
+        m_asrDownloadFile->close();
+    }
+
+    const bool failed = !reply || reply->error() != QNetworkReply::NoError;
+    const QString errorText = reply ? reply->errorString() : QString();
+    if (reply) {
+        reply->deleteLater();
+    }
+    m_asrDownloadFile.reset();
+
+    if (failed) {
+        QFile::remove(m_activeAsrTempPath);
+        STATUSBAR_INFO("{}",
+                       tr("ASR model download failed: %1").arg(errorText));
+        clearAsrModelDownload();
+        return;
+    }
+
+    QFile::remove(m_activeAsrArchivePath);
+    if (!QFile::rename(m_activeAsrTempPath, m_activeAsrArchivePath)) {
+        STATUSBAR_INFO("{}", tr("Failed to save ASR model download."));
+        clearAsrModelDownload();
+        return;
+    }
+
+    QDir dest(QDir(appDataDir()).filePath(QStringLiteral("models")));
+    if (!dest.exists() && !dest.mkpath(QStringLiteral("."))) {
+        STATUSBAR_INFO("{}", tr("Failed to create model directory."));
+        clearAsrModelDownload();
+        return;
+    }
+
+    STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
+    auto result = extractArchive(m_activeAsrArchivePath, dest.absolutePath());
+    QFile::remove(m_activeAsrArchivePath);
+    if (!result) {
+        STATUSBAR_INFO(
+            "{}", tr("ASR model extraction failed: %1").arg(result.error()));
+        clearAsrModelDownload();
+        return;
+    }
+
+    m_activeAsrDownloadPointer.clear();
+    m_activeAsrArchivePath.clear();
+    m_activeAsrTempPath.clear();
+    startNextAsrModelDownload();
+}
+
+void AsrSettingWidget::clearAsrModelDownload()
+{
+    m_asrDownloadFile.reset();
+    m_pendingAsrDownloadPointers.clear();
+    m_requestedAsrModelPointer.clear();
+    m_activeAsrDownloadPointer.clear();
+    m_activeAsrArchivePath.clear();
+    m_activeAsrTempPath.clear();
 }
 
 void AsrSettingWidget::onUseAsrModel()
@@ -588,27 +780,9 @@ void AsrSettingWidget::onUseAsrModel()
         return;
     }
 
-    const QString modelId = jsonString(m, "id");
-    const bool isSystem = isSystemAsrPreset(m);
-
-    if (!isSystem && !isAsrPresetInstalled(m)) {
-        setCurrentAsrProviderId(modelId);
-        QString error;
-        if (!ensureModelDownloadManager().startAsrModelDownload(ptr, &error) &&
-            !error.isEmpty())
-        {
-            STATUSBAR_INFO("{}", error);
-        }
-        return;
-    }
-
-    // Already installed — load directly
-    loadAsrPreset(m);
-    setCurrentAsrProviderId(modelId);
+    setCurrentAsrProviderId(jsonString(m, "id"));
     refreshAsrStatus();
-    STATUSBAR_INFO(
-        "{}",
-        tr("Speech recognition model loaded: %1").arg(jsonString(m, "name")));
+    loadAsrPreset(ptr);
 }
 
 void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
@@ -622,7 +796,7 @@ void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
     refreshAsrStatus();
 
     if (currentAsrProviderId() == jsonString(m, "id")) {
-        loadAsrPreset(m);
+        loadAsrPreset(modelPointer);
         STATUSBAR_INFO("{}", tr("Speech recognition model loaded: %1")
                                  .arg(jsonString(m, "name")));
     }

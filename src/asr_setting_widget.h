@@ -2,13 +2,17 @@
 
 #include "json_utils.h"
 
+#include <QQueue>
 #include <QString>
 #include <QWidget>
 #include <memory>
 
 class QComboBox;
 class QEvent;
+class QFile;
 class QLineEdit;
+class QNetworkAccessManager;
+class QNetworkReply;
 
 namespace Ui
 {
@@ -17,8 +21,6 @@ class AsrSettingWidget;
 
 namespace talkinput
 {
-
-class ModelDownloadManager;
 
 class AsrSettingWidget final : public QWidget
 {
@@ -52,15 +54,27 @@ private:
     void initIcons();
 
     void onDownloadFinished(const QString &modelPointer);
-    ModelDownloadManager &ensureModelDownloadManager();
+    QString asrPresetPathById(const QString &id) const;
     nlohmann::json asrPresetAt(int index) const;
     nlohmann::json currentAsrPreset() const;
     QString currentAsrPresetPath() const;
     void loadActiveAsrPreset();
-    void loadAsrPreset(const nlohmann::json &preset);
+    void loadAsrPreset(const QString &modelPointer);
+    bool enqueueAsrModelDownloads(const QString &modelPointer,
+                                  QString *errorMessage);
+    void startNextAsrModelDownload();
+    void onAsrModelDownloadFinished();
+    void clearAsrModelDownload();
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-    std::unique_ptr<ModelDownloadManager> m_downloadManager;
+    std::unique_ptr<QNetworkAccessManager> m_asrDownloadNetwork;
+    QNetworkReply *m_asrDownloadReply = nullptr;
+    std::unique_ptr<QFile> m_asrDownloadFile;
+    QQueue<QString> m_pendingAsrDownloadPointers;
+    QString m_requestedAsrModelPointer;
+    QString m_activeAsrDownloadPointer;
+    QString m_activeAsrArchivePath;
+    QString m_activeAsrTempPath;
 };
 
 } // namespace talkinput

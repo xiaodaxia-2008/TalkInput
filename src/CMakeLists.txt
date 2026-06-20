@@ -44,8 +44,6 @@ add_executable(TalkInput
     llm_config.h
     llm_post_processor.cpp
     llm_post_processor.h
-    model_download_manager.cpp
-    model_download_manager.h
     native_overlay_effects.h
     rapid_ocr_recognizer.cpp
     rapid_ocr_recognizer.h
