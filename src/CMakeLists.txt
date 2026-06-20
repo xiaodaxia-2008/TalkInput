@@ -28,6 +28,8 @@ add_executable(TalkInput
     asr_config.h
     archive_utils.cpp
     archive_utils.h
+    audio_file_decoder.cpp
+    audio_file_decoder.h
     audio_input_capture.cpp
     audio_input_capture.h
     audio_utils.cpp

@@ -3,7 +3,7 @@
 #include "app_language.h"
 #include "asr_config.h"
 #include "asr_setting_widget.h"
-#include "audio_utils.h"
+#include "audio_file_decoder.h"
 #include "history_widget.h"
 #include "logging.h"
 #include "ui_main_window.h"
@@ -11,21 +11,16 @@
 
 #include <QAction>
 #include <QApplication>
-#include <QAudioDecoder>
 #include <QDesktopServices>
 #include <QDir>
 #include <QEvent>
-#include <QEventLoop>
 #include <QFileDialog>
-#include <QFileInfo>
 #include <QIcon>
 #include <QMenu>
 #include <QMessageBox>
 #include <QSignalBlocker>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
-#include <QThread>
-#include <QTimer>
 #include <QTranslator>
 
 namespace talkinput
@@ -325,76 +320,20 @@ void MainWindow::onRecognizeFile()
     showStatusMessage(tr("Decoding audio..."));
     SPDLOG_INFO("Recognizing file: {}", path);
 
-    auto *decoder = new QAudioDecoder(this);
-    QEventLoop loop;
-
-    QByteArray allPcm;
-    bool ok = false;
-    int decodedSampleRate = 0;
-    int decodedChannels = 0;
-
-    connect(decoder, &QAudioDecoder::bufferReady, this, [&]() {
-        const QAudioBuffer buf = decoder->read();
-        const QAudioFormat format = buf.format();
-        if (decodedSampleRate == 0) {
-            decodedSampleRate = format.sampleRate();
-            decodedChannels = format.channelCount();
-        }
-        else if (decodedSampleRate != format.sampleRate() ||
-                 decodedChannels != format.channelCount())
-        {
-            SPDLOG_WARN("Audio decoder format changed from {} channels {} "
-                        "to {} channels {}",
-                        decodedSampleRate, decodedChannels, format.sampleRate(),
-                        format.channelCount());
-        }
-
-        const QByteArray audioData(buf.constData<char>(), buf.byteCount());
-        allPcm.append(convertAudioToPcm16(audioData, format));
-    });
-
-    connect(decoder, &QAudioDecoder::finished, this, [&]() {
-        ok = true;
-        loop.quit();
-    });
-
-    connect(decoder,
-            static_cast<void (QAudioDecoder::*)(QAudioDecoder::Error)>(
-                &QAudioDecoder::error),
-            this, [&](QAudioDecoder::Error) {
-                SPDLOG_ERROR("Audio decoder error: {}", decoder->errorString());
-                loop.quit();
-            });
-
-    QTimer timeoutTimer;
-    timeoutTimer.setSingleShot(true);
-    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
-
-    decoder->setSource(QUrl::fromLocalFile(path));
-    decoder->start();
-
-    timeoutTimer.start(30000);
-    loop.exec();
-
-    decoder->stop();
-    decoder->deleteLater();
-
-    if (!ok || allPcm.isEmpty()) {
-        showStatusMessage(tr("Failed to decode audio file."));
-        return;
-    }
-
-    if (decodedSampleRate <= 0 || decodedChannels <= 0) {
+    const auto decoded = decodeAudioFileToPcm16(path);
+    if (!decoded) {
         showStatusMessage(tr("Failed to decode audio file."));
         return;
     }
 
     SPDLOG_INFO("Decoded {} bytes of PCM16 from {} at {} Hz channels {}",
-                allPcm.size(), path, decodedSampleRate, decodedChannels);
+                decoded->pcm16.size(), path, decoded->sampleRate,
+                decoded->channels);
 
     if (m_voiceInput) {
         m_voiceInput->startSession();
-        m_voiceInput->feedAudio(allPcm, decodedSampleRate, decodedChannels);
+        m_voiceInput->feedAudio(decoded->pcm16, decoded->sampleRate,
+                                decoded->channels);
         m_voiceInput->finishSession();
     }
     showStatusMessage(tr("Recognition sent to ASR engine"));
