@@ -88,27 +88,6 @@ void VoiceTextProcessor::processFinalText(const QString &text,
                 "ocrEnabled={}",
                 static_cast<int>(pipelineMode), llmEnabled, ocrEnabled);
 
-    auto submitToLlm = [this, finalText, receiver,
-                        callback = std::move(callback)](
-                           const QString &ocrContext) mutable {
-        SPDLOG_INFO("OCR context sent to LLM: {}", ocrContext.trimmed());
-        STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
-        m_llmPostProcessor->postProcess(
-            finalText, ocrContext, currentHotwordsText(), receiver,
-            [finalText, callback = std::move(callback)](
-                const QString &processedText) mutable {
-                SPDLOG_DEBUG(
-                    "Voice input final text after LLM: input='{}' output='{}'",
-                    finalText, processedText);
-                if (callback) {
-                    callback(processedText.trimmed());
-                }
-            });
-    };
-
-    const bool ocrServiceAvailable =
-        m_ocrRecognizer && m_ocrRecognizer->isAvailable();
-
     if (!llmEnabled) {
         SPDLOG_INFO("LLM post-processing skipped: ASR-only mode");
         if (callback) {
@@ -117,21 +96,31 @@ void VoiceTextProcessor::processFinalText(const QString &text,
         return;
     }
 
-    if (!ocrEnabled) {
+    const bool ocrServiceAvailable =
+        m_ocrRecognizer && m_ocrRecognizer->isAvailable();
+
+    if (!ocrEnabled || !ocrServiceAvailable) {
         SPDLOG_INFO("OCR context skipped: ASR+LLM mode");
-        submitToLlm({});
-        return;
-    }
-    if (!ocrServiceAvailable) {
-        SPDLOG_INFO("OCR context skipped: service unavailable");
-        submitToLlm({});
+        m_llmPostProcessor->postProcess(
+            finalText, {}, currentHotwordsText(), receiver,
+            [callback = std::move(callback)](const QString &processedText) mutable {
+                if (callback) {
+                    callback(processedText.trimmed());
+                }
+            });
         return;
     }
 
     const QImage image = captureFocusedContextImage();
     if (image.isNull()) {
         SPDLOG_INFO("OCR context skipped: no focused screenshot");
-        submitToLlm({});
+        m_llmPostProcessor->postProcess(
+            finalText, {}, currentHotwordsText(), receiver,
+            [callback = std::move(callback)](const QString &processedText) mutable {
+                if (callback) {
+                    callback(processedText.trimmed());
+                }
+            });
         return;
     }
 
@@ -140,11 +129,14 @@ void VoiceTextProcessor::processFinalText(const QString &text,
     STATUSBAR_INFO("{}", tr("Reading focused input context..."));
     m_ocrRecognizer->recognizeText(
         image, receiver,
-        [submitToLlm =
-             std::move(submitToLlm)](const QString &contextText) mutable {
+        [this, finalText, receiver,
+         callback = std::move(callback)](const QString &contextText) mutable {
             const QString result = contextText.trimmed();
             SPDLOG_INFO("OCR context result received: {}", result);
-            submitToLlm(result);
+            STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
+            m_llmPostProcessor->postProcess(
+                finalText, result, currentHotwordsText(), receiver,
+                std::move(callback));
         });
 }
 
