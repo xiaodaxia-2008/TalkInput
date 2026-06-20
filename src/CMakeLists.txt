@@ -1,6 +1,6 @@
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh)
 
-add_executable(TalkInput
+add_executable(TalkInput WIN32
     ${PROJECT_SOURCE_DIR}/resources/misc/app.rc
     main.cpp
     main_window.cpp
