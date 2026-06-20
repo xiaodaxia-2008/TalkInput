@@ -66,8 +66,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
                     stopListening();
                 }
                 else {
-                    m_pipelineMode = mode;
-                    startRecording(FinalTextAction::PasteAndRecordHistory);
+                    startRecording(FinalTextAction::PasteAndRecordHistory,
+                                   mode);
                 }
             });
 
