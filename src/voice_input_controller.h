@@ -57,6 +57,8 @@ private:
     void onResult(const QString &text, bool isFinal);
     void postProcessFinalText(const QString &text);
     void injectFinalText(const QString &text);
+    void enterListeningState(const char *logMessage);
+    void leaveListeningState();
     void showOverlay();
     void hideOverlay();
 

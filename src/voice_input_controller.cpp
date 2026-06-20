@@ -73,11 +73,8 @@ bool VoiceInputController::startListening()
     m_recognizerSession->resetStream();
 
     if (!m_recognizerSession->acceptsExternalAudio()) {
-        m_isListening = true;
-        m_lastResult.clear();
-        showOverlay();
-        emit listeningChanged(true);
-        SPDLOG_INFO("Voice input started with recognizer-owned audio source");
+        enterListeningState(
+            "Voice input started with recognizer-owned audio source");
         return true;
     }
 
@@ -87,11 +84,7 @@ bool VoiceInputController::startListening()
         return false;
     }
 
-    m_isListening = true;
-    m_lastResult.clear();
-    showOverlay();
-    emit listeningChanged(true);
-    SPDLOG_INFO("Voice input started");
+    enterListeningState("Voice input started");
     return true;
 }
 
@@ -107,9 +100,7 @@ void VoiceInputController::stopListening()
         m_pendingResult = true;
     }
 
-    m_isListening = false;
-    hideOverlay();
-    emit listeningChanged(false);
+    leaveListeningState();
 }
 
 void VoiceInputController::onResult(const QString &text, bool isFinal)
@@ -150,6 +141,22 @@ void VoiceInputController::injectFinalText(const QString &text)
 
     emit finalTextCommitted(text);
     SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
+}
+
+void VoiceInputController::enterListeningState(const char *logMessage)
+{
+    m_isListening = true;
+    m_lastResult.clear();
+    showOverlay();
+    emit listeningChanged(true);
+    SPDLOG_INFO("{}", logMessage);
+}
+
+void VoiceInputController::leaveListeningState()
+{
+    m_isListening = false;
+    hideOverlay();
+    emit listeningChanged(false);
 }
 
 void VoiceInputController::showOverlay()
