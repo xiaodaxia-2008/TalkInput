@@ -82,11 +82,14 @@ private:
 
 auto getFileSink()
 {
-    const QString logPath =
-        QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
-    auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-        logPath.toStdString(), 10 * 1024 * 1024, 3);
-    fileSink->set_level(spdlog::level::debug);
+    static auto fileSink = []() {
+        const QString logPath =
+            QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
+        auto sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+            logPath.toStdString(), 10 * 1024 * 1024, 3);
+        sink->set_level(spdlog::level::debug);
+        return sink;
+    }();
     return fileSink;
 }
 
@@ -115,8 +118,13 @@ void installStatusBarLogger(QStatusBar *statusBar)
 void initLogger()
 {
     auto logger = std::make_shared<spdlog::logger>("talkinput");
-    logger->set_level(spdlog::level::debug);
     logger->sinks().push_back(getFileSink());
+    auto terminal_sink =
+        std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    terminal_sink->set_level(spdlog::level::debug);
+    logger->sinks().push_back(terminal_sink);
+    logger->set_level(spdlog::level::debug);
+    logger->flush_on(spdlog::level::debug);
     spdlog::register_or_replace(logger);
     spdlog::set_default_logger(logger);
 }
