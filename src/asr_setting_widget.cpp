@@ -519,6 +519,19 @@ QString AsrSettingWidget::currentAsrPresetPath() const
     return m_ui->modelCombo->currentData().toString();
 }
 
+void AsrSettingWidget::loadAsrPreset(const nlohmann::json &preset)
+{
+    auto *vc = VoiceInputController::instance();
+    if (vc) {
+        vc->loadModel(preset);
+    }
+}
+
+void AsrSettingWidget::showAsrModelLoaded(const nlohmann::json &preset)
+{
+    showStatusMessage(tr("Model loaded: %1").arg(jsonString(preset, "name")));
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Use / Download
 // ──────────────────────────────────────────────────────────────────────────
@@ -546,13 +559,10 @@ void AsrSettingWidget::onUseAsrModel()
     }
 
     // Already installed — load directly
-    auto *vc = VoiceInputController::instance();
-    if (vc) {
-        vc->loadModel(m);
-    }
+    loadAsrPreset(m);
     setCurrentAsrProviderId(modelId);
     refreshAsrStatus();
-    showStatusMessage(tr("Model loaded: %1").arg(jsonString(m, "name")));
+    showAsrModelLoaded(m);
 }
 
 void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
@@ -566,11 +576,8 @@ void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
     refreshAsrStatus();
 
     if (currentAsrProviderId() == jsonString(m, "id")) {
-        auto *vc = VoiceInputController::instance();
-        if (vc) {
-            vc->loadModel(m);
-        }
-        showStatusMessage(tr("Model loaded: %1").arg(modelName));
+        loadAsrPreset(m);
+        showAsrModelLoaded(m);
     }
     else {
         showStatusMessage(tr("Downloaded: %1").arg(modelName));

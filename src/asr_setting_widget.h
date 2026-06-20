@@ -56,6 +56,8 @@ private:
     nlohmann::json asrPresetAt(int index) const;
     nlohmann::json currentAsrPreset() const;
     QString currentAsrPresetPath() const;
+    void loadAsrPreset(const nlohmann::json &preset);
+    void showAsrModelLoaded(const nlohmann::json &preset);
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
     ModelDownloadManager *m_downloadManager = nullptr;
