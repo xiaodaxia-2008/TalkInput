@@ -13,7 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <spdlog/sinks/base_sink.h>
-#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace talkinput
@@ -80,6 +80,16 @@ private:
 
 } // namespace
 
+auto getFileSink()
+{
+    const QString logPath =
+        QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
+    auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        logPath.toStdString(), 10 * 1024 * 1024, 3);
+    fileSink->set_level(spdlog::level::debug);
+    return fileSink;
+}
+
 void installStatusBarLogger(QStatusBar *statusBar)
 {
     auto *statusLabel = statusBar->findChild<QLabel *>("statusbarLogLabel");
@@ -92,37 +102,21 @@ void installStatusBarLogger(QStatusBar *statusBar)
     }
 
     auto statusBarSink = std::make_shared<StatusBarSink>(statusLabel);
-    auto terminalSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    terminalSink->set_level(spdlog::level::info);
+    statusBarSink->set_level(spdlog::level::info);
 
-    auto logger = std::make_shared<spdlog::logger>(
-        "statusbar", spdlog::sinks_init_list{statusBarSink, terminalSink});
-    logger->set_level(spdlog::level::info);
+    auto logger = std::make_shared<spdlog::logger>("talkinput");
+    logger->sinks().push_back(statusBarSink);
+    logger->sinks().push_back(getFileSink());
     logger->flush_on(spdlog::level::info);
     spdlog::register_or_replace(logger);
 }
 
 void initLogger()
 {
-    const QString logPath =
-        QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
-    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-        logPath.toStdString(), true);
-    file_sink->set_level(spdlog::level::debug);
-
-    auto default_logger = spdlog::default_logger();
-    auto talkinput_logger = std::make_shared<spdlog::logger>(
-        "talkinput", default_logger->sinks().begin(),
-        default_logger->sinks().end());
-    talkinput_logger->set_level(spdlog::level::debug);
-    talkinput_logger->flush_on(spdlog::level::debug);
-    talkinput_logger->sinks().push_back(file_sink);
-    spdlog::register_or_replace(talkinput_logger);
-    spdlog::set_default_logger(talkinput_logger);
-
-    auto statusbar_logger = spdlog::get("statusbar");
-    if (statusbar_logger) {
-        statusbar_logger->sinks().push_back(file_sink);
-    }
+    auto logger = std::make_shared<spdlog::logger>("talkinput");
+    logger->set_level(spdlog::level::debug);
+    logger->sinks().push_back(getFileSink());
+    spdlog::register_or_replace(logger);
+    spdlog::set_default_logger(logger);
 }
 } // namespace talkinput
