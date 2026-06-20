@@ -38,7 +38,6 @@ private:
     void onLlmProviderChanged(int index);
     void onOcrProviderChanged(int index);
     void onAsrModelChanged(int index);
-    void refreshAsrStatus();
     void onUseAsrModel();
     void onEditHotwords();
     void onEditPrompt();
@@ -54,13 +53,9 @@ private:
     void initIcons();
 
     void onDownloadFinished(const QString &modelPointer);
-    QString asrPresetPathById(const QString &id) const;
-    nlohmann::json asrPresetAt(int index) const;
-    nlohmann::json currentAsrPreset() const;
-    QString currentAsrPresetPath() const;
     void loadActiveAsrPreset();
-    void loadAsrPreset(const QString &modelPointer);
-    bool enqueueAsrModelDownloads(const QString &modelPointer,
+    void loadAsrPreset(const QString &providerId);
+    bool enqueueAsrModelDownloads(const QString &providerId,
                                   QString *errorMessage);
     void startNextAsrModelDownload();
     void onAsrModelDownloadFinished();

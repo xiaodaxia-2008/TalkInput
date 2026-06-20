@@ -43,6 +43,11 @@ QString llmProviderId(const QComboBox *combo)
     return combo->currentData().toString();
 }
 
+QString asrPresetPointer(const QString &providerId)
+{
+    return QStringLiteral("/asrPresets/%1").arg(providerId);
+}
+
 nlohmann::json llmProviderPreset(const QComboBox *combo)
 {
     return talkinput::llmProviderPreset(llmProviderId(combo));
@@ -150,8 +155,7 @@ void AsrSettingWidget::updateUiFromConfig()
     const QString savedAsrProviderId = currentAsrProviderId();
     int asrProviderIndex = -1;
     for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
-        const nlohmann::json preset = asrPresetAt(i);
-        if (jsonString(preset, "id") == savedAsrProviderId) {
+        if (m_ui->modelCombo->itemData(i).toString() == savedAsrProviderId) {
             asrProviderIndex = i;
             break;
         }
@@ -162,7 +166,7 @@ void AsrSettingWidget::updateUiFromConfig()
             m_ui->modelCombo->setCurrentIndex(asrProviderIndex);
         }
     }
-    refreshAsrStatus();
+    onAsrModelChanged(m_ui->modelCombo->currentIndex());
     loadActiveAsrPreset();
 }
 
@@ -452,9 +456,7 @@ void AsrSettingWidget::initAsrModel()
             if (!p.is_object()) {
                 continue;
             }
-            combo->addItem(asrModelLabel(p),
-                           QStringLiteral("/asrPresets/%1")
-                               .arg(QString::fromStdString(key)));
+            combo->addItem(asrModelLabel(p), QString::fromStdString(key));
         }
     }
 
@@ -471,75 +473,12 @@ void AsrSettingWidget::onAsrModelChanged(int index)
         return;
     }
 
-    refreshAsrStatus();
-}
-
-void AsrSettingWidget::refreshAsrStatus()
-{
-    const QString activeId = currentAsrProviderId();
-    const int currentIndex = m_ui->modelCombo->currentIndex();
-    bool currentCanBeActivated = false;
-
-    for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
-        const nlohmann::json m = asrPresetAt(i);
-        if (!m.is_object()) {
-            continue;
-        }
-
-        const bool isActive = (jsonString(m, "id") == activeId);
-        QString label = asrModelLabel(m);
-        if (isActive) {
-            label += QStringLiteral(" (%1)").arg(
-                QCoreApplication::translate("AsrSettingWidget", "Activated"));
-        }
-        m_ui->modelCombo->setItemText(i, label);
-
-        if (i == currentIndex) {
-            currentCanBeActivated = !isActive;
-        }
-    }
-
-    m_ui->useButton->setEnabled(currentCanBeActivated);
-}
-
-nlohmann::json AsrSettingWidget::asrPresetAt(int index) const
-{
-    if (index < 0 || index >= m_ui->modelCombo->count()) {
-        return {};
-    }
-
-    return appConfigValue(
-        m_ui->modelCombo->itemData(index).toString().toStdString());
-}
-
-nlohmann::json AsrSettingWidget::currentAsrPreset() const
-{
-    return asrPresetAt(m_ui->modelCombo->currentIndex());
-}
-
-QString AsrSettingWidget::currentAsrPresetPath() const
-{
-    const int ci = m_ui->modelCombo->currentIndex();
-    if (ci < 0) {
-        return {};
-    }
-    return m_ui->modelCombo->currentData().toString();
-}
-
-QString AsrSettingWidget::asrPresetPathById(const QString &id) const
-{
-    if (id.isEmpty()) {
-        return {};
-    }
-
-    for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
-        const nlohmann::json preset = asrPresetAt(i);
-        if (jsonString(preset, "id") == id) {
-            return m_ui->modelCombo->itemData(i).toString();
-        }
-    }
-
-    return {};
+    const QString currentConfigAsrProviderId = currentAsrProviderId();
+    const QString currentComboItemProviderId =
+        m_ui->modelCombo->itemData(index).toString();
+    m_ui->useButton->setEnabled(!currentComboItemProviderId.isEmpty() &&
+                                currentComboItemProviderId !=
+                                    currentConfigAsrProviderId);
 }
 
 void AsrSettingWidget::loadActiveAsrPreset()
@@ -550,18 +489,18 @@ void AsrSettingWidget::loadActiveAsrPreset()
     }
 
     const nlohmann::json preset = talkinput::currentAsrPreset();
-    const QString modelPointer = asrPresetPathById(jsonString(preset, "id"));
-    if (!modelPointer.isEmpty()) {
-        loadAsrPreset(modelPointer);
+    const QString providerId = jsonString(preset, "id");
+    if (!providerId.isEmpty()) {
+        loadAsrPreset(providerId);
         return;
     }
 
     vc->unloadSpeechRecognitionModel();
 }
 
-void AsrSettingWidget::loadAsrPreset(const QString &modelPointer)
+void AsrSettingWidget::loadAsrPreset(const QString &providerId)
 {
-    const nlohmann::json preset = appConfigValue(modelPointer.toStdString());
+    const nlohmann::json preset = asrPresetById(providerId);
     auto *vc = VoiceInputController::instance();
     if (!vc) {
         return;
@@ -580,14 +519,14 @@ void AsrSettingWidget::loadAsrPreset(const QString &modelPointer)
         }
 
         QString error;
-        if (!enqueueAsrModelDownloads(modelPointer, &error)) {
+        if (!enqueueAsrModelDownloads(providerId, &error)) {
             if (!error.isEmpty()) {
                 STATUSBAR_INFO("{}", error);
             }
             return;
         }
 
-        m_requestedAsrModelPointer = modelPointer;
+        m_requestedAsrModelPointer = asrPresetPointer(providerId);
         startNextAsrModelDownload();
         return;
     }
@@ -601,9 +540,10 @@ void AsrSettingWidget::loadAsrPreset(const QString &modelPointer)
 // Use / Download
 // ──────────────────────────────────────────────────────────────────────────
 
-bool AsrSettingWidget::enqueueAsrModelDownloads(const QString &modelPointer,
+bool AsrSettingWidget::enqueueAsrModelDownloads(const QString &providerId,
                                                 QString *errorMessage)
 {
+    const QString modelPointer = asrPresetPointer(providerId);
     const nlohmann::json model = appConfigValue(modelPointer.toStdString());
     if (!model.is_object()) {
         if (errorMessage) {
@@ -774,15 +714,20 @@ void AsrSettingWidget::clearAsrModelDownload()
 
 void AsrSettingWidget::onUseAsrModel()
 {
-    const QString ptr = currentAsrPresetPath();
-    const nlohmann::json m = currentAsrPreset();
+    const int index = m_ui->modelCombo->currentIndex();
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
+        return;
+    }
+
+    const QString providerId = m_ui->modelCombo->itemData(index).toString();
+    const nlohmann::json m = asrPresetById(providerId);
     if (!m.is_object()) {
         return;
     }
 
-    setCurrentAsrProviderId(jsonString(m, "id"));
-    refreshAsrStatus();
-    loadAsrPreset(ptr);
+    setCurrentAsrProviderId(providerId);
+    m_ui->useButton->setEnabled(false);
+    loadAsrPreset(providerId);
 }
 
 void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
@@ -793,10 +738,9 @@ void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
     }
 
     const QString modelName = jsonString(m, "name");
-    refreshAsrStatus();
 
     if (currentAsrProviderId() == jsonString(m, "id")) {
-        loadAsrPreset(modelPointer);
+        loadAsrPreset(jsonString(m, "id"));
         STATUSBAR_INFO("{}", tr("Speech recognition model loaded: %1")
                                  .arg(jsonString(m, "name")));
     }
@@ -826,7 +770,7 @@ void AsrSettingWidget::changeEvent(QEvent *event)
     QWidget::changeEvent(event);
     if (event->type() == QEvent::LanguageChange) {
         m_ui->retranslateUi(this);
-        refreshAsrStatus();
+        onAsrModelChanged(m_ui->modelCombo->currentIndex());
     }
 }
 

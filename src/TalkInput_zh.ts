@@ -95,29 +95,24 @@
         <translation>OCR 上下文</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="70"/>
+        <location filename="asr_setting_widget.cpp" line="75"/>
         <source>Multilingual</source>
         <translation>多语言</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="82"/>
+        <location filename="asr_setting_widget.cpp" line="87"/>
         <source>Real-time</source>
         <translation>实时</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="83"/>
+        <location filename="asr_setting_widget.cpp" line="88"/>
         <source>Offline</source>
         <translation>离线</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="74"/>
+        <location filename="asr_setting_widget.cpp" line="79"/>
         <source>System</source>
         <translation>系统</translation>
-    </message>
-    <message>
-        <location filename="asr_setting_widget.cpp" line="493"/>
-        <source>Activated</source>
-        <translation>已激活</translation>
     </message>
 </context>
 <context>
@@ -261,139 +256,139 @@
 <context>
     <name>talkinput::AsrSettingWidget</name>
     <message>
-        <location filename="asr_setting_widget.cpp" line="181"/>
+        <location filename="asr_setting_widget.cpp" line="186"/>
         <source>Model name sent to the LLM service</source>
         <translation>发送到 LLM 服务的模型名称</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="235"/>
+        <location filename="asr_setting_widget.cpp" line="240"/>
         <source>LLM provider saved: %1</source>
         <translation>LLM 提供商已保存：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="199"/>
+        <location filename="asr_setting_widget.cpp" line="204"/>
         <source>LLM endpoint saved</source>
         <translation>LLM 端点已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="206"/>
+        <location filename="asr_setting_widget.cpp" line="211"/>
         <source>LLM model saved</source>
         <translation>LLM 模型已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="217"/>
+        <location filename="asr_setting_widget.cpp" line="222"/>
         <source>LLM API key saved</source>
         <translation>LLM API 密钥已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="420"/>
+        <location filename="asr_setting_widget.cpp" line="425"/>
         <source>Hot words saved, reloading speech recognition model...</source>
         <translation>热词已保存，正在重新加载语音识别模型...</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="578"/>
-        <location filename="asr_setting_widget.cpp" line="652"/>
+        <location filename="asr_setting_widget.cpp" line="541"/>
+        <location filename="asr_setting_widget.cpp" line="616"/>
         <source>A model download is already running.</source>
         <translation>已有模型下载正在进行。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="610"/>
+        <location filename="asr_setting_widget.cpp" line="574"/>
         <source>Model preset is invalid.</source>
         <translation>模型预设无效。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="618"/>
+        <location filename="asr_setting_widget.cpp" line="582"/>
         <source>Model download URL is empty.</source>
         <translation>模型下载 URL 为空。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="626"/>
+        <location filename="asr_setting_widget.cpp" line="590"/>
         <source>Failed to create model cache directory.</source>
         <translation>创建模型缓存目录失败。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="677"/>
+        <location filename="asr_setting_widget.cpp" line="641"/>
         <source>Cannot create ASR model download file.</source>
         <translation>无法创建 ASR 模型下载文件。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="686"/>
+        <location filename="asr_setting_widget.cpp" line="650"/>
         <source>Downloading ASR model: %1</source>
         <translation>正在下载 ASR 模型：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="700"/>
+        <location filename="asr_setting_widget.cpp" line="664"/>
         <source>Downloading ASR model %1%...</source>
         <translation>正在下载 ASR 模型 %1%...</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="730"/>
+        <location filename="asr_setting_widget.cpp" line="694"/>
         <source>ASR model download failed: %1</source>
         <translation>ASR 模型下载失败：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="737"/>
+        <location filename="asr_setting_widget.cpp" line="701"/>
         <source>Failed to save ASR model download.</source>
         <translation>保存 ASR 模型下载文件失败。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="744"/>
+        <location filename="asr_setting_widget.cpp" line="708"/>
         <source>Failed to create model directory.</source>
         <translation>创建模型目录失败。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="749"/>
+        <location filename="asr_setting_widget.cpp" line="713"/>
         <source>Extracting ASR model: %1</source>
         <translation>正在解压 ASR 模型：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="754"/>
+        <location filename="asr_setting_widget.cpp" line="718"/>
         <source>ASR model extraction failed: %1</source>
         <translation>ASR 模型解压失败：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="800"/>
+        <location filename="asr_setting_widget.cpp" line="763"/>
         <source>Speech recognition model loaded: %1</source>
         <translation>语音识别模型已加载：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="804"/>
+        <location filename="asr_setting_widget.cpp" line="767"/>
         <source>Downloaded: %1</source>
         <translation>已下载：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="284"/>
-        <location filename="asr_setting_widget.cpp" line="294"/>
+        <location filename="asr_setting_widget.cpp" line="289"/>
+        <location filename="asr_setting_widget.cpp" line="299"/>
         <source>User Prompt</source>
         <translation>用户提示词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="292"/>
+        <location filename="asr_setting_widget.cpp" line="297"/>
         <source>Available variables: {{input}}, {{context}}, {{hotwords}}</source>
         <translation>可用变量：{{input}}、{{context}}、{{hotwords}}</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="302"/>
+        <location filename="asr_setting_widget.cpp" line="307"/>
         <source>Use {{input}}, {{context}}, and {{hotwords}} as needed</source>
         <translation>按需使用 {{input}}、{{context}} 和 {{hotwords}}</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="319"/>
+        <location filename="asr_setting_widget.cpp" line="324"/>
         <source>LLM prompt saved</source>
         <translation>LLM 提示词已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="357"/>
+        <location filename="asr_setting_widget.cpp" line="362"/>
         <source>Hot Words</source>
         <translation>热词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="370"/>
+        <location filename="asr_setting_widget.cpp" line="375"/>
         <source>One hot word per line.</source>
         <translation>每行一个热词。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="379"/>
+        <location filename="asr_setting_widget.cpp" line="384"/>
         <source>Enter hot words, one per line</source>
         <translation>每行输入一个热词</translation>
     </message>
