@@ -1,4 +1,5 @@
 #include "voice_input_controller.h"
+#include "app_config.h"
 #include "audio_input_capture.h"
 #include "logging.h"
 #include "text_injector.h"
@@ -11,6 +12,31 @@
 
 namespace talkinput
 {
+
+QKeySequence hotkeySequence(PipelineMode mode)
+{
+    return QKeySequence(
+        appConfigString(hotkeyConfigPath(mode).toStdString()));
+}
+
+void setHotkeySequence(PipelineMode mode, const QKeySequence &keys)
+{
+    setAppConfigValue(hotkeyConfigPath(mode).toStdString(),
+                      keys.toString().toStdString());
+}
+
+QString hotkeyConfigPath(PipelineMode mode)
+{
+    switch (mode) {
+    case PipelineMode::AsrOnly:
+        return QStringLiteral("/settings/hotkeys/asr");
+    case PipelineMode::AsrLlm:
+        return QStringLiteral("/settings/hotkeys/asrLlm");
+    case PipelineMode::AsrLlmOcr:
+        return QStringLiteral("/settings/hotkeys/asrLlmOcr");
+    }
+    return {};
+}
 
 static VoiceInputController *s_instance = nullptr;
 
@@ -34,14 +60,16 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
             });
 
     m_hotkey = std::make_unique<VoiceHotkey>();
-    connect(m_hotkey.get(), &VoiceHotkey::activated, this, [this]() {
-        if (m_isListening) {
-            stopListening();
-        }
-        else {
-            startRecording(FinalTextAction::PasteAndRecordHistory);
-        }
-    });
+    connect(m_hotkey.get(), &VoiceHotkey::activated, this,
+            [this](PipelineMode mode) {
+                if (m_isListening) {
+                    stopListening();
+                }
+                else {
+                    m_pipelineMode = mode;
+                    startRecording(FinalTextAction::PasteAndRecordHistory);
+                }
+            });
 
     m_overlay = std::make_unique<VoiceOverlay>();
     m_textInjector = std::make_unique<TextInjector>();
@@ -59,9 +87,12 @@ bool VoiceInputController::startListening()
     return startRecording(FinalTextAction::RecordHistoryOnly);
 }
 
-bool VoiceInputController::startRecording(FinalTextAction finalTextAction)
+bool VoiceInputController::startRecording(FinalTextAction finalTextAction,
+                                         PipelineMode pipelineMode)
 {
-    SPDLOG_INFO("VoiceInputController: start listening");
+    m_pipelineMode = pipelineMode;
+    SPDLOG_INFO("VoiceInputController: start listening (mode {})",
+                static_cast<int>(pipelineMode));
 
     if (!beginRecognitionFlow(finalTextAction)) {
         return false;
@@ -153,9 +184,10 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
 void VoiceInputController::postProcessFinalText(const QString &text,
                                                 FinalTextAction finalTextAction)
 {
-    SPDLOG_INFO("VoiceInputController processing final text");
-    m_textProcessor->processFinalText(
-        text, this, [this, finalTextAction](const QString &processedText) {
+    SPDLOG_INFO("VoiceInputController processing final text (mode {})",
+                static_cast<int>(m_pipelineMode));
+    m_textProcessor->processFinalText(text, m_pipelineMode, this,
+        [this, finalTextAction](const QString &processedText) {
             commitFinalText(processedText.trimmed(), finalTextAction);
         });
 }

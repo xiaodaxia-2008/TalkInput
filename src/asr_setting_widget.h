@@ -51,6 +51,7 @@ private:
     void initLlmChecks();
     void initAsrModel();
     void initIcons();
+    void initShortcuts();
 
     void loadActiveAsrPreset();
     void ensureAsrModelReady(const QString &providerId,

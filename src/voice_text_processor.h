@@ -1,5 +1,7 @@
 #pragma once
 
+#include "voice_input_controller.h"
+
 #include <QImage>
 #include <QObject>
 #include <QString>
@@ -23,8 +25,8 @@ public:
     explicit VoiceTextProcessor(QObject *parent = nullptr);
     ~VoiceTextProcessor() override;
 
-    void processFinalText(const QString &text, QObject *receiver,
-                          Callback callback);
+    void processFinalText(const QString &text, PipelineMode pipelineMode,
+                          QObject *receiver, Callback callback);
 
 private:
     QImage captureFocusedContextImage() const;

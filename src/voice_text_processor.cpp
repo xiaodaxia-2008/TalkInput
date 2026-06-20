@@ -73,6 +73,7 @@ VoiceTextProcessor::VoiceTextProcessor(QObject *parent) : QObject(parent)
 VoiceTextProcessor::~VoiceTextProcessor() = default;
 
 void VoiceTextProcessor::processFinalText(const QString &text,
+                                          PipelineMode pipelineMode,
                                           QObject *receiver, Callback callback)
 {
     const QString finalText = text.trimmed();
@@ -80,7 +81,12 @@ void VoiceTextProcessor::processFinalText(const QString &text,
         return;
     }
 
-    SPDLOG_INFO("VoiceTextProcessor received final text for OCR/LLM flow");
+    const bool llmEnabled = pipelineMode != PipelineMode::AsrOnly;
+    const bool ocrEnabled = pipelineMode == PipelineMode::AsrLlmOcr;
+
+    SPDLOG_INFO("VoiceTextProcessor received final text: mode={} llmEnabled={} "
+                "ocrEnabled={}",
+                static_cast<int>(pipelineMode), llmEnabled, ocrEnabled);
 
     auto submitToLlm = [this, finalText, receiver,
                         callback = std::move(callback)](
@@ -102,21 +108,19 @@ void VoiceTextProcessor::processFinalText(const QString &text,
             });
     };
 
-    const bool llmEnabled = m_llmPostProcessor->isEnabled();
-    const bool ocrEnabled = ocrContextEnabledForAsr();
     const bool ocrServiceAvailable =
         m_ocrRecognizer && m_ocrRecognizer->isAvailable();
-    SPDLOG_INFO("OCR/LLM flow: llmEnabled={} ocrEnabled={} "
-                "ocrServiceAvailable={}",
-                llmEnabled, ocrEnabled, ocrServiceAvailable);
 
     if (!llmEnabled) {
-        SPDLOG_INFO("LLM post-processing skipped: disabled");
-        submitToLlm({});
+        SPDLOG_INFO("LLM post-processing skipped: ASR-only mode");
+        if (callback) {
+            callback(finalText);
+        }
         return;
     }
+
     if (!ocrEnabled) {
-        SPDLOG_INFO("OCR context skipped: disabled for ASR");
+        SPDLOG_INFO("OCR context skipped: ASR+LLM mode");
         submitToLlm({});
         return;
     }

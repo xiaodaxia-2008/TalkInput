@@ -266,6 +266,69 @@
     </widget>
     </item>
     <item>
+     <widget class="QGroupBox" name="shortcutGroup">
+      <property name="title">
+       <string>Shortcuts</string>
+      </property>
+      <layout class="QFormLayout" name="shortcutForm">
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="asrShortcutLabel">
+         <property name="text">
+          <string>ASR</string>
+         </property>
+         <property name="toolTip">
+          <string>Speech recognition only</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QKeySequenceEdit" name="asrShortcutEdit"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="asrLlmShortcutLabel">
+         <property name="text">
+          <string>ASR + LLM</string>
+         </property>
+         <property name="toolTip">
+          <string>Speech recognition with LLM polish</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QKeySequenceEdit" name="asrLlmShortcutEdit"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="asrLlmOcrShortcutLabel">
+         <property name="text">
+          <string>ASR + LLM + OCR</string>
+         </property>
+         <property name="toolTip">
+          <string>Speech recognition with LLM polish and OCR context</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QKeySequenceEdit" name="asrLlmOcrShortcutEdit"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
      <spacer name="verticalSpacer">
       <property name="orientation">
        <enum>Qt::Vertical</enum>

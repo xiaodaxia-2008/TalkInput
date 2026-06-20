@@ -1,6 +1,10 @@
 #pragma once
 
+#include "voice_input_controller.h"
+
+#include <QKeySequence>
 #include <QObject>
+#include <array>
 #include <memory>
 
 class QHotkey;
@@ -17,13 +21,14 @@ public:
     ~VoiceHotkey() override;
 
 signals:
-    void activated();
+    void activated(PipelineMode mode);
 
 private:
-    void registerShortcut();
-    void unregisterShortcut();
+    void registerShortcuts();
+    void unregisterShortcuts();
+    void registerShortcut(PipelineMode mode);
 
-    std::unique_ptr<QHotkey> m_hotkey;
+    std::array<std::unique_ptr<QHotkey>, 3> m_hotkeys;
 };
 
 } // namespace talkinput

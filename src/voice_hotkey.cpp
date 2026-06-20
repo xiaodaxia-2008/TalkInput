@@ -2,48 +2,65 @@
 #include "logging.h"
 
 #include <QHotkey>
-#include <QKeySequence>
 
 namespace talkinput
 {
 
 VoiceHotkey::VoiceHotkey(QObject *parent) : QObject(parent)
 {
-    registerShortcut();
+    registerShortcuts();
 }
 
 VoiceHotkey::~VoiceHotkey()
 {
-    unregisterShortcut();
+    unregisterShortcuts();
 }
 
-void VoiceHotkey::registerShortcut()
+void VoiceHotkey::registerShortcuts()
 {
     if (!QHotkey::isPlatformSupported()) {
         SPDLOG_WARN("Global hotkeys are not supported on this platform");
         return;
     }
 
-    m_hotkey = std::make_unique<QHotkey>(
-        QKeySequence(QStringLiteral("Ctrl+Alt+L")), true);
-    connect(m_hotkey.get(), &QHotkey::activated, this, &VoiceHotkey::activated);
-
-    if (!m_hotkey->isRegistered()) {
-        SPDLOG_WARN("Failed to register global hotkey: Ctrl+Alt+L");
-    }
-    else {
-        SPDLOG_INFO("Global hotkey registered: Ctrl+Alt+L");
-    }
+    registerShortcut(PipelineMode::AsrOnly);
+    registerShortcut(PipelineMode::AsrLlm);
+    registerShortcut(PipelineMode::AsrLlmOcr);
 }
 
-void VoiceHotkey::unregisterShortcut()
+void VoiceHotkey::registerShortcut(PipelineMode mode)
 {
-    if (!m_hotkey) {
+    const int idx = static_cast<int>(mode);
+    const QKeySequence keys = hotkeySequence(mode);
+
+    if (keys.isEmpty()) {
+        SPDLOG_DEBUG("Skipping empty hotkey for mode {}", idx);
         return;
     }
 
-    m_hotkey->setRegistered(false);
-    m_hotkey.reset();
+    m_hotkeys[idx] =
+        std::make_unique<QHotkey>(keys, true, this);
+
+    connect(m_hotkeys[idx].get(), &QHotkey::activated, this,
+            [this, mode]() { emit activated(mode); });
+
+    if (!m_hotkeys[idx]->isRegistered()) {
+        SPDLOG_WARN("Failed to register hotkey {} for mode {}",
+                    keys.toString(), idx);
+    }
+    else {
+        SPDLOG_INFO("Hotkey registered: {} (mode {})", keys.toString(), idx);
+    }
+}
+
+void VoiceHotkey::unregisterShortcuts()
+{
+    for (auto &hk : m_hotkeys) {
+        if (hk) {
+            hk->setRegistered(false);
+            hk.reset();
+        }
+    }
 }
 
 } // namespace talkinput

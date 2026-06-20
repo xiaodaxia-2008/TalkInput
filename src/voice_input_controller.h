@@ -3,6 +3,7 @@
 #include "json_utils.h"
 
 #include <QByteArray>
+#include <QKeySequence>
 #include <QObject>
 
 #include <memory>
@@ -17,6 +18,17 @@ class VoiceHotkey;
 class VoiceRecognizerSession;
 class VoiceTextProcessor;
 class VoiceOverlay;
+
+enum class PipelineMode
+{
+    AsrOnly,
+    AsrLlm,
+    AsrLlmOcr
+};
+
+QKeySequence hotkeySequence(PipelineMode mode);
+void setHotkeySequence(PipelineMode mode, const QKeySequence &keys);
+QString hotkeyConfigPath(PipelineMode mode);
 
 class VoiceInputController final : public QObject
 {
@@ -61,7 +73,8 @@ private:
         PasteAndRecordHistory
     };
 
-    bool startRecording(FinalTextAction finalTextAction);
+    bool startRecording(FinalTextAction finalTextAction,
+                        PipelineMode pipelineMode = PipelineMode::AsrLlmOcr);
     void onResult(const QString &text, bool isFinal);
     void postProcessFinalText(const QString &text,
                               FinalTextAction finalTextAction);
@@ -86,6 +99,7 @@ private:
     bool m_busy = false;
     bool m_processingFinalText = false;
     FinalTextAction m_finalTextAction = FinalTextAction::RecordHistoryOnly;
+    PipelineMode m_pipelineMode = PipelineMode::AsrLlmOcr;
 };
 
 } // namespace talkinput

@@ -20,6 +20,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QKeySequenceEdit>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -107,6 +108,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     initLlmChecks();
     initAsrModel();
     initIcons();
+    initShortcuts();
 
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
@@ -173,6 +175,18 @@ void AsrSettingWidget::updateUiFromConfig()
     }
     onAsrModelChanged(m_ui->modelCombo->currentIndex());
     loadActiveAsrPreset();
+
+    {
+        const QSignalBlocker b1(m_ui->asrShortcutEdit);
+        const QSignalBlocker b2(m_ui->asrLlmShortcutEdit);
+        const QSignalBlocker b3(m_ui->asrLlmOcrShortcutEdit);
+        m_ui->asrShortcutEdit->setKeySequence(
+            hotkeySequence(PipelineMode::AsrOnly));
+        m_ui->asrLlmShortcutEdit->setKeySequence(
+            hotkeySequence(PipelineMode::AsrLlm));
+        m_ui->asrLlmOcrShortcutEdit->setKeySequence(
+            hotkeySequence(PipelineMode::AsrLlmOcr));
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -728,6 +742,23 @@ void AsrSettingWidget::initIcons()
     m_ui->hotwordsButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg", 22);
     m_ui->promptEditButton->setProperty("buttonRole", "icon");
+}
+
+void AsrSettingWidget::initShortcuts()
+{
+    auto saveShortcut = [this](PipelineMode mode, QKeySequenceEdit *edit) {
+        connect(edit, &QKeySequenceEdit::editingFinished, this,
+                [mode, edit]() {
+                    setHotkeySequence(mode, edit->keySequence());
+                    STATUSBAR_INFO("{}", QCoreApplication::translate(
+                                            "AsrSettingWidget",
+                                            "Shortcut saved"));
+                });
+    };
+
+    saveShortcut(PipelineMode::AsrOnly, m_ui->asrShortcutEdit);
+    saveShortcut(PipelineMode::AsrLlm, m_ui->asrLlmShortcutEdit);
+    saveShortcut(PipelineMode::AsrLlmOcr, m_ui->asrLlmOcrShortcutEdit);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
