@@ -30,6 +30,20 @@
 
 namespace talkinput
 {
+namespace
+{
+
+void showStatusMessage(const QString &message)
+{
+    spdlog::get("statusbar")->info("{}", message);
+}
+
+void showStatusError(const QString &message)
+{
+    spdlog::get("statusbar")->error("{}", message);
+}
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>())
@@ -78,21 +92,17 @@ void MainWindow::setupUi()
     SPDLOG_DEBUG("setupUi: creating VoiceInputController");
     m_voiceInput = new VoiceInputController(this);
 
-    connect(
-        m_voiceInput, &VoiceInputController::modelLoadResult, this,
-        [this](bool success, const QString &error) {
-            if (!success) {
-                spdlog::get("statusbar")
-                    ->error("{}", tr("Model load failed: %1").arg(error));
-            }
-            else {
-                const auto preset = currentAsrPreset();
-                spdlog::get("statusbar")
-                    ->info(
-                        "{}",
+    connect(m_voiceInput, &VoiceInputController::modelLoadResult, this,
+            [this](bool success, const QString &error) {
+                if (!success) {
+                    showStatusError(tr("Model load failed: %1").arg(error));
+                }
+                else {
+                    const auto preset = currentAsrPreset();
+                    showStatusMessage(
                         tr("Model ready: %1").arg(jsonString(preset, "name")));
-            }
-        });
+                }
+            });
 
     // ── History tab ────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: creating HistoryWidget");
@@ -114,7 +124,7 @@ void MainWindow::setupUi()
     connect(m_ui->actionRecognizeFile, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
 
-    spdlog::get("statusbar")->info("{}", tr("Loading model..."));
+    showStatusMessage(tr("Loading model..."));
     SPDLOG_INFO("Starting ASR service");
 
     // resultChanged comes from VoiceInputController → onResult
@@ -206,8 +216,7 @@ void MainWindow::setupAsrSettingWidget()
     connect(m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
             [this]() {
                 SPDLOG_INFO("Hot words changed, reloading ASR model...");
-                spdlog::get("statusbar")
-                    ->info("{}", tr("Hot words saved, reloading model..."));
+                showStatusMessage(tr("Hot words saved, reloading model..."));
                 if (m_voiceInput) {
                     const nlohmann::json preset = currentAsrPreset();
                     if (preset.is_object()) {
@@ -276,9 +285,8 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setText(tr("Stop recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
         const QString name = jsonString(currentAsrPreset(), "name");
-        spdlog::get("statusbar")
-            ->info("{}", name.isEmpty() ? tr("Listening...")
-                                        : tr("Listening — %1").arg(name));
+        showStatusMessage(name.isEmpty() ? tr("Listening...")
+                                         : tr("Listening — %1").arg(name));
     }
     else {
         m_ui->actionStartRecognition->setIcon(
@@ -288,12 +296,11 @@ void MainWindow::updateControls(bool listening)
         const QString type = jsonString(currentAsrPreset(), "type");
         if (!m_voiceInput->isModelLoaded() && type != QStringLiteral("System"))
         {
-            spdlog::get("statusbar")->info("{}", tr("No model selected"));
+            showStatusMessage(tr("No model selected"));
         }
         else {
-            spdlog::get("statusbar")
-                ->info("{}", tr("Model: %1")
-                                 .arg(jsonString(currentAsrPreset(), "name")));
+            showStatusMessage(
+                tr("Model: %1").arg(jsonString(currentAsrPreset(), "name")));
         }
     }
 }
@@ -301,9 +308,8 @@ void MainWindow::updateControls(bool listening)
 void MainWindow::onRecognizeFile()
 {
     if (m_voiceInput && !m_voiceInput->acceptsExternalAudio()) {
-        spdlog::get("statusbar")
-            ->info("{}", tr("Selected recognizer does not support audio file "
-                            "recognition."));
+        showStatusMessage(
+            tr("Selected recognizer does not support audio file recognition."));
         return;
     }
 
@@ -315,7 +321,7 @@ void MainWindow::onRecognizeFile()
         return;
     }
 
-    spdlog::get("statusbar")->info("{}", tr("Decoding audio..."));
+    showStatusMessage(tr("Decoding audio..."));
     SPDLOG_INFO("Recognizing file: {}", path);
 
     auto *decoder = new QAudioDecoder(this);
@@ -373,14 +379,12 @@ void MainWindow::onRecognizeFile()
     decoder->deleteLater();
 
     if (!ok || allPcm.isEmpty()) {
-        spdlog::get("statusbar")
-            ->info("{}", tr("Failed to decode audio file."));
+        showStatusMessage(tr("Failed to decode audio file."));
         return;
     }
 
     if (decodedSampleRate <= 0 || decodedChannels <= 0) {
-        spdlog::get("statusbar")
-            ->info("{}", tr("Failed to decode audio file."));
+        showStatusMessage(tr("Failed to decode audio file."));
         return;
     }
 
@@ -392,7 +396,7 @@ void MainWindow::onRecognizeFile()
         m_voiceInput->feedAudio(allPcm, decodedSampleRate, decodedChannels);
         m_voiceInput->finishSession();
     }
-    spdlog::get("statusbar")->info("{}", tr("Recognition sent to ASR engine"));
+    showStatusMessage(tr("Recognition sent to ASR engine"));
 }
 
 void MainWindow::quitApplication()
@@ -446,7 +450,7 @@ void MainWindow::resetUserSettings()
 
     loadConfiguredAsrModel(true);
 
-    spdlog::get("statusbar")->info("{}", tr("Settings reset to defaults"));
+    showStatusMessage(tr("Settings reset to defaults"));
 }
 
 void MainWindow::loadConfiguredAsrModel(bool reportNoModel)
@@ -467,7 +471,7 @@ void MainWindow::loadConfiguredAsrModel(bool reportNoModel)
 
     m_voiceInput->unloadModel();
     if (reportNoModel) {
-        spdlog::get("statusbar")->info("{}", tr("No model selected"));
+        showStatusMessage(tr("No model selected"));
     }
 }
 
