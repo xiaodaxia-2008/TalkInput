@@ -107,12 +107,12 @@ void LlmPostProcessor::ensureReady()
 void LlmPostProcessor::drainQueue()
 {
     while (!m_pending.empty()) {
-        sendCompletion(m_pending.front());
+        sendCompletion(std::move(m_pending.front()));
         m_pending.pop_front();
     }
 }
 
-QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest &request)
+QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
 {
     QStringList lines = request.text.split('\n', Qt::SkipEmptyParts);
     const QString formattedInput = lines.join(", ");

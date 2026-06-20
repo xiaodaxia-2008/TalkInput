@@ -39,7 +39,7 @@ private:
 
     void ensureReady();
     void drainQueue();
-    QCoro::Task<void> sendCompletion(PendingRequest &request);
+    QCoro::Task<void> sendCompletion(PendingRequest request);
     void failPending(const QString &reason);
     static QString cleanupResponseText(const QString &text);
 
