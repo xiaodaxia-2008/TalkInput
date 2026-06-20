@@ -279,12 +279,14 @@ void MainWindow::stopListening()
 
 void MainWindow::updateControls(bool listening)
 {
+    const nlohmann::json preset = currentAsrPreset();
+
     if (listening) {
         m_ui->actionStartRecognition->setIcon(
             QIcon(":/resources/icons/stop.svg"));
         m_ui->actionStartRecognition->setText(tr("Stop recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
-        const QString name = jsonString(currentAsrPreset(), "name");
+        const QString name = jsonString(preset, "name");
         showStatusMessage(name.isEmpty() ? tr("Listening...")
                                          : tr("Listening — %1").arg(name));
     }
@@ -293,14 +295,13 @@ void MainWindow::updateControls(bool listening)
             QIcon(":/resources/icons/mic.svg"));
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
-        const QString type = jsonString(currentAsrPreset(), "type");
+        const QString type = jsonString(preset, "type");
         if (!m_voiceInput->isModelLoaded() && type != QStringLiteral("System"))
         {
             showStatusMessage(tr("No model selected"));
         }
         else {
-            showStatusMessage(
-                tr("Model: %1").arg(jsonString(currentAsrPreset(), "name")));
+            showStatusMessage(tr("Model: %1").arg(jsonString(preset, "name")));
         }
     }
 }
