@@ -120,6 +120,7 @@ target_link_libraries(TalkInput
     QCoro6::Core
     QCoro6::Network
     spdlog::spdlog_header_only
+    fmt::fmt-header-only
     nlohmann_json::nlohmann_json
 )
 

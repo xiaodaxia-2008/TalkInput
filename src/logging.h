@@ -30,4 +30,6 @@ namespace talkinput
 
 void installStatusBarLogger(QStatusBar *statusBar);
 
+void initLogger();
+
 } // namespace talkinput
