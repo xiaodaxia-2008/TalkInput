@@ -1,4 +1,5 @@
 #include "voice_overlay.h"
+#include "native_overlay_effects.h"
 #include "scroll_text_display.h"
 
 #include <QCursor>
@@ -9,64 +10,6 @@
 #include <QLabel>
 #include <QPropertyAnimation>
 #include <QScreen>
-
-#ifdef Q_OS_WIN
-#define NOMINMAX
-#include <windows.h>
-#endif
-
-namespace
-{
-
-#ifdef Q_OS_WIN
-static void enableAcrylic(HWND hwnd)
-{
-    HMODULE hUser = GetModuleHandleW(L"user32.dll");
-    if (!hUser) {
-        return;
-    }
-
-    using SWCA = BOOL(WINAPI *)(HWND, void *);
-    auto func = reinterpret_cast<SWCA>(
-        GetProcAddress(hUser, "SetWindowCompositionAttribute"));
-    if (!func) {
-        return;
-    }
-
-    struct AccentPolicy
-    {
-        DWORD state;
-        DWORD flags;
-        DWORD color;
-        DWORD animId;
-    };
-
-    struct WinCompAttrData
-    {
-        DWORD attr;
-        const void *data;
-        DWORD dataSize;
-    };
-
-    AccentPolicy accent = {4, 0, 0xC0101012, 0};
-    WinCompAttrData wcad = {19, &accent, sizeof(accent)};
-    func(hwnd, &wcad);
-}
-
-void applyNativeOverlayEffects(QWidget *widget)
-{
-    HWND hwnd = reinterpret_cast<HWND>(widget->winId());
-    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-    enableAcrylic(hwnd);
-}
-#else
-void applyNativeOverlayEffects(QWidget *)
-{
-}
-#endif
-
-} // namespace
 
 namespace talkinput
 {

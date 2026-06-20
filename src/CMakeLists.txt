@@ -46,6 +46,7 @@ add_executable(TalkInput
     llm_post_processor.h
     model_download_manager.cpp
     model_download_manager.h
+    native_overlay_effects.h
     rapid_ocr_recognizer.cpp
     rapid_ocr_recognizer.h
     spawn_llama_server.cpp
@@ -127,6 +128,7 @@ if(WIN32)
     target_sources(TalkInput PRIVATE
         windows/paste_text.cpp
         windows/port_killer.cpp
+        windows/native_overlay_effects.cpp
         windows/system_ocr_recognizer.cpp
         windows/system_speech_recognizer.cpp
         windows/system_speech_support.cpp
@@ -135,6 +137,7 @@ elseif(APPLE)
     target_sources(TalkInput PRIVATE
         macos/paste_text.cpp
         macos/port_killer.cpp
+        macos/native_overlay_effects.cpp
         macos/system_ocr_recognizer.cpp
         macos/system_speech_recognizer.cpp
         macos/system_speech_support.cpp
@@ -143,6 +146,7 @@ elseif(UNIX)
     target_sources(TalkInput PRIVATE
         linux/paste_text.cpp
         linux/port_killer.cpp
+        linux/native_overlay_effects.cpp
         linux/system_ocr_recognizer.cpp
         linux/system_speech_recognizer.cpp
         linux/system_speech_support.cpp
