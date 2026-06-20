@@ -66,11 +66,6 @@ void LlmPostProcessor::shutdown()
     m_serverManager.stop();
 }
 
-bool LlmPostProcessor::isEnabled() const
-{
-    return true;
-}
-
 void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
                                    Callback callback)
 {
@@ -82,7 +77,7 @@ void LlmPostProcessor::postProcess(const QString &text,
                                    const QString &hotwords, QObject *receiver,
                                    Callback callback)
 {
-    if (text.trimmed().isEmpty() || !isEnabled()) {
+    if (text.trimmed().isEmpty()) {
         callback(text);
         return;
     }

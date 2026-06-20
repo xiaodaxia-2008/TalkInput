@@ -25,7 +25,6 @@ public:
     explicit LlmPostProcessor(QObject *parent = nullptr);
     ~LlmPostProcessor() override;
 
-    bool isEnabled() const;
     void postProcess(const QString &text, QObject *receiver, Callback callback);
     void postProcess(const QString &text, const QString &contextText,
                      const QString &hotwords, QObject *receiver,

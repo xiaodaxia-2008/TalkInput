@@ -91,10 +91,8 @@ void VoiceTextProcessor::processFinalText(const QString &text,
     auto submitToLlm = [this, finalText, receiver,
                         callback = std::move(callback)](
                            const QString &ocrContext) mutable {
-        if (m_llmPostProcessor->isEnabled()) {
-            SPDLOG_INFO("OCR context sent to LLM: {}", ocrContext.trimmed());
-            STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
-        }
+        SPDLOG_INFO("OCR context sent to LLM: {}", ocrContext.trimmed());
+        STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
         m_llmPostProcessor->postProcess(
             finalText, ocrContext, currentHotwordsText(), receiver,
             [finalText, callback = std::move(callback)](
