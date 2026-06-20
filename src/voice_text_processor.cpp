@@ -172,7 +172,6 @@ QImage VoiceTextProcessor::captureFocusedContextImage() const
                  "{}x{} dpr={}",
                  screen->name(), pixmap.width(), pixmap.height(),
                  pixmap.devicePixelRatio());
-    saveOcrDebugImage(image);
     return image;
 }
 
