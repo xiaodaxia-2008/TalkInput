@@ -31,9 +31,6 @@ public:
 protected:
     void changeEvent(QEvent *event) override;
 
-signals:
-    void hotwordsChanged();
-
 private:
     void onLlmProviderChanged(int index);
     void onOcrProviderChanged(int index);
@@ -56,6 +53,7 @@ private:
     nlohmann::json asrPresetAt(int index) const;
     nlohmann::json currentAsrPreset() const;
     QString currentAsrPresetPath() const;
+    void loadActiveAsrPreset();
     void loadAsrPreset(const nlohmann::json &preset);
     void showAsrModelLoaded(const nlohmann::json &preset);
 

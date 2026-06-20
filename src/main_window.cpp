@@ -177,9 +177,6 @@ void MainWindow::setupUi()
     connect(m_ui->actionExit, &QAction::triggered, this,
             &MainWindow::quitApplication);
 
-    // ── Restore persisted state & load model ────────────────────
-    loadConfiguredAsrModel(false);
-
     SPDLOG_DEBUG("setupUi: end");
 }
 
@@ -196,20 +193,6 @@ void MainWindow::setupAsrSettingWidget()
     m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
     SPDLOG_DEBUG("setupAsrSettingWidget: widget added");
-
-    connect(
-        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
-            SPDLOG_INFO("Hot words changed, reloading ASR model...");
-            STATUSBAR_INFO(
-                "{}",
-                tr("Hot words saved, reloading speech recognition model..."));
-            if (m_voiceInput) {
-                const nlohmann::json preset = currentAsrPreset();
-                if (preset.is_object()) {
-                    m_voiceInput->loadSpeechRecognitionModel(preset);
-                }
-            }
-        });
 }
 
 void MainWindow::setupTrayIcon()
@@ -385,31 +368,7 @@ void MainWindow::resetUserSettings()
 
     setupAsrSettingWidget();
 
-    loadConfiguredAsrModel(true);
-
     STATUSBAR_INFO("{}", tr("Settings reset to defaults"));
-}
-
-void MainWindow::loadConfiguredAsrModel(bool reportNoModel)
-{
-    if (!m_voiceInput) {
-        return;
-    }
-
-    const nlohmann::json preset = currentAsrPreset();
-    const QString name = jsonString(preset, "name");
-    if (preset.is_object() && !name.isEmpty()) {
-        SPDLOG_DEBUG("MainWindow: loading configured ASR model {}", name);
-        m_voiceInput->loadSpeechRecognitionModel(preset);
-        SPDLOG_INFO("Configured ASR model loaded: {} ({})", name,
-                    asrModelDir(preset));
-        return;
-    }
-
-    m_voiceInput->unloadSpeechRecognitionModel();
-    if (reportNoModel) {
-        STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
-    }
 }
 
 } // namespace talkinput

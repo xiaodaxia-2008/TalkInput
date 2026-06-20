@@ -137,6 +137,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     initLlmChecks();
     initAsrModel();
     initIcons();
+    loadActiveAsrPreset();
 
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
@@ -390,8 +391,9 @@ void AsrSettingWidget::onEditHotwords()
         }
     }
     setAppConfigValue("/settings/hotwords", std::move(arr));
-    STATUSBAR_INFO("{}", tr("Hot words saved"));
-    emit hotwordsChanged();
+    STATUSBAR_INFO(
+        "{}", tr("Hot words saved, reloading speech recognition model..."));
+    loadActiveAsrPreset();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -522,6 +524,26 @@ QString AsrSettingWidget::currentAsrPresetPath() const
         return {};
     }
     return m_ui->modelCombo->currentData().toString();
+}
+
+void AsrSettingWidget::loadActiveAsrPreset()
+{
+    auto *vc = VoiceInputController::instance();
+    if (!vc) {
+        return;
+    }
+
+    const nlohmann::json preset = talkinput::currentAsrPreset();
+    const QString name = jsonString(preset, "name");
+    if (preset.is_object() && !name.isEmpty()) {
+        SPDLOG_DEBUG("AsrSettingWidget: loading active ASR model {}", name);
+        vc->loadSpeechRecognitionModel(preset);
+        SPDLOG_INFO("Active ASR model loaded: {} ({})", name,
+                    asrModelDir(preset));
+        return;
+    }
+
+    vc->unloadSpeechRecognitionModel();
 }
 
 void AsrSettingWidget::loadAsrPreset(const nlohmann::json &preset)

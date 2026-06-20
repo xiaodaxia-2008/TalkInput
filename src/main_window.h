@@ -44,7 +44,6 @@ private:
     void quitApplication();
     void onSwitchLanguage(const QString &lang);
     void resetUserSettings();
-    void loadConfiguredAsrModel(bool reportNoModel);
 
     std::unique_ptr<Ui::MainWindow> m_ui;
     AsrSettingWidget *m_asrSettingWidget = nullptr;
