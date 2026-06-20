@@ -23,33 +23,23 @@ namespace talkinput
 namespace
 {
 
-// Resolve the punctuation model path from the nested postPunctuationModel
-// config block that lives inside the recognizer's own preset. The punctuation
-// model is downloaded under appDataDir()/models/<modelDirName>/<file>.
+// Resolve the punctuation model path from punctuationModelFile in the
+// main preset's files block, resolved relative to the model directory.
 QString configuredPunctuationModelPath(const nlohmann::json &config)
 {
-    const nlohmann::json punct =
-        config.value("postPunctuationModel", nlohmann::json::object());
-    if (!punct.is_object() || punct.empty()) {
-        return {};
-    }
-
-    const QString punctDirName = jsonString(punct, "modelDirName");
-    if (punctDirName.isEmpty()) {
-        return {};
-    }
-
-    const nlohmann::json punctFiles =
-        punct.value("files", nlohmann::json::object());
-    const QString punctFile = jsonString(punctFiles, "punctuationModelFile");
+    const nlohmann::json files =
+        config.value("files", nlohmann::json::object());
+    const QString punctFile = jsonString(files, "punctuationModelFile");
     if (punctFile.isEmpty()) {
         return {};
     }
 
-    const QString punctDir =
-        QDir(QDir(appDataDir()).filePath(QStringLiteral("models")))
-            .filePath(punctDirName);
-    return QDir(punctDir).filePath(punctFile);
+    const QString modelDir = jsonString(config, "modelDir");
+    if (modelDir.isEmpty()) {
+        return {};
+    }
+
+    return QDir(modelDir).filePath(punctFile);
 }
 
 } // namespace

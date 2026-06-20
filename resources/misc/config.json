@@ -28,9 +28,9 @@
       "name": "Paraformer",
       "type": "StreamingParaformer",
       "languages": "zh,en",
-      "modelDirName": "sherpa-onnx-streaming-paraformer-bilingual-zh-en",
-      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2",
-      "size": 62914560,
+      "modelDirName": "sherpa-onnx-streaming-paraformer-bilingual-zh-en-punct-int8",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en-punct-int8.tar.bz2",
+      "size": 289876673,
       "paramCount": 0,
       "streamingSupport": true,
       "hotwordsSupport": false,
@@ -44,16 +44,8 @@
       "files": {
         "encoderFile": "encoder.int8.onnx",
         "decoderFile": "decoder.int8.onnx",
-        "tokensFile": "tokens.txt"
-      },
-      "postPunctuationModel": {
-        "languages": "zh,en",
-        "modelDirName": "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8",
-        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12-int8.tar.bz2",
-        "size": 65011712,
-        "files": {
-          "punctuationModelFile": "model.int8.onnx"
-        }
+        "tokensFile": "tokens.txt",
+        "punctuationModelFile": "model.int8.onnx"
       }
     },
     "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17": {
@@ -111,20 +103,6 @@
         "funasrEmbeddingFile": "embedding.int8.onnx",
         "funasrTokenizerFile>dir": "Qwen3-0.6B"
       }
-    },
-    "system-speech-recognizer": {
-      "id": "system-speech-recognizer",
-      "name": "System",
-      "type": "System",
-      "languages": "system",
-      "modelDirName": "",
-      "url": "",
-      "size": 0,
-      "paramCount": 0,
-      "streamingSupport": true,
-      "hotwordsSupport": false,
-      "params": {},
-      "files": {}
     }
   },
   "llmPresets": {
