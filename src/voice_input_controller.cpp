@@ -39,7 +39,7 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
             stopListening();
         }
         else {
-            startListening(FinalTextAction::PasteAndRecordHistory);
+            startRecording(FinalTextAction::PasteAndRecordHistory);
         }
     });
 
@@ -56,10 +56,10 @@ VoiceInputController::~VoiceInputController()
 
 bool VoiceInputController::startListening()
 {
-    return startListening(FinalTextAction::RecordHistoryOnly);
+    return startRecording(FinalTextAction::RecordHistoryOnly);
 }
 
-bool VoiceInputController::startListening(FinalTextAction finalTextAction)
+bool VoiceInputController::startRecording(FinalTextAction finalTextAction)
 {
     SPDLOG_INFO("VoiceInputController: start listening");
 

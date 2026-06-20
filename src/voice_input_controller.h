@@ -61,7 +61,7 @@ private:
         PasteAndRecordHistory
     };
 
-    bool startListening(FinalTextAction finalTextAction);
+    bool startRecording(FinalTextAction finalTextAction);
     void onResult(const QString &text, bool isFinal);
     void postProcessFinalText(const QString &text,
                               FinalTextAction finalTextAction);
