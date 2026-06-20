@@ -252,6 +252,10 @@ void MainWindow::setupTrayIcon()
 
 void MainWindow::startListening()
 {
+    if (!m_voiceInput) {
+        return;
+    }
+
     if (!m_voiceInput->isModelLoaded()) {
         QMessageBox::warning(
             this, tr("Speech recognition"),
@@ -260,9 +264,7 @@ void MainWindow::startListening()
         return;
     }
 
-    if (m_voiceInput) {
-        m_voiceInput->startListening();
-    }
+    m_voiceInput->startListening();
 }
 
 void MainWindow::stopListening()
