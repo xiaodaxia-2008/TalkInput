@@ -13,11 +13,11 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QCoro/QCoroNetworkReply>
+#include <QCoro/QCoroSignal>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
-#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -599,9 +599,6 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
 
         STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
 
-        bool dlOk = false;
-        QString dlError;
-        QEventLoop loop;
         ParallelDownloader dl(&m_network, 4, this);
         QObject::connect(&dl, &ParallelDownloader::downloadProgress, this,
                          [this](qint64 received, qint64 total) {
@@ -615,14 +612,10 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
                                  tr("Downloading ASR model %1%...")
                                      .arg(percent));
                          });
-        QObject::connect(&dl, &ParallelDownloader::finished, &loop,
-                         [&](bool ok, const QString &err) {
-                             dlOk = ok;
-                             dlError = err;
-                             loop.quit();
-                         });
         dl.start(url, archivePath);
-        loop.exec();
+
+        auto result = co_await qCoro(&dl, &ParallelDownloader::finished);
+        auto [dlOk, dlError] = result;
 
         if (!m_isDownloading) {
             co_return;
@@ -637,12 +630,14 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
         }
 
         STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
-        auto result = extractArchive(archivePath, modelRoot.absolutePath());
+        auto extractResult =
+            extractArchive(archivePath, modelRoot.absolutePath());
         QFile::remove(archivePath);
-        if (!result) {
+        if (!extractResult) {
             STATUSBAR_INFO(
                 "{}",
-                tr("ASR model extraction failed: %1").arg(result.error()));
+                tr("ASR model extraction failed: %1")
+                    .arg(extractResult.error()));
             downloadCleanupFail();
             co_return;
         }
