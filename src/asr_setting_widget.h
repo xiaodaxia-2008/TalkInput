@@ -2,7 +2,8 @@
 
 #include "json_utils.h"
 
-#include <QPointer>
+#include <QNetworkAccessManager>
+#include <QQueue>
 #include <QString>
 #include <QWidget>
 #include <functional>
@@ -10,8 +11,9 @@
 
 class QComboBox;
 class QEvent;
+class QFile;
 class QLineEdit;
-class QObject;
+class QNetworkReply;
 
 namespace Ui
 {
@@ -43,7 +45,6 @@ private:
     void applyLlmProviderToUi(const nlohmann::json &provider);
     void refreshPromptLabel();
 
-    // Init helpers
     void initLlmProviders();
     void initLlmPrompt();
     void initOcrProvider();
@@ -56,8 +57,23 @@ private:
                              std::function<void()> onReady);
     void loadInstalledAsrModel(const QString &providerId);
 
+    bool enqueueDownload(const QString &modelPointer, QString *errorMessage);
+    void startNextDownload();
+    void onDownloadFinished();
+    void downloadFinishReady();
+    void downloadFail();
+
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-    QPointer<QObject> m_asrModelLoadChain;
+
+    bool m_isDownloading = false;
+    std::function<void()> m_onDownloadReady;
+    QNetworkAccessManager m_network;
+    QNetworkReply *m_reply = nullptr;
+    std::unique_ptr<QFile> m_downloadFile;
+    QQueue<QString> m_pendingDownloads;
+    QString m_activeDownloadPointer;
+    QString m_activeArchivePath;
+    QString m_activeTempPath;
 };
 
 } // namespace talkinput
