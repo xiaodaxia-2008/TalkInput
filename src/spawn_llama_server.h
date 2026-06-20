@@ -4,7 +4,9 @@
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QProcess>
+#include <QString>
 #include <QTimer>
+#include <QUrl>
 #include <expected>
 #include <memory>
 
@@ -12,6 +14,9 @@ class QNetworkReply;
 
 namespace talkinput
 {
+
+QString llamaServerExecutableName();
+QUrl llamaServerArchiveUrl();
 
 class LlamaServerManager : public QObject
 {

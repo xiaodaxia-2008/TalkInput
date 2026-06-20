@@ -134,6 +134,7 @@ if(WIN32)
         windows/system_ocr_recognizer.cpp
         windows/system_speech_recognizer.cpp
         windows/system_speech_support.cpp
+        windows/llama_server_archive.cpp
     )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE
@@ -143,6 +144,7 @@ elseif(APPLE)
         macos/system_ocr_recognizer.cpp
         macos/system_speech_recognizer.cpp
         macos/system_speech_support.cpp
+        macos/llama_server_archive.cpp
     )
 elseif(UNIX)
     target_sources(TalkInput PRIVATE
@@ -152,6 +154,7 @@ elseif(UNIX)
         linux/system_ocr_recognizer.cpp
         linux/system_speech_recognizer.cpp
         linux/system_speech_support.cpp
+        linux/llama_server_archive.cpp
     )
 endif()
 

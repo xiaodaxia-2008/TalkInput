@@ -21,7 +21,6 @@ struct LocalServiceInfo
 {
     int port = 8765;
     int maxHealthAttempts = 120;
-    QUrl archiveUrl;
 };
 
 LocalServiceInfo localServiceInfo()
@@ -31,10 +30,6 @@ LocalServiceInfo localServiceInfo()
         .port = jsonInt(provider, "localServicePort", 8765),
         .maxHealthAttempts =
             jsonInt(provider, "localServiceMaxHealthAttempts", 120),
-        .archiveUrl = QUrl(jsonString(
-            provider, "localServiceArchiveUrl",
-            QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/"
-                           "download/b9685/llama-b9685-bin-win-cpu-x64.zip"))),
     };
 }
 
@@ -193,7 +188,8 @@ QString LlamaServerManager::modelDir() const
 
 QString LlamaServerManager::llamaArchivePath() const
 {
-    return QDir(baseDir()).filePath("llama-b9685-bin-win-cpu-x64.zip");
+    const QUrl url = llamaServerArchiveUrl();
+    return QDir(baseDir()).filePath(QFileInfo(url.path()).fileName());
 }
 
 QString LlamaServerManager::modelPath() const
@@ -207,7 +203,8 @@ QString LlamaServerManager::modelPath() const
 
 QString LlamaServerManager::serverExecutablePath() const
 {
-    QDirIterator it(llamaDir(), {"llama-server.exe"}, QDir::Files,
+    const QString exeName = llamaServerExecutableName();
+    QDirIterator it(llamaDir(), {exeName}, QDir::Files,
                     QDirIterator::Subdirectories);
     if (it.hasNext()) {
         return it.next();
@@ -231,7 +228,7 @@ void LlamaServerManager::prepare()
 
     if (serverExecutablePath().isEmpty()) {
         STATUSBAR_INFO("{}", tr("Downloading LLM runtime..."));
-        beginDownload(DownloadKind::LlamaArchive, service.archiveUrl,
+        beginDownload(DownloadKind::LlamaArchive, llamaServerArchiveUrl(),
                       llamaArchivePath());
         return;
     }
@@ -349,7 +346,7 @@ void LlamaServerManager::startServer()
 
     const QString executable = serverExecutablePath();
     if (executable.isEmpty()) {
-        emit failed(tr("llama-server.exe was not found."));
+        emit failed(tr("%1 was not found.").arg(llamaServerExecutableName()));
         return;
     }
 

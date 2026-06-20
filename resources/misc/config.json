@@ -141,7 +141,11 @@
       "managedLocalService": true,
       "localServicePort": 8765,
       "localServiceMaxHealthAttempts": 120,
-      "localServiceArchiveUrl": "https://github.com/ggml-org/llama.cpp/releases/download/b9685/llama-b9685-bin-win-cpu-x64.zip"
+      "localServiceArchiveUrl": {
+        "windows": "https://github.com/ggml-org/llama.cpp/releases/download/b9685/llama-b9685-bin-win-cpu-x64.zip",
+        "linux": "https://github.com/ggml-org/llama.cpp/releases/download/b9685/llama-b9685-bin-ubuntu-x64.zip",
+        "macos": "https://github.com/ggml-org/llama.cpp/releases/download/b9685/llama-b9685-bin-macos-arm64.zip"
+      }
     },
     "deepseek": {
       "id": "deepseek",
