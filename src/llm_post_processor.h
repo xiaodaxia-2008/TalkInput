@@ -3,6 +3,7 @@
 #include "json_utils.h"
 #include "spawn_llama_server.h"
 
+#include <QCoro/QCoroTask>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QPointer>
@@ -43,8 +44,8 @@ private:
     void shutdown();
 
     void ensureReady();
-    void sendCompletion(const PendingRequest &request);
     void drainQueue();
+    QCoro::Task<void> sendCompletion(PendingRequest request);
     void failPending(const QString &reason);
     static QString cleanupResponseText(const QString &text);
 
