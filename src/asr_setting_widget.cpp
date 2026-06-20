@@ -468,31 +468,39 @@ void AsrSettingWidget::initAsrModel()
 void AsrSettingWidget::onAsrModelChanged(int index)
 {
     if (index < 0 || index >= m_ui->modelCombo->count()) {
+        m_ui->useButton->setEnabled(false);
         return;
     }
 
-    const nlohmann::json m = asrPresetAt(index);
-    if (!m.is_object()) {
-        return;
-    }
-
-    const QString modelId = jsonString(m, "id");
-    const bool isActive = (modelId == currentAsrProviderId());
-
-    QString label = asrModelLabel(m);
-    if (isActive) {
-        label += QStringLiteral(" (%1)").arg(
-            QCoreApplication::translate("AsrSettingWidget", "Activated"));
-    }
-    m_ui->modelCombo->setItemText(index, label);
-    m_ui->useButton->setEnabled(!isActive);
+    refreshAsrStatus();
 }
 
 void AsrSettingWidget::refreshAsrStatus()
 {
-    if (m_ui->modelCombo->count() > 0) {
-        onAsrModelChanged(m_ui->modelCombo->currentIndex());
+    const QString activeId = currentAsrProviderId();
+    const int currentIndex = m_ui->modelCombo->currentIndex();
+    bool currentCanBeActivated = false;
+
+    for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
+        const nlohmann::json m = asrPresetAt(i);
+        if (!m.is_object()) {
+            continue;
+        }
+
+        const bool isActive = (jsonString(m, "id") == activeId);
+        QString label = asrModelLabel(m);
+        if (isActive) {
+            label += QStringLiteral(" (%1)").arg(
+                QCoreApplication::translate("AsrSettingWidget", "Activated"));
+        }
+        m_ui->modelCombo->setItemText(i, label);
+
+        if (i == currentIndex) {
+            currentCanBeActivated = !isActive;
+        }
     }
+
+    m_ui->useButton->setEnabled(currentCanBeActivated);
 }
 
 nlohmann::json AsrSettingWidget::asrPresetAt(int index) const
