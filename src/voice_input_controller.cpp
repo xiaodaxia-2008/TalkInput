@@ -1,10 +1,10 @@
 #include "voice_input_controller.h"
-#include "asr_config.h"
 #include "audio_input_capture.h"
 #include "logging.h"
 #include "text_injector.h"
 #include "voice_hotkey.h"
 #include "voice_overlay.h"
+#include "voice_recognizer_session.h"
 #include "voice_text_processor.h"
 
 // ── VoiceInputController ─────────────────────────────────────────
@@ -22,12 +22,14 @@ VoiceInputController *VoiceInputController::instance()
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
+    m_recognizerSession = new VoiceRecognizerSession(this);
+    connect(m_recognizerSession, &VoiceRecognizerSession::resultChanged, this,
+            &VoiceInputController::onResult);
+
     m_audioCapture = new AudioInputCapture(this);
     connect(m_audioCapture, &AudioInputCapture::pcm16Ready, this,
             [this](const QByteArray &pcm16, int sampleRate, int channels) {
-                if (m_recognizer) {
-                    m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
-                }
+                m_recognizerSession->feedAudio(pcm16, sampleRate, channels);
             });
 
     m_hotkey = new VoiceHotkey(this);
@@ -60,7 +62,7 @@ bool VoiceInputController::startListening()
         return false;
     }
 
-    if (!m_recognizer) {
+    if (!m_recognizerSession->isModelLoaded()) {
         SPDLOG_WARN("ASR model not loaded");
         spdlog::get("statusbar")
             ->info("{}",
@@ -68,9 +70,9 @@ bool VoiceInputController::startListening()
         return false;
     }
 
-    m_recognizer->resetStream();
+    m_recognizerSession->resetStream();
 
-    if (!m_recognizer->acceptsExternalAudio()) {
+    if (!m_recognizerSession->acceptsExternalAudio()) {
         m_isListening = true;
         m_lastResult.clear();
         showOverlay();
@@ -101,12 +103,8 @@ void VoiceInputController::stopListening()
         m_audioCapture->stop();
     }
 
-    if (m_recognizer && m_recognizer->isRunning()) {
+    if (m_recognizerSession->finishRunningStream()) {
         m_pendingResult = true;
-        m_recognizer->finish();
-        if (m_recognizer->acceptsExternalAudio()) {
-            m_recognizer->resetStream();
-        }
     }
 
     m_isListening = false;
@@ -172,65 +170,51 @@ void VoiceInputController::hideOverlay()
 
 void VoiceInputController::loadModel(const nlohmann::json &preset)
 {
-    unloadModel();
-
-    const QString modelDir = asrModelDir(preset);
-
-    auto recognizer = SpeechRecognizer::createFromConfig(
-        preset, modelDir, currentHotwordsConfig(), this);
-    if (!recognizer) {
+    const auto result = m_recognizerSession->loadModel(preset);
+    if (!result) {
         SPDLOG_ERROR("VoiceInputController: model load failed: {}",
-                     recognizer.error());
-        emit modelLoadResult(false, recognizer.error());
+                     result.error());
+        emit modelLoadResult(false, result.error());
         return;
     }
-
-    connect(recognizer->get(), &SpeechRecognizer::resultChanged, this,
-            &VoiceInputController::onResult);
-    m_recognizer = std::move(*recognizer);
-
-    // Persist providerId
-    setCurrentAsrProviderId(jsonString(preset, "id"));
 
     emit modelLoadResult(true, {});
 }
 
 void VoiceInputController::unloadModel()
 {
-    if (m_recognizer && m_recognizer->isRunning()) {
-        m_recognizer->stop();
-    }
-    m_recognizer.reset();
+    m_recognizerSession->unloadModel();
 }
 
 void VoiceInputController::startSession()
 {
-    if (m_recognizer) {
-        m_recognizer->resetStream();
-    }
+    m_recognizerSession->resetStream();
 }
 
 void VoiceInputController::feedAudio(const QByteArray &pcm16, int sampleRate,
                                      int channels)
 {
-    if (m_recognizer) {
-        m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
-    }
+    m_recognizerSession->feedAudio(pcm16, sampleRate, channels);
 }
 
 void VoiceInputController::finishSession()
 {
-    if (m_recognizer && m_recognizer->isRunning()) {
-        m_recognizer->finish();
-        if (m_recognizer->acceptsExternalAudio()) {
-            m_recognizer->resetStream();
-        }
-    }
+    m_recognizerSession->finishRunningStream();
 }
 
 bool VoiceInputController::acceptsExternalAudio() const
 {
-    return !m_recognizer || m_recognizer->acceptsExternalAudio();
+    return !m_recognizerSession || m_recognizerSession->acceptsExternalAudio();
+}
+
+bool VoiceInputController::isModelLoaded() const
+{
+    return m_recognizerSession && m_recognizerSession->isModelLoaded();
+}
+
+SpeechRecognizer *VoiceInputController::recognizer() const
+{
+    return m_recognizerSession ? m_recognizerSession->recognizer() : nullptr;
 }
 
 } // namespace talkinput

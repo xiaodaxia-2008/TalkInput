@@ -1,6 +1,6 @@
 #pragma once
 
-#include "speech_recognizer.h"
+#include "json_utils.h"
 
 #include <QByteArray>
 #include <QObject>
@@ -11,8 +11,10 @@ namespace talkinput
 {
 
 class AudioInputCapture;
+class SpeechRecognizer;
 class TextInjector;
 class VoiceHotkey;
+class VoiceRecognizerSession;
 class VoiceTextProcessor;
 class VoiceOverlay;
 
@@ -31,17 +33,11 @@ public:
         return m_isListening;
     }
 
-    bool isModelLoaded() const
-    {
-        return m_recognizer != nullptr;
-    }
+    bool isModelLoaded() const;
 
     bool acceptsExternalAudio() const;
 
-    SpeechRecognizer *recognizer() const
-    {
-        return m_recognizer.get();
-    }
+    SpeechRecognizer *recognizer() const;
 
 signals:
     void listeningChanged(bool listening);
@@ -64,7 +60,7 @@ private:
     void showOverlay();
     void hideOverlay();
 
-    std::unique_ptr<SpeechRecognizer> m_recognizer;
+    VoiceRecognizerSession *m_recognizerSession = nullptr;
     AudioInputCapture *m_audioCapture = nullptr;
     TextInjector *m_textInjector = nullptr;
     VoiceTextProcessor *m_textProcessor = nullptr;

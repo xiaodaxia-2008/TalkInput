@@ -14,6 +14,8 @@ add_executable(TalkInput
     voice_input_controller.h
     voice_overlay.cpp
     voice_overlay.h
+    voice_recognizer_session.cpp
+    voice_recognizer_session.h
     voice_text_processor.cpp
     voice_text_processor.h
     app_config.cpp
