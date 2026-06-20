@@ -720,6 +720,9 @@ void AsrSettingWidget::onOpenModelUrl()
 
 void AsrSettingWidget::onImportModel()
 {
+    m_isDownloading = false;
+    m_onDownloadReady = nullptr;
+
     const int index = m_ui->modelCombo->currentIndex();
     if (index < 0 || index >= m_ui->modelCombo->count()) {
         return;
