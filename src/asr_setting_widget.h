@@ -53,6 +53,8 @@ private:
     void initIcons();
 
     void onDownloadFinished(const QString &modelPointer);
+    nlohmann::json asrPresetAt(int index) const;
+    nlohmann::json currentAsrPreset() const;
     QString currentAsrPresetPath() const;
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;

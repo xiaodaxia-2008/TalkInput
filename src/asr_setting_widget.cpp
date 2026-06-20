@@ -444,8 +444,7 @@ void AsrSettingWidget::initAsrModel()
     int restoreIdx = -1;
     if (!savedId.isEmpty()) {
         for (int i = 0; i < combo->count(); ++i) {
-            const nlohmann::json m =
-                appConfigValue(combo->itemData(i).toString().toStdString());
+            const nlohmann::json m = asrPresetAt(i);
             if (jsonString(m, "id") == savedId) {
                 restoreIdx = i;
                 break;
@@ -472,8 +471,7 @@ void AsrSettingWidget::onAsrModelChanged(int index)
         return;
     }
 
-    const nlohmann::json m = appConfigValue(
-        m_ui->modelCombo->itemData(index).toString().toStdString());
+    const nlohmann::json m = asrPresetAt(index);
     if (!m.is_object()) {
         return;
     }
@@ -497,6 +495,21 @@ void AsrSettingWidget::refreshAsrStatus()
     }
 }
 
+nlohmann::json AsrSettingWidget::asrPresetAt(int index) const
+{
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
+        return {};
+    }
+
+    return appConfigValue(
+        m_ui->modelCombo->itemData(index).toString().toStdString());
+}
+
+nlohmann::json AsrSettingWidget::currentAsrPreset() const
+{
+    return asrPresetAt(m_ui->modelCombo->currentIndex());
+}
+
 QString AsrSettingWidget::currentAsrPresetPath() const
 {
     const int ci = m_ui->modelCombo->currentIndex();
@@ -513,7 +526,7 @@ QString AsrSettingWidget::currentAsrPresetPath() const
 void AsrSettingWidget::onUseAsrModel()
 {
     const QString ptr = currentAsrPresetPath();
-    const nlohmann::json m = appConfigValue(ptr.toStdString());
+    const nlohmann::json m = currentAsrPreset();
     if (!m.is_object()) {
         return;
     }
