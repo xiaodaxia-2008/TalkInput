@@ -14,11 +14,13 @@
 #include <QCoreApplication>
 #include <QCoro/QCoroNetworkReply>
 #include <QCoro/QCoroSignal>
+#include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QKeySequenceEdit>
@@ -30,6 +32,7 @@
 #include <QNetworkRequest>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QStandardPaths>
 #include <QTextEdit>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -462,11 +465,17 @@ void AsrSettingWidget::initAsrModel()
             &AsrSettingWidget::onAsrModelChanged);
     connect(m_ui->useButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseAsrModel);
+    connect(m_ui->browserButton, &QPushButton::clicked, this,
+            &AsrSettingWidget::onOpenModelUrl);
+    connect(m_ui->importButton, &QPushButton::clicked, this,
+            &AsrSettingWidget::onImportModel);
 }
 
 void AsrSettingWidget::onAsrModelChanged(int index)
 {
-    if (index < 0 || index >= m_ui->modelCombo->count() || m_isDownloading) {
+    if (index < 0 || index >= m_ui->modelCombo->count() ||
+        m_ui->modelCombo->itemData(index).toString().isEmpty())
+    {
         m_ui->useButton->setEnabled(false);
         return;
     }
@@ -474,9 +483,11 @@ void AsrSettingWidget::onAsrModelChanged(int index)
     const QString currentConfigAsrProviderId = currentAsrProviderId();
     const QString currentComboItemProviderId =
         m_ui->modelCombo->itemData(index).toString();
-    m_ui->useButton->setEnabled(!currentComboItemProviderId.isEmpty() &&
-                                currentComboItemProviderId !=
-                                    currentConfigAsrProviderId);
+    auto *vc = VoiceInputController::instance();
+    const bool loaded =
+        vc && vc->isSpeechRecognitionModelLoaded() &&
+        currentComboItemProviderId == currentConfigAsrProviderId;
+    m_ui->useButton->setEnabled(!loaded);
 }
 
 void AsrSettingWidget::loadActiveAsrPreset()
@@ -684,12 +695,115 @@ void AsrSettingWidget::onUseAsrModel()
     });
 }
 
+void AsrSettingWidget::onOpenModelUrl()
+{
+    const int index = m_ui->modelCombo->currentIndex();
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
+        return;
+    }
+
+    const QString providerId = m_ui->modelCombo->itemData(index).toString();
+    if (providerId.isEmpty()) {
+        return;
+    }
+
+    const QString pointer = asrPresetPointer(providerId);
+    const nlohmann::json m = appConfigValue(pointer.toStdString());
+    const QString url = jsonString(m, "url");
+    if (url.isEmpty()) {
+        STATUSBAR_INFO("{}", tr("No download URL for this model."));
+        return;
+    }
+
+    QDesktopServices::openUrl(QUrl(url));
+}
+
+void AsrSettingWidget::onImportModel()
+{
+    const int index = m_ui->modelCombo->currentIndex();
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
+        return;
+    }
+
+    const QString providerId = m_ui->modelCombo->itemData(index).toString();
+    if (providerId.isEmpty()) {
+        return;
+    }
+
+    const QString pointer = asrPresetPointer(providerId);
+    const nlohmann::json m = appConfigValue(pointer.toStdString());
+    const QString url = jsonString(m, "url");
+    if (url.isEmpty()) {
+        STATUSBAR_INFO("{}", tr("No download URL for this model."));
+        return;
+    }
+
+    const QString expectedName = QFileInfo(QUrl(url).path()).fileName();
+    const QString filePath = QFileDialog::getOpenFileName(
+        this, tr("Import Model Archive"),
+        QStandardPaths::writableLocation(QStandardPaths::DownloadLocation),
+        tr("Archives (%1);;All files (*)").arg(expectedName));
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    const QString actualName = QFileInfo(filePath).fileName();
+    if (actualName != expectedName) {
+        QMessageBox::warning(
+            this, tr("Invalid File"),
+            tr("The selected file must be named:\n%1\n\nSelected:\n%2")
+                .arg(expectedName, actualName));
+        return;
+    }
+
+    QDir modelRoot(
+        QDir(appDataDir()).filePath(QStringLiteral("models")));
+    if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
+        STATUSBAR_INFO("{}",
+                       tr("Failed to create model cache directory."));
+        return;
+    }
+
+    const QString destPath = modelRoot.filePath(expectedName);
+    if (QFile::exists(destPath)) {
+        QFile::remove(destPath);
+    }
+
+    if (!QFile::copy(filePath, destPath)) {
+        STATUSBAR_INFO("{}", tr("Failed to import model archive."));
+        return;
+    }
+
+    const QString modelName = jsonString(m, "name");
+    STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
+    auto result = extractArchive(destPath, modelRoot.absolutePath());
+    QFile::remove(destPath);
+    if (!result) {
+        STATUSBAR_INFO("{}",
+                       tr("ASR model extraction failed: %1")
+                           .arg(result.error()));
+        return;
+    }
+
+    STATUSBAR_INFO("{}",
+                   tr("ASR model imported: %1").arg(modelName));
+
+    if (providerId == currentAsrProviderId()) {
+        loadInstalledAsrModel(providerId);
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Icons
 // ──────────────────────────────────────────────────────────────────────────
 
 void AsrSettingWidget::initIcons()
 {
+    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", 22);
+    m_ui->browserButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->importButton, ":/resources/icons/download.svg", 22);
+    m_ui->importButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->hotwordsButton, ":/resources/icons/hotwords.svg", 22);
     m_ui->hotwordsButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg", 22);

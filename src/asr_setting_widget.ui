@@ -62,6 +62,26 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="browserButton">
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>Open download page in browser</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="importButton">
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>Import downloaded model archive</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="useButton">
           <property name="enabled">
            <bool>false</bool>

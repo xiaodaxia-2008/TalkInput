@@ -39,6 +39,8 @@ private:
     void onOcrProviderChanged(int index);
     void onAsrModelChanged(int index);
     void onUseAsrModel();
+    void onOpenModelUrl();
+    void onImportModel();
     void onEditHotwords();
     void onEditPrompt();
     void applyLlmProviderToUi(const nlohmann::json &provider);
