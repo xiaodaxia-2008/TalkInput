@@ -83,8 +83,7 @@ void VoiceTextProcessor::processFinalText(const QString &text,
                            const QString &ocrContext) mutable {
         if (m_llmPostProcessor->isEnabled()) {
             SPDLOG_DEBUG("OCR context sent to LLM: {}", ocrContext.trimmed());
-            spdlog::get("statusbar")
-                ->info("{}", tr("Post-processing recognition result..."));
+            STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
         }
         m_llmPostProcessor->postProcess(
             finalText, ocrContext, currentHotwordsText(), receiver,
@@ -132,8 +131,7 @@ void VoiceTextProcessor::processFinalText(const QString &text,
 
     SPDLOG_DEBUG("OCR context screenshot captured: {}x{}", image.width(),
                  image.height());
-    spdlog::get("statusbar")
-        ->info("{}", tr("Reading focused input context..."));
+    STATUSBAR_INFO("{}", tr("Reading focused input context..."));
     m_ocrRecognizer->recognizeText(
         image, receiver,
         [submitToLlm =

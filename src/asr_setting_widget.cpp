@@ -31,11 +31,6 @@ namespace
 
 // ── Shared helpers ────────────────────────────────────────────────────
 
-void showStatusMessage(const QString &message)
-{
-    spdlog::get("statusbar")->info("{}", message);
-}
-
 QString llmProviderId(const QComboBox *combo)
 {
     return combo->currentData().toString();
@@ -119,18 +114,19 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     m_downloadManager = new ModelDownloadManager(this);
     connect(m_downloadManager, &ModelDownloadManager::downloadStarted, this,
             [this](const QString &modelName) {
-                showStatusMessage(tr("Downloading %1...").arg(modelName));
+                STATUSBAR_INFO("{}", tr("Downloading %1...").arg(modelName));
             });
     connect(m_downloadManager, &ModelDownloadManager::extracting, this,
-            [this]() { showStatusMessage(tr("Extracting...")); });
-    connect(
-        m_downloadManager, &ModelDownloadManager::downloadFailed, this,
-        [this](const QString &) { showStatusMessage(tr("Download failed")); });
+            [this]() { STATUSBAR_INFO("{}", tr("Extracting...")); });
+    connect(m_downloadManager, &ModelDownloadManager::downloadFailed, this,
+            [this](const QString &) {
+                STATUSBAR_INFO("{}", tr("Download failed"));
+            });
     connect(m_downloadManager, &ModelDownloadManager::extractionFailed, this,
             [this](const QString &error) {
                 QMessageBox::warning(this, tr("Extraction failed"),
                                      tr("Failed:\n%1").arg(error));
-                showStatusMessage(tr("Extraction failed"));
+                STATUSBAR_INFO("{}", tr("Extraction failed"));
             });
     connect(m_downloadManager, &ModelDownloadManager::finished, this,
             &AsrSettingWidget::onDownloadFinished);
@@ -178,14 +174,14 @@ void AsrSettingWidget::initLlmProviders()
     connect(endpointEdit, &QLineEdit::editingFinished, this, [=]() {
         saveLlmSetting(combo, QStringLiteral("endpoint"),
                        endpointEdit->text().trimmed());
-        showStatusMessage(tr("LLM endpoint saved"));
+        STATUSBAR_INFO("{}", tr("LLM endpoint saved"));
     });
 
     // Model edited — commit on focus loss or popup selection
     auto saveModel = [=]() {
         saveLlmSetting(combo, QStringLiteral("currentModel"),
                        modelCombo->currentText().trimmed());
-        showStatusMessage(tr("LLM model saved"));
+        STATUSBAR_INFO("{}", tr("LLM model saved"));
     };
     connect(modelCombo->lineEdit(), &QLineEdit::editingFinished, this,
             saveModel);
@@ -196,7 +192,7 @@ void AsrSettingWidget::initLlmProviders()
     connect(apiKeyEdit, &QLineEdit::editingFinished, this, [=]() {
         saveLlmSetting(combo, QStringLiteral("apiKey"),
                        apiKeyEdit->text().trimmed());
-        showStatusMessage(tr("LLM API key saved"));
+        STATUSBAR_INFO("{}", tr("LLM API key saved"));
     });
 
     // Restore saved provider (before connecting signal to avoid double-fire)
@@ -226,7 +222,8 @@ void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
     applyProviderToUi(p, m_ui->endpointEdit, m_ui->llmModelCombo,
                       m_ui->apiKeyEdit);
     setCurrentLlmProviderId(llmProviderId(combo));
-    showStatusMessage(tr("LLM provider saved: %1").arg(combo->currentText()));
+    STATUSBAR_INFO("{}",
+                   tr("LLM provider saved: %1").arg(combo->currentText()));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -287,7 +284,7 @@ void AsrSettingWidget::onEditPrompt()
     const QString text = editor->toPlainText().trimmed();
     setAppConfigValue("/settings/llm/userPrompt", text);
     refreshPromptLabel();
-    showStatusMessage(tr("LLM prompt saved"));
+    STATUSBAR_INFO("{}", tr("LLM prompt saved"));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -393,7 +390,7 @@ void AsrSettingWidget::onEditHotwords()
         }
     }
     setAppConfigValue("/settings/hotwords", std::move(arr));
-    showStatusMessage(tr("Hot words saved"));
+    STATUSBAR_INFO("{}", tr("Hot words saved"));
     emit hotwordsChanged();
 }
 
@@ -537,7 +534,8 @@ void AsrSettingWidget::loadAsrPreset(const nlohmann::json &preset)
 
 void AsrSettingWidget::showAsrModelLoaded(const nlohmann::json &preset)
 {
-    showStatusMessage(tr("Model loaded: %1").arg(jsonString(preset, "name")));
+    STATUSBAR_INFO("{}",
+                   tr("Model loaded: %1").arg(jsonString(preset, "name")));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -561,7 +559,7 @@ void AsrSettingWidget::onUseAsrModel()
         if (!m_downloadManager->startAsrModelDownload(ptr, &error) &&
             !error.isEmpty())
         {
-            showStatusMessage(error);
+            STATUSBAR_INFO("{}", error);
         }
         return;
     }
@@ -588,7 +586,7 @@ void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
         showAsrModelLoaded(m);
     }
     else {
-        showStatusMessage(tr("Downloaded: %1").arg(modelName));
+        STATUSBAR_INFO("{}", tr("Downloaded: %1").arg(modelName));
     }
 }
 

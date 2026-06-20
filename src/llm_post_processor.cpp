@@ -258,18 +258,17 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
                 if (pendingCopy.receiver && pendingCopy.callback) {
                     pendingCopy.callback(result);
                 }
-                spdlog::get("statusbar")
-                    ->info("{}", requestFailed
-                                     ? tr("LLM post-processing failed; using "
-                                          "original text.")
-                                     : tr("LLM post-processing complete."));
+                STATUSBAR_INFO("{}", requestFailed
+                                         ? tr("LLM post-processing failed; "
+                                              "using original text.")
+                                         : tr("LLM post-processing complete."));
             });
 }
 
 void LlmPostProcessor::failPending(const QString &reason)
 {
     SPDLOG_WARN("LLM post-processor fallback: {}", reason);
-    spdlog::get("statusbar")->info("{}", reason);
+    STATUSBAR_INFO("{}", reason);
     while (!m_pending.isEmpty()) {
         auto request = m_pending.dequeue();
         if (request.receiver && request.callback) {

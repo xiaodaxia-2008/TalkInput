@@ -110,8 +110,8 @@ public:
         stop();
     }
 
-    std::expected<void, QString>
-    start(const nlohmann::json &config, QPointer<SystemSpeechRecognizer> context)
+    std::expected<void, QString> start(const nlohmann::json &config,
+                                       QPointer<SystemSpeechRecognizer> context)
     {
         stop();
 
@@ -336,10 +336,10 @@ void SystemSpeechRecognizer::resetStream()
 
     auto startResult = m_impl->start(m_config, this);
     if (!startResult) {
-        SPDLOG_WARN("System recognizer session start failed: {}", startResult.error());
-        spdlog::get("statusbar")
-            ->error("{}",
-                    tr("System speech recognition failed: %1").arg(startResult.error()));
+        SPDLOG_WARN("System recognizer session start failed: {}",
+                    startResult.error());
+        STATUSBAR_ERROR("{}", tr("System speech recognition failed: %1")
+                                  .arg(startResult.error()));
     }
 }
 

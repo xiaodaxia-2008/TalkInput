@@ -64,9 +64,8 @@ bool VoiceInputController::startListening()
 
     if (!m_recognizerSession->isModelLoaded()) {
         SPDLOG_WARN("ASR model not loaded");
-        spdlog::get("statusbar")
-            ->info("{}",
-                   tr("Model not loaded yet. Please wait or select a model."));
+        STATUSBAR_INFO(
+            "{}", tr("Model not loaded yet. Please wait or select a model."));
         return false;
     }
 
@@ -80,7 +79,7 @@ bool VoiceInputController::startListening()
 
     auto captureStarted = m_audioCapture->start();
     if (!captureStarted) {
-        spdlog::get("statusbar")->info("{}", captureStarted.error());
+        STATUSBAR_INFO("{}", captureStarted.error());
         return false;
     }
 
