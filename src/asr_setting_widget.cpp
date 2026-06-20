@@ -528,14 +528,14 @@ void AsrSettingWidget::loadAsrPreset(const nlohmann::json &preset)
 {
     auto *vc = VoiceInputController::instance();
     if (vc) {
-        vc->loadModel(preset);
+        vc->loadSpeechRecognitionModel(preset);
     }
 }
 
 void AsrSettingWidget::showAsrModelLoaded(const nlohmann::json &preset)
 {
-    STATUSBAR_INFO("{}",
-                   tr("Model loaded: %1").arg(jsonString(preset, "name")));
+    STATUSBAR_INFO("{}", tr("Speech recognition model loaded: %1")
+                             .arg(jsonString(preset, "name")));
 }
 
 // ──────────────────────────────────────────────────────────────────────────

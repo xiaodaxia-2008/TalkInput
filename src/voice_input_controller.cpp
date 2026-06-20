@@ -29,7 +29,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     m_audioCapture = new AudioInputCapture(this);
     connect(m_audioCapture, &AudioInputCapture::pcm16Ready, this,
             [this](const QByteArray &pcm16, int sampleRate, int channels) {
-                m_recognizerSession->feedAudio(pcm16, sampleRate, channels);
+                m_recognizerSession->feedRecognitionAudio(pcm16, sampleRate,
+                                                          channels);
             });
 
     m_hotkey = new VoiceHotkey(this);
@@ -62,14 +63,15 @@ bool VoiceInputController::startListening()
         return false;
     }
 
-    if (!m_recognizerSession->isModelLoaded()) {
-        SPDLOG_WARN("ASR model not loaded");
-        STATUSBAR_INFO(
-            "{}", tr("Model not loaded yet. Please wait or select a model."));
+    if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
+        SPDLOG_WARN("Speech recognition model not loaded");
+        STATUSBAR_INFO("{}",
+                       tr("Speech recognition model not loaded yet. Please "
+                          "wait or select a model."));
         return false;
     }
 
-    m_recognizerSession->resetStream();
+    m_recognizerSession->resetRecognitionStream();
 
     if (!m_recognizerSession->acceptsExternalAudio()) {
         enterListeningState(
@@ -95,7 +97,7 @@ void VoiceInputController::stopListening()
         m_audioCapture->stop();
     }
 
-    if (m_recognizerSession->finishRunningStream()) {
+    if (m_recognizerSession->finishRunningRecognitionStream()) {
         m_pendingResult = true;
     }
 
@@ -174,38 +176,41 @@ void VoiceInputController::hideOverlay()
 
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
-void VoiceInputController::loadModel(const nlohmann::json &preset)
+void VoiceInputController::loadSpeechRecognitionModel(
+    const nlohmann::json &preset)
 {
-    const auto result = m_recognizerSession->loadModel(preset);
+    const auto result = m_recognizerSession->loadSpeechRecognitionModel(preset);
     if (!result) {
-        SPDLOG_ERROR("VoiceInputController: model load failed: {}",
+        SPDLOG_ERROR("VoiceInputController: speech recognition model load "
+                     "failed: {}",
                      result.error());
-        emit modelLoadResult(false, result.error());
+        emit speechRecognitionModelLoadResult(false, result.error());
         return;
     }
 
-    emit modelLoadResult(true, {});
+    emit speechRecognitionModelLoadResult(true, {});
 }
 
-void VoiceInputController::unloadModel()
+void VoiceInputController::unloadSpeechRecognitionModel()
 {
-    m_recognizerSession->unloadModel();
+    m_recognizerSession->unloadSpeechRecognitionModel();
 }
 
-void VoiceInputController::startSession()
+void VoiceInputController::startSpeechRecognitionSession()
 {
-    m_recognizerSession->resetStream();
+    m_recognizerSession->resetRecognitionStream();
 }
 
-void VoiceInputController::feedAudio(const QByteArray &pcm16, int sampleRate,
-                                     int channels)
+void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
+                                                      int sampleRate,
+                                                      int channels)
 {
-    m_recognizerSession->feedAudio(pcm16, sampleRate, channels);
+    m_recognizerSession->feedRecognitionAudio(pcm16, sampleRate, channels);
 }
 
-void VoiceInputController::finishSession()
+void VoiceInputController::finishSpeechRecognitionSession()
 {
-    m_recognizerSession->finishRunningStream();
+    m_recognizerSession->finishRunningRecognitionStream();
 }
 
 bool VoiceInputController::acceptsExternalAudio() const
@@ -213,14 +218,16 @@ bool VoiceInputController::acceptsExternalAudio() const
     return !m_recognizerSession || m_recognizerSession->acceptsExternalAudio();
 }
 
-bool VoiceInputController::isModelLoaded() const
+bool VoiceInputController::isSpeechRecognitionModelLoaded() const
 {
-    return m_recognizerSession && m_recognizerSession->isModelLoaded();
+    return m_recognizerSession &&
+           m_recognizerSession->isSpeechRecognitionModelLoaded();
 }
 
-SpeechRecognizer *VoiceInputController::recognizer() const
+SpeechRecognizer *VoiceInputController::speechRecognizer() const
 {
-    return m_recognizerSession ? m_recognizerSession->recognizer() : nullptr;
+    return m_recognizerSession ? m_recognizerSession->speechRecognizer()
+                               : nullptr;
 }
 
 } // namespace talkinput

@@ -73,19 +73,20 @@ void MainWindow::setupUi()
     SPDLOG_DEBUG("setupUi: creating VoiceInputController");
     m_voiceInput = new VoiceInputController(this);
 
-    connect(m_voiceInput, &VoiceInputController::modelLoadResult, this,
-            [this](bool success, const QString &error) {
-                if (!success) {
-                    STATUSBAR_ERROR("{}",
-                                    tr("Model load failed: %1").arg(error));
-                }
-                else {
-                    const auto preset = currentAsrPreset();
-                    STATUSBAR_INFO(
-                        "{}",
-                        tr("Model ready: %1").arg(jsonString(preset, "name")));
-                }
-            });
+    connect(
+        m_voiceInput, &VoiceInputController::speechRecognitionModelLoadResult,
+        this, [this](bool success, const QString &error) {
+            if (!success) {
+                STATUSBAR_ERROR(
+                    "{}",
+                    tr("Speech recognition model load failed: %1").arg(error));
+            }
+            else {
+                const auto preset = currentAsrPreset();
+                STATUSBAR_INFO("{}", tr("Speech recognition model ready: %1")
+                                         .arg(jsonString(preset, "name")));
+            }
+        });
 
     // ── History tab ────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: creating HistoryWidget");
@@ -107,7 +108,7 @@ void MainWindow::setupUi()
     connect(m_ui->actionRecognizeFile, &QAction::triggered, this,
             &MainWindow::onRecognizeFile);
 
-    STATUSBAR_INFO("{}", tr("Loading model..."));
+    STATUSBAR_INFO("{}", tr("Loading speech recognition model..."));
     SPDLOG_INFO("Starting ASR service");
 
     // resultChanged comes from VoiceInputController → onResult
@@ -196,17 +197,19 @@ void MainWindow::setupAsrSettingWidget()
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
     SPDLOG_DEBUG("setupAsrSettingWidget: widget added");
 
-    connect(m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this,
-            [this]() {
-                SPDLOG_INFO("Hot words changed, reloading ASR model...");
-                STATUSBAR_INFO("{}", tr("Hot words saved, reloading model..."));
-                if (m_voiceInput) {
-                    const nlohmann::json preset = currentAsrPreset();
-                    if (preset.is_object()) {
-                        m_voiceInput->loadModel(preset);
-                    }
+    connect(
+        m_asrSettingWidget, &AsrSettingWidget::hotwordsChanged, this, [this]() {
+            SPDLOG_INFO("Hot words changed, reloading ASR model...");
+            STATUSBAR_INFO(
+                "{}",
+                tr("Hot words saved, reloading speech recognition model..."));
+            if (m_voiceInput) {
+                const nlohmann::json preset = currentAsrPreset();
+                if (preset.is_object()) {
+                    m_voiceInput->loadSpeechRecognitionModel(preset);
                 }
-            });
+            }
+        });
 }
 
 void MainWindow::setupTrayIcon()
@@ -244,11 +247,10 @@ void MainWindow::startListening()
         return;
     }
 
-    if (!m_voiceInput->isModelLoaded()) {
-        QMessageBox::warning(
-            this, tr("Speech recognition"),
-            tr("Model is still loading.\n\n"
-               "Please wait for the model to load, then try again."));
+    if (!m_voiceInput->isSpeechRecognitionModelLoaded()) {
+        QMessageBox::warning(this, tr("Speech recognition"),
+                             tr("Speech recognition model is still loading.\n\n"
+                                "Please wait for it to load, then try again."));
         return;
     }
 
@@ -281,13 +283,14 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
         const QString type = jsonString(preset, "type");
-        if (!m_voiceInput->isModelLoaded() && type != QStringLiteral("System"))
+        if (!m_voiceInput->isSpeechRecognitionModelLoaded() &&
+            type != QStringLiteral("System"))
         {
-            STATUSBAR_INFO("{}", tr("No model selected"));
+            STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
         }
         else {
-            STATUSBAR_INFO("{}",
-                           tr("Model: %1").arg(jsonString(preset, "name")));
+            STATUSBAR_INFO("{}", tr("Speech recognition model: %1")
+                                     .arg(jsonString(preset, "name")));
         }
     }
 }
@@ -323,10 +326,10 @@ void MainWindow::onRecognizeFile()
                 decoded->channels);
 
     if (m_voiceInput) {
-        m_voiceInput->startSession();
-        m_voiceInput->feedAudio(decoded->pcm16, decoded->sampleRate,
-                                decoded->channels);
-        m_voiceInput->finishSession();
+        m_voiceInput->startSpeechRecognitionSession();
+        m_voiceInput->feedSpeechRecognitionAudio(
+            decoded->pcm16, decoded->sampleRate, decoded->channels);
+        m_voiceInput->finishSpeechRecognitionSession();
     }
     STATUSBAR_INFO("{}", tr("Recognition sent to ASR engine"));
 }
@@ -395,15 +398,15 @@ void MainWindow::loadConfiguredAsrModel(bool reportNoModel)
     const QString name = jsonString(preset, "name");
     if (preset.is_object() && !name.isEmpty()) {
         SPDLOG_DEBUG("MainWindow: loading configured ASR model {}", name);
-        m_voiceInput->loadModel(preset);
+        m_voiceInput->loadSpeechRecognitionModel(preset);
         SPDLOG_INFO("Configured ASR model loaded: {} ({})", name,
                     asrModelDir(preset));
         return;
     }
 
-    m_voiceInput->unloadModel();
+    m_voiceInput->unloadSpeechRecognitionModel();
     if (reportNoModel) {
-        STATUSBAR_INFO("{}", tr("No model selected"));
+        STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
     }
 }
 

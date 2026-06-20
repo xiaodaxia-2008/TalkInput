@@ -33,25 +33,26 @@ public:
         return m_isListening;
     }
 
-    bool isModelLoaded() const;
+    bool isSpeechRecognitionModelLoaded() const;
 
     bool acceptsExternalAudio() const;
 
-    SpeechRecognizer *recognizer() const;
+    SpeechRecognizer *speechRecognizer() const;
 
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);
-    void modelLoadResult(bool success, const QString &error);
+    void speechRecognitionModelLoadResult(bool success, const QString &error);
 
 public slots:
     bool startListening();
     void stopListening();
-    void loadModel(const nlohmann::json &preset);
-    void unloadModel();
-    void startSession();
-    void feedAudio(const QByteArray &pcm16, int sampleRate, int channels);
-    void finishSession();
+    void loadSpeechRecognitionModel(const nlohmann::json &preset);
+    void unloadSpeechRecognitionModel();
+    void startSpeechRecognitionSession();
+    void feedSpeechRecognitionAudio(const QByteArray &pcm16, int sampleRate,
+                                    int channels);
+    void finishSpeechRecognitionSession();
 
 private:
     void onResult(const QString &text, bool isFinal);

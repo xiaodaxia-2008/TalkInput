@@ -22,15 +22,17 @@ public:
     explicit VoiceRecognizerSession(QObject *parent = nullptr);
     ~VoiceRecognizerSession() override;
 
-    bool isModelLoaded() const;
+    bool isSpeechRecognitionModelLoaded() const;
     bool acceptsExternalAudio() const;
-    SpeechRecognizer *recognizer() const;
+    SpeechRecognizer *speechRecognizer() const;
 
-    std::expected<void, QString> loadModel(const nlohmann::json &preset);
-    void unloadModel();
-    void resetStream();
-    void feedAudio(const QByteArray &pcm16, int sampleRate, int channels);
-    bool finishRunningStream();
+    std::expected<void, QString>
+    loadSpeechRecognitionModel(const nlohmann::json &preset);
+    void unloadSpeechRecognitionModel();
+    void resetRecognitionStream();
+    void feedRecognitionAudio(const QByteArray &pcm16, int sampleRate,
+                              int channels);
+    bool finishRunningRecognitionStream();
 
 signals:
     void resultChanged(const QString &text, bool isFinal);

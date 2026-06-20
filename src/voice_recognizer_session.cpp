@@ -14,10 +14,10 @@ VoiceRecognizerSession::VoiceRecognizerSession(QObject *parent)
 
 VoiceRecognizerSession::~VoiceRecognizerSession()
 {
-    unloadModel();
+    unloadSpeechRecognitionModel();
 }
 
-bool VoiceRecognizerSession::isModelLoaded() const
+bool VoiceRecognizerSession::isSpeechRecognitionModelLoaded() const
 {
     return m_recognizer != nullptr;
 }
@@ -27,15 +27,15 @@ bool VoiceRecognizerSession::acceptsExternalAudio() const
     return !m_recognizer || m_recognizer->acceptsExternalAudio();
 }
 
-SpeechRecognizer *VoiceRecognizerSession::recognizer() const
+SpeechRecognizer *VoiceRecognizerSession::speechRecognizer() const
 {
     return m_recognizer.get();
 }
 
 std::expected<void, QString>
-VoiceRecognizerSession::loadModel(const nlohmann::json &preset)
+VoiceRecognizerSession::loadSpeechRecognitionModel(const nlohmann::json &preset)
 {
-    unloadModel();
+    unloadSpeechRecognitionModel();
 
     const QString modelDir = asrModelDir(preset);
     auto recognizer = SpeechRecognizer::createFromConfig(
@@ -52,7 +52,7 @@ VoiceRecognizerSession::loadModel(const nlohmann::json &preset)
     return {};
 }
 
-void VoiceRecognizerSession::unloadModel()
+void VoiceRecognizerSession::unloadSpeechRecognitionModel()
 {
     if (m_recognizer && m_recognizer->isRunning()) {
         m_recognizer->stop();
@@ -60,22 +60,22 @@ void VoiceRecognizerSession::unloadModel()
     m_recognizer.reset();
 }
 
-void VoiceRecognizerSession::resetStream()
+void VoiceRecognizerSession::resetRecognitionStream()
 {
     if (m_recognizer) {
         m_recognizer->resetStream();
     }
 }
 
-void VoiceRecognizerSession::feedAudio(const QByteArray &pcm16, int sampleRate,
-                                       int channels)
+void VoiceRecognizerSession::feedRecognitionAudio(const QByteArray &pcm16,
+                                                  int sampleRate, int channels)
 {
     if (m_recognizer) {
         m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
     }
 }
 
-bool VoiceRecognizerSession::finishRunningStream()
+bool VoiceRecognizerSession::finishRunningRecognitionStream()
 {
     if (!m_recognizer || !m_recognizer->isRunning()) {
         return false;
