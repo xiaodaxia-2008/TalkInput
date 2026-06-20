@@ -23,6 +23,7 @@ public:
     ~VoiceRecognizerSession() override;
 
     bool isSpeechRecognitionModelLoaded() const;
+    bool isRecognitionStreamRunning() const;
     bool acceptsExternalAudio() const;
     SpeechRecognizer *speechRecognizer() const;
 

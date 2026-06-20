@@ -22,6 +22,11 @@ bool VoiceRecognizerSession::isSpeechRecognitionModelLoaded() const
     return m_recognizer != nullptr;
 }
 
+bool VoiceRecognizerSession::isRecognitionStreamRunning() const
+{
+    return m_recognizer && m_recognizer->isRunning();
+}
+
 bool VoiceRecognizerSession::acceptsExternalAudio() const
 {
     return !m_recognizer || m_recognizer->acceptsExternalAudio();

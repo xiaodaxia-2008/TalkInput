@@ -78,11 +78,13 @@ void VoiceTextProcessor::processFinalText(const QString &text,
         return;
     }
 
+    SPDLOG_INFO("VoiceTextProcessor received final text for OCR/LLM flow");
+
     auto submitToLlm = [this, finalText, receiver,
                         callback = std::move(callback)](
                            const QString &ocrContext) mutable {
         if (m_llmPostProcessor->isEnabled()) {
-            SPDLOG_DEBUG("OCR context sent to LLM: {}", ocrContext.trimmed());
+            SPDLOG_INFO("OCR context sent to LLM: {}", ocrContext.trimmed());
             STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
         }
         m_llmPostProcessor->postProcess(
@@ -102,42 +104,42 @@ void VoiceTextProcessor::processFinalText(const QString &text,
     const bool ocrEnabled = ocrContextEnabledForAsr();
     const bool ocrServiceAvailable =
         m_ocrRecognizer && m_ocrRecognizer->isAvailable();
-    SPDLOG_DEBUG("OCR context flow: llmEnabled={} ocrEnabled={} "
-                 "ocrServiceAvailable={}",
-                 llmEnabled, ocrEnabled, ocrServiceAvailable);
+    SPDLOG_INFO("OCR/LLM flow: llmEnabled={} ocrEnabled={} "
+                "ocrServiceAvailable={}",
+                llmEnabled, ocrEnabled, ocrServiceAvailable);
 
     if (!llmEnabled) {
-        SPDLOG_DEBUG("OCR context skipped: LLM post-processing is disabled");
+        SPDLOG_INFO("LLM post-processing skipped: disabled");
         submitToLlm({});
         return;
     }
     if (!ocrEnabled) {
-        SPDLOG_DEBUG("OCR context skipped: OCR focused context is disabled");
+        SPDLOG_INFO("OCR context skipped: disabled for ASR");
         submitToLlm({});
         return;
     }
     if (!ocrServiceAvailable) {
-        SPDLOG_DEBUG("OCR context skipped: OCR service is unavailable");
+        SPDLOG_INFO("OCR context skipped: service unavailable");
         submitToLlm({});
         return;
     }
 
     const QImage image = captureFocusedContextImage();
     if (image.isNull()) {
-        SPDLOG_DEBUG("OCR context skipped: no focused screenshot");
+        SPDLOG_INFO("OCR context skipped: no focused screenshot");
         submitToLlm({});
         return;
     }
 
-    SPDLOG_DEBUG("OCR context screenshot captured: {}x{}", image.width(),
-                 image.height());
+    SPDLOG_INFO("OCR context screenshot captured: {}x{}", image.width(),
+                image.height());
     STATUSBAR_INFO("{}", tr("Reading focused input context..."));
     m_ocrRecognizer->recognizeText(
         image, receiver,
         [submitToLlm =
              std::move(submitToLlm)](const QString &contextText) mutable {
             const QString result = contextText.trimmed();
-            SPDLOG_DEBUG("OCR context result received: {}", result);
+            SPDLOG_INFO("OCR context result received: {}", result);
             submitToLlm(result);
         });
 }

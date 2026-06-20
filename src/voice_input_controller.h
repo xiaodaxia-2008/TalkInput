@@ -55,9 +55,17 @@ public slots:
     void finishSpeechRecognitionSession();
 
 private:
+    enum class FinalTextAction
+    {
+        RecordHistoryOnly,
+        PasteAndRecordHistory
+    };
+
+    bool startListening(FinalTextAction finalTextAction);
     void onResult(const QString &text, bool isFinal);
-    void postProcessFinalText(const QString &text);
-    void injectFinalText(const QString &text);
+    void postProcessFinalText(const QString &text,
+                              FinalTextAction finalTextAction);
+    void commitFinalText(const QString &text, FinalTextAction finalTextAction);
     void enterListeningState(const char *logMessage);
     void leaveListeningState();
     void showOverlay();
@@ -74,6 +82,10 @@ private:
     std::unique_ptr<VoiceOverlay> m_overlay;
     QString m_lastResult;
     bool m_pendingResult = false;
+    FinalTextAction m_activeFinalTextAction =
+        FinalTextAction::RecordHistoryOnly;
+    FinalTextAction m_pendingFinalTextAction =
+        FinalTextAction::RecordHistoryOnly;
 };
 
 } // namespace talkinput

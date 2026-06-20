@@ -39,7 +39,7 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
             stopListening();
         }
         else {
-            startListening();
+            startListening(FinalTextAction::PasteAndRecordHistory);
         }
     });
 
@@ -55,6 +55,11 @@ VoiceInputController::~VoiceInputController()
 }
 
 bool VoiceInputController::startListening()
+{
+    return startListening(FinalTextAction::RecordHistoryOnly);
+}
+
+bool VoiceInputController::startListening(FinalTextAction finalTextAction)
 {
     SPDLOG_INFO("VoiceInputController: start listening");
 
@@ -72,6 +77,9 @@ bool VoiceInputController::startListening()
     }
 
     m_recognizerSession->resetRecognitionStream();
+    m_activeFinalTextAction = finalTextAction;
+    m_pendingFinalTextAction = finalTextAction;
+    m_pendingResult = false;
 
     if (!m_recognizerSession->acceptsExternalAudio()) {
         enterListeningState(
@@ -97,8 +105,16 @@ void VoiceInputController::stopListening()
         m_audioCapture->stop();
     }
 
-    if (m_recognizerSession->finishRunningRecognitionStream()) {
+    const bool expectsFinalResult =
+        m_recognizerSession &&
+        m_recognizerSession->isRecognitionStreamRunning();
+    if (expectsFinalResult) {
         m_pendingResult = true;
+        m_pendingFinalTextAction = m_activeFinalTextAction;
+    }
+
+    if (!m_recognizerSession->finishRunningRecognitionStream()) {
+        m_pendingResult = false;
     }
 
     leaveListeningState();
@@ -108,10 +124,16 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
 {
     if (isFinal) {
         m_lastResult = text;
-        const bool shouldSend = m_pendingResult || !m_isListening;
+        const bool recognizerOwnsAudio =
+            m_recognizerSession && !m_recognizerSession->acceptsExternalAudio();
+        const bool shouldSend =
+            m_pendingResult || !m_isListening || recognizerOwnsAudio;
+        const FinalTextAction finalTextAction = m_pendingResult
+                                                    ? m_pendingFinalTextAction
+                                                    : m_activeFinalTextAction;
         m_pendingResult = false;
         if (shouldSend && !text.trimmed().isEmpty()) {
-            postProcessFinalText(text.trimmed());
+            postProcessFinalText(text.trimmed(), finalTextAction);
         }
     }
     else if (m_isListening && text != m_lastResult) {
@@ -122,26 +144,37 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
     }
 }
 
-void VoiceInputController::postProcessFinalText(const QString &text)
+void VoiceInputController::postProcessFinalText(const QString &text,
+                                                FinalTextAction finalTextAction)
 {
+    SPDLOG_INFO("VoiceInputController processing final text");
     m_textProcessor->processFinalText(
-        text, this, [this](const QString &processedText) {
-            injectFinalText(processedText.trimmed());
+        text, this, [this, finalTextAction](const QString &processedText) {
+            commitFinalText(processedText.trimmed(), finalTextAction);
         });
 }
 
-void VoiceInputController::injectFinalText(const QString &text)
+void VoiceInputController::commitFinalText(const QString &text,
+                                           FinalTextAction finalTextAction)
 {
     if (text.isEmpty()) {
         return;
     }
 
-    if (!m_textInjector->inject(text)) {
-        return;
+    if (finalTextAction == FinalTextAction::PasteAndRecordHistory) {
+        if (m_textInjector->inject(text)) {
+            SPDLOG_INFO("VoiceInputController pasted final text");
+        }
+        else {
+            SPDLOG_WARN("VoiceInputController failed to paste final text");
+        }
+    }
+    else {
+        SPDLOG_INFO("VoiceInputController recorded final text without paste");
     }
 
     emit finalTextCommitted(text);
-    SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
+    SPDLOG_INFO("VoiceInputController saved final text to history: {}", text);
 }
 
 void VoiceInputController::enterListeningState(const char *logMessage)
@@ -199,6 +232,9 @@ void VoiceInputController::unloadSpeechRecognitionModel()
 void VoiceInputController::startSpeechRecognitionSession()
 {
     m_recognizerSession->resetRecognitionStream();
+    m_activeFinalTextAction = FinalTextAction::RecordHistoryOnly;
+    m_pendingFinalTextAction = FinalTextAction::RecordHistoryOnly;
+    m_pendingResult = false;
 }
 
 void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
@@ -210,7 +246,17 @@ void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
 
 void VoiceInputController::finishSpeechRecognitionSession()
 {
-    m_recognizerSession->finishRunningRecognitionStream();
+    const bool expectsFinalResult =
+        m_recognizerSession &&
+        m_recognizerSession->isRecognitionStreamRunning();
+    if (expectsFinalResult) {
+        m_pendingResult = true;
+        m_pendingFinalTextAction = FinalTextAction::RecordHistoryOnly;
+    }
+
+    if (!m_recognizerSession->finishRunningRecognitionStream()) {
+        m_pendingResult = false;
+    }
 }
 
 bool VoiceInputController::acceptsExternalAudio() const
