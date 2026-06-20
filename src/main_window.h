@@ -37,13 +37,17 @@ private:
     void setupUi();
     void setupAsrSettingWidget();
     void setupTrayIcon();
-    void startListening();
-    void stopListening();
     void updateControls(bool listening);
-    void onRecognizeFile();
-    void quitApplication();
-    void onSwitchLanguage(const QString &lang);
-    void resetUserSettings();
+
+    void onToggleSpeechRecognition();
+    void onRecognizeAudioFile();
+    void onShowMainWindow();
+    void onQuitApplication();
+    void onSwitchLanguage();
+    void onStartMinimizedToggled(bool checked);
+    void onResetSettings();
+    void onOpenMoreAsrModels();
+    void onShowAboutDialog();
 
     std::unique_ptr<Ui::MainWindow> m_ui;
     AsrSettingWidget *m_asrSettingWidget = nullptr;

@@ -96,17 +96,11 @@ void MainWindow::setupUi()
     // ── ASR settings tab ────────────────────────────────────────
     setupAsrSettingWidget();
 
-    connect(m_ui->actionStartRecognition, &QAction::triggered, this, [this]() {
-        if (m_voiceInput && m_voiceInput->isListening()) {
-            m_voiceInput->stopListening();
-        }
-        else {
-            startListening();
-        }
-    });
+    connect(m_ui->actionStartRecognition, &QAction::triggered, this,
+            &MainWindow::onToggleSpeechRecognition);
 
     connect(m_ui->actionRecognizeFile, &QAction::triggered, this,
-            &MainWindow::onRecognizeFile);
+            &MainWindow::onRecognizeAudioFile);
 
     STATUSBAR_INFO("{}", tr("Loading speech recognition model..."));
     SPDLOG_INFO("Starting ASR service");
@@ -133,62 +127,34 @@ void MainWindow::setupUi()
         m_ui->actionChinese->setChecked(true);
     }
 
-    connect(m_ui->actionChinese, &QAction::triggered, this, [this]() {
-        m_ui->actionChinese->setChecked(true);
-        m_ui->actionEnglish->setChecked(false);
-        onSwitchLanguage(QStringLiteral("zh"));
-    });
-    connect(m_ui->actionEnglish, &QAction::triggered, this, [this]() {
-        m_ui->actionEnglish->setChecked(true);
-        m_ui->actionChinese->setChecked(false);
-        onSwitchLanguage(QStringLiteral("en"));
-    });
+    connect(m_ui->actionChinese, &QAction::triggered, this,
+            &MainWindow::onSwitchLanguage);
+    connect(m_ui->actionEnglish, &QAction::triggered, this,
+            &MainWindow::onSwitchLanguage);
 
     const bool startHidden =
         appConfigBool("/settings/app/startMinimized", false);
     m_ui->actionStartMinimized->setChecked(startHidden);
 
     connect(m_ui->actionStartMinimized, &QAction::toggled, this,
-            [](bool checked) {
-                setAppConfigValue("/settings/app/startMinimized", checked);
-            });
+            &MainWindow::onStartMinimizedToggled);
 
     connect(m_ui->actionResetSettings, &QAction::triggered, this,
-            &MainWindow::resetUserSettings);
+            &MainWindow::onResetSettings);
 
-    connect(m_ui->actionMoreModels, &QAction::triggered, this, []() {
-        QDesktopServices::openUrl(
-            QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
-                                "releases/tag/asr-models")));
-    });
-    connect(m_ui->actionAbout, &QAction::triggered, this, [this]() {
-        QMessageBox::about(this, tr("About TalkInput"),
-                           tr("<h3>TalkInput %1</h3>"
-                              "<p>Local voice input method.</p>"
-                              "<table>"
-                              "<tr><td>Commit</td><td>%2</td></tr>"
-                              "<tr><td>Date</td><td>%3</td></tr>"
-                              "</table>")
-                               .arg(QApplication::applicationVersion(),
-                                    QStringLiteral(GIT_COMMIT_ID),
-                                    QStringLiteral(GIT_COMMIT_DATE)));
-    });
+    connect(m_ui->actionMoreModels, &QAction::triggered, this,
+            &MainWindow::onOpenMoreAsrModels);
+    connect(m_ui->actionAbout, &QAction::triggered, this,
+            &MainWindow::onShowAboutDialog);
 
     connect(m_ui->actionExit, &QAction::triggered, this,
-            &MainWindow::quitApplication);
+            &MainWindow::onQuitApplication);
 
     SPDLOG_DEBUG("setupUi: end");
 }
 
 void MainWindow::setupAsrSettingWidget()
 {
-    if (m_asrSettingWidget) {
-        m_ui->asrSettingsLayout->removeWidget(m_asrSettingWidget);
-        m_asrSettingWidget->hide();
-        m_asrSettingWidget->deleteLater();
-        m_asrSettingWidget = nullptr;
-    }
-
     SPDLOG_DEBUG("setupAsrSettingWidget: creating widget");
     m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
     m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
@@ -202,14 +168,11 @@ void MainWindow::setupTrayIcon()
 
     auto *trayMenu = new QMenu(this);
     auto *showAction = trayMenu->addAction(tr("Show Window"));
-    connect(showAction, &QAction::triggered, this, [this]() {
-        showNormal();
-        activateWindow();
-        raise();
-    });
+    connect(showAction, &QAction::triggered, this,
+            &MainWindow::onShowMainWindow);
     auto *quitAction = trayMenu->addAction(tr("Quit"));
     connect(quitAction, &QAction::triggered, this,
-            &MainWindow::quitApplication);
+            &MainWindow::onQuitApplication);
 
     m_trayIcon->setContextMenu(trayMenu);
     m_trayIcon->show();
@@ -217,34 +180,9 @@ void MainWindow::setupTrayIcon()
     connect(m_trayIcon, &QSystemTrayIcon::activated, this,
             [this](QSystemTrayIcon::ActivationReason reason) {
                 if (reason == QSystemTrayIcon::DoubleClick) {
-                    showNormal();
-                    activateWindow();
-                    raise();
+                    onShowMainWindow();
                 }
             });
-}
-
-void MainWindow::startListening()
-{
-    if (!m_voiceInput) {
-        return;
-    }
-
-    if (!m_voiceInput->isSpeechRecognitionModelLoaded()) {
-        QMessageBox::warning(this, tr("Speech recognition"),
-                             tr("Speech recognition model is still loading.\n\n"
-                                "Please wait for it to load, then try again."));
-        return;
-    }
-
-    m_voiceInput->startListening();
-}
-
-void MainWindow::stopListening()
-{
-    if (m_voiceInput) {
-        m_voiceInput->stopListening();
-    }
 }
 
 void MainWindow::updateControls(bool listening)
@@ -278,7 +216,28 @@ void MainWindow::updateControls(bool listening)
     }
 }
 
-void MainWindow::onRecognizeFile()
+void MainWindow::onToggleSpeechRecognition()
+{
+    if (!m_voiceInput) {
+        return;
+    }
+
+    if (m_voiceInput->isListening()) {
+        m_voiceInput->stopListening();
+        return;
+    }
+
+    if (!m_voiceInput->isSpeechRecognitionModelLoaded()) {
+        QMessageBox::warning(this, tr("Speech recognition"),
+                             tr("Speech recognition model is still loading.\n\n"
+                                "Please wait for it to load, then try again."));
+        return;
+    }
+
+    m_voiceInput->startListening();
+}
+
+void MainWindow::onRecognizeAudioFile()
 {
     if (m_voiceInput && !m_voiceInput->acceptsExternalAudio()) {
         STATUSBAR_INFO(
@@ -319,19 +278,42 @@ void MainWindow::onRecognizeFile()
     STATUSBAR_INFO("{}", tr("Recognition sent to ASR engine"));
 }
 
-void MainWindow::quitApplication()
+void MainWindow::onShowMainWindow()
+{
+    showNormal();
+    activateWindow();
+    raise();
+}
+
+void MainWindow::onQuitApplication()
 {
     m_forceQuit = true;
     qApp->quit();
 }
 
-void MainWindow::onSwitchLanguage(const QString &lang)
+void MainWindow::onSwitchLanguage()
 {
+    const auto *action = qobject_cast<const QAction *>(sender());
+    if (!action) {
+        return;
+    }
+
+    const bool useEnglish = (action == m_ui->actionEnglish);
+    m_ui->actionEnglish->setChecked(useEnglish);
+    m_ui->actionChinese->setChecked(!useEnglish);
+
+    const QString lang =
+        useEnglish ? QStringLiteral("en") : QStringLiteral("zh");
     setAppConfigValue("/settings/app/language", lang);
     installAppTranslations(lang, this, m_appTranslator, m_qtTranslator);
 }
 
-void MainWindow::resetUserSettings()
+void MainWindow::onStartMinimizedToggled(bool checked)
+{
+    setAppConfigValue("/settings/app/startMinimized", checked);
+}
+
+void MainWindow::onResetSettings()
 {
     const QString configPath = QDir::toNativeSeparators(appConfigPath());
     const QMessageBox::StandardButton result = QMessageBox::warning(
@@ -353,7 +335,8 @@ void MainWindow::resetUserSettings()
 
     const QString resetLanguage = currentAppLanguage();
     if (langBefore != resetLanguage) {
-        onSwitchLanguage(resetLanguage);
+        installAppTranslations(resetLanguage, this, m_appTranslator,
+                               m_qtTranslator);
     }
 
     {
@@ -366,9 +349,32 @@ void MainWindow::resetUserSettings()
             appConfigBool("/settings/app/startMinimized", false));
     }
 
-    setupAsrSettingWidget();
+    if (m_asrSettingWidget) {
+        m_asrSettingWidget->updateUiFromConfig();
+    }
 
     STATUSBAR_INFO("{}", tr("Settings reset to defaults"));
+}
+
+void MainWindow::onOpenMoreAsrModels()
+{
+    QDesktopServices::openUrl(
+        QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
+                            "releases/tag/asr-models")));
+}
+
+void MainWindow::onShowAboutDialog()
+{
+    QMessageBox::about(this, tr("About TalkInput"),
+                       tr("<h3>TalkInput %1</h3>"
+                          "<p>Local voice input method.</p>"
+                          "<table>"
+                          "<tr><td>Commit</td><td>%2</td></tr>"
+                          "<tr><td>Date</td><td>%3</td></tr>"
+                          "</table>")
+                           .arg(QApplication::applicationVersion(),
+                                QStringLiteral(GIT_COMMIT_ID),
+                                QStringLiteral(GIT_COMMIT_DATE)));
 }
 
 } // namespace talkinput

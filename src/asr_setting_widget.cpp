@@ -47,30 +47,6 @@ void saveLlmSetting(const QComboBox *combo, const QString &key,
     setLlmProviderSetting(llmProviderId(combo), key, value);
 }
 
-void applyProviderToUi(const nlohmann::json &provider, QLineEdit *endpointEdit,
-                       QComboBox *modelCombo, QLineEdit *apiKeyEdit)
-{
-    const QSignalBlocker epBlocker(endpointEdit);
-    const QSignalBlocker mBlocker(modelCombo);
-    const QSignalBlocker akBlocker(apiKeyEdit);
-
-    endpointEdit->setText(llmProviderEndpoint(provider));
-
-    const QString currentModel = llmProviderModel(provider);
-    modelCombo->clear();
-    for (const auto &m : provider.value("models", nlohmann::json::array())) {
-        if (m.is_string()) {
-            modelCombo->addItem(m.get<QString>());
-        }
-    }
-    if (!currentModel.isEmpty() && modelCombo->findText(currentModel) < 0) {
-        modelCombo->addItem(currentModel);
-    }
-    modelCombo->setEditText(currentModel);
-
-    apiKeyEdit->setText(llmProviderApiKey(provider));
-}
-
 QString asrModelLabel(const nlohmann::json &m)
 {
     auto langLabel = [](const QString &c) -> QString {
@@ -111,39 +87,77 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::AsrSettingWidget>())
 {
     m_ui->setupUi(this);
-    m_downloadManager = new ModelDownloadManager(this);
-    connect(m_downloadManager, &ModelDownloadManager::downloadStarted, this,
-            [this](const QString &modelName) {
-                STATUSBAR_INFO("{}", tr("Downloading %1...").arg(modelName));
-            });
-    connect(m_downloadManager, &ModelDownloadManager::extracting, this,
-            [this]() { STATUSBAR_INFO("{}", tr("Extracting...")); });
-    connect(m_downloadManager, &ModelDownloadManager::downloadFailed, this,
-            [this](const QString &) {
-                STATUSBAR_INFO("{}", tr("Download failed"));
-            });
-    connect(m_downloadManager, &ModelDownloadManager::extractionFailed, this,
-            [this](const QString &error) {
-                QMessageBox::warning(this, tr("Extraction failed"),
-                                     tr("Failed:\n%1").arg(error));
-                STATUSBAR_INFO("{}", tr("Extraction failed"));
-            });
-    connect(m_downloadManager, &ModelDownloadManager::finished, this,
-            &AsrSettingWidget::onDownloadFinished);
-
     initLlmProviders();
     initLlmPrompt();
     initOcrProvider();
     initLlmChecks();
     initAsrModel();
     initIcons();
-    loadActiveAsrPreset();
 
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
+
+    updateUiFromConfig();
 }
 
 AsrSettingWidget::~AsrSettingWidget() = default;
+
+void AsrSettingWidget::updateUiFromConfig()
+{
+    const QString savedLlmProviderId = currentLlmProviderId();
+    const int llmProviderIndex =
+        m_ui->providerCombo->findData(savedLlmProviderId);
+    {
+        const QSignalBlocker blocker(m_ui->providerCombo);
+        if (llmProviderIndex >= 0) {
+            m_ui->providerCombo->setCurrentIndex(llmProviderIndex);
+        }
+    }
+
+    const auto llmProvider = llmProviderPreset(m_ui->providerCombo);
+    if (llmProvider.is_object()) {
+        applyLlmProviderToUi(llmProvider);
+    }
+
+    refreshPromptLabel();
+
+    const int ocrProviderIndex =
+        m_ui->ocrCombo->findData(currentOcrProviderId());
+    {
+        const QSignalBlocker blocker(m_ui->ocrCombo);
+        if (ocrProviderIndex >= 0) {
+            m_ui->ocrCombo->setCurrentIndex(ocrProviderIndex);
+        }
+    }
+
+    {
+        const QSignalBlocker llmBlocker(m_ui->llmPostProcessCheck);
+        const QSignalBlocker ocrBlocker(m_ui->ocrContextCheck);
+        const bool llmPostProcessEnabled =
+            appConfigBool("/settings/llm/llmPostProcessEnableForAsr", false);
+        m_ui->llmPostProcessCheck->setChecked(llmPostProcessEnabled);
+        m_ui->ocrContextCheck->setEnabled(llmPostProcessEnabled);
+        m_ui->ocrContextCheck->setChecked(ocrContextEnabledForAsr());
+    }
+
+    const QString savedAsrProviderId = currentAsrProviderId();
+    int asrProviderIndex = -1;
+    for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
+        const nlohmann::json preset = asrPresetAt(i);
+        if (jsonString(preset, "id") == savedAsrProviderId) {
+            asrProviderIndex = i;
+            break;
+        }
+    }
+    {
+        const QSignalBlocker blocker(m_ui->modelCombo);
+        if (asrProviderIndex >= 0) {
+            m_ui->modelCombo->setCurrentIndex(asrProviderIndex);
+        }
+    }
+    refreshAsrStatus();
+    loadActiveAsrPreset();
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 // LLM Providers
@@ -196,18 +210,6 @@ void AsrSettingWidget::initLlmProviders()
         STATUSBAR_INFO("{}", tr("LLM API key saved"));
     });
 
-    // Restore saved provider (before connecting signal to avoid double-fire)
-    const QString savedId = currentLlmProviderId();
-    const int idx = combo->findData(savedId);
-    if (idx >= 0) {
-        combo->setCurrentIndex(idx);
-    }
-
-    const auto p = llmProviderPreset(combo);
-    if (p.is_object()) {
-        applyProviderToUi(p, endpointEdit, modelCombo, apiKeyEdit);
-    }
-
     connect(combo, &QComboBox::currentIndexChanged, this,
             &AsrSettingWidget::onLlmProviderChanged);
 }
@@ -220,8 +222,7 @@ void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
         return;
     }
 
-    applyProviderToUi(p, m_ui->endpointEdit, m_ui->llmModelCombo,
-                      m_ui->apiKeyEdit);
+    applyLlmProviderToUi(p);
     setCurrentLlmProviderId(llmProviderId(combo));
     STATUSBAR_INFO("{}",
                    tr("LLM provider saved: %1").arg(combo->currentText()));
@@ -231,12 +232,35 @@ void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
 // LLM Prompt
 // ──────────────────────────────────────────────────────────────────────────
 
+void AsrSettingWidget::applyLlmProviderToUi(const nlohmann::json &provider)
+{
+    const QSignalBlocker epBlocker(m_ui->endpointEdit);
+    const QSignalBlocker mBlocker(m_ui->llmModelCombo);
+    const QSignalBlocker akBlocker(m_ui->apiKeyEdit);
+
+    m_ui->endpointEdit->setText(llmProviderEndpoint(provider));
+
+    const QString currentModel = llmProviderModel(provider);
+    m_ui->llmModelCombo->clear();
+    for (const auto &m : provider.value("models", nlohmann::json::array())) {
+        if (m.is_string()) {
+            m_ui->llmModelCombo->addItem(m.get<QString>());
+        }
+    }
+    if (!currentModel.isEmpty() &&
+        m_ui->llmModelCombo->findText(currentModel) < 0)
+    {
+        m_ui->llmModelCombo->addItem(currentModel);
+    }
+    m_ui->llmModelCombo->setEditText(currentModel);
+
+    m_ui->apiKeyEdit->setText(llmProviderApiKey(provider));
+}
+
 void AsrSettingWidget::initLlmPrompt()
 {
     connect(m_ui->promptEditButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditPrompt);
-
-    refreshPromptLabel();
 }
 
 void AsrSettingWidget::refreshPromptLabel()
@@ -305,12 +329,6 @@ void AsrSettingWidget::initOcrProvider()
             combo->addItem(jsonString(preset, "name"),
                            jsonString(preset, "id"));
         }
-    }
-
-    const QString savedId = currentOcrProviderId();
-    const int idx = combo->findData(savedId);
-    if (idx >= 0) {
-        combo->setCurrentIndex(idx);
     }
 
     connect(combo, &QComboBox::currentIndexChanged, this,
@@ -405,11 +423,6 @@ void AsrSettingWidget::initLlmChecks()
     auto *llmCheck = m_ui->llmPostProcessCheck;
     auto *ocrCheck = m_ui->ocrContextCheck;
 
-    llmCheck->setChecked(
-        appConfigBool("/settings/llm/llmPostProcessEnableForAsr", false));
-    ocrCheck->setEnabled(llmCheck->isChecked());
-    ocrCheck->setChecked(ocrContextEnabledForAsr());
-
     connect(llmCheck, &QCheckBox::toggled, this, [](bool checked) {
         setAppConfigValue("/settings/llm/llmPostProcessEnableForAsr", checked);
     });
@@ -438,30 +451,10 @@ void AsrSettingWidget::initAsrModel()
         }
     }
 
-    // Restore saved selection
-    const QString savedId = currentAsrProviderId();
-    int restoreIdx = -1;
-    if (!savedId.isEmpty()) {
-        for (int i = 0; i < combo->count(); ++i) {
-            const nlohmann::json m = asrPresetAt(i);
-            if (jsonString(m, "id") == savedId) {
-                restoreIdx = i;
-                break;
-            }
-        }
-    }
-    if (restoreIdx >= 0) {
-        combo->setCurrentIndex(restoreIdx);
-    }
-
     connect(combo, &QComboBox::currentIndexChanged, this,
             &AsrSettingWidget::onAsrModelChanged);
     connect(m_ui->useButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseAsrModel);
-
-    if (combo->count() > 0) {
-        onAsrModelChanged(combo->currentIndex());
-    }
 }
 
 void AsrSettingWidget::onAsrModelChanged(int index)
@@ -554,15 +547,38 @@ void AsrSettingWidget::loadAsrPreset(const nlohmann::json &preset)
     }
 }
 
-void AsrSettingWidget::showAsrModelLoaded(const nlohmann::json &preset)
-{
-    STATUSBAR_INFO("{}", tr("Speech recognition model loaded: %1")
-                             .arg(jsonString(preset, "name")));
-}
-
 // ──────────────────────────────────────────────────────────────────────────
 // Use / Download
 // ──────────────────────────────────────────────────────────────────────────
+
+ModelDownloadManager &AsrSettingWidget::ensureModelDownloadManager()
+{
+    if (!m_downloadManager) {
+        m_downloadManager = std::make_unique<ModelDownloadManager>();
+        connect(m_downloadManager.get(), &ModelDownloadManager::downloadStarted,
+                this, [this](const QString &modelName) {
+                    STATUSBAR_INFO("{}",
+                                   tr("Downloading %1...").arg(modelName));
+                });
+        connect(m_downloadManager.get(), &ModelDownloadManager::extracting,
+                this, [this]() { STATUSBAR_INFO("{}", tr("Extracting...")); });
+        connect(m_downloadManager.get(), &ModelDownloadManager::downloadFailed,
+                this, [this](const QString &) {
+                    STATUSBAR_INFO("{}", tr("Download failed"));
+                });
+        connect(m_downloadManager.get(),
+                &ModelDownloadManager::extractionFailed, this,
+                [this](const QString &error) {
+                    QMessageBox::warning(this, tr("Extraction failed"),
+                                         tr("Failed:\n%1").arg(error));
+                    STATUSBAR_INFO("{}", tr("Extraction failed"));
+                });
+        connect(m_downloadManager.get(), &ModelDownloadManager::finished, this,
+                &AsrSettingWidget::onDownloadFinished);
+    }
+
+    return *m_downloadManager;
+}
 
 void AsrSettingWidget::onUseAsrModel()
 {
@@ -578,7 +594,7 @@ void AsrSettingWidget::onUseAsrModel()
     if (!isSystem && !isAsrPresetInstalled(m)) {
         setCurrentAsrProviderId(modelId);
         QString error;
-        if (!m_downloadManager->startAsrModelDownload(ptr, &error) &&
+        if (!ensureModelDownloadManager().startAsrModelDownload(ptr, &error) &&
             !error.isEmpty())
         {
             STATUSBAR_INFO("{}", error);
@@ -590,7 +606,9 @@ void AsrSettingWidget::onUseAsrModel()
     loadAsrPreset(m);
     setCurrentAsrProviderId(modelId);
     refreshAsrStatus();
-    showAsrModelLoaded(m);
+    STATUSBAR_INFO(
+        "{}",
+        tr("Speech recognition model loaded: %1").arg(jsonString(m, "name")));
 }
 
 void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
@@ -605,7 +623,8 @@ void AsrSettingWidget::onDownloadFinished(const QString &modelPointer)
 
     if (currentAsrProviderId() == jsonString(m, "id")) {
         loadAsrPreset(m);
-        showAsrModelLoaded(m);
+        STATUSBAR_INFO("{}", tr("Speech recognition model loaded: %1")
+                                 .arg(jsonString(m, "name")));
     }
     else {
         STATUSBAR_INFO("{}", tr("Downloaded: %1").arg(modelName));

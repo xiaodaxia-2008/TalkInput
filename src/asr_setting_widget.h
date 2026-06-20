@@ -27,6 +27,7 @@ class AsrSettingWidget final : public QWidget
 public:
     explicit AsrSettingWidget(QWidget *parent = nullptr);
     ~AsrSettingWidget() override;
+    void updateUiFromConfig();
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -39,6 +40,7 @@ private:
     void onUseAsrModel();
     void onEditHotwords();
     void onEditPrompt();
+    void applyLlmProviderToUi(const nlohmann::json &provider);
     void refreshPromptLabel();
 
     // Init helpers
@@ -50,15 +52,15 @@ private:
     void initIcons();
 
     void onDownloadFinished(const QString &modelPointer);
+    ModelDownloadManager &ensureModelDownloadManager();
     nlohmann::json asrPresetAt(int index) const;
     nlohmann::json currentAsrPreset() const;
     QString currentAsrPresetPath() const;
     void loadActiveAsrPreset();
     void loadAsrPreset(const nlohmann::json &preset);
-    void showAsrModelLoaded(const nlohmann::json &preset);
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-    ModelDownloadManager *m_downloadManager = nullptr;
+    std::unique_ptr<ModelDownloadManager> m_downloadManager;
 };
 
 } // namespace talkinput
