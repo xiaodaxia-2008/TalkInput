@@ -65,7 +65,36 @@ bool isAsrPresetInstalled(const nlohmann::json &preset)
         return true;
     }
     const QString modelDir = asrModelDir(preset);
-    return !modelDir.isEmpty() && QFileInfo(modelDir).isDir();
+    if (modelDir.isEmpty() || !QFileInfo(modelDir).isDir()) {
+        return false;
+    }
+
+    const nlohmann::json files =
+        preset.value("files", nlohmann::json::object());
+    if (files.is_object()) {
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            if (!it->is_string()) {
+                continue;
+            }
+            const std::string key = it.key();
+            const QString relative =
+                QString::fromStdString(it->get<std::string>());
+            const QFileInfo fi(
+                QDir(modelDir).filePath(relative));
+
+            if (key.size() > 4 && key.substr(key.size() - 4) == ">dir") {
+                if (!fi.isDir()) {
+                    return false;
+                }
+            } else {
+                if (!fi.isFile()) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 nlohmann::json currentHotwordsConfig()

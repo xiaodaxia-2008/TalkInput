@@ -532,8 +532,6 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
 
     SPDLOG_DEBUG("AsrSettingWidget: loading ASR model {}", name);
     vc->loadSpeechRecognitionModel(preset);
-    SPDLOG_INFO("ASR model loaded: {} ({})", name, asrModelDir(preset));
-    STATUSBAR_INFO("{}", tr("Speech recognition model loaded: %1").arg(name));
 }
 
 // ──────────────────────────────────────────────────────────────────────────

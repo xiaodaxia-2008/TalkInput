@@ -102,7 +102,6 @@ void MainWindow::setupUi()
     connect(m_ui->actionRecognizeFile, &QAction::triggered, this,
             &MainWindow::onRecognizeAudioFile);
 
-    STATUSBAR_INFO("{}", tr("Loading speech recognition model..."));
     SPDLOG_INFO("Starting ASR service");
 
     // resultChanged comes from VoiceInputController → onResult
