@@ -9,7 +9,7 @@
 int main(int argc, char *argv[])
 {
     spdlog::set_level(spdlog::level::debug);
-    spdlog::flush_on(spdlog::level::debug);
+    spdlog::default_logger()->set_level(spdlog::level::debug);
     SPDLOG_DEBUG("starting application");
 
     QApplication app(argc, argv);

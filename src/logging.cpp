@@ -85,6 +85,7 @@ auto getFileSink()
     static auto fileSink = []() {
         const QString logPath =
             QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
+        QDir().mkpath(appDataDir());
         auto sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
             logPath.toStdString(), 10 * 1024 * 1024, 3);
         sink->set_level(spdlog::level::debug);
