@@ -60,15 +60,17 @@ namespace talkinput
 
 VoiceTextProcessor::VoiceTextProcessor(QObject *parent) : QObject(parent)
 {
-    m_llmPostProcessor = new LlmPostProcessor(this);
-    auto ocr = OcrRecognizer::createFromConfig(currentOcrPreset(), this);
+    m_llmPostProcessor = std::make_unique<LlmPostProcessor>();
+    auto ocr = OcrRecognizer::createFromConfig(currentOcrPreset());
     if (!ocr) {
         SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocr.error());
     }
     else {
-        m_ocrRecognizer = ocr->release();
+        m_ocrRecognizer = std::move(*ocr);
     }
 }
+
+VoiceTextProcessor::~VoiceTextProcessor() = default;
 
 void VoiceTextProcessor::processFinalText(const QString &text,
                                           QObject *receiver, Callback callback)

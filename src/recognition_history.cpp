@@ -17,13 +17,12 @@ RecognitionHistory::RecognitionHistory()
         QDir(talkinput::appDataDir()).filePath(QStringLiteral("history.db"));
     QDir().mkpath(talkinput::appDataDir());
 
-    m_db = new QSqlDatabase(QSqlDatabase::addDatabase(
+    m_db = std::make_unique<QSqlDatabase>(QSqlDatabase::addDatabase(
         QStringLiteral("QSQLITE"), QStringLiteral("history")));
     m_db->setDatabaseName(dbPath);
 
     if (!m_db->open()) {
-        SPDLOG_ERROR("Failed to open history db: {}",
-                      m_db->lastError().text());
+        SPDLOG_ERROR("Failed to open history db: {}", m_db->lastError().text());
         return;
     }
 
@@ -40,7 +39,6 @@ RecognitionHistory::~RecognitionHistory()
 {
     if (m_db) {
         m_db->close();
-        delete m_db;
     }
 }
 

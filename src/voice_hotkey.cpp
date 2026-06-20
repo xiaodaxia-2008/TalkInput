@@ -24,9 +24,9 @@ void VoiceHotkey::registerShortcut()
         return;
     }
 
-    m_hotkey =
-        new QHotkey(QKeySequence(QStringLiteral("Ctrl+Alt+L")), true, this);
-    connect(m_hotkey, &QHotkey::activated, this, &VoiceHotkey::activated);
+    m_hotkey = std::make_unique<QHotkey>(
+        QKeySequence(QStringLiteral("Ctrl+Alt+L")), true);
+    connect(m_hotkey.get(), &QHotkey::activated, this, &VoiceHotkey::activated);
 
     if (!m_hotkey->isRegistered()) {
         SPDLOG_WARN("Failed to register global hotkey: Ctrl+Alt+L");
@@ -43,8 +43,7 @@ void VoiceHotkey::unregisterShortcut()
     }
 
     m_hotkey->setRegistered(false);
-    delete m_hotkey;
-    m_hotkey = nullptr;
+    m_hotkey.reset();
 }
 
 } // namespace talkinput

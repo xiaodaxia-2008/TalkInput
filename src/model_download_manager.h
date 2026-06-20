@@ -19,6 +19,7 @@ class ModelDownloadManager final : public QObject
 
 public:
     explicit ModelDownloadManager(QObject *parent = nullptr);
+    ~ModelDownloadManager() override;
 
     bool startAsrModelDownload(const QString &modelPointer,
                                QString *errorMessage = nullptr);
@@ -37,7 +38,7 @@ private:
     void onDownloadFinished();
     void clearActiveDownload();
 
-    QNetworkAccessManager *m_network = nullptr;
+    std::unique_ptr<QNetworkAccessManager> m_network;
     QNetworkReply *m_reply = nullptr;
     std::unique_ptr<QFile> m_file;
     QString m_archivePath;

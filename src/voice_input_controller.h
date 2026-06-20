@@ -71,11 +71,11 @@ private:
     void showOverlay();
     void hideOverlay();
 
-    VoiceRecognizerSession *m_recognizerSession = nullptr;
-    AudioInputCapture *m_audioCapture = nullptr;
-    TextInjector *m_textInjector = nullptr;
-    VoiceTextProcessor *m_textProcessor = nullptr;
-    VoiceHotkey *m_hotkey = nullptr;
+    std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
+    std::unique_ptr<AudioInputCapture> m_audioCapture;
+    std::unique_ptr<TextInjector> m_textInjector;
+    std::unique_ptr<VoiceTextProcessor> m_textProcessor;
+    std::unique_ptr<VoiceHotkey> m_hotkey;
 
     bool m_isListening = false;
 

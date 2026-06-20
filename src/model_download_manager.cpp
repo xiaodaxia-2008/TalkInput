@@ -17,9 +17,11 @@ namespace talkinput
 {
 
 ModelDownloadManager::ModelDownloadManager(QObject *parent)
-    : QObject(parent), m_network(new QNetworkAccessManager(this))
+    : QObject(parent), m_network(std::make_unique<QNetworkAccessManager>())
 {
 }
+
+ModelDownloadManager::~ModelDownloadManager() = default;
 
 bool ModelDownloadManager::startAsrModelDownload(const QString &modelPointer,
                                                  QString *errorMessage)

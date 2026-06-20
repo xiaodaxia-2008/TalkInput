@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <memory>
 
 class QHotkey;
 
@@ -22,7 +23,7 @@ private:
     void registerShortcut();
     void unregisterShortcut();
 
-    QHotkey *m_hotkey = nullptr;
+    std::unique_ptr<QHotkey> m_hotkey;
 };
 
 } // namespace talkinput

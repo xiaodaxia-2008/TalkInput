@@ -4,6 +4,8 @@
 #include <QString>
 #include <QVector>
 
+#include <memory>
+
 class QSqlDatabase;
 
 namespace talkinput
@@ -29,7 +31,7 @@ public:
     QVector<Entry> allEntries() const;
 
 private:
-    QSqlDatabase *m_db = nullptr;
+    std::unique_ptr<QSqlDatabase> m_db;
 };
 
 } // namespace talkinput

@@ -5,6 +5,7 @@
 #include <QString>
 
 #include <functional>
+#include <memory>
 
 namespace talkinput
 {
@@ -20,6 +21,7 @@ public:
     using Callback = std::function<void(const QString &)>;
 
     explicit VoiceTextProcessor(QObject *parent = nullptr);
+    ~VoiceTextProcessor() override;
 
     void processFinalText(const QString &text, QObject *receiver,
                           Callback callback);
@@ -27,8 +29,8 @@ public:
 private:
     QImage captureFocusedContextImage() const;
 
-    LlmPostProcessor *m_llmPostProcessor = nullptr;
-    OcrRecognizer *m_ocrRecognizer = nullptr;
+    std::unique_ptr<LlmPostProcessor> m_llmPostProcessor;
+    std::unique_ptr<OcrRecognizer> m_ocrRecognizer;
 };
 
 } // namespace talkinput

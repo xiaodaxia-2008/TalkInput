@@ -22,19 +22,19 @@ VoiceInputController *VoiceInputController::instance()
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
-    m_recognizerSession = new VoiceRecognizerSession(this);
-    connect(m_recognizerSession, &VoiceRecognizerSession::resultChanged, this,
-            &VoiceInputController::onResult);
+    m_recognizerSession = std::make_unique<VoiceRecognizerSession>();
+    connect(m_recognizerSession.get(), &VoiceRecognizerSession::resultChanged,
+            this, &VoiceInputController::onResult);
 
-    m_audioCapture = new AudioInputCapture(this);
-    connect(m_audioCapture, &AudioInputCapture::pcm16Ready, this,
+    m_audioCapture = std::make_unique<AudioInputCapture>();
+    connect(m_audioCapture.get(), &AudioInputCapture::pcm16Ready, this,
             [this](const QByteArray &pcm16, int sampleRate, int channels) {
                 m_recognizerSession->feedRecognitionAudio(pcm16, sampleRate,
                                                           channels);
             });
 
-    m_hotkey = new VoiceHotkey(this);
-    connect(m_hotkey, &VoiceHotkey::activated, this, [this]() {
+    m_hotkey = std::make_unique<VoiceHotkey>();
+    connect(m_hotkey.get(), &VoiceHotkey::activated, this, [this]() {
         if (m_isListening) {
             stopListening();
         }
@@ -44,8 +44,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     });
 
     m_overlay = std::make_unique<VoiceOverlay>();
-    m_textInjector = new TextInjector(this);
-    m_textProcessor = new VoiceTextProcessor(this);
+    m_textInjector = std::make_unique<TextInjector>();
+    m_textProcessor = std::make_unique<VoiceTextProcessor>();
 }
 
 VoiceInputController::~VoiceInputController()
