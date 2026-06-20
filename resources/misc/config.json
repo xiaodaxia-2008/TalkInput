@@ -6,7 +6,7 @@
     },
     "hotwords": ["TalkInput", "开口输入法"],
     "asr": {
-      "providerId": "streaming-paraformer-bilingual-zh-en"
+      "providerId": "streaming-paraformer-bilingual-zh-en-punct-int8"
     },
     "ocr": {
       "providerId": "system-ocr"
@@ -23,13 +23,13 @@
     }
   },
   "asrPresets": {
-    "streaming-paraformer-bilingual-zh-en": {
-      "id": "streaming-paraformer-bilingual-zh-en",
+    "streaming-paraformer-bilingual-zh-en-punct-int8": {
+      "id": "streaming-paraformer-bilingual-zh-en-punct-int8",
       "name": "Paraformer",
       "type": "StreamingParaformer",
       "languages": "zh,en",
       "modelDirName": "sherpa-onnx-streaming-paraformer-bilingual-zh-en-punct-int8",
-      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en-punct-int8.tar.bz2",
+      "url": "https://github.com/xiaodaxia-2008/TalkInput/releases/download/asr-models/streaming-paraformer-punct-int8/sherpa-onnx-streaming-paraformer-bilingual-zh-en-punct-int8.tar.bz2",
       "size": 289876673,
       "paramCount": 0,
       "streamingSupport": true,
