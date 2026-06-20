@@ -12,6 +12,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QCoro/QCoroNetworkReply>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -26,7 +27,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPushButton>
-#include <QCoro/QCoroNetworkReply>
 #include <QSignalBlocker>
 #include <QTextEdit>
 #include <QUrl>
@@ -473,8 +473,7 @@ void AsrSettingWidget::initAsrModel()
 
 void AsrSettingWidget::onAsrModelChanged(int index)
 {
-    if (index < 0 || index >= m_ui->modelCombo->count() || m_isDownloading)
-    {
+    if (index < 0 || index >= m_ui->modelCombo->count() || m_isDownloading) {
         m_ui->useButton->setEnabled(false);
         return;
     }
@@ -599,8 +598,7 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
     }
 
     for (const QString &pointer : modelPointers) {
-        const nlohmann::json dlModel =
-            appConfigValue(pointer.toStdString());
+        const nlohmann::json dlModel = appConfigValue(pointer.toStdString());
         const QUrl url(jsonString(dlModel, "url"));
         const QString modelName = jsonString(dlModel, "name");
         const QString archiveName = QFileInfo(url.path()).fileName();
@@ -610,8 +608,7 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
         QFile::remove(tempPath);
         m_downloadFile = std::make_unique<QFile>(tempPath);
         if (!m_downloadFile->open(QIODevice::WriteOnly)) {
-            STATUSBAR_INFO("{}",
-                           tr("Cannot create ASR model download file."));
+            STATUSBAR_INFO("{}", tr("Cannot create ASR model download file."));
             downloadCleanupFail();
             co_return;
         }
@@ -626,18 +623,16 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
                                  m_downloadFile->write(reply->readAll());
                              }
                          });
-        QObject::connect(reply, &QNetworkReply::downloadProgress, this,
-                         [this](qint64 received, qint64 total) {
-                             if (total <= 0) {
-                                 return;
-                             }
-                             const int percent =
-                                 static_cast<int>(received * 100 / total);
-                             STATUSBAR_INFO(
-                                 "{}",
-                                 tr("Downloading ASR model %1%...")
-                                     .arg(percent));
-                         });
+        QObject::connect(
+            reply, &QNetworkReply::downloadProgress, this,
+            [this](qint64 received, qint64 total) {
+                if (total <= 0) {
+                    return;
+                }
+                const int percent = static_cast<int>(received * 100 / total);
+                STATUSBAR_INFO("{}",
+                               tr("Downloading ASR model %1%...").arg(percent));
+            });
 
         co_await reply;
 
@@ -652,8 +647,7 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
             QFile::remove(tempPath);
             STATUSBAR_INFO(
                 "{}",
-                tr("ASR model download failed: %1")
-                    .arg(reply->errorString()));
+                tr("ASR model download failed: %1").arg(reply->errorString()));
             reply->deleteLater();
             downloadCleanupFail();
             co_return;
@@ -662,21 +656,18 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
 
         QFile::remove(archivePath);
         if (!QFile::rename(tempPath, archivePath)) {
-            STATUSBAR_INFO("{}",
-                           tr("Failed to save ASR model download."));
+            STATUSBAR_INFO("{}", tr("Failed to save ASR model download."));
             downloadCleanupFail();
             co_return;
         }
 
-        STATUSBAR_INFO("{}",
-                       tr("Extracting ASR model: %1").arg(modelName));
+        STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
         auto result = extractArchive(archivePath, modelRoot.absolutePath());
         QFile::remove(archivePath);
         if (!result) {
             STATUSBAR_INFO(
                 "{}",
-                tr("ASR model extraction failed: %1")
-                    .arg(result.error()));
+                tr("ASR model extraction failed: %1").arg(result.error()));
             downloadCleanupFail();
             co_return;
         }
