@@ -238,6 +238,11 @@ void AsrSettingWidget::initLlmPrompt()
     connect(m_ui->promptEditButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditPrompt);
 
+    refreshPromptLabel();
+}
+
+void AsrSettingWidget::refreshPromptLabel()
+{
     const QString text = appConfigString("/settings/llm/userPrompt");
     m_ui->promptLabel->setText(
         QStringLiteral("%1 …").arg(text.simplified().left(50)));
@@ -281,9 +286,7 @@ void AsrSettingWidget::onEditPrompt()
 
     const QString text = editor->toPlainText().trimmed();
     setAppConfigValue("/settings/llm/userPrompt", text);
-    m_ui->promptLabel->setText(
-        QStringLiteral("%1 …").arg(text.simplified().left(50)));
-    m_ui->promptLabel->setToolTip(text);
+    refreshPromptLabel();
     showStatusMessage(tr("LLM prompt saved"));
 }
 

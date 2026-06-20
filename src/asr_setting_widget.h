@@ -42,6 +42,7 @@ private:
     void onUseAsrModel();
     void onEditHotwords();
     void onEditPrompt();
+    void refreshPromptLabel();
 
     // Init helpers
     void initLlmProviders();
