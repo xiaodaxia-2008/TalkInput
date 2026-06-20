@@ -9,7 +9,6 @@
 #include "utils.h"
 #include "voice_input_controller.h"
 
-#include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QCoro/QCoroNetworkReply>
@@ -105,7 +104,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     initLlmProviders();
     initLlmPrompt();
     initOcrProvider();
-    initLlmChecks();
     initAsrModel();
     initIcons();
     initShortcuts();
@@ -150,13 +148,15 @@ void AsrSettingWidget::updateUiFromConfig()
     }
 
     {
-        const QSignalBlocker llmBlocker(m_ui->llmPostProcessCheck);
-        const QSignalBlocker ocrBlocker(m_ui->ocrContextCheck);
-        const bool llmPostProcessEnabled =
-            appConfigBool("/settings/llm/llmPostProcessEnableForAsr", false);
-        m_ui->llmPostProcessCheck->setChecked(llmPostProcessEnabled);
-        m_ui->ocrContextCheck->setEnabled(llmPostProcessEnabled);
-        m_ui->ocrContextCheck->setChecked(ocrContextEnabledForAsr());
+        const QSignalBlocker b1(m_ui->asrShortcutEdit);
+        const QSignalBlocker b2(m_ui->asrLlmShortcutEdit);
+        const QSignalBlocker b3(m_ui->asrLlmOcrShortcutEdit);
+        m_ui->asrShortcutEdit->setKeySequence(
+            hotkeySequence(PipelineMode::AsrOnly));
+        m_ui->asrLlmShortcutEdit->setKeySequence(
+            hotkeySequence(PipelineMode::AsrLlm));
+        m_ui->asrLlmOcrShortcutEdit->setKeySequence(
+            hotkeySequence(PipelineMode::AsrLlmOcr));
     }
 
     const QString savedAsrProviderId = currentAsrProviderId();
@@ -175,18 +175,6 @@ void AsrSettingWidget::updateUiFromConfig()
     }
     onAsrModelChanged(m_ui->modelCombo->currentIndex());
     loadActiveAsrPreset();
-
-    {
-        const QSignalBlocker b1(m_ui->asrShortcutEdit);
-        const QSignalBlocker b2(m_ui->asrLlmShortcutEdit);
-        const QSignalBlocker b3(m_ui->asrLlmOcrShortcutEdit);
-        m_ui->asrShortcutEdit->setKeySequence(
-            hotkeySequence(PipelineMode::AsrOnly));
-        m_ui->asrLlmShortcutEdit->setKeySequence(
-            hotkeySequence(PipelineMode::AsrLlm));
-        m_ui->asrLlmOcrShortcutEdit->setKeySequence(
-            hotkeySequence(PipelineMode::AsrLlmOcr));
-    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -448,19 +436,6 @@ void AsrSettingWidget::onEditHotwords()
 // ──────────────────────────────────────────────────────────────────────────
 // LLM Polish / OCR Context checkboxes
 // ──────────────────────────────────────────────────────────────────────────
-
-void AsrSettingWidget::initLlmChecks()
-{
-    auto *llmCheck = m_ui->llmPostProcessCheck;
-    auto *ocrCheck = m_ui->ocrContextCheck;
-
-    connect(llmCheck, &QCheckBox::toggled, this, [](bool checked) {
-        setAppConfigValue("/settings/llm/llmPostProcessEnableForAsr", checked);
-    });
-    connect(ocrCheck, &QCheckBox::toggled, this,
-            [](bool checked) { setOcrContextEnabledForAsr(checked); });
-    connect(llmCheck, &QCheckBox::toggled, ocrCheck, &QCheckBox::setEnabled);
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 // ASR Model

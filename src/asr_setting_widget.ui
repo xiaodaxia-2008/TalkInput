@@ -343,50 +343,36 @@
     </item>
     <item>
      <layout class="QHBoxLayout" name="bottomRow">
-     <property name="spacing">
-      <number>8</number>
-     </property>
-     <item>
-       <widget class="QPushButton" name="hotwordsButton">
-        <property name="flat">
-         <bool>true</bool>
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+        <widget class="QPushButton" name="hotwordsButton">
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+         <string>Edit hot words</string>
         </property>
-        <property name="toolTip">
-        <string>Edit hot words</string>
-       </property>
-       <property name="text">
-        <string>Hot Words</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="llmPostProcessCheck">
-       <property name="text">
-        <string>LLM Polish</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="ocrContextCheck">
-       <property name="text">
-        <string>OCR Context</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="bottomSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+        <property name="text">
+         <string>Hot Words</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="bottomSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
    </item>
   </layout>
  </widget>

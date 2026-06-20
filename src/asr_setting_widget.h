@@ -48,7 +48,6 @@ private:
     void initLlmProviders();
     void initLlmPrompt();
     void initOcrProvider();
-    void initLlmChecks();
     void initAsrModel();
     void initIcons();
     void initShortcuts();

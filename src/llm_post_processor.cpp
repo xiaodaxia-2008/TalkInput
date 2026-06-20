@@ -68,7 +68,7 @@ void LlmPostProcessor::shutdown()
 
 bool LlmPostProcessor::isEnabled() const
 {
-    return appConfigBool("/settings/llm/llmPostProcessEnableForAsr", false);
+    return true;
 }
 
 void LlmPostProcessor::postProcess(const QString &text, QObject *receiver,
