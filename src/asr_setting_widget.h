@@ -2,8 +2,9 @@
 
 #include "json_utils.h"
 
+#include <QCoro/QCoroTask>
+
 #include <QNetworkAccessManager>
-#include <QQueue>
 #include <QString>
 #include <QWidget>
 #include <functional>
@@ -13,7 +14,6 @@ class QComboBox;
 class QEvent;
 class QFile;
 class QLineEdit;
-class QNetworkReply;
 
 namespace Ui
 {
@@ -57,23 +57,16 @@ private:
                              std::function<void()> onReady);
     void loadInstalledAsrModel(const QString &providerId);
 
-    bool enqueueDownload(const QString &modelPointer, QString *errorMessage);
-    void startNextDownload();
-    void onDownloadFinished();
-    void downloadFinishReady();
-    void downloadFail();
+    QCoro::Task<void> downloadModels(QString providerId);
+    void downloadCleanupDone();
+    void downloadCleanupFail();
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
 
     bool m_isDownloading = false;
     std::function<void()> m_onDownloadReady;
     QNetworkAccessManager m_network;
-    QNetworkReply *m_reply = nullptr;
     std::unique_ptr<QFile> m_downloadFile;
-    QQueue<QString> m_pendingDownloads;
-    QString m_activeDownloadPointer;
-    QString m_activeArchivePath;
-    QString m_activeTempPath;
 };
 
 } // namespace talkinput

@@ -30,6 +30,21 @@ set(QHOTKEY_INSTALL OFF CACHE BOOL "Disable install" FORCE)
 set(QHOTKEY_EXAMPLES OFF CACHE BOOL "Disable examples" FORCE)
 FetchContent_MakeAvailable(QHotkey)
 
+FetchContent_Declare(QCoro
+    GIT_REPOSITORY https://github.com/qcoro/qcoro.git
+    GIT_TAG v0.12.0
+)
+set(QCORO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(QCORO_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(QCORO_WITH_QTDBUS OFF CACHE BOOL "" FORCE)
+set(QCORO_WITH_QTWEBSOCKETS OFF CACHE BOOL "" FORCE)
+set(QCORO_WITH_QTNETWORK ON CACHE BOOL "" FORCE)
+set(QCORO_WITH_QTQUICK OFF CACHE BOOL "" FORCE)
+set(QCORO_WITH_QTQML OFF CACHE BOOL "" FORCE)
+set(QCORO_WITH_QML OFF CACHE BOOL "" FORCE)
+set(QCORO_WITH_QTTEST OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(QCoro)
+
 include(cmake/QtDeploy.cmake)
 include(cmake/SherpaOnnxRelease.cmake)
 include(cmake/GitInfo.cmake)

@@ -26,7 +26,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPushButton>
-#include <QQueue>
+#include <QCoro/QCoroNetworkReply>
 #include <QSignalBlocker>
 #include <QTextEdit>
 #include <QUrl>
@@ -116,7 +116,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
 
 AsrSettingWidget::~AsrSettingWidget()
 {
-    downloadFail();
+    m_isDownloading = false;
 }
 
 void AsrSettingWidget::updateUiFromConfig()
@@ -516,51 +516,7 @@ void AsrSettingWidget::ensureAsrModelReady(const QString &providerId,
 
     m_isDownloading = true;
     m_onDownloadReady = std::move(onReady);
-
-    const nlohmann::json model = asrPresetById(providerId);
-    if (!model.is_object()) {
-        STATUSBAR_INFO("{}", tr("Model preset is invalid."));
-        downloadFail();
-        return;
-    }
-
-    if (!isAsrPresetInstalled(model)) {
-        QString error;
-        const QString pointer = asrPresetPointer(providerId);
-        if (!enqueueDownload(pointer, &error)) {
-            if (!error.isEmpty()) {
-                STATUSBAR_INFO("{}", error);
-            }
-            downloadFail();
-            return;
-        }
-    }
-
-    const nlohmann::json punctuationModel =
-        model.value("postPunctuationModel", nlohmann::json::object());
-    if (punctuationModel.is_object() && !punctuationModel.empty() &&
-        !isAsrPresetInstalled(punctuationModel) &&
-        !QUrl(jsonString(punctuationModel, "url")).isEmpty())
-    {
-        QString error;
-        const QString punctuationPointer =
-            asrPresetPointer(providerId) +
-            QStringLiteral("/postPunctuationModel");
-        if (!enqueueDownload(punctuationPointer, &error)) {
-            if (!error.isEmpty()) {
-                STATUSBAR_INFO("{}", error);
-            }
-            downloadFail();
-            return;
-        }
-    }
-
-    if (m_pendingDownloads.isEmpty()) {
-        downloadFinishReady();
-        return;
-    }
-
-    startNextDownload();
+    downloadModels(providerId);
 }
 
 void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
@@ -592,144 +548,144 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
 // Download Chain
 // ──────────────────────────────────────────────────────────────────────────
 
-bool AsrSettingWidget::enqueueDownload(const QString &modelPointer,
-                                       QString *errorMessage)
+QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
 {
-    const nlohmann::json model = appConfigValue(modelPointer.toStdString());
+    QStringList modelPointers;
+
+    const nlohmann::json model = asrPresetById(providerId);
     if (!model.is_object()) {
-        if (errorMessage) {
-            *errorMessage = tr("Model preset is invalid.");
-        }
-        return false;
+        STATUSBAR_INFO("{}", tr("Model preset is invalid."));
+        downloadCleanupFail();
+        co_return;
     }
 
-    const QUrl url(jsonString(model, "url"));
-    if (url.isEmpty()) {
-        if (errorMessage) {
-            *errorMessage = tr("Model download URL is empty.");
+    if (!isAsrPresetInstalled(model)) {
+        const QString pointer = asrPresetPointer(providerId);
+        const nlohmann::json m = appConfigValue(pointer.toStdString());
+        if (!m.is_object() || QUrl(jsonString(m, "url")).isEmpty()) {
+            STATUSBAR_INFO("{}", tr("Model preset is invalid."));
+            downloadCleanupFail();
+            co_return;
         }
-        return false;
+        modelPointers.append(pointer);
+    }
+
+    const nlohmann::json punctuationModel =
+        model.value("postPunctuationModel", nlohmann::json::object());
+    if (punctuationModel.is_object() && !punctuationModel.empty() &&
+        !isAsrPresetInstalled(punctuationModel) &&
+        !QUrl(jsonString(punctuationModel, "url")).isEmpty())
+    {
+        const QString punctuationPointer =
+            asrPresetPointer(providerId) +
+            QStringLiteral("/postPunctuationModel");
+        const nlohmann::json pm =
+            appConfigValue(punctuationPointer.toStdString());
+        if (pm.is_object() && !QUrl(jsonString(pm, "url")).isEmpty()) {
+            modelPointers.append(punctuationPointer);
+        }
+    }
+
+    if (modelPointers.isEmpty()) {
+        downloadCleanupDone();
+        co_return;
     }
 
     QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
     if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
-        if (errorMessage) {
-            *errorMessage = tr("Failed to create model cache directory.");
+        STATUSBAR_INFO("{}", tr("Failed to create model cache directory."));
+        downloadCleanupFail();
+        co_return;
+    }
+
+    for (const QString &pointer : modelPointers) {
+        const nlohmann::json dlModel =
+            appConfigValue(pointer.toStdString());
+        const QUrl url(jsonString(dlModel, "url"));
+        const QString modelName = jsonString(dlModel, "name");
+        const QString archiveName = QFileInfo(url.path()).fileName();
+        const QString archivePath = modelRoot.filePath(archiveName);
+        const QString tempPath = archivePath + QStringLiteral(".part");
+
+        QFile::remove(tempPath);
+        m_downloadFile = std::make_unique<QFile>(tempPath);
+        if (!m_downloadFile->open(QIODevice::WriteOnly)) {
+            STATUSBAR_INFO("{}",
+                           tr("Cannot create ASR model download file."));
+            downloadCleanupFail();
+            co_return;
         }
-        return false;
-    }
 
-    m_pendingDownloads.enqueue(modelPointer);
-    return true;
-}
+        STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
 
-void AsrSettingWidget::startNextDownload()
-{
-    if (m_pendingDownloads.isEmpty()) {
-        downloadFinishReady();
-        return;
-    }
+        QNetworkReply *reply = m_network.get(QNetworkRequest(url));
 
-    m_activeDownloadPointer = m_pendingDownloads.dequeue();
-    const nlohmann::json model =
-        appConfigValue(m_activeDownloadPointer.toStdString());
-    const QUrl url(jsonString(model, "url"));
-    const QString modelName = jsonString(model, "name");
-    const QString archiveName = QFileInfo(url.path()).fileName();
-    const QString modelRoot =
-        QDir(appDataDir()).filePath(QStringLiteral("models"));
+        QObject::connect(reply, &QNetworkReply::readyRead, this,
+                         [this, reply]() {
+                             if (m_downloadFile) {
+                                 m_downloadFile->write(reply->readAll());
+                             }
+                         });
+        QObject::connect(reply, &QNetworkReply::downloadProgress, this,
+                         [this](qint64 received, qint64 total) {
+                             if (total <= 0) {
+                                 return;
+                             }
+                             const int percent =
+                                 static_cast<int>(received * 100 / total);
+                             STATUSBAR_INFO(
+                                 "{}",
+                                 tr("Downloading ASR model %1%...")
+                                     .arg(percent));
+                         });
 
-    m_activeArchivePath = QDir(modelRoot).filePath(archiveName);
-    m_activeTempPath = m_activeArchivePath + QStringLiteral(".part");
+        co_await reply;
 
-    QFile::remove(m_activeTempPath);
-    m_downloadFile = std::make_unique<QFile>(m_activeTempPath);
-    if (!m_downloadFile->open(QIODevice::WriteOnly)) {
-        STATUSBAR_INFO("{}", tr("Cannot create ASR model download file."));
-        downloadFail();
-        return;
-    }
-
-    STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
-    m_reply = m_network.get(QNetworkRequest(url));
-    connect(m_reply, &QNetworkReply::readyRead, this, [this]() {
-        if (m_reply && m_downloadFile) {
-            m_downloadFile->write(m_reply->readAll());
+        if (!m_isDownloading) {
+            co_return;
         }
-    });
-    connect(m_reply, &QNetworkReply::downloadProgress, this,
-            [this](qint64 received, qint64 total) {
-                if (total <= 0) {
-                    return;
-                }
-                const int percent =
-                    static_cast<int>(received * 100 / total);
-                STATUSBAR_INFO("{}",
-                               tr("Downloading ASR model %1%...").arg(percent));
-            });
-    connect(m_reply, &QNetworkReply::finished, this,
-            [this]() { onDownloadFinished(); });
-}
 
-void AsrSettingWidget::onDownloadFinished()
-{
-    QNetworkReply *reply = m_reply;
-    m_reply = nullptr;
-
-    const nlohmann::json model =
-        appConfigValue(m_activeDownloadPointer.toStdString());
-    const QString modelName = jsonString(model, "name");
-
-    if (m_downloadFile && reply) {
-        m_downloadFile->write(reply->readAll());
         m_downloadFile->close();
-    }
+        m_downloadFile.reset();
 
-    const bool failed = !reply || reply->error() != QNetworkReply::NoError;
-    const QString errorText = reply ? reply->errorString() : QString();
-    if (reply) {
+        if (reply->error() != QNetworkReply::NoError) {
+            QFile::remove(tempPath);
+            STATUSBAR_INFO(
+                "{}",
+                tr("ASR model download failed: %1")
+                    .arg(reply->errorString()));
+            reply->deleteLater();
+            downloadCleanupFail();
+            co_return;
+        }
         reply->deleteLater();
-    }
-    m_downloadFile.reset();
 
-    if (failed) {
-        QFile::remove(m_activeTempPath);
-        STATUSBAR_INFO("{}", tr("ASR model download failed: %1").arg(errorText));
-        downloadFail();
-        return;
-    }
+        QFile::remove(archivePath);
+        if (!QFile::rename(tempPath, archivePath)) {
+            STATUSBAR_INFO("{}",
+                           tr("Failed to save ASR model download."));
+            downloadCleanupFail();
+            co_return;
+        }
 
-    QFile::remove(m_activeArchivePath);
-    if (!QFile::rename(m_activeTempPath, m_activeArchivePath)) {
-        STATUSBAR_INFO("{}", tr("Failed to save ASR model download."));
-        downloadFail();
-        return;
-    }
-
-    QDir dest(QDir(appDataDir()).filePath(QStringLiteral("models")));
-    if (!dest.exists() && !dest.mkpath(QStringLiteral("."))) {
-        STATUSBAR_INFO("{}", tr("Failed to create model directory."));
-        downloadFail();
-        return;
-    }
-
-    STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
-    auto result = extractArchive(m_activeArchivePath, dest.absolutePath());
-    QFile::remove(m_activeArchivePath);
-    if (!result) {
         STATUSBAR_INFO("{}",
-                       tr("ASR model extraction failed: %1").arg(result.error()));
-        downloadFail();
-        return;
+                       tr("Extracting ASR model: %1").arg(modelName));
+        auto result = extractArchive(archivePath, modelRoot.absolutePath());
+        QFile::remove(archivePath);
+        if (!result) {
+            STATUSBAR_INFO(
+                "{}",
+                tr("ASR model extraction failed: %1")
+                    .arg(result.error()));
+            downloadCleanupFail();
+            co_return;
+        }
     }
 
-    m_activeDownloadPointer.clear();
-    m_activeArchivePath.clear();
-    m_activeTempPath.clear();
-    startNextDownload();
+    downloadCleanupDone();
 }
 
-void AsrSettingWidget::downloadFinishReady()
+void AsrSettingWidget::downloadCleanupDone()
 {
     m_isDownloading = false;
     if (m_onDownloadReady) {
@@ -740,18 +696,9 @@ void AsrSettingWidget::downloadFinishReady()
     onAsrModelChanged(m_ui->modelCombo->currentIndex());
 }
 
-void AsrSettingWidget::downloadFail()
+void AsrSettingWidget::downloadCleanupFail()
 {
-    if (m_reply) {
-        m_reply->abort();
-        m_reply->deleteLater();
-        m_reply = nullptr;
-    }
     m_downloadFile.reset();
-    m_pendingDownloads.clear();
-    m_activeDownloadPointer.clear();
-    m_activeArchivePath.clear();
-    m_activeTempPath.clear();
     m_isDownloading = false;
     onAsrModelChanged(m_ui->modelCombo->currentIndex());
 }
