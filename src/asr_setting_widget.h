@@ -12,7 +12,6 @@
 
 class QComboBox;
 class QEvent;
-class QFile;
 class QLineEdit;
 
 namespace Ui
@@ -66,7 +65,6 @@ private:
     bool m_isDownloading = false;
     std::function<void()> m_onDownloadReady;
     QNetworkAccessManager m_network;
-    std::unique_ptr<QFile> m_downloadFile;
 };
 
 } // namespace talkinput

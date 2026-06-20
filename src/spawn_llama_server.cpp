@@ -2,14 +2,13 @@
 #include "archive_utils.h"
 #include "llm_config.h"
 #include "logging.h"
+#include "parallel_downloader.h"
 #include "utils.h"
 
 #include <QByteArray>
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QUrl>
 
 #include <spdlog/stopwatch.h>
@@ -84,8 +83,6 @@ namespace talkinput
 LlamaServerManager::LlamaServerManager(QObject *parent) : QObject(parent)
 {
     m_network.setTransferTimeout(300000);
-    connect(&m_network, &QNetworkAccessManager::finished, this,
-            &LlamaServerManager::onDownloadFinished);
     connect(&m_healthTimer, &QTimer::timeout, this,
             &LlamaServerManager::pollHealth);
     m_healthTimer.setInterval(500);
@@ -154,10 +151,10 @@ void LlamaServerManager::stop()
     m_healthTimer.stop();
     m_ready = false;
     m_preparing = false;
-    if (m_activeDownload) {
-        m_activeDownload->abort();
-        m_activeDownload->deleteLater();
-        m_activeDownload = nullptr;
+    if (m_downloader) {
+        m_downloader->cancel();
+        m_downloader->deleteLater();
+        m_downloader = nullptr;
     }
     if (m_server.state() != QProcess::NotRunning) {
         m_server.terminate();
@@ -259,22 +256,9 @@ void LlamaServerManager::beginDownload(DownloadKind kind, const QUrl &url,
 {
     m_preparing = true;
     m_downloadKind = kind;
-    m_activeDownloadPath = path;
-    QFile::remove(path + ".part");
-    m_downloadFile = std::make_unique<QFile>(path + ".part");
-    if (!m_downloadFile->open(QIODevice::WriteOnly)) {
-        emit failed(tr("Cannot create LLM download file."));
-        return;
-    }
 
-    QNetworkRequest request = makeRequest(url);
-    m_activeDownload = m_network.get(request);
-    connect(m_activeDownload, &QNetworkReply::readyRead, this, [this]() {
-        if (m_activeDownload && m_downloadFile) {
-            m_downloadFile->write(m_activeDownload->readAll());
-        }
-    });
-    connect(m_activeDownload, &QNetworkReply::downloadProgress, this,
+    m_downloader = new ParallelDownloader(&m_network, 4, this);
+    connect(m_downloader, &ParallelDownloader::downloadProgress, this,
             [this](qint64 received, qint64 total) {
                 if (total <= 0) {
                     return;
@@ -283,43 +267,33 @@ void LlamaServerManager::beginDownload(DownloadKind kind, const QUrl &url,
                 STATUSBAR_INFO(
                     "{}", tr("Downloading LLM component %1%...").arg(percent));
             });
+    connect(m_downloader, &ParallelDownloader::finished, this,
+            [this](bool ok, const QString &error) {
+                onParallelDownloadFinished(ok, error);
+            });
+    m_downloader->start(url, path);
     SPDLOG_INFO("LLM download started: {}", url.toString());
 }
 
-void LlamaServerManager::onDownloadFinished(QNetworkReply *reply)
+void LlamaServerManager::onParallelDownloadFinished(bool ok,
+                                                      const QString &error)
 {
-    if (!reply || reply != m_activeDownload) {
+    if (m_downloader) {
+        m_downloader->deleteLater();
+        m_downloader = nullptr;
+    }
+
+    if (!ok) {
+        emit failed(tr("LLM download failed: %1").arg(error));
         return;
     }
-
-    if (m_downloadFile) {
-        m_downloadFile->write(reply->readAll());
-        m_downloadFile->close();
-    }
-
-    const bool failed = reply->error() != QNetworkReply::NoError;
-    const QString errorText = reply->errorString();
-    reply->deleteLater();
-    m_activeDownload = nullptr;
-
-    const QString tempPath = m_activeDownloadPath + ".part";
-    if (failed) {
-        QFile::remove(tempPath);
-        m_downloadFile.reset();
-        emit this->failed(tr("LLM download failed: %1").arg(errorText));
-        return;
-    }
-
-    QFile::remove(m_activeDownloadPath);
-    QFile::rename(tempPath, m_activeDownloadPath);
-    m_downloadFile.reset();
 
     if (m_downloadKind == DownloadKind::LlamaArchive) {
         STATUSBAR_INFO("{}", tr("Extracting LLM runtime..."));
         auto extractResult = extractLlamaArchive();
         if (!extractResult) {
-            emit this->failed(tr("LLM runtime extraction failed: %1")
-                                  .arg(extractResult.error()));
+            emit failed(tr("LLM runtime extraction failed: %1")
+                            .arg(extractResult.error()));
             return;
         }
     }

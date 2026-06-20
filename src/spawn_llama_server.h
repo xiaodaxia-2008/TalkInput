@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QFile>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QProcess>
@@ -8,12 +7,11 @@
 #include <QTimer>
 #include <QUrl>
 #include <expected>
-#include <memory>
-
-class QNetworkReply;
 
 namespace talkinput
 {
+
+class ParallelDownloader;
 
 QString llamaServerExecutableName();
 QUrl llamaServerArchiveUrl();
@@ -51,7 +49,7 @@ private:
 
     void prepare();
     void beginDownload(DownloadKind kind, const QUrl &url, const QString &path);
-    void onDownloadFinished(QNetworkReply *reply);
+    void onParallelDownloadFinished(bool ok, const QString &error);
     std::expected<void, QString> extractLlamaArchive();
     void startServer();
     void pollHealth();
@@ -59,9 +57,7 @@ private:
     QNetworkAccessManager m_network;
     QProcess m_server;
     QTimer m_healthTimer;
-    std::unique_ptr<QFile> m_downloadFile;
-    QNetworkReply *m_activeDownload = nullptr;
-    QString m_activeDownloadPath;
+    ParallelDownloader *m_downloader = nullptr;
     DownloadKind m_downloadKind = DownloadKind::None;
     bool m_ready = false;
     bool m_stopping = false;

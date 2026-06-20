@@ -71,6 +71,8 @@ add_executable(TalkInput WIN32
     recognizers/sense_voice_speech_recognizer.h
     recognizers/funasr_nano_speech_recognizer.cpp
     recognizers/funasr_nano_speech_recognizer.h
+    parallel_downloader.cpp
+    parallel_downloader.h
     paste_text.h
     scroll_text_display.h
     scroll_text_display.cpp

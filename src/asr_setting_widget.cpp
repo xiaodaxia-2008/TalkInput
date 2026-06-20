@@ -5,6 +5,7 @@
 #include "llm_config.h"
 #include "logging.h"
 #include "ocr_config.h"
+#include "parallel_downloader.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
@@ -16,6 +17,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -594,60 +596,42 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
         const QString modelName = jsonString(dlModel, "name");
         const QString archiveName = QFileInfo(url.path()).fileName();
         const QString archivePath = modelRoot.filePath(archiveName);
-        const QString tempPath = archivePath + QStringLiteral(".part");
-
-        QFile::remove(tempPath);
-        m_downloadFile = std::make_unique<QFile>(tempPath);
-        if (!m_downloadFile->open(QIODevice::WriteOnly)) {
-            STATUSBAR_INFO("{}", tr("Cannot create ASR model download file."));
-            downloadCleanupFail();
-            co_return;
-        }
 
         STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
 
-        QNetworkReply *reply = m_network.get(QNetworkRequest(url));
-
-        QObject::connect(reply, &QNetworkReply::readyRead, this,
-                         [this, reply]() {
-                             if (m_downloadFile) {
-                                 m_downloadFile->write(reply->readAll());
+        bool dlOk = false;
+        QString dlError;
+        QEventLoop loop;
+        ParallelDownloader dl(&m_network, 4, this);
+        QObject::connect(&dl, &ParallelDownloader::downloadProgress, this,
+                         [this](qint64 received, qint64 total) {
+                             if (total <= 0) {
+                                 return;
                              }
+                             const int percent =
+                                 static_cast<int>(received * 100 / total);
+                             STATUSBAR_INFO(
+                                 "{}",
+                                 tr("Downloading ASR model %1%...")
+                                     .arg(percent));
                          });
-        QObject::connect(
-            reply, &QNetworkReply::downloadProgress, this,
-            [this](qint64 received, qint64 total) {
-                if (total <= 0) {
-                    return;
-                }
-                const int percent = static_cast<int>(received * 100 / total);
-                STATUSBAR_INFO("{}",
-                               tr("Downloading ASR model %1%...").arg(percent));
-            });
-
-        co_await reply;
+        QObject::connect(&dl, &ParallelDownloader::finished, &loop,
+                         [&](bool ok, const QString &err) {
+                             dlOk = ok;
+                             dlError = err;
+                             loop.quit();
+                         });
+        dl.start(url, archivePath);
+        loop.exec();
 
         if (!m_isDownloading) {
             co_return;
         }
 
-        m_downloadFile->close();
-        m_downloadFile.reset();
-
-        if (reply->error() != QNetworkReply::NoError) {
-            QFile::remove(tempPath);
+        if (!dlOk) {
             STATUSBAR_INFO(
                 "{}",
-                tr("ASR model download failed: %1").arg(reply->errorString()));
-            reply->deleteLater();
-            downloadCleanupFail();
-            co_return;
-        }
-        reply->deleteLater();
-
-        QFile::remove(archivePath);
-        if (!QFile::rename(tempPath, archivePath)) {
-            STATUSBAR_INFO("{}", tr("Failed to save ASR model download."));
+                tr("ASR model download failed: %1").arg(dlError));
             downloadCleanupFail();
             co_return;
         }
@@ -680,7 +664,6 @@ void AsrSettingWidget::downloadCleanupDone()
 
 void AsrSettingWidget::downloadCleanupFail()
 {
-    m_downloadFile.reset();
     m_isDownloading = false;
     onAsrModelChanged(m_ui->modelCombo->currentIndex());
 }
