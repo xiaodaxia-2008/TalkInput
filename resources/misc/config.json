@@ -130,8 +130,7 @@
       "name": "llama.cpp",
       "endpoint": "http://127.0.0.1:8765/v1/chat/completions",
       "currentModel": "Qwen3.5-2B-Q4_K_M",
-      "models": ["Qwen3.5-2B-Q4_K_M"],
-      "modelsInfo": {
+      "models": {
         "Qwen3.5-2B-Q4_K_M": {
           "name": "Qwen3.5 2B Q4_K_M",
           "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf",
@@ -149,20 +148,24 @@
       "name": "DeepSeek",
       "endpoint": "https://api.deepseek.com/v1/chat/completions",
       "currentModel": "deepseek-v4-flash",
-      "models": ["deepseek-v4-flash", "deepseek-v4-pro"],
-      "apiKey": "",
-      "pricing": {
+      "models": {
         "deepseek-v4-flash": {
-          "inputPer1M": 1.0,
-          "outputPer1M": 2.0,
-          "cacheHitInputPer1M": 0.02,
-          "cacheMissInputPer1M": 1.0
+          "name": "DeepSeek V4 Flash",
+          "price": {
+            "inputPer1M": 1.0,
+            "outputPer1M": 2.0,
+            "cacheHitInputPer1M": 0.02,
+            "cacheMissInputPer1M": 1.0
+          }
         },
         "deepseek-v4-pro": {
-          "inputPer1M": 3.0,
-          "outputPer1M": 6.0,
-          "cacheHitInputPer1M": 0.025,
-          "cacheMissInputPer1M": 3.0
+          "name": "DeepSeek V4 Pro",
+          "price": {
+            "inputPer1M": 3.0,
+            "outputPer1M": 6.0,
+            "cacheHitInputPer1M": 0.025,
+            "cacheMissInputPer1M": 3.0
+          }
         }
       }
     },
@@ -172,7 +175,7 @@
       "endpoint": "",
       "apiKey": "",
       "currentModel": "",
-      "models": []
+      "models": {}
     }
   },
   "ocrPresets": {

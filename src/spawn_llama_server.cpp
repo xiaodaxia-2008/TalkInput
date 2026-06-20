@@ -66,12 +66,12 @@ LocalModelInfo localModelInfo()
         return {};
     }
 
-    const nlohmann::json modelsInfo =
-        provider.value("modelsInfo", nlohmann::json::object());
-    if (!modelsInfo.is_object() || !modelsInfo.contains(model.toStdString())) {
+    const nlohmann::json models =
+        provider.value("models", nlohmann::json::object());
+    if (!models.is_object() || !models.contains(model.toStdString())) {
         return {};
     }
-    const nlohmann::json info = modelsInfo[model.toStdString()];
+    const nlohmann::json info = models[model.toStdString()];
     if (!info.is_object()) {
         return {};
     }

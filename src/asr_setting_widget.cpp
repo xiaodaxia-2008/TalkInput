@@ -258,15 +258,16 @@ void AsrSettingWidget::applyLlmProviderToUi(const nlohmann::json &provider)
 
     const QString currentModel = llmProviderModel(provider);
     m_ui->llmModelCombo->clear();
-    for (const auto &m : provider.value("models", nlohmann::json::array())) {
-        if (m.is_string()) {
-            m_ui->llmModelCombo->addItem(m.get<QString>());
-        }
+    const nlohmann::json models =
+        provider.value("models", nlohmann::json::object());
+    for (const auto &[key, info] : models.items()) {
+        m_ui->llmModelCombo->addItem(QString::fromStdString(key),
+                                     QString::fromStdString(key));
     }
     if (!currentModel.isEmpty() &&
         m_ui->llmModelCombo->findText(currentModel) < 0)
     {
-        m_ui->llmModelCombo->addItem(currentModel);
+        m_ui->llmModelCombo->addItem(currentModel, currentModel);
     }
     m_ui->llmModelCombo->setEditText(currentModel);
 

@@ -170,18 +170,16 @@ void LlmPostProcessor::sendCompletion(const PendingRequest &request)
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
 
     const std::string modelName = model.toStdString();
-    const nlohmann::json providerPricing =
-        provider.value("pricing", nlohmann::json::object());
-    const nlohmann::json pricing =
-        providerPricing.contains(modelName) &&
-                providerPricing[modelName].is_object()
-            ? providerPricing[modelName]
-            : nlohmann::json::object();
-    const double inputPer1M = pricing.value("inputPer1M", 0.0);
-    const double cacheHitInputPer1M = pricing.value("cacheHitInputPer1M", 0.0);
-    const double cacheMissInputPer1M =
-        pricing.value("cacheMissInputPer1M", 0.0);
-    const double outputPer1M = pricing.value("outputPer1M", 0.0);
+    const nlohmann::json models =
+        provider.value("models", nlohmann::json::object());
+    const nlohmann::json modelInfo =
+        models.value(modelName, nlohmann::json::object());
+    const nlohmann::json price =
+        modelInfo.value("price", nlohmann::json::object());
+    const double inputPer1M = price.value("inputPer1M", 0.0);
+    const double cacheHitInputPer1M = price.value("cacheHitInputPer1M", 0.0);
+    const double cacheMissInputPer1M = price.value("cacheMissInputPer1M", 0.0);
+    const double outputPer1M = price.value("outputPer1M", 0.0);
 
     QNetworkReply *reply = m_network.post(networkRequest, requestBody);
     const PendingRequest pendingCopy = request;
