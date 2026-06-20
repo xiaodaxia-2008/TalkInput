@@ -11,6 +11,7 @@ namespace talkinput
 {
 
 class AudioInputCapture;
+class TextInjector;
 class VoiceHotkey;
 class VoiceTextProcessor;
 class VoiceOverlay;
@@ -60,12 +61,12 @@ private:
     void onResult(const QString &text, bool isFinal);
     void postProcessFinalText(const QString &text);
     void injectFinalText(const QString &text);
-    void sendText(const QString &text);
     void showOverlay();
     void hideOverlay();
 
     std::unique_ptr<SpeechRecognizer> m_recognizer;
     AudioInputCapture *m_audioCapture = nullptr;
+    TextInjector *m_textInjector = nullptr;
     VoiceTextProcessor *m_textProcessor = nullptr;
     VoiceHotkey *m_hotkey = nullptr;
 

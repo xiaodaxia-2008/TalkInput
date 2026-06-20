@@ -2,7 +2,7 @@
 #include "asr_config.h"
 #include "audio_input_capture.h"
 #include "logging.h"
-#include "paste_text.h"
+#include "text_injector.h"
 #include "voice_hotkey.h"
 #include "voice_overlay.h"
 #include "voice_text_processor.h"
@@ -41,6 +41,7 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     });
 
     m_overlay = std::make_unique<VoiceOverlay>();
+    m_textInjector = new TextInjector(this);
     m_textProcessor = new VoiceTextProcessor(this);
 }
 
@@ -145,20 +146,12 @@ void VoiceInputController::injectFinalText(const QString &text)
         return;
     }
 
-    sendText(text);
-    emit finalTextCommitted(text);
-    SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
-}
-
-// ── VoiceInputController::sendText ────────────────────────────
-void VoiceInputController::sendText(const QString &text)
-{
-    if (text.isEmpty()) {
+    if (!m_textInjector->inject(text)) {
         return;
     }
 
-    SPDLOG_INFO("Sending text to foreground app: {}", text);
-    pasteTextToActiveWindow(text, true, false);
+    emit finalTextCommitted(text);
+    SPDLOG_INFO("VoiceInputController injected and saved: {}", text);
 }
 
 void VoiceInputController::showOverlay()
