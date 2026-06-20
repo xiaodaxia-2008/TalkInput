@@ -2,17 +2,16 @@
 
 #include "json_utils.h"
 
-#include <QQueue>
+#include <QPointer>
 #include <QString>
 #include <QWidget>
+#include <functional>
 #include <memory>
 
 class QComboBox;
 class QEvent;
-class QFile;
 class QLineEdit;
-class QNetworkAccessManager;
-class QNetworkReply;
+class QObject;
 
 namespace Ui
 {
@@ -52,24 +51,13 @@ private:
     void initAsrModel();
     void initIcons();
 
-    void onDownloadFinished(const QString &modelPointer);
     void loadActiveAsrPreset();
-    void loadAsrPreset(const QString &providerId);
-    bool enqueueAsrModelDownloads(const QString &providerId,
-                                  QString *errorMessage);
-    void startNextAsrModelDownload();
-    void onAsrModelDownloadFinished();
-    void clearAsrModelDownload();
+    void ensureAsrModelReady(const QString &providerId,
+                             std::function<void()> onReady);
+    void loadInstalledAsrModel(const QString &providerId);
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-    std::unique_ptr<QNetworkAccessManager> m_asrDownloadNetwork;
-    QNetworkReply *m_asrDownloadReply = nullptr;
-    std::unique_ptr<QFile> m_asrDownloadFile;
-    QQueue<QString> m_pendingAsrDownloadPointers;
-    QString m_requestedAsrModelPointer;
-    QString m_activeAsrDownloadPointer;
-    QString m_activeAsrArchivePath;
-    QString m_activeAsrTempPath;
+    QPointer<QObject> m_asrModelLoadChain;
 };
 
 } // namespace talkinput
