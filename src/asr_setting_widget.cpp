@@ -101,6 +101,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::AsrSettingWidget>())
 {
     m_ui->setupUi(this);
+    m_network.setTransferTimeout(300000);
     initLlmProviders();
     initLlmPrompt();
     initOcrProvider();

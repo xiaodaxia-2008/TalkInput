@@ -83,6 +83,7 @@ namespace talkinput
 
 LlamaServerManager::LlamaServerManager(QObject *parent) : QObject(parent)
 {
+    m_network.setTransferTimeout(300000);
     connect(&m_network, &QNetworkAccessManager::finished, this,
             &LlamaServerManager::onDownloadFinished);
     connect(&m_healthTimer, &QTimer::timeout, this,
