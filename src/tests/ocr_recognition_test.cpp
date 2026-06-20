@@ -51,7 +51,7 @@ IAsyncAction RunOcrAsync(std::wstring imagePath, std::wstring languageTag)
         file = co_await StorageFile::GetFileFromPathAsync(imagePath);
     }
     catch (const hresult_error &e) {
-        std::wcerr << L"FAIL: cannot open file \u2013 " << e.message().c_str()
+        std::wcerr << L"FAIL: cannot open file – " << e.message().c_str()
                    << std::endl;
         co_return;
     }
@@ -65,8 +65,8 @@ IAsyncAction RunOcrAsync(std::wstring imagePath, std::wstring languageTag)
             BitmapPixelFormat::Bgra8, BitmapAlphaMode::Ignore);
     }
     catch (const hresult_error &e) {
-        std::wcerr << L"FAIL: cannot decode image \u2013 "
-                   << e.message().c_str() << std::endl;
+        std::wcerr << L"FAIL: cannot decode image – " << e.message().c_str()
+                   << std::endl;
         co_return;
     }
 
@@ -98,8 +98,8 @@ IAsyncAction RunOcrAsync(std::wstring imagePath, std::wstring languageTag)
 
     if (!engine) {
         std::wcerr << L"FAIL: no OCR engine available. Install a Windows OCR "
-                      L"language pack (Settings \u2192 Time & Language \u2192 "
-                      L"Language \u2192 Add a language)."
+                      L"language pack (Settings → Time & Language → "
+                      L"Language → Add a language)."
                    << std::endl;
         co_return;
     }

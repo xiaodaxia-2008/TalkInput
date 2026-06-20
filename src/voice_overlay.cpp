@@ -29,7 +29,7 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     layout->setContentsMargins(14, 6, 14, 6);
     layout->setSpacing(8);
 
-    auto *micLabel = new QLabel(QStringLiteral("\xF0\x9F\x8E\x99"), this);
+    auto *micLabel = new QLabel(QStringLiteral("🎙"), this);
     micLabel->setObjectName("voiceOverlayMicLabel");
     layout->addWidget(micLabel);
 

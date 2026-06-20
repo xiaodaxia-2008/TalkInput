@@ -3,7 +3,7 @@
 #endif
 #include <windows.h>
 
-#include "native_overlay_effects.h"
+#include "../native_overlay_effects.h"
 
 #include <QWidget>
 
