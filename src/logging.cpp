@@ -1,5 +1,7 @@
 #include "logging.h"
+#include "utils.h"
 
+#include <QDir>
 #include <QLabel>
 #include <QMetaObject>
 #include <QPointer>
@@ -11,6 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <spdlog/sinks/base_sink.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace talkinput
@@ -99,4 +102,27 @@ void installStatusBarLogger(QStatusBar *statusBar)
     spdlog::register_or_replace(logger);
 }
 
+void initLogger()
+{
+    const QString logPath =
+        QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
+    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+        logPath.toStdString(), true);
+    file_sink->set_level(spdlog::level::debug);
+
+    auto default_logger = spdlog::default_logger();
+    auto talkinput_logger = std::make_shared<spdlog::logger>(
+        "talkinput", default_logger->sinks().begin(),
+        default_logger->sinks().end());
+    talkinput_logger->set_level(spdlog::level::debug);
+    talkinput_logger->flush_on(spdlog::level::debug);
+    talkinput_logger->sinks().push_back(file_sink);
+    spdlog::register_or_replace(talkinput_logger);
+    spdlog::set_default_logger(talkinput_logger);
+
+    auto statusbar_logger = spdlog::get("statusbar");
+    if (statusbar_logger) {
+        statusbar_logger->sinks().push_back(file_sink);
+    }
+}
 } // namespace talkinput
