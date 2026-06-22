@@ -157,8 +157,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     m_lastResult.clear();
 
     if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
-        SPDLOG_WARN("VoiceInputController: model not loaded");
-        STATUSBAR_INFO("{}",
+        STATUSBAR_WARN("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
         m_busy = false;
@@ -180,7 +179,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
         auto result = m_audioCapture->start();
         if (!result) {
             SPDLOG_ERROR("Audio capture start failed: {}", result.error());
-            STATUSBAR_INFO("{}", result.error());
+            STATUSBAR_ERROR("{}", result.error());
             m_busy = false;
             hideOverlay();
             co_return;
@@ -200,7 +199,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     const QString trimmedText = finalText.trimmed();
     if (trimmedText.isEmpty()) {
-        SPDLOG_INFO("executePipeline: empty final text, aborting");
+        SPDLOG_WARN("executePipeline: empty final text, aborting");
         m_busy = false;
         hideOverlay();
         co_return;
@@ -210,7 +209,6 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     QString ocrContext;
     if (ocrEnabled && m_ocrRecognizer && m_ocrRecognizer->isAvailable()) {
         setStage(PipelineStage::ReadingContext);
-        STATUSBAR_INFO("{}", tr("Reading focused input context..."));
 
         const QImage image = captureFocusedContextImage();
         if (!image.isNull()) {
@@ -232,7 +230,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
             SPDLOG_INFO("OCR context result received: {}", ocrContext);
         }
         else {
-            SPDLOG_INFO("OCR context skipped: no focused screenshot");
+            SPDLOG_WARN("OCR context skipped: no focused screenshot");
         }
     }
 
@@ -240,7 +238,6 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     QString result;
     if (llmEnabled) {
         setStage(PipelineStage::Polishing);
-        STATUSBAR_INFO("{}", tr("Post-processing recognition result..."));
         result = co_await m_llmPostProcessor->postProcess(
             trimmedText, ocrContext, currentHotwordsText());
     }
@@ -278,22 +275,27 @@ void VoiceInputController::setStage(PipelineStage stage)
 
     switch (stage) {
     case PipelineStage::Idle:
+        SPDLOG_DEBUG("Pipeline stage → Idle");
         hideOverlay();
         emit listeningChanged(false);
         break;
     case PipelineStage::Recording:
+        SPDLOG_INFO("Pipeline stage → Recording");
         showOverlay();
         m_overlay->setPreviewText({});
         emit listeningChanged(true);
         break;
     case PipelineStage::Recognizing:
+        SPDLOG_INFO("Pipeline stage → Recognizing");
         emit listeningChanged(true);
         break;
     case PipelineStage::ReadingContext:
+        SPDLOG_INFO("Pipeline stage → ReadingContext");
         m_overlay->setPreviewText(tr("Reading focused input context..."));
         emit listeningChanged(false);
         break;
     case PipelineStage::Polishing:
+        SPDLOG_INFO("Pipeline stage → Polishing");
         m_overlay->setPreviewText(tr("Post-processing recognition result..."));
         emit listeningChanged(false);
         break;
@@ -444,8 +446,7 @@ bool VoiceInputController::startSpeechRecognitionSession()
     setStage(PipelineStage::Recognizing);
 
     if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
-        SPDLOG_WARN("Speech recognition model not loaded");
-        STATUSBAR_INFO("{}",
+        STATUSBAR_WARN("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
         m_busy = false;
