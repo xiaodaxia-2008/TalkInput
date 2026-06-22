@@ -10,6 +10,9 @@
 
 #include <memory>
 
+template <typename T>
+class QPromise;
+
 namespace talkinput
 {
 
@@ -29,6 +32,15 @@ enum class PipelineMode
     AsrLlmOcr
 };
 
+enum class PipelineStage
+{
+    Idle,
+    Recording,
+    Recognizing,
+    ReadingContext,
+    Polishing
+};
+
 QKeySequence hotkeySequence(PipelineMode mode);
 void setHotkeySequence(PipelineMode mode, const QKeySequence &keys);
 QString hotkeyConfigPath(PipelineMode mode);
@@ -45,7 +57,13 @@ public:
 
     bool isListening() const
     {
-        return m_isListening;
+        return m_stage == PipelineStage::Recording ||
+               m_stage == PipelineStage::Recognizing;
+    }
+
+    PipelineStage stage() const
+    {
+        return m_stage;
     }
 
     bool isSpeechRecognitionModelLoaded() const;
@@ -70,25 +88,12 @@ public slots:
     void finishSpeechRecognitionSession();
 
 private:
-    enum class FinalTextAction
-    {
-        RecordHistoryOnly,
-        PasteAndRecordHistory
-    };
-
-    bool startRecording(FinalTextAction finalTextAction,
-                        PipelineMode pipelineMode = PipelineMode::AsrLlmOcr);
+    QCoro::Task<void> executePipeline(PipelineMode mode);
+    void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
-    QCoro::Task<void> postProcessFinalText(const QString &text,
-                                            FinalTextAction finalTextAction);
-    void commitFinalText(const QString &text, FinalTextAction finalTextAction);
     QImage captureFocusedContextImage();
-    void enterListeningState(const char *logMessage);
-    void leaveListeningState();
     void showOverlay();
     void hideOverlay();
-    bool beginRecognitionFlow(FinalTextAction finalTextAction);
-    void resetRecognitionFlow();
 
     std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
     std::unique_ptr<AudioInputCapture> m_audioCapture;
@@ -97,14 +102,11 @@ private:
     std::unique_ptr<OcrRecognizer> m_ocrRecognizer;
     std::unique_ptr<VoiceHotkey> m_hotkey;
 
-    bool m_isListening = false;
-
     std::unique_ptr<VoiceOverlay> m_overlay;
     QString m_lastResult;
     bool m_busy = false;
-    bool m_processingFinalText = false;
-    FinalTextAction m_finalTextAction = FinalTextAction::RecordHistoryOnly;
-    PipelineMode m_pipelineMode = PipelineMode::AsrLlmOcr;
+    PipelineStage m_stage = PipelineStage::Idle;
+    QPromise<QString> *m_finalResultPromise = nullptr;
 };
 
 } // namespace talkinput

@@ -51,7 +51,6 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
 void VoiceOverlay::startAnimation()
 {
     m_blinkAnimation->start();
-    m_scrollText->setText(QString());
     show();
     raise();
     positionOnActiveScreen();
