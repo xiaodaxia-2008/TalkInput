@@ -37,14 +37,9 @@ void setCurrentAsrProviderId(const QString &id)
     setAppConfigValue("/settings/asr/providerId", id.toStdString());
 }
 
-bool isSystemAsrPreset(const nlohmann::json &preset)
-{
-    return jsonString(preset, "type") == QLatin1StringView("System");
-}
-
 QString asrModelDir(const nlohmann::json &preset)
 {
-    if (!preset.is_object() || isSystemAsrPreset(preset)) {
+    if (!preset.is_object()) {
         return {};
     }
 
@@ -60,9 +55,6 @@ bool isAsrPresetInstalled(const nlohmann::json &preset)
 {
     if (!preset.is_object()) {
         return false;
-    }
-    if (isSystemAsrPreset(preset)) {
-        return true;
     }
     const QString modelDir = asrModelDir(preset);
     if (modelDir.isEmpty() || !QFileInfo(modelDir).isDir()) {

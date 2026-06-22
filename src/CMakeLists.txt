@@ -28,8 +28,6 @@ add_executable(TalkInput WIN32
     archive_utils.h
     audio_file_decoder.cpp
     audio_file_decoder.h
-    audio_input_capture.cpp
-    audio_input_capture.h
     audio_utils.cpp
     audio_utils.h
     asr_setting_widget.cpp
@@ -54,7 +52,6 @@ add_executable(TalkInput WIN32
     system_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
-    system_speech_recognizer.h
     logging.cpp
     logging.h
     recognition_history.cpp
@@ -134,8 +131,6 @@ if(WIN32)
         windows/port_killer.cpp
         windows/native_overlay_effects.cpp
         windows/system_ocr_recognizer.cpp
-        windows/system_speech_recognizer.cpp
-        windows/system_speech_support.cpp
         windows/llama_server_archive.cpp
     )
 elseif(APPLE)
@@ -144,8 +139,6 @@ elseif(APPLE)
         macos/port_killer.cpp
         macos/native_overlay_effects.cpp
         macos/system_ocr_recognizer.cpp
-        macos/system_speech_recognizer.cpp
-        macos/system_speech_support.cpp
         macos/llama_server_archive.cpp
     )
 elseif(UNIX)
@@ -154,8 +147,6 @@ elseif(UNIX)
         linux/port_killer.cpp
         linux/native_overlay_effects.cpp
         linux/system_ocr_recognizer.cpp
-        linux/system_speech_recognizer.cpp
-        linux/system_speech_support.cpp
         linux/llama_server_archive.cpp
     )
 endif()

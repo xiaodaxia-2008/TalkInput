@@ -191,8 +191,7 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
         const QString type = jsonString(preset, "type");
-        if (!m_voiceInputController->isSpeechRecognitionModelLoaded() &&
-            type != QStringLiteral("System"))
+        if (!m_voiceInputController->isSpeechRecognitionModelLoaded())
         {
             STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
         }

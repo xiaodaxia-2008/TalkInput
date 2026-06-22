@@ -1,7 +1,6 @@
 #include "voice_input_controller.h"
 #include "app_config.h"
 #include "asr_config.h"
-#include "audio_input_capture.h"
 #include "llm_post_processor.h"
 #include "logging.h"
 #include "ocr_config.h"
@@ -89,13 +88,6 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     connect(m_recognizerSession.get(), &VoiceRecognizerSession::resultChanged,
             this, &VoiceInputController::onResult);
 
-    m_audioCapture = std::make_unique<AudioInputCapture>();
-    connect(m_audioCapture.get(), &AudioInputCapture::pcm16Ready, this,
-            [this](const QByteArray &pcm16, int sampleRate, int channels) {
-                m_recognizerSession->feedRecognitionAudio(pcm16, sampleRate,
-                                                          channels);
-            });
-
     m_hotkey = std::make_unique<VoiceHotkey>();
     connect(m_hotkey.get(), &VoiceHotkey::activated, this,
             [this](PipelineMode mode) {
@@ -157,7 +149,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     const bool external = m_recognizerSession->acceptsExternalAudio();
     if (external) {
-        auto result = m_audioCapture->start();
+        auto result = m_recognizerSession->startCapture();
         if (!result) {
             STATUSBAR_ERROR("{}", result.error());
             setStage(PipelineStage::Idle);
@@ -305,9 +297,7 @@ void VoiceInputController::stopListening()
 {
     SPDLOG_INFO("VoiceInputController: stop listening");
 
-    if (m_audioCapture) {
-        m_audioCapture->stop();
-    }
+    m_recognizerSession->stopCapture();
 
     if (!m_recognizerSession->finishRunningRecognitionStream()) {
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {

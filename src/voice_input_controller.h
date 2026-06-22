@@ -15,7 +15,6 @@ class QPromise;
 namespace talkinput
 {
 
-class AudioInputCapture;
 class LlmPostProcessor;
 class OcrRecognizer;
 class SpeechRecognizer;
@@ -93,7 +92,6 @@ private:
     void onResult(const QString &text, bool isFinal);
 
     std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
-    std::unique_ptr<AudioInputCapture> m_audioCapture;
     std::unique_ptr<TextInjector> m_textInjector;
     std::unique_ptr<LlmPostProcessor> m_llmPostProcessor;
     std::unique_ptr<OcrRecognizer> m_ocrRecognizer;

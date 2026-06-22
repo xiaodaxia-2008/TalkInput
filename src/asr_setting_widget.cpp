@@ -83,7 +83,7 @@ QString asrModelLabel(const nlohmann::json &m)
                                                "Multilingual");
         }
         if (c == QLatin1StringView("system")) {
-            return QCoreApplication::translate("AsrSettingWidget", "System");
+            return {};
         }
         return c;
     };

@@ -78,16 +78,6 @@ target_include_directories(TalkInputOcrRecognitionTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
-add_executable(TalkInputSystemSpeechTest
-    system_speech_test.cpp
-)
-
-target_link_libraries(TalkInputSystemSpeechTest
-    PRIVATE
-    ole32
-)
-target_compile_definitions(TalkInputSystemSpeechTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-
 add_executable(TalkInputWinRTSpeechTest
     winrt_speech_test.cpp
 )

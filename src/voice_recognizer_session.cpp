@@ -93,4 +93,19 @@ bool VoiceRecognizerSession::finishRunningRecognitionStream()
     return true;
 }
 
+std::expected<void, QString> VoiceRecognizerSession::startCapture()
+{
+    if (!m_recognizer) {
+        return std::unexpected(tr("No recognizer loaded"));
+    }
+    return m_recognizer->startCapture();
+}
+
+void VoiceRecognizerSession::stopCapture()
+{
+    if (m_recognizer) {
+        m_recognizer->stopCapture();
+    }
+}
+
 } // namespace talkinput

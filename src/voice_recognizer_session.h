@@ -34,6 +34,8 @@ public:
     void feedRecognitionAudio(const QByteArray &pcm16, int sampleRate,
                               int channels);
     bool finishRunningRecognitionStream();
+    std::expected<void, QString> startCapture();
+    void stopCapture();
 
 signals:
     void resultChanged(const QString &text, bool isFinal);

@@ -1,17 +1,21 @@
 #include "speech_recognizer.h"
 
 #include "asr_config.h"
+#include "audio_utils.h"
 #include "logging.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
 #include "recognizers/streaming_paraformer_speech_recognizer.h"
-#include "system_speech_recognizer.h"
 #include "utils.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
+#include <QAudioDevice>
+#include <QAudioSource>
 #include <QDir>
 #include <QFileInfo>
+#include <QIODevice>
+#include <QMediaDevices>
 #include <QtEndian>
 
 #include <algorithm>
@@ -50,6 +54,7 @@ SpeechRecognizer::SpeechRecognizer(QObject *parent) : QObject(parent)
 
 SpeechRecognizer::~SpeechRecognizer()
 {
+    stopCapture();
     stopPunctuation();
 }
 
@@ -214,9 +219,73 @@ bool SpeechRecognizer::acceptsExternalAudio() const
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Static factory
-// ---------------------------------------------------------------------------
+// ── Audio capture ─────────────────────────────────────────────────
+
+std::expected<void, QString> SpeechRecognizer::startCapture()
+{
+    if (m_audioSource) {
+        return {};
+    }
+
+    const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
+    if (inputDevice.isNull()) {
+        SPDLOG_ERROR("No audio input device");
+        return std::unexpected(tr("No microphone available"));
+    }
+
+    m_audioFormat = inputDevice.preferredFormat();
+    if (!m_audioFormat.isValid() ||
+        m_audioFormat.sampleFormat() == QAudioFormat::Unknown)
+    {
+        m_audioFormat = QAudioFormat();
+        m_audioFormat.setSampleRate(48000);
+        m_audioFormat.setChannelCount(1);
+        m_audioFormat.setSampleFormat(QAudioFormat::Int16);
+    }
+
+    if (!inputDevice.isFormatSupported(m_audioFormat)) {
+        SPDLOG_ERROR("Audio format not supported");
+        return std::unexpected(tr("Microphone format not supported."));
+    }
+
+    m_audioSource = std::make_unique<QAudioSource>(inputDevice, m_audioFormat);
+    m_audioDevice = m_audioSource->start();
+    if (!m_audioDevice) {
+        SPDLOG_ERROR("Failed to start microphone");
+        m_audioSource.reset();
+        return std::unexpected(tr("Failed to start microphone"));
+    }
+
+    connect(m_audioDevice, &QIODevice::readyRead, this, [this]() {
+        if (!m_audioDevice) {
+            return;
+        }
+        const QByteArray audioData = m_audioDevice->readAll();
+        const QByteArray pcm16 = convertAudioToPcm16(audioData, m_audioFormat);
+        if (!pcm16.isEmpty()) {
+            acceptPcm16(pcm16, m_audioFormat.sampleRate(),
+                        m_audioFormat.channelCount());
+        }
+    });
+
+    return {};
+}
+
+void SpeechRecognizer::stopCapture()
+{
+    if (m_audioSource) {
+        m_audioSource->stop();
+    }
+    m_audioDevice = nullptr;
+    m_audioSource.reset();
+}
+
+bool SpeechRecognizer::isCaptureRunning() const
+{
+    return m_audioSource != nullptr;
+}
+
+// ── Static factory ────────────────────────────────────────────────
 namespace
 {
 
@@ -231,15 +300,10 @@ std::optional<SpeechRecognizer::Type> typeFromString(const QString &str)
     if (str == QStringLiteral("StreamingParaformer")) {
         return SpeechRecognizer::Type::StreamingParaformer;
     }
-    if (str == QStringLiteral("System")) {
-        return SpeechRecognizer::Type::System;
-    }
     return std::nullopt;
 }
 
 } // namespace
-
-bool systemSpeechRecognizerSupported();
 
 std::expected<std::unique_ptr<SpeechRecognizer>, QString>
 SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
@@ -252,24 +316,6 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
     if (!type) {
         return std::unexpected(
             QStringLiteral("Unsupported model type: %1").arg(typeName));
-    }
-
-    // System recognizer is a special case — no files, no directory
-    if (*type == SpeechRecognizer::Type::System) {
-        if (!systemSpeechRecognizerSupported()) {
-            return std::unexpected(
-                QStringLiteral("System speech recognition is not available on "
-                               "this platform."));
-        }
-        auto r = createSpeechRecognizer(*type, parent);
-        if (!r) {
-            return std::unexpected(QString());
-        }
-        auto startResult = r->start(nlohmann::json::object());
-        if (!startResult) {
-            return std::unexpected(startResult.error());
-        }
-        return r;
     }
 
     if (modelDir.isEmpty()) {
@@ -316,8 +362,6 @@ createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent)
         return std::make_unique<SenseVoiceSpeechRecognizer>(parent);
     case SpeechRecognizer::Type::FunASRNano:
         return std::make_unique<FunASRNanoSpeechRecognizer>(parent);
-    case SpeechRecognizer::Type::System:
-        return std::make_unique<SystemSpeechRecognizer>(parent);
     }
 
     return nullptr;

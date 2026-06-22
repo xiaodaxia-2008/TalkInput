@@ -2,6 +2,7 @@
 
 #include "json_utils.h"
 
+#include <QAudioFormat>
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -10,6 +11,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+class QAudioSource;
+class QIODevice;
 
 struct SherpaOnnxOfflinePunctuation;
 
@@ -26,7 +30,6 @@ public:
         StreamingParaformer,
         SenseVoice,
         FunASRNano,
-        System,
     };
 
     explicit SpeechRecognizer(QObject *parent = nullptr);
@@ -43,6 +46,10 @@ public:
     virtual void finish() = 0;
     virtual void resetStream() = 0;
     virtual bool acceptsExternalAudio() const;
+
+    std::expected<void, QString> startCapture();
+    void stopCapture();
+    bool isCaptureRunning() const;
 
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
     createFromConfig(const nlohmann::json &preset, const QString &modelDir,
@@ -71,6 +78,9 @@ protected:
 
 private:
     const SherpaOnnxOfflinePunctuation *m_punct = nullptr;
+    std::unique_ptr<QAudioSource> m_audioSource;
+    QIODevice *m_audioDevice = nullptr;
+    QAudioFormat m_audioFormat;
 };
 
 std::unique_ptr<SpeechRecognizer>
