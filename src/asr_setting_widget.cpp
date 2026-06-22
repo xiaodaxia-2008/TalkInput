@@ -378,10 +378,6 @@ void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
     markConfigDirty();
 }
 
-void AsrSettingWidget::onAsrModelChanged(int /*index*/)
-{
-    m_ui->useButton->setEnabled(true);
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 // Hotwords
@@ -572,7 +568,6 @@ QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
 
     if (!dlOk) {
         STATUSBAR_INFO("{}", tr("ASR model download failed: %1").arg(dlError));
-        onAsrModelChanged(m_ui->modelCombo->currentIndex());
         co_return false;
     }
 
@@ -583,7 +578,6 @@ QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
         STATUSBAR_INFO(
             "{}",
             tr("ASR model extraction failed: %1").arg(extractResult.error()));
-        onAsrModelChanged(m_ui->modelCombo->currentIndex());
         co_return false;
     }
 
@@ -606,7 +600,6 @@ void AsrSettingWidget::onUseAsrModel()
         return;
     }
 
-    m_ui->useButton->setEnabled(false);
     auto task = useAsrModel(providerId);
 }
 
@@ -619,7 +612,6 @@ QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
     appConfig().settings.asrProviderId = providerId.toStdString();
     markConfigDirty();
     loadInstalledAsrModel(providerId);
-    onAsrModelChanged(m_ui->modelCombo->currentIndex());
 }
 
 void AsrSettingWidget::onOpenModelUrl()

@@ -35,7 +35,6 @@ protected:
 private:
     void onLlmProviderChanged(int index);
     void onOcrProviderChanged(int index);
-    void onAsrModelChanged(int index);
     void onUseAsrModel();
     void onOpenModelUrl();
     void onImportModel();
