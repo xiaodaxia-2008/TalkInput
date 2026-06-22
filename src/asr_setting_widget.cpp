@@ -548,31 +548,29 @@ QCoro::Task<bool> AsrSettingWidget::downloadAsrModel(const QString &providerId)
     const QPointer<AsrSettingWidget> guard(this);
 
     QNetworkAccessManager manager;
-    manager.setTransferTimeout(300000);
+    manager.setTransferTimeout(600000);
     QNetworkRequest request(url);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     QNetworkReply *reply = manager.get(request);
+    int lastPct = -1;
     connect(reply, &QNetworkReply::downloadProgress, this,
-            [this, modelName, guard](qint64 received, qint64 total) {
+            [this, modelName, guard, &lastPct](qint64 received,
+                                                qint64 total) {
                 if (!guard) {
                     return;
                 }
                 if (total > 0) {
                     int pct = static_cast<int>(received * 100 / total);
+                    if (pct == lastPct) {
+                        return;
+                    }
+                    lastPct = pct;
                     STATUSBAR_INFO(
                         "{}",
                         tr("Downloading ASR model: %1 … %2%")
                             .arg(modelName)
                             .arg(pct));
-                }
-                else {
-                    STATUSBAR_INFO(
-                        "{}",
-                        tr("Downloading ASR model: %1 … %2/%3 MB")
-                            .arg(modelName)
-                            .arg(received / 1024 / 1024)
-                            .arg(total / 1024 / 1024));
                 }
             });
     auto result = co_await reply;
