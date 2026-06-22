@@ -378,24 +378,9 @@ void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
     markConfigDirty();
 }
 
-void AsrSettingWidget::onAsrModelChanged(int index)
+void AsrSettingWidget::onAsrModelChanged(int /*index*/)
 {
-    if (index < 0 || index >= m_ui->modelCombo->count() ||
-        m_ui->modelCombo->itemData(index).toString().isEmpty())
-    {
-        m_ui->useButton->setEnabled(false);
-        return;
-    }
-
-    const QString currentConfigAsrProviderId =
-        QString::fromStdString(appConfig().settings.asrProviderId);
-    const QString currentComboItemProviderId =
-        m_ui->modelCombo->itemData(index).toString();
-    auto *vc = VoiceInputController::instance();
-    const bool loaded =
-        vc && vc->isSpeechRecognitionModelLoaded() &&
-        currentComboItemProviderId == currentConfigAsrProviderId;
-    m_ui->useButton->setEnabled(!loaded);
+    m_ui->useButton->setEnabled(true);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
