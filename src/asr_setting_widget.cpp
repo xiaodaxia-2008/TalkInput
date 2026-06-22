@@ -171,23 +171,9 @@ void AsrSettingWidget::updateUiFromConfig()
             hotkeySequence(PipelineMode::AsrLlmOcr));
     }
 
-    const QString savedAsrProviderId =
-        QString::fromStdString(appConfig().settings.asrProviderId);
-    int asrProviderIndex = -1;
-    for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
-        if (m_ui->modelCombo->itemData(i).toString() == savedAsrProviderId) {
-            asrProviderIndex = i;
-            break;
-        }
-    }
-    {
-        const QSignalBlocker blocker(m_ui->modelCombo);
-        if (asrProviderIndex >= 0) {
-            m_ui->modelCombo->setCurrentIndex(asrProviderIndex);
-        }
-    }
     updateModelComboSuffix();
-    auto task = useAsrModel(savedAsrProviderId);
+    auto task = useAsrModel(QString::fromStdString(
+        appConfig().settings.asrProviderId));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -513,8 +499,12 @@ void AsrSettingWidget::updateModelComboSuffix()
         QString::fromStdString(appConfig().settings.asrProviderId);
     const auto &presets = appConfig().asrPresets;
 
+    int foundIndex = -1;
     for (int i = 0; i < combo->count(); ++i) {
         const QString providerId = combo->itemData(i).toString();
+        if (providerId == currentId) {
+            foundIndex = i;
+        }
         auto it = presets.find(providerId.toStdString());
         if (it == presets.end()) {
             continue;
@@ -529,6 +519,11 @@ void AsrSettingWidget::updateModelComboSuffix()
             label += tr(" (Not Installed)");
         }
         combo->setItemText(i, label);
+    }
+
+    if (foundIndex >= 0) {
+        const QSignalBlocker blocker(combo);
+        combo->setCurrentIndex(foundIndex);
     }
 }
 
