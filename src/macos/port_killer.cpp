@@ -1,3 +1,0 @@
-void stopProcessListeningOnPort(quint16)
-{
-}

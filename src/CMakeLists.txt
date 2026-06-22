@@ -109,19 +109,16 @@ if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore imm32)
     target_sources(TalkInput PRIVATE
         windows/paste_text.cpp
-        windows/port_killer.cpp
         windows/system_ocr_recognizer.cpp
     )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE
         macos/paste_text.cpp
-        macos/port_killer.cpp
         macos/system_ocr_recognizer.cpp
     )
 elseif(UNIX)
     target_sources(TalkInput PRIVATE
         linux/paste_text.cpp
-        linux/port_killer.cpp
         linux/system_ocr_recognizer.cpp
     )
 endif()
