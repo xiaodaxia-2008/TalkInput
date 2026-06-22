@@ -3,6 +3,38 @@
 #include <sherpa-onnx/c-api/c-api.h>
 
 #include <cstring>
+#include <vector>
+
+namespace
+{
+
+std::vector<float> resampleFloats(const std::vector<float> &input,
+                                  int inputRate, int outputRate)
+{
+    if (inputRate == outputRate || input.empty()) {
+        return input;
+    }
+
+    const double ratio = static_cast<double>(outputRate) / inputRate;
+    std::vector<float> output(static_cast<size_t>(input.size() * ratio));
+
+    for (size_t i = 0; i < output.size(); ++i) {
+        const double pos = static_cast<double>(i) / ratio;
+        const size_t idx = static_cast<size_t>(pos);
+        if (idx + 1 < input.size()) {
+            const double frac = pos - idx;
+            output[i] = static_cast<float>(
+                input[idx] * (1.0 - frac) + input[idx + 1] * frac);
+        }
+        else {
+            output[i] = input[idx];
+        }
+    }
+
+    return output;
+}
+
+} // namespace
 
 namespace talkinput
 {
@@ -89,7 +121,14 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
         return;
     }
 
-    appendPcm16AsMonoFloat(audioData, channelCount, &m_samples);
+    std::vector<float> chunk;
+    appendPcm16AsMonoFloat(audioData, channelCount, &chunk);
+
+    if (sampleRate != m_modelSampleRate) {
+        chunk = resampleFloats(chunk, sampleRate, m_modelSampleRate);
+    }
+
+    m_samples.insert(m_samples.end(), chunk.begin(), chunk.end());
 }
 
 void OfflineSpeechRecognizer::finish()
