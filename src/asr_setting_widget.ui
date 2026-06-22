@@ -84,7 +84,7 @@
         <item>
          <widget class="QPushButton" name="useButton">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="styleSheet">
            <string>font-weight: bold;</string>
