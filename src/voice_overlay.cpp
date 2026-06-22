@@ -26,21 +26,6 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
 
     auto *container = new QWidget(this);
     container->setObjectName("voiceOverlayContainer");
-    container->setStyleSheet(QStringLiteral(
-        "#voiceOverlayContainer {"
-        "  background: #2d2d2d;"
-        "  border-radius: 8px;"
-        "}"
-        "ScrollTextDisplay,"
-        "ScrollTextDisplay QScrollArea,"
-        "ScrollTextDisplay QScrollArea > QWidget,"
-        "#scrollTextLabel {"
-        "  background: transparent;"
-        "  color: #e0e0e0;"
-        "}"
-        "#voiceOverlayMicLabel {"
-        "  color: #e0e0e0;"
-        "}"));
 
     auto *layout = new QHBoxLayout(container);
     layout->setContentsMargins(14, 6, 14, 6);

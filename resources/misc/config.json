@@ -3,7 +3,7 @@
     "language": "system",
     "startMinimized": false,
     "hotwords": ["TalkInput", "开口输入法"],
-    "asrProviderId": "streaming-paraformer-bilingual-zh-en-punct-int8",
+    "asrProviderId": "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
     "ocrProviderId": "system-ocr",
     "llmProviderId": "llama.cpp",
     "llmSystemPrompt": "You are a helpful assistant",

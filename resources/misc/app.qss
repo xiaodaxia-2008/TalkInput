@@ -65,9 +65,15 @@ QWidget#voiceOverlay {
     border-radius: 14px;
 }
 
+QWidget#voiceOverlayContainer {
+    background: #2d2d2d;
+    border-radius: 8px;
+}
+
 QLabel#voiceOverlayMicLabel {
     font-size: 24px;
     background: transparent;
+    color: #e0e0e0;
 }
 
 QScrollArea#scrollTextArea {

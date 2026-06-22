@@ -32,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
                            m_qtTranslator);
     setupUi();
     SPDLOG_DEBUG("MainWindow: constructor end");
+    setMinimumHeight(620);
 }
 
 MainWindow::~MainWindow() = default;

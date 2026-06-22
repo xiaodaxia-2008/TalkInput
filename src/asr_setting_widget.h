@@ -54,7 +54,7 @@ private:
     void loadInstalledAsrModel(const QString &providerId);
     void refreshAsrModelCombo();
 
-    QCoro::Task<bool> downloadModels(const QString &providerId);
+    QCoro::Task<bool> downloadAsrModel(const QString &providerId);
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
 };
