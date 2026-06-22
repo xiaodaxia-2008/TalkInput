@@ -209,6 +209,79 @@ bool saveAppConfig()
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Typed config accessors
+// ═══════════════════════════════════════════════════════════════════
+
+namespace
+{
+
+AppConfigData s_typedConfig;
+
+} // namespace
+
+const AppConfigData &appConfig()
+{
+    ensureLoaded();
+    if (s_config != nlohmann::json::object() && s_typedConfig.asrPresets.empty()) {
+        s_typedConfig = s_config.get<AppConfigData>();
+    }
+    return s_typedConfig;
+}
+
+void setAppConfig(const AppConfigData &config)
+{
+    s_typedConfig = config;
+    s_config = nlohmann::json(config);
+    s_dirty = true;
+    scheduleSave();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// JSON serialization
+// ═══════════════════════════════════════════════════════════════════
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AsrPresetParams, sampleRate, featureDim,
+                                   numThreads, modelingUnit, hotwordsScore,
+                                   language, senseVoiceUseItn,
+                                   funasrSystemPrompt, funasrUserPrompt,
+                                   funasrMaxNewTokens, funasrTemperature,
+                                   funasrTopP, funasrSeed, funasrItn)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AsrPreset, id, name, type, languages,
+                                   modelDirName, url, size, paramCount,
+                                   streamingSupport, hotwordsSupport, params,
+                                   files)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LlmModelPrice, inputPer1M, outputPer1M,
+                                   cacheHitInputPer1M, cacheMissInputPer1M)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LlmModel, name, url, fileName, size, price)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LlmPreset, id, name, endpoint, apiKey,
+                                   currentModel, models, managedLocalService,
+                                   localServicePort, localServiceMaxHealthAttempts,
+                                   localServiceArchiveUrl)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(OcrPreset, id, name, type)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::App, language, startMinimized)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Asr, providerId)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Ocr, providerId)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Llm, providerId, systemPrompt,
+                                   userPrompt)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Hotkeys, asr, asrLlm, asrLlmOcr)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings, app, hotwords, asr, ocr, llm,
+                                   hotkeys)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppConfigData, settings, asrPresets,
+                                   llmPresets, ocrPresets)
+
+// ═══════════════════════════════════════════════════════════════════
 // Language
 // ═══════════════════════════════════════════════════════════════════
 
