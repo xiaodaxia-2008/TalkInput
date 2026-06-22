@@ -472,18 +472,11 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
         return;
     }
 
-    if (preset.name.empty()) {
-        vc->unloadSpeechRecognitionModel();
-        return;
-    }
-
-    if (!isModelInstalled(preset.modelDirName, preset.files)) {
-        STATUSBAR_INFO("{}", tr("Speech recognition model is not installed."));
-        return;
-    }
-
     SPDLOG_DEBUG("AsrSettingWidget: loading ASR model {}", preset.name);
     vc->loadSpeechRecognitionModel(preset);
+    if (vc->isSpeechRecognitionModelLoaded()) {
+        STATUSBAR_INFO("{}", tr("ASR model loaded: %1").arg(asrModelLabel(preset)));
+    }
 }
 
 void AsrSettingWidget::refreshAsrModelCombo()
