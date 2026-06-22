@@ -19,7 +19,6 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     setWindowTitle(QStringLiteral("TalkInput"));
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
-    setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setFixedHeight(72);
