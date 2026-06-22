@@ -616,64 +616,54 @@ Selected:
 <context>
     <name>talkinput::MainWindow</name>
     <message>
-        <location filename="main_window.cpp" line="370"/>
+        <location filename="main_window.cpp" line="355"/>
         <source>About TalkInput</source>
         <translation>关于 TalkInput</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="371"/>
+        <location filename="main_window.cpp" line="356"/>
         <source>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;Local voice input method.&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Commit&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Date&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
         <translation>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;本地语音输入法。&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;提交&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;日期&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="172"/>
+        <location filename="main_window.cpp" line="157"/>
         <source>Show Window</source>
         <translation>显示窗口</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="175"/>
+        <location filename="main_window.cpp" line="160"/>
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="233"/>
+        <location filename="main_window.cpp" line="218"/>
         <source>Speech recognition</source>
         <translation>语音识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="197"/>
-        <location filename="main_window.cpp" line="198"/>
+        <location filename="main_window.cpp" line="182"/>
+        <location filename="main_window.cpp" line="183"/>
         <source>Stop recognition</source>
         <translation>停止识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="200"/>
+        <location filename="main_window.cpp" line="185"/>
         <source>Listening...</source>
         <translation>正在听写...</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="201"/>
+        <location filename="main_window.cpp" line="186"/>
         <source>Listening — %1</source>
         <translation>正在听写 — %1</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="206"/>
-        <location filename="main_window.cpp" line="207"/>
+        <location filename="main_window.cpp" line="191"/>
+        <location filename="main_window.cpp" line="192"/>
         <source>Start recognition</source>
         <translation>开始识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="82"/>
-        <source>Speech recognition model load failed: %1</source>
-        <translation>语音识别模型加载失败：%1</translation>
-    </message>
-    <message>
-        <location filename="main_window.cpp" line="86"/>
-        <source>Speech recognition model ready: %1</source>
-        <translation>语音识别模型已就绪：%1</translation>
-    </message>
-    <message>
-        <location filename="main_window.cpp" line="234"/>
+        <location filename="main_window.cpp" line="219"/>
         <source>Speech recognition model is still loading.
 
 Please wait for it to load, then try again.</source>
@@ -682,53 +672,53 @@ Please wait for it to load, then try again.</source>
 请等待加载完成后重试。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="212"/>
+        <location filename="main_window.cpp" line="197"/>
         <source>No speech recognition model selected</source>
         <translation>未选择语音识别模型</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="215"/>
+        <location filename="main_window.cpp" line="200"/>
         <source>Speech recognition model: %1</source>
         <translation>语音识别模型：%1</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="247"/>
+        <location filename="main_window.cpp" line="232"/>
         <source>Selected recognizer does not support audio file recognition.</source>
         <translation>所选识别器不支持音频文件识别。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="252"/>
+        <location filename="main_window.cpp" line="237"/>
         <source>Select Audio File</source>
         <translation>选择音频文件</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="253"/>
+        <location filename="main_window.cpp" line="238"/>
         <source>Audio Files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;All Files (*)</source>
         <translation>音频文件 (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="259"/>
+        <location filename="main_window.cpp" line="244"/>
         <source>Decoding audio...</source>
         <translation>正在解码音频...</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="264"/>
+        <location filename="main_window.cpp" line="249"/>
         <source>Failed to decode audio file.</source>
         <translation>音频文件解码失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="280"/>
+        <location filename="main_window.cpp" line="265"/>
         <source>Recognition sent to ASR engine</source>
         <translation>已发送到 ASR 引擎</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="322"/>
-        <location filename="main_window.cpp" line="333"/>
+        <location filename="main_window.cpp" line="307"/>
+        <location filename="main_window.cpp" line="318"/>
         <source>Reset Settings</source>
         <translation>重置设置</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="323"/>
+        <location filename="main_window.cpp" line="308"/>
         <source>Reset all user settings in this file to bundled defaults?
 
 %1
@@ -741,12 +731,12 @@ Model downloads and recognition history will not be deleted.</source>
 模型下载和识别历史不会被删除。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="334"/>
+        <location filename="main_window.cpp" line="319"/>
         <source>Failed to reset settings.</source>
         <translation>重置设置失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="358"/>
+        <location filename="main_window.cpp" line="343"/>
         <source>Settings reset to defaults</source>
         <translation>设置已重置为默认</translation>
     </message>
@@ -763,25 +753,29 @@ Model downloads and recognition history will not be deleted.</source>
     <name>talkinput::VoiceInputController</name>
     <message>
         <location filename="voice_input_controller.cpp" line="162"/>
-        <location filename="voice_input_controller.cpp" line="449"/>
+        <location filename="voice_input_controller.cpp" line="452"/>
         <source>Speech recognition model not loaded yet. Please wait or select a model.</source>
         <translation>语音识别模型尚未加载。请等待或选择模型。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="152"/>
-        <location filename="voice_input_controller.cpp" line="438"/>
+        <location filename="voice_input_controller.cpp" line="153"/>
+        <location filename="voice_input_controller.cpp" line="332"/>
+        <location filename="voice_input_controller.cpp" line="442"/>
         <source>Recognition is still processing.</source>
         <translation>识别仍在处理中。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="243"/>
-        <location filename="voice_input_controller.cpp" line="297"/>
+        <location filename="voice_input_controller.cpp" line="299"/>
         <source>Post-processing recognition result...</source>
         <translation>正在后处理识别结果...</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="213"/>
-        <location filename="voice_input_controller.cpp" line="293"/>
+        <location filename="voice_input_controller.cpp" line="428"/>
+        <source>Speech recognition model load failed: %1</source>
+        <translation type="unfinished">语音识别模型加载失败：%1</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="294"/>
         <source>Reading focused input context...</source>
         <translation>正在读取聚焦输入上下文...</translation>
     </message>

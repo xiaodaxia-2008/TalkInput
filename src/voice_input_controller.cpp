@@ -122,7 +122,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
                     stopListening();
                 }
                 else if (!m_busy) {
-                    executePipeline(mode);
+                    m_pipelineMode = mode;
+                    startListening();
                 }
             });
 
@@ -327,7 +328,12 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
 
 bool VoiceInputController::startListening()
 {
-    return startSpeechRecognitionSession();
+    if (m_busy) {
+        STATUSBAR_INFO("{}", tr("Recognition is still processing."));
+        return false;
+    }
+    executePipeline(m_pipelineMode);
+    return true;
 }
 
 void VoiceInputController::stopListening()
@@ -418,14 +424,11 @@ void VoiceInputController::loadSpeechRecognitionModel(
 {
     const auto result = m_recognizerSession->loadSpeechRecognitionModel(preset);
     if (!result) {
-        SPDLOG_ERROR("VoiceInputController: speech recognition model load "
-                     "failed: {}",
-                     result.error());
-        emit speechRecognitionModelLoadResult(false, result.error());
+        STATUSBAR_ERROR("{}",
+                        tr("Speech recognition model load failed: %1")
+                            .arg(result.error()));
         return;
     }
-
-    emit speechRecognitionModelLoadResult(true, {});
 }
 
 void VoiceInputController::unloadSpeechRecognitionModel()

@@ -59,7 +59,7 @@ void MainWindow::changeEvent(QEvent *event)
     }
 
     m_ui->retranslateUi(this);
-    updateControls(m_voiceInput && m_voiceInput->isListening());
+    updateControls(m_voiceInputController && m_voiceInputController->isListening());
 }
 
 void MainWindow::setupUi()
@@ -71,22 +71,7 @@ void MainWindow::setupUi()
 
     // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
     SPDLOG_DEBUG("setupUi: creating VoiceInputController");
-    m_voiceInput = new VoiceInputController(this);
-
-    connect(
-        m_voiceInput, &VoiceInputController::speechRecognitionModelLoadResult,
-        this, [this](bool success, const QString &error) {
-            if (!success) {
-                STATUSBAR_ERROR(
-                    "{}",
-                    tr("Speech recognition model load failed: %1").arg(error));
-            }
-            else {
-                const auto preset = currentAsrPreset();
-                STATUSBAR_INFO("{}", tr("Speech recognition model ready: %1")
-                                         .arg(jsonString(preset, "name")));
-            }
-        });
+    m_voiceInputController = new VoiceInputController(this);
 
     // ── History tab ────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: creating HistoryWidget");
@@ -105,14 +90,14 @@ void MainWindow::setupUi()
     SPDLOG_INFO("Starting ASR service");
 
     // resultChanged comes from VoiceInputController → onResult
-    connect(m_voiceInput, &VoiceInputController::finalTextCommitted, this,
+    connect(m_voiceInputController, &VoiceInputController::finalTextCommitted, this,
             [this](const QString &text) {
                 m_history.addEntry(text);
                 if (m_historyWidget) {
                     m_historyWidget->refreshHistory();
                 }
             });
-    connect(m_voiceInput, &VoiceInputController::listeningChanged, this,
+    connect(m_voiceInputController, &VoiceInputController::listeningChanged, this,
             [this](bool listening) { updateControls(listening); });
 
     // ── System tray ────────────────────────────────────────────
@@ -206,7 +191,7 @@ void MainWindow::updateControls(bool listening)
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
         const QString type = jsonString(preset, "type");
-        if (!m_voiceInput->isSpeechRecognitionModelLoaded() &&
+        if (!m_voiceInputController->isSpeechRecognitionModelLoaded() &&
             type != QStringLiteral("System"))
         {
             STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
@@ -220,28 +205,28 @@ void MainWindow::updateControls(bool listening)
 
 void MainWindow::onToggleSpeechRecognition()
 {
-    if (!m_voiceInput) {
+    if (!m_voiceInputController) {
         return;
     }
 
-    if (m_voiceInput->isListening()) {
-        m_voiceInput->stopListening();
+    if (m_voiceInputController->isListening()) {
+        m_voiceInputController->stopListening();
         return;
     }
 
-    if (!m_voiceInput->isSpeechRecognitionModelLoaded()) {
+    if (!m_voiceInputController->isSpeechRecognitionModelLoaded()) {
         QMessageBox::warning(this, tr("Speech recognition"),
                              tr("Speech recognition model is still loading.\n\n"
                                 "Please wait for it to load, then try again."));
         return;
     }
 
-    m_voiceInput->startListening();
+    m_voiceInputController->startListening();
 }
 
 void MainWindow::onRecognizeAudioFile()
 {
-    if (m_voiceInput && !m_voiceInput->acceptsExternalAudio()) {
+    if (m_voiceInputController && !m_voiceInputController->acceptsExternalAudio()) {
         STATUSBAR_INFO(
             "{}",
             tr("Selected recognizer does not support audio file recognition."));
@@ -269,13 +254,13 @@ void MainWindow::onRecognizeAudioFile()
                 decoded->pcm16.size(), path, decoded->sampleRate,
                 decoded->channels);
 
-    if (m_voiceInput) {
-        if (!m_voiceInput->startSpeechRecognitionSession()) {
+    if (m_voiceInputController) {
+        if (!m_voiceInputController->startSpeechRecognitionSession()) {
             return;
         }
-        m_voiceInput->feedSpeechRecognitionAudio(
+        m_voiceInputController->feedSpeechRecognitionAudio(
             decoded->pcm16, decoded->sampleRate, decoded->channels);
-        m_voiceInput->finishSpeechRecognitionSession();
+        m_voiceInputController->finishSpeechRecognitionSession();
     }
     STATUSBAR_INFO("{}", tr("Recognition sent to ASR engine"));
 }

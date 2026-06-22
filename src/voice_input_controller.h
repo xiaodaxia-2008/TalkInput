@@ -75,13 +75,14 @@ public:
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);
-    void speechRecognitionModelLoadResult(bool success, const QString &error);
 
 public slots:
     bool startListening();
     void stopListening();
+    
     void loadSpeechRecognitionModel(const nlohmann::json &preset);
     void unloadSpeechRecognitionModel();
+    
     bool startSpeechRecognitionSession();
     void feedSpeechRecognitionAudio(const QByteArray &pcm16, int sampleRate,
                                     int channels);
@@ -106,6 +107,7 @@ private:
     QString m_lastResult;
     bool m_busy = false;
     PipelineStage m_stage = PipelineStage::Idle;
+    PipelineMode m_pipelineMode = PipelineMode::AsrLlmOcr;
     QPromise<QString> *m_finalResultPromise = nullptr;
 };
 

@@ -53,7 +53,7 @@ private:
     std::unique_ptr<Ui::MainWindow> m_ui;
     AsrSettingWidget *m_asrSettingWidget = nullptr;
     HistoryWidget *m_historyWidget = nullptr;
-    VoiceInputController *m_voiceInput = nullptr;
+    VoiceInputController *m_voiceInputController = nullptr;
     RecognitionHistory m_history;
 
     QSystemTrayIcon *m_trayIcon = nullptr;
