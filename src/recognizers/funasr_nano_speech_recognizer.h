@@ -17,7 +17,7 @@ public:
 
 protected:
     std::expected<void, QString>
-    configureModel(const nlohmann::json &config,
+    configureModel(const AsrPreset &preset,
                    SherpaOnnxOfflineRecognizerConfig *recognizer) override;
     int chunkSeconds() const override;
 

@@ -41,28 +41,7 @@ namespace
 
 // ── Shared helpers ────────────────────────────────────────────────────
 
-QString llmProviderId(const QComboBox *combo)
-{
-    return combo->currentData().toString();
-}
-
-QString asrPresetPointer(const QString &providerId)
-{
-    return QStringLiteral("/asrPresets/%1").arg(providerId);
-}
-
-nlohmann::json llmProviderPreset(const QComboBox *combo)
-{
-    return talkinput::llmProviderPreset(llmProviderId(combo));
-}
-
-void saveLlmSetting(const QComboBox *combo, const QString &key,
-                    const QString &value)
-{
-    setLlmProviderSetting(llmProviderId(combo), key, value);
-}
-
-QString asrModelLabel(const nlohmann::json &m)
+QString asrModelLabel(const AsrPreset &m)
 {
     auto langLabel = [](const QString &c) -> QString {
         if (c == QLatin1StringView("zh")) {
@@ -85,11 +64,41 @@ QString asrModelLabel(const nlohmann::json &m)
     };
 
     return QStringLiteral("%1 - %2 - %3")
-        .arg(jsonString(m, "name"),
-             m.value("streamingSupport", false)
+        .arg(QString::fromStdString(m.name),
+             m.streamingSupport
                  ? QCoreApplication::translate("AsrSettingWidget", "Real-time")
                  : QCoreApplication::translate("AsrSettingWidget", "Offline"),
-             langLabel(jsonString(m, "languages")));
+             langLabel(QString::fromStdString(m.languages)));
+}
+
+bool isModelInstalled(const std::string &modelDirName,
+                      const std::map<std::string, std::string> &files)
+{
+    if (modelDirName.empty()) {
+        return false;
+    }
+    const QString modelDir =
+        QDir(appDataDir())
+            .filePath(QStringLiteral("models/%1")
+                          .arg(QString::fromStdString(modelDirName)));
+    if (!QFileInfo(modelDir).isDir()) {
+        return false;
+    }
+    for (const auto &[key, relative] : files) {
+        const QFileInfo fi(
+            QDir(modelDir).filePath(QString::fromStdString(relative)));
+        if (key.size() > 4 && key.substr(key.size() - 4) == ">dir") {
+            if (!fi.isDir()) {
+                return false;
+            }
+        }
+        else {
+            if (!fi.isFile()) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 } // namespace
@@ -102,7 +111,6 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::AsrSettingWidget>())
 {
     m_ui->setupUi(this);
-    m_network.setTransferTimeout(300000);
     initLlmProviders();
     initLlmPrompt();
     initOcrProvider();
@@ -116,14 +124,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     updateUiFromConfig();
 }
 
-AsrSettingWidget::~AsrSettingWidget()
-{
-    m_isDownloading = false;
-}
+AsrSettingWidget::~AsrSettingWidget() = default;
 
 void AsrSettingWidget::updateUiFromConfig()
 {
-    const QString savedLlmProviderId = currentLlmProviderId();
+    const QString savedLlmProviderId =
+        QString::fromStdString(appConfig().settings.llmProviderId);
     const int llmProviderIndex =
         m_ui->providerCombo->findData(savedLlmProviderId);
     {
@@ -133,15 +139,19 @@ void AsrSettingWidget::updateUiFromConfig()
         }
     }
 
-    const auto llmProvider = llmProviderPreset(m_ui->providerCombo);
-    if (llmProvider.is_object()) {
-        applyLlmProviderToUi(llmProvider);
+    {
+        const auto &llmPresets = appConfig().llmPresets;
+        auto llmIt = llmPresets.find(
+            m_ui->providerCombo->currentData().toString().toStdString());
+        if (llmIt != llmPresets.end()) {
+            applyLlmProviderToUi(llmIt->second);
+        }
     }
 
     refreshPromptLabel();
 
-    const int ocrProviderIndex =
-        m_ui->ocrCombo->findData(currentOcrProviderId());
+    const int ocrProviderIndex = m_ui->ocrCombo->findData(
+        QString::fromStdString(appConfig().settings.ocrProviderId));
     {
         const QSignalBlocker blocker(m_ui->ocrCombo);
         if (ocrProviderIndex >= 0) {
@@ -161,7 +171,8 @@ void AsrSettingWidget::updateUiFromConfig()
             hotkeySequence(PipelineMode::AsrLlmOcr));
     }
 
-    const QString savedAsrProviderId = currentAsrProviderId();
+    const QString savedAsrProviderId =
+        QString::fromStdString(appConfig().settings.asrProviderId);
     int asrProviderIndex = -1;
     for (int i = 0; i < m_ui->modelCombo->count(); ++i) {
         if (m_ui->modelCombo->itemData(i).toString() == savedAsrProviderId) {
@@ -175,8 +186,7 @@ void AsrSettingWidget::updateUiFromConfig()
             m_ui->modelCombo->setCurrentIndex(asrProviderIndex);
         }
     }
-    onAsrModelChanged(m_ui->modelCombo->currentIndex());
-    loadActiveAsrPreset();
+    auto task = useAsrModel(savedAsrProviderId);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -194,28 +204,30 @@ void AsrSettingWidget::initLlmProviders()
         tr("Model name sent to the LLM service"));
 
     // Populate — store only the provider ID
-    const nlohmann::json presets = llmPresets();
-    for (const auto &[key, preset] : presets.items()) {
-        if (!preset.is_object()) {
-            continue;
-        }
-        const QString id = jsonString(preset, "id");
-        if (!id.isEmpty()) {
-            combo->addItem(jsonString(preset, "name"), id);
+    for (const auto &[key, preset] : appConfig().llmPresets) {
+        const QString name = QString::fromStdString(preset.name);
+        if (!name.isEmpty()) {
+            combo->addItem(name, QString::fromStdString(key));
         }
     }
 
     // Endpoint edited
     connect(endpointEdit, &QLineEdit::editingFinished, this, [=]() {
-        saveLlmSetting(combo, QStringLiteral("endpoint"),
-                       endpointEdit->text().trimmed());
+        auto &preset =
+            appConfig()
+                .llmPresets[combo->currentData().toString().toStdString()];
+        preset.endpoint = endpointEdit->text().trimmed().toStdString();
+        markConfigDirty();
         STATUSBAR_INFO("{}", tr("LLM endpoint saved"));
     });
 
     // Model edited — commit on focus loss or popup selection
     auto saveModel = [=]() {
-        saveLlmSetting(combo, QStringLiteral("currentModel"),
-                       modelCombo->currentText().trimmed());
+        auto &preset =
+            appConfig()
+                .llmPresets[combo->currentData().toString().toStdString()];
+        preset.currentModel = modelCombo->currentText().trimmed().toStdString();
+        markConfigDirty();
         STATUSBAR_INFO("{}", tr("LLM model saved"));
     };
     connect(modelCombo->lineEdit(), &QLineEdit::editingFinished, this,
@@ -225,8 +237,11 @@ void AsrSettingWidget::initLlmProviders()
 
     // API key edited
     connect(apiKeyEdit, &QLineEdit::editingFinished, this, [=]() {
-        saveLlmSetting(combo, QStringLiteral("apiKey"),
-                       apiKeyEdit->text().trimmed());
+        auto &preset =
+            appConfig()
+                .llmPresets[combo->currentData().toString().toStdString()];
+        preset.apiKey = apiKeyEdit->text().trimmed().toStdString();
+        markConfigDirty();
         STATUSBAR_INFO("{}", tr("LLM API key saved"));
     });
 
@@ -237,13 +252,18 @@ void AsrSettingWidget::initLlmProviders()
 void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
 {
     auto *combo = m_ui->providerCombo;
-    const auto p = llmProviderPreset(combo);
-    if (!p.is_object()) {
+
+    const auto &llmPresets = appConfig().llmPresets;
+    auto it = llmPresets.find(combo->currentData().toString().toStdString());
+    if (it == llmPresets.end()) {
         return;
     }
+    const auto &preset = it->second;
 
-    applyLlmProviderToUi(p);
-    setCurrentLlmProviderId(llmProviderId(combo));
+    applyLlmProviderToUi(preset);
+    appConfig().settings.llmProviderId =
+        combo->currentData().toString().toStdString();
+    markConfigDirty();
     STATUSBAR_INFO("{}",
                    tr("LLM provider saved: %1").arg(combo->currentText()));
 }
@@ -252,19 +272,17 @@ void AsrSettingWidget::onLlmProviderChanged(int /*index*/)
 // LLM Prompt
 // ──────────────────────────────────────────────────────────────────────────
 
-void AsrSettingWidget::applyLlmProviderToUi(const nlohmann::json &provider)
+void AsrSettingWidget::applyLlmProviderToUi(const LlmPreset &provider)
 {
     const QSignalBlocker epBlocker(m_ui->endpointEdit);
     const QSignalBlocker mBlocker(m_ui->llmModelCombo);
     const QSignalBlocker akBlocker(m_ui->apiKeyEdit);
 
-    m_ui->endpointEdit->setText(llmProviderEndpoint(provider));
+    m_ui->endpointEdit->setText(QString::fromStdString(provider.endpoint));
 
-    const QString currentModel = llmProviderModel(provider);
+    const QString currentModel = QString::fromStdString(provider.currentModel);
     m_ui->llmModelCombo->clear();
-    const nlohmann::json models =
-        provider.value("models", nlohmann::json::object());
-    for (const auto &[key, info] : models.items()) {
+    for (const auto &[key, info] : provider.models) {
         m_ui->llmModelCombo->addItem(QString::fromStdString(key),
                                      QString::fromStdString(key));
     }
@@ -275,7 +293,7 @@ void AsrSettingWidget::applyLlmProviderToUi(const nlohmann::json &provider)
     }
     m_ui->llmModelCombo->setEditText(currentModel);
 
-    m_ui->apiKeyEdit->setText(llmProviderApiKey(provider));
+    m_ui->apiKeyEdit->setText(QString::fromStdString(provider.apiKey));
 }
 
 void AsrSettingWidget::initLlmPrompt()
@@ -286,7 +304,8 @@ void AsrSettingWidget::initLlmPrompt()
 
 void AsrSettingWidget::refreshPromptLabel()
 {
-    const QString text = appConfigString("/settings/llm/userPrompt");
+    const QString text =
+        QString::fromStdString(appConfig().settings.llmUserPrompt);
     m_ui->promptLabel->setText(
         QStringLiteral("%1 …").arg(text.simplified().left(50)));
     m_ui->promptLabel->setToolTip(text);
@@ -314,7 +333,8 @@ void AsrSettingWidget::onEditPrompt()
     editor->setAcceptRichText(false);
     editor->setPlaceholderText(
         tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
-    editor->setPlainText(appConfigString("/settings/llm/userPrompt"));
+    editor->setPlainText(
+        QString::fromStdString(appConfig().settings.llmUserPrompt));
     layout->addWidget(editor, 1);
 
     auto *buttons = new QDialogButtonBox(
@@ -328,7 +348,8 @@ void AsrSettingWidget::onEditPrompt()
     }
 
     const QString text = editor->toPlainText().trimmed();
-    setAppConfigValue("/settings/llm/userPrompt", text);
+    appConfig().settings.llmUserPrompt = text.toStdString();
+    markConfigDirty();
     refreshPromptLabel();
     STATUSBAR_INFO("{}", tr("LLM prompt saved"));
 }
@@ -341,15 +362,9 @@ void AsrSettingWidget::initOcrProvider()
 {
     auto *combo = m_ui->ocrCombo;
 
-    const nlohmann::json presets = ocrPresets();
-    if (presets.is_object()) {
-        for (const auto &[key, preset] : presets.items()) {
-            if (!preset.is_object()) {
-                continue;
-            }
-            combo->addItem(jsonString(preset, "name"),
-                           jsonString(preset, "id"));
-        }
+    for (const auto &[key, preset] : appConfig().ocrPresets) {
+        combo->addItem(QString::fromStdString(preset.name),
+                       QString::fromStdString(key));
     }
 
     connect(combo, &QComboBox::currentIndexChanged, this,
@@ -358,7 +373,9 @@ void AsrSettingWidget::initOcrProvider()
 
 void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
 {
-    setCurrentOcrProviderId(m_ui->ocrCombo->currentData().toString());
+    appConfig().settings.ocrProviderId =
+        m_ui->ocrCombo->currentData().toString().toStdString();
+    markConfigDirty();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -393,17 +410,11 @@ void AsrSettingWidget::onEditHotwords()
     editor->setPlaceholderText(tr("Enter hot words, one per line"));
 
     {
-        const nlohmann::json hw = appConfigValue("/settings/hotwords");
         QStringList lines;
-        if (hw.is_array()) {
-            for (const auto &item : hw) {
-                if (!item.is_string()) {
-                    continue;
-                }
-                const QString s = item.get<QString>().trimmed();
-                if (!s.isEmpty()) {
-                    lines.append(s);
-                }
+        for (const auto &hw : appConfig().settings.hotwords) {
+            const QString s = QString::fromStdString(hw).trimmed();
+            if (!s.isEmpty()) {
+                lines.append(s);
             }
         }
         editor->setPlainText(lines.join(QLatin1Char('\n')));
@@ -420,19 +431,21 @@ void AsrSettingWidget::onEditHotwords()
         return;
     }
 
-    nlohmann::json arr = nlohmann::json::array();
+    std::vector<std::string> hwList;
     const QStringList lines =
         editor->toPlainText().trimmed().split(QLatin1Char('\n'));
     for (const QString &line : lines) {
         const QString trimmed = line.trimmed();
         if (!trimmed.isEmpty()) {
-            arr.push_back(trimmed.toStdString());
+            hwList.push_back(trimmed.toStdString());
         }
     }
-    setAppConfigValue("/settings/hotwords", std::move(arr));
+    appConfig().settings.hotwords = std::move(hwList);
+    markConfigDirty();
     STATUSBAR_INFO(
         "{}", tr("Hot words saved, reloading speech recognition model..."));
-    loadActiveAsrPreset();
+    auto task =
+        useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -447,18 +460,10 @@ void AsrSettingWidget::initAsrModel()
 {
     auto *combo = m_ui->modelCombo;
 
-    const nlohmann::json presets = asrPresets();
-    if (presets.is_object()) {
-        for (const auto &[key, p] : presets.items()) {
-            if (!p.is_object()) {
-                continue;
-            }
-            combo->addItem(asrModelLabel(p), QString::fromStdString(key));
-        }
+    for (const auto &[key, p] : appConfig().asrPresets) {
+        combo->addItem(asrModelLabel(p), QString::fromStdString(key));
     }
 
-    connect(combo, &QComboBox::currentIndexChanged, this,
-            &AsrSettingWidget::onAsrModelChanged);
     connect(m_ui->useButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseAsrModel);
     connect(m_ui->browserButton, &QPushButton::clicked, this,
@@ -467,77 +472,35 @@ void AsrSettingWidget::initAsrModel()
             &AsrSettingWidget::onImportModel);
 }
 
-void AsrSettingWidget::onAsrModelChanged(int index)
-{
-    if (index < 0 || index >= m_ui->modelCombo->count() ||
-        m_ui->modelCombo->itemData(index).toString().isEmpty())
-    {
-        m_ui->useButton->setEnabled(false);
-        return;
-    }
-
-    const QString currentConfigAsrProviderId = currentAsrProviderId();
-    const QString currentComboItemProviderId =
-        m_ui->modelCombo->itemData(index).toString();
-    auto *vc = VoiceInputController::instance();
-    const bool loaded =
-        vc && vc->isSpeechRecognitionModelLoaded() &&
-        currentComboItemProviderId == currentConfigAsrProviderId;
-    m_ui->useButton->setEnabled(!loaded);
-}
-
-void AsrSettingWidget::loadActiveAsrPreset()
-{
-    auto *vc = VoiceInputController::instance();
-    if (!vc) {
-        return;
-    }
-
-    const nlohmann::json preset = talkinput::currentAsrPreset();
-    const QString providerId = jsonString(preset, "id");
-    if (!providerId.isEmpty()) {
-        ensureAsrModelReady(providerId, [this, providerId]() {
-            loadInstalledAsrModel(providerId);
-        });
-        return;
-    }
-
-    vc->unloadSpeechRecognitionModel();
-}
-
-void AsrSettingWidget::ensureAsrModelReady(const QString &providerId,
-                                           std::function<void()> onReady)
-{
-    if (m_isDownloading) {
-        STATUSBAR_INFO("{}", tr("A model download is already running."));
-        return;
-    }
-
-    m_isDownloading = true;
-    m_onDownloadReady = std::move(onReady);
-    downloadModels(providerId);
-}
+// ──────────────────────────────────────────────────────────────────────────
+// ASR Model Loading
+// ──────────────────────────────────────────────────────────────────────────
 
 void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
 {
-    const nlohmann::json preset = asrPresetById(providerId);
+    const auto &presets = appConfig().asrPresets;
+    auto it = presets.find(providerId.toStdString());
+    if (it == presets.end()) {
+        return;
+    }
+    const auto &preset = it->second;
+
     auto *vc = VoiceInputController::instance();
     if (!vc) {
         return;
     }
 
-    const QString name = jsonString(preset, "name");
-    if (!preset.is_object() || name.isEmpty()) {
+    if (preset.name.empty()) {
         vc->unloadSpeechRecognitionModel();
         return;
     }
 
-    if (!isAsrPresetInstalled(preset)) {
+    if (!isModelInstalled(preset.modelDirName, preset.files)) {
         STATUSBAR_INFO("{}", tr("Speech recognition model is not installed."));
         return;
     }
 
-    SPDLOG_DEBUG("AsrSettingWidget: loading ASR model {}", name);
+    SPDLOG_DEBUG("AsrSettingWidget: loading ASR model {}", preset.name);
     vc->loadSpeechRecognitionModel(preset);
 }
 
@@ -545,128 +508,81 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
 // Download Chain
 // ──────────────────────────────────────────────────────────────────────────
 
-QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
+QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
 {
-    QStringList modelPointers;
-
-    const nlohmann::json model = asrPresetById(providerId);
-    if (!model.is_object()) {
+    const auto &presetsModel = appConfig().asrPresets;
+    auto it = presetsModel.find(providerId.toStdString());
+    if (it == presetsModel.end() || it->second.url.empty()) {
         STATUSBAR_INFO("{}", tr("Model preset is invalid."));
-        downloadCleanupFail();
-        co_return;
+        co_return false;
     }
+    const auto &model = it->second;
 
-    if (!isAsrPresetInstalled(model)) {
-        const QString pointer = asrPresetPointer(providerId);
-        const nlohmann::json m = appConfigValue(pointer.toStdString());
-        if (!m.is_object() || QUrl(jsonString(m, "url")).isEmpty()) {
-            STATUSBAR_INFO("{}", tr("Model preset is invalid."));
-            downloadCleanupFail();
-            co_return;
-        }
-        modelPointers.append(pointer);
-    }
-
-    const nlohmann::json punctuationModel =
-        model.value("postPunctuationModel", nlohmann::json::object());
-    if (punctuationModel.is_object() && !punctuationModel.empty() &&
-        !isAsrPresetInstalled(punctuationModel) &&
-        !QUrl(jsonString(punctuationModel, "url")).isEmpty())
-    {
-        const QString punctuationPointer =
-            asrPresetPointer(providerId) +
-            QStringLiteral("/postPunctuationModel");
-        const nlohmann::json pm =
-            appConfigValue(punctuationPointer.toStdString());
-        if (pm.is_object() && !QUrl(jsonString(pm, "url")).isEmpty()) {
-            modelPointers.append(punctuationPointer);
-        }
-    }
-
-    if (modelPointers.isEmpty()) {
-        downloadCleanupDone();
-        co_return;
+    if (isModelInstalled(model.modelDirName, model.files)) {
+        co_return true;
     }
 
     QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
     if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
         STATUSBAR_INFO("{}", tr("Failed to create model cache directory."));
-        downloadCleanupFail();
-        co_return;
+        co_return false;
     }
 
-    for (const QString &pointer : modelPointers) {
-        const nlohmann::json dlModel = appConfigValue(pointer.toStdString());
-        const QUrl url(jsonString(dlModel, "url"));
-        const QString modelName = jsonString(dlModel, "name");
-        const QString archiveName = QFileInfo(url.path()).fileName();
-        const QString archivePath = modelRoot.filePath(archiveName);
+    const QUrl url(QString::fromStdString(model.url));
+    const QString modelName = QString::fromStdString(model.name);
+    const QString archiveName = QFileInfo(url.path()).fileName();
+    const QString archivePath = modelRoot.filePath(archiveName);
 
-        STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
+    STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
 
-        QNetworkRequest request(url);
-        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                             QNetworkRequest::NoLessSafeRedirectPolicy);
-        QNetworkReply *reply = m_network.get(request);
-        auto result = co_await reply;
-        bool dlOk = (reply->error() == QNetworkReply::NoError);
-        QString dlError = reply->errorString();
+    const QPointer<AsrSettingWidget> guard(this);
 
-        if (dlOk) {
-            QFile file(archivePath);
-            if (file.open(QIODevice::WriteOnly)) {
-                file.write(reply->readAll());
-            } else {
-                dlOk = false;
-                dlError = file.errorString();
-            }
-        }
-        reply->deleteLater();
+    QNetworkAccessManager manager;
+    manager.setTransferTimeout(300000);
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    QNetworkReply *reply = manager.get(request);
+    auto result = co_await reply;
+    reply->setParent(nullptr);
 
-        if (!m_isDownloading) {
-            co_return;
-        }
-
-        if (!dlOk) {
-            STATUSBAR_INFO(
-                "{}",
-                tr("ASR model download failed: %1").arg(dlError));
-            downloadCleanupFail();
-            co_return;
-        }
-
-        STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
-        auto extractResult =
-            extractArchive(archivePath, modelRoot.absolutePath());
-        QFile::remove(archivePath);
-        if (!extractResult) {
-            STATUSBAR_INFO(
-                "{}",
-                tr("ASR model extraction failed: %1")
-                    .arg(extractResult.error()));
-            downloadCleanupFail();
-            co_return;
-        }
+    if (!guard) {
+        co_return false;
     }
 
-    downloadCleanupDone();
-}
+    bool dlOk = (reply->error() == QNetworkReply::NoError);
+    QString dlError = reply->errorString();
 
-void AsrSettingWidget::downloadCleanupDone()
-{
-    m_isDownloading = false;
-    if (m_onDownloadReady) {
-        auto cb = std::move(m_onDownloadReady);
-        m_onDownloadReady = nullptr;
-        cb();
+    if (dlOk) {
+        QFile file(archivePath);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(reply->readAll());
+        }
+        else {
+            dlOk = false;
+            dlError = file.errorString();
+        }
     }
-    onAsrModelChanged(m_ui->modelCombo->currentIndex());
-}
+    reply->deleteLater();
 
-void AsrSettingWidget::downloadCleanupFail()
-{
-    m_isDownloading = false;
-    onAsrModelChanged(m_ui->modelCombo->currentIndex());
+    if (!dlOk) {
+        STATUSBAR_INFO("{}", tr("ASR model download failed: %1").arg(dlError));
+        onAsrModelChanged(m_ui->modelCombo->currentIndex());
+        co_return false;
+    }
+
+    STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
+    auto extractResult = extractArchive(archivePath, modelRoot.absolutePath());
+    QFile::remove(archivePath);
+    if (!extractResult) {
+        STATUSBAR_INFO(
+            "{}",
+            tr("ASR model extraction failed: %1").arg(extractResult.error()));
+        onAsrModelChanged(m_ui->modelCombo->currentIndex());
+        co_return false;
+    }
+
+    co_return true;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -686,10 +602,18 @@ void AsrSettingWidget::onUseAsrModel()
     }
 
     m_ui->useButton->setEnabled(false);
-    ensureAsrModelReady(providerId, [this, providerId]() {
-        setCurrentAsrProviderId(providerId);
-        loadInstalledAsrModel(providerId);
-    });
+    auto task = useAsrModel(providerId);
+}
+
+QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
+{
+    if (!co_await downloadModels(providerId)) {
+        co_return;
+    }
+
+    appConfig().settings.asrProviderId = providerId.toStdString();
+    markConfigDirty();
+    loadInstalledAsrModel(providerId);
 }
 
 void AsrSettingWidget::onOpenModelUrl()
@@ -704,22 +628,18 @@ void AsrSettingWidget::onOpenModelUrl()
         return;
     }
 
-    const QString pointer = asrPresetPointer(providerId);
-    const nlohmann::json m = appConfigValue(pointer.toStdString());
-    const QString url = jsonString(m, "url");
-    if (url.isEmpty()) {
+    const auto &presets = appConfig().asrPresets;
+    auto it = presets.find(providerId.toStdString());
+    if (it == presets.end() || it->second.url.empty()) {
         STATUSBAR_INFO("{}", tr("No download URL for this model."));
         return;
     }
 
-    QDesktopServices::openUrl(QUrl(url));
+    QDesktopServices::openUrl(QUrl(QString::fromStdString(it->second.url)));
 }
 
 void AsrSettingWidget::onImportModel()
 {
-    m_isDownloading = false;
-    m_onDownloadReady = nullptr;
-
     const int index = m_ui->modelCombo->currentIndex();
     if (index < 0 || index >= m_ui->modelCombo->count()) {
         return;
@@ -730,15 +650,15 @@ void AsrSettingWidget::onImportModel()
         return;
     }
 
-    const QString pointer = asrPresetPointer(providerId);
-    const nlohmann::json m = appConfigValue(pointer.toStdString());
-    const QString url = jsonString(m, "url");
-    if (url.isEmpty()) {
+    const auto &presets = appConfig().asrPresets;
+    auto it = presets.find(providerId.toStdString());
+    if (it == presets.end() || it->second.url.empty()) {
         STATUSBAR_INFO("{}", tr("No download URL for this model."));
         return;
     }
-
-    const QString expectedName = QFileInfo(QUrl(url).path()).fileName();
+    const auto &model = it->second;
+    const QUrl url(QString::fromStdString(model.url));
+    const QString expectedName = QFileInfo(url.path()).fileName();
     const QString filePath = QFileDialog::getOpenFileName(
         this, tr("Import Model Archive"),
         QStandardPaths::writableLocation(QStandardPaths::DownloadLocation),
@@ -757,11 +677,9 @@ void AsrSettingWidget::onImportModel()
         return;
     }
 
-    QDir modelRoot(
-        QDir(appDataDir()).filePath(QStringLiteral("models")));
+    QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
     if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
-        STATUSBAR_INFO("{}",
-                       tr("Failed to create model cache directory."));
+        STATUSBAR_INFO("{}", tr("Failed to create model cache directory."));
         return;
     }
 
@@ -775,23 +693,19 @@ void AsrSettingWidget::onImportModel()
         return;
     }
 
-    const QString modelName = jsonString(m, "name");
+    const QString modelName = QString::fromStdString(model.name);
     STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
     auto result = extractArchive(destPath, modelRoot.absolutePath());
     QFile::remove(destPath);
     if (!result) {
-        STATUSBAR_INFO("{}",
-                       tr("ASR model extraction failed: %1")
-                           .arg(result.error()));
+        STATUSBAR_INFO(
+            "{}", tr("ASR model extraction failed: %1").arg(result.error()));
         return;
     }
 
-    STATUSBAR_INFO("{}",
-                   tr("ASR model imported: %1").arg(modelName));
+    STATUSBAR_INFO("{}", tr("ASR model imported: %1").arg(modelName));
 
-    if (providerId == currentAsrProviderId()) {
-        loadInstalledAsrModel(providerId);
-    }
+    useAsrModel(providerId);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -813,13 +727,11 @@ void AsrSettingWidget::initIcons()
 void AsrSettingWidget::initShortcuts()
 {
     auto saveShortcut = [this](PipelineMode mode, QKeySequenceEdit *edit) {
-        connect(edit, &QKeySequenceEdit::editingFinished, this,
-                [mode, edit]() {
-                    setHotkeySequence(mode, edit->keySequence());
-                    STATUSBAR_INFO("{}", QCoreApplication::translate(
-                                            "AsrSettingWidget",
-                                            "Shortcut saved"));
-                });
+        connect(edit, &QKeySequenceEdit::editingFinished, this, [mode, edit]() {
+            setHotkeySequence(mode, edit->keySequence());
+            STATUSBAR_INFO("{}", QCoreApplication::translate("AsrSettingWidget",
+                                                             "Shortcut saved"));
+        });
     };
 
     saveShortcut(PipelineMode::AsrOnly, m_ui->asrShortcutEdit);
@@ -836,7 +748,6 @@ void AsrSettingWidget::changeEvent(QEvent *event)
     QWidget::changeEvent(event);
     if (event->type() == QEvent::LanguageChange) {
         m_ui->retranslateUi(this);
-        onAsrModelChanged(m_ui->modelCombo->currentIndex());
     }
 }
 

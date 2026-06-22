@@ -1,12 +1,7 @@
 #include "offline_speech_recognizer.h"
-#include "logging.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
-#include <QStringList>
-
-#include <algorithm>
-#include <cstdint>
 #include <cstring>
 
 namespace talkinput
@@ -23,50 +18,44 @@ OfflineSpeechRecognizer::~OfflineSpeechRecognizer()
 }
 
 std::expected<void, QString>
-OfflineSpeechRecognizer::start(const nlohmann::json &config)
+OfflineSpeechRecognizer::start(const AsrPreset &preset)
 {
     stop();
 
-    auto prepResult = prepareRecognizer(config);
+    auto prepResult = prepareRecognizer(preset);
     if (!prepResult) {
         return std::unexpected(prepResult.error());
     }
 
-    const nlohmann::json params =
-        config.value("params", nlohmann::json::object());
-    const int sampleRate = jsonInt(params, "sampleRate", 16000);
+    const auto &params = preset.params;
 
-    SherpaOnnxOfflineRecognizerConfig recognizerConfig;
-    std::memset(&recognizerConfig, 0, sizeof(recognizerConfig));
-    recognizerConfig.feat_config.sample_rate = sampleRate;
-    recognizerConfig.feat_config.feature_dim = jsonInt(params, "featureDim", 80);
+    SherpaOnnxOfflineRecognizerConfig config;
+    std::memset(&config, 0, sizeof(config));
+    config.feat_config.sample_rate = params.sampleRate;
+    config.feat_config.feature_dim = params.featureDim;
 
-    auto modelResult = configureModel(config, &recognizerConfig);
+    auto modelResult = configureModel(preset, &config);
     if (!modelResult) {
         stop();
         return std::unexpected(modelResult.error());
     }
 
-    recognizerConfig.model_config.provider = "cpu";
-    recognizerConfig.model_config.num_threads =
-        std::max(1, jsonInt(params, "numThreads", 2));
-    m_modelingUnit = jsonString(params, "modelingUnit", "cjkchar")
-                         .toUtf8()
-                         .toStdString();
-    recognizerConfig.model_config.modeling_unit = m_modelingUnit.c_str();
-    recognizerConfig.decoding_method = "greedy_search";
-    recognizerConfig.max_active_paths = 4;
+    config.model_config.provider = "cpu";
+    config.model_config.num_threads = std::max(1, params.numThreads);
+    config.model_config.debug = false;
+    m_modelingUnit = params.modelingUnit;
+    config.model_config.modeling_unit = m_modelingUnit.c_str();
 
-    m_recognizer = SherpaOnnxCreateOfflineRecognizer(&recognizerConfig);
+    m_recognizer = SherpaOnnxCreateOfflineRecognizer(&config);
     if (!m_recognizer) {
         stop();
         return std::unexpected(
             QStringLiteral("Failed to create offline recognizer."));
     }
 
-    m_modelSampleRate = sampleRate;
-    m_inputSampleRate = 0;
-    m_samples.clear();
+    m_modelSampleRate = params.sampleRate;
+    m_inputSampleRate = params.sampleRate;
+    m_chunkSeconds = chunkSeconds();
     return {};
 }
 
@@ -77,10 +66,9 @@ void OfflineSpeechRecognizer::stop()
         m_recognizer = nullptr;
     }
 
-    m_samples.clear();
-    m_inputSampleRate = 0;
     m_tokensPath.clear();
     m_modelingUnit.clear();
+    m_hotwordsText.clear();
     stopPunctuation();
 }
 
@@ -103,87 +91,47 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
         return;
     }
 
-    if (m_inputSampleRate == 0) {
-        m_inputSampleRate = sampleRate;
-    }
-    else if (m_inputSampleRate != sampleRate) {
-        SPDLOG_WARN("Offline ASR input sample rate changed from {} to {}; "
-                    "keeping the first rate for this utterance",
-                    m_inputSampleRate, sampleRate);
-    }
-
-    appendPcm16AsMonoFloat(audioData, channelCount, &m_samples);
+    m_samplesBuffer.insert(m_samplesBuffer.end(),
+                           reinterpret_cast<const float *>(
+                               audioData.constData()),
+                           reinterpret_cast<const float *>(
+                               audioData.constData() + audioData.size()));
 }
 
 void OfflineSpeechRecognizer::finish()
 {
-    if (!m_recognizer) {
+    if (!m_recognizer || m_samplesBuffer.empty()) {
         return;
     }
 
-    decode();
+    const SherpaOnnxOfflineRecognizerResult *result =
+        SherpaOnnxCreateOfflineRecognizerResult();
+    if (!result) {
+        return;
+    }
+
+    SherpaOnnxDecodeOfflineRecognizer(m_recognizer, m_samplesBuffer.data(),
+                                      static_cast<int32_t>(m_samplesBuffer.size()),
+                                      m_modelSampleRate, result);
+
+    QString text = decodeSherpaText(result->text);
+    SherpaOnnxDestroyOfflineRecognizerResult(result);
+    m_samplesBuffer.clear();
+
+    if (!text.isEmpty()) {
+        text = addPunctuation(text);
+        emit resultChanged(text, true);
+    }
 }
 
 void OfflineSpeechRecognizer::resetStream()
 {
-    m_samples.clear();
-    m_inputSampleRate = 0;
+    m_samplesBuffer.clear();
 }
 
 int OfflineSpeechRecognizer::chunkSeconds() const
 {
-    return 60;
-}
-
-void OfflineSpeechRecognizer::decode()
-{
-    if (m_samples.empty()) {
-        return;
-    }
-
-    const int inputSampleRate =
-        m_inputSampleRate > 0 ? m_inputSampleRate : m_modelSampleRate;
-    const int chunkSamples =
-        std::max(1, inputSampleRate * std::max(1, chunkSeconds()));
-
-    QStringList transcript;
-
-    for (size_t off = 0; off < m_samples.size(); off += chunkSamples) {
-        const int count = static_cast<int>(std::min(
-            static_cast<size_t>(chunkSamples), m_samples.size() - off));
-        if (count <= 0) {
-            continue;
-        }
-
-        const SherpaOnnxOfflineStream *stream =
-            SherpaOnnxCreateOfflineStream(m_recognizer);
-        if (!stream) {
-            continue;
-        }
-
-        SherpaOnnxAcceptWaveformOffline(stream, inputSampleRate,
-                                        m_samples.data() + off, count);
-        SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
-
-        const SherpaOnnxOfflineRecognizerResult *result =
-            SherpaOnnxGetOfflineStreamResult(stream);
-        if (result) {
-            const QString text = decodeSherpaText(result->text);
-            if (!text.isEmpty()) {
-                transcript.append(text);
-            }
-            SherpaOnnxDestroyOfflineRecognizerResult(result);
-        }
-        SherpaOnnxDestroyOfflineStream(stream);
-    }
-
-    QString finalText = transcript.join("");
-    finalText = addPunctuation(finalText);
-    if (!finalText.isEmpty()) {
-        emit resultChanged(finalText, true);
-    }
-
-    resetStream();
+    return 10;
 }
 
 } // namespace talkinput

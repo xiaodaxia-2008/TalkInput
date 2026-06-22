@@ -6,25 +6,23 @@ namespace talkinput
 {
 
 std::expected<void, QString> SenseVoiceSpeechRecognizer::configureModel(
-    const nlohmann::json &config,
+    const AsrPreset &preset,
     SherpaOnnxOfflineRecognizerConfig *recognizer)
 {
-    auto modelResult = configuredModelPath(config, "senseVoiceModelFile");
-    if (!modelResult) return std::unexpected(modelResult.error());
-    auto tokensResult = configuredModelPath(config, "tokensFile");
-    if (!tokensResult) return std::unexpected(tokensResult.error());
+    const auto &files = preset.resolvedFiles;
+    auto it = files.find("senseVoiceModelFile");
+    if (it == files.end()) return std::unexpected(QStringLiteral("Missing senseVoiceModelFile"));
+    auto it2 = files.find("tokensFile");
+    if (it2 == files.end()) return std::unexpected(QStringLiteral("Missing tokensFile"));
 
-    const nlohmann::json params =
-        config.value("params", nlohmann::json::object());
-
-    m_modelPath = modelResult->toUtf8().toStdString();
-    m_tokensPath = tokensResult->toUtf8().toStdString();
-    m_language = jsonString(params, "language", "zh").toUtf8().toStdString();
+    m_modelPath = it->second;
+    m_tokensPath = it2->second;
+    m_language = preset.params.language;
 
     recognizer->model_config.sense_voice.model = m_modelPath.c_str();
     recognizer->model_config.sense_voice.language = m_language.c_str();
     recognizer->model_config.sense_voice.use_itn =
-        jsonBool(params, "senseVoiceUseItn", true) ? 1 : 0;
+        preset.params.senseVoiceUseItn ? 1 : 0;
     recognizer->model_config.tokens = m_tokensPath.c_str();
     return {};
 }

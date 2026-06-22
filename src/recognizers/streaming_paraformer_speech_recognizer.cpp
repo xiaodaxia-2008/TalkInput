@@ -5,20 +5,22 @@
 namespace talkinput
 {
 
-std::expected<void, QString> StreamingParaformerSpeechRecognizer::configureModel(
-    const nlohmann::json &config,
+std::expected<void, QString>
+StreamingParaformerSpeechRecognizer::configureModel(
+    const AsrPreset &preset,
     SherpaOnnxOnlineRecognizerConfig *recognizer)
 {
-    auto encoderResult = configuredModelPath(config, "encoderFile");
-    if (!encoderResult) return std::unexpected(encoderResult.error());
-    auto decoderResult = configuredModelPath(config, "decoderFile");
-    if (!decoderResult) return std::unexpected(decoderResult.error());
-    auto tokensResult = configuredModelPath(config, "tokensFile");
-    if (!tokensResult) return std::unexpected(tokensResult.error());
+    const auto &files = preset.resolvedFiles;
+    auto it = files.find("encoderFile");
+    if (it == files.end()) return std::unexpected(QStringLiteral("Missing encoderFile"));
+    auto it2 = files.find("decoderFile");
+    if (it2 == files.end()) return std::unexpected(QStringLiteral("Missing decoderFile"));
+    auto it3 = files.find("tokensFile");
+    if (it3 == files.end()) return std::unexpected(QStringLiteral("Missing tokensFile"));
 
-    m_encoderPath = encoderResult->toUtf8().toStdString();
-    m_decoderPath = decoderResult->toUtf8().toStdString();
-    m_tokensPath = tokensResult->toUtf8().toStdString();
+    m_encoderPath = it->second;
+    m_decoderPath = it2->second;
+    m_tokensPath = it3->second;
 
     recognizer->model_config.paraformer.encoder = m_encoderPath.c_str();
     recognizer->model_config.paraformer.decoder = m_decoderPath.c_str();

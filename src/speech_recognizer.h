@@ -37,18 +37,25 @@ public:
     ~SpeechRecognizer() override;
 
     virtual std::expected<void, QString>
-    start(const nlohmann::json &config) = 0;
+    start(const AsrPreset &preset) = 0;
+    
     virtual void stop() = 0;
+    
     virtual bool isRunning() const = 0;
+    
     virtual bool isStreaming() const = 0;
 
     virtual void acceptPcm16(const QByteArray &audioData, int sampleRate,
                              int channelCount) = 0;
+    
     virtual void finish() = 0;
+    
     virtual void resetStream() = 0;
 
     std::expected<void, QString> startCapture();
+    
     void stopCapture();
+    
     bool isCaptureRunning() const;
 
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
@@ -60,13 +67,11 @@ signals:
 
 protected:
     std::expected<void, QString>
-    prepareRecognizer(const nlohmann::json &config);
+    prepareRecognizer(const AsrPreset &preset);
     void stopPunctuation();
     QString addPunctuation(const QString &text) const;
 
     static QString modelPath(const QString &modelDir, const QString &fileName);
-    static std::expected<QString, QString>
-    configuredModelPath(const nlohmann::json &config, const char *configField);
     static std::expected<void, QString> fileExists(const QString &path);
     static std::expected<void, QString> pathExists(const QString &path);
     static QString decodeSherpaText(const char *text);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "json_utils.h"
-
 #include <QString>
 #include <cstdint>
 #include <map>
@@ -51,6 +49,11 @@ struct AsrPreset
     bool hotwordsSupport = false;
     AsrPresetParams params;
     std::map<std::string, std::string> files;
+
+    // Resolved at runtime
+    std::string resolvedModelDir;
+    std::map<std::string, std::string> resolvedFiles;
+    std::string hotwordsText;
 };
 
 struct LlmModelPrice
@@ -128,42 +131,6 @@ bool saveAppConfig();
 // ═══════════════════════════════════════════════════════════════════
 
 QString appConfigPath();
-
-// ═══════════════════════════════════════════════════════════════════
-// Typed helpers (thin wrappers over AppConfigData)
-// ═══════════════════════════════════════════════════════════════════
-
-nlohmann::json asrPresets();
-nlohmann::json asrPresetById(const QString &id);
-QString currentAsrProviderId();
-nlohmann::json currentAsrPreset();
-void setCurrentAsrProviderId(const QString &id);
-bool isAsrPresetInstalled(const nlohmann::json &preset);
-
-std::string currentHotwordsText();
-
-nlohmann::json llmPresets();
-nlohmann::json llmProviderPreset(const QString &id);
-QString currentLlmProviderId();
-nlohmann::json currentLlmProviderPreset();
-void setCurrentLlmProviderId(const QString &id);
-void setLlmProviderSetting(const QString &id, const QString &key,
-                           const nlohmann::json &value);
-QString llmProviderEndpoint(const nlohmann::json &provider);
-QString llmProviderModel(const nlohmann::json &provider);
-QString llmProviderApiKey(const nlohmann::json &provider);
-
-nlohmann::json ocrPresets();
-nlohmann::json ocrPresetById(const QString &id);
-QString currentOcrProviderId();
-nlohmann::json currentOcrPreset();
-void setCurrentOcrProviderId(const QString &id);
-
-// Legacy JSON accessors
-nlohmann::json appConfigValue(std::string_view path,
-                              const nlohmann::json &fallback = {});
-QString appConfigString(std::string_view path, std::string_view fallback = {});
-void setAppConfigValue(std::string_view path, const nlohmann::json &value);
 
 // ═══════════════════════════════════════════════════════════════════
 // Language

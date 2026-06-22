@@ -20,24 +20,18 @@ OnlineSpeechRecognizer::~OnlineSpeechRecognizer()
 }
 
 std::expected<void, QString>
-OnlineSpeechRecognizer::start(const nlohmann::json &config)
+OnlineSpeechRecognizer::start(const AsrPreset &preset)
 {
     stop();
 
-    auto prepResult = prepareRecognizer(config);
-    if (!prepResult) {
-        return std::unexpected(prepResult.error());
-    }
-
-    const nlohmann::json params =
-        config.value("params", nlohmann::json::object());
+    const auto &params = preset.params;
 
     SherpaOnnxOnlineRecognizerConfig recognizerConfig;
     std::memset(&recognizerConfig, 0, sizeof(recognizerConfig));
-    recognizerConfig.feat_config.sample_rate = jsonInt(params, "sampleRate", 16000);
-    recognizerConfig.feat_config.feature_dim = jsonInt(params, "featureDim", 80);
+    recognizerConfig.feat_config.sample_rate = params.sampleRate;
+    recognizerConfig.feat_config.feature_dim = params.featureDim;
 
-    auto modelResult = configureModel(config, &recognizerConfig);
+    auto modelResult = configureModel(preset, &recognizerConfig);
     if (!modelResult) {
         stop();
         return std::unexpected(modelResult.error());
@@ -45,15 +39,11 @@ OnlineSpeechRecognizer::start(const nlohmann::json &config)
 
     recognizerConfig.model_config.provider = "cpu";
     recognizerConfig.model_config.num_threads =
-        std::max(1, jsonInt(params, "numThreads", 2));
-
-    m_modelingUnit = jsonString(params, "modelingUnit", "cjkchar")
-                         .toUtf8()
-                         .toStdString();
+        std::max(1, params.numThreads);
+    m_modelingUnit = params.modelingUnit;
     recognizerConfig.model_config.modeling_unit = m_modelingUnit.c_str();
 
-    const QString hotwordsText = jsonString(config, "hotwordsText");
-    m_hotwordsText = hotwordsText.toUtf8().toStdString();
+    m_hotwordsText = preset.hotwordsText;
     if (!m_hotwordsText.empty()) {
         recognizerConfig.decoding_method = supportsModifiedBeamSearch()
                                                ? "modified_beam_search"
@@ -62,7 +52,7 @@ OnlineSpeechRecognizer::start(const nlohmann::json &config)
         recognizerConfig.hotwords_buf_size =
             static_cast<int32_t>(m_hotwordsText.size());
         recognizerConfig.hotwords_score =
-            jsonFloat(params, "hotwordsScore", 1.5F);
+            static_cast<float>(params.hotwordsScore);
     }
     else {
         recognizerConfig.decoding_method = "greedy_search";

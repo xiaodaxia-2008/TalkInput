@@ -1,13 +1,11 @@
 #pragma once
 
-#include "json_utils.h"
+#include "app_config.h"
 
 #include <QCoro/QCoroTask>
 
-#include <QNetworkAccessManager>
 #include <QString>
 #include <QWidget>
-#include <functional>
 #include <memory>
 
 class QComboBox;
@@ -37,13 +35,12 @@ protected:
 private:
     void onLlmProviderChanged(int index);
     void onOcrProviderChanged(int index);
-    void onAsrModelChanged(int index);
     void onUseAsrModel();
     void onOpenModelUrl();
     void onImportModel();
     void onEditHotwords();
     void onEditPrompt();
-    void applyLlmProviderToUi(const nlohmann::json &provider);
+    void applyLlmProviderToUi(const LlmPreset &provider);
     void refreshPromptLabel();
 
     void initLlmProviders();
@@ -53,20 +50,14 @@ private:
     void initIcons();
     void initShortcuts();
 
-    void loadActiveAsrPreset();
-    void ensureAsrModelReady(const QString &providerId,
-                             std::function<void()> onReady);
+    QCoro::Task<void> useAsrModel(const QString &providerId);
     void loadInstalledAsrModel(const QString &providerId);
 
-    QCoro::Task<void> downloadModels(QString providerId);
-    void downloadCleanupDone();
-    void downloadCleanupFail();
+    QCoro::Task<bool> downloadModels(const QString &providerId);
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
 
-    bool m_isDownloading = false;
-    std::function<void()> m_onDownloadReady;
-    QNetworkAccessManager m_network;
+
 };
 
 } // namespace talkinput

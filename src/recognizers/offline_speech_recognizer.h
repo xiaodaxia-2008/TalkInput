@@ -18,7 +18,7 @@ public:
     ~OfflineSpeechRecognizer() override;
 
     std::expected<void, QString>
-    start(const nlohmann::json &config) final;
+    start(const AsrPreset &preset) final;
     void stop() override;
     bool isRunning() const final;
     bool isStreaming() const final;
@@ -30,7 +30,7 @@ public:
 
 protected:
     virtual std::expected<void, QString>
-    configureModel(const nlohmann::json &config,
+    configureModel(const AsrPreset &preset,
                    SherpaOnnxOfflineRecognizerConfig *recognizer) = 0;
     virtual int chunkSeconds() const;
 
