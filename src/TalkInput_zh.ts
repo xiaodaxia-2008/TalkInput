@@ -752,30 +752,30 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::VoiceInputController</name>
     <message>
-        <location filename="voice_input_controller.cpp" line="162"/>
-        <location filename="voice_input_controller.cpp" line="452"/>
+        <location filename="voice_input_controller.cpp" line="143"/>
+        <location filename="voice_input_controller.cpp" line="364"/>
         <source>Speech recognition model not loaded yet. Please wait or select a model.</source>
         <translation>语音识别模型尚未加载。请等待或选择模型。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="153"/>
-        <location filename="voice_input_controller.cpp" line="332"/>
-        <location filename="voice_input_controller.cpp" line="442"/>
+        <location filename="voice_input_controller.cpp" line="135"/>
+        <location filename="voice_input_controller.cpp" line="309"/>
+        <location filename="voice_input_controller.cpp" line="355"/>
         <source>Recognition is still processing.</source>
         <translation>识别仍在处理中。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="299"/>
+        <location filename="voice_input_controller.cpp" line="276"/>
         <source>Post-processing recognition result...</source>
         <translation>正在后处理识别结果...</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="428"/>
+        <location filename="voice_input_controller.cpp" line="341"/>
         <source>Speech recognition model load failed: %1</source>
         <translation type="unfinished">语音识别模型加载失败：%1</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="294"/>
+        <location filename="voice_input_controller.cpp" line="271"/>
         <source>Reading focused input context...</source>
         <translation>正在读取聚焦输入上下文...</translation>
     </message>

@@ -13,13 +13,9 @@
 #include "voice_recognizer_session.h"
 
 #include <QCoro/QCoroFuture>
-#include <QCursor>
 #include <QDateTime>
 #include <QDir>
-#include <QGuiApplication>
 #include <QPromise>
-#include <QPixmap>
-#include <QScreen>
 
 namespace
 {
@@ -45,20 +41,6 @@ void saveOcrDebugImage(const QImage &image)
     else {
         SPDLOG_WARN("OCR context debug screenshot save failed: {}", path);
     }
-}
-
-QScreen *screenByName(const QString &name)
-{
-    if (name.isEmpty()) {
-        return nullptr;
-    }
-
-    for (QScreen *screen : QGuiApplication::screens()) {
-        if (screen && screen->name().compare(name, Qt::CaseInsensitive) == 0) {
-            return screen;
-        }
-    }
-    return nullptr;
 }
 
 } // namespace
@@ -121,7 +103,7 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
                     m_stage == PipelineStage::Recognizing) {
                     stopListening();
                 }
-                else if (!m_busy) {
+                else if (m_stage == PipelineStage::Idle) {
                     m_pipelineMode = mode;
                     startListening();
                 }
@@ -149,19 +131,17 @@ VoiceInputController::~VoiceInputController()
 
 QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 {
-    if (m_busy) {
+    if (m_stage != PipelineStage::Idle) {
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
         co_return;
     }
 
-    m_busy = true;
     m_lastResult.clear();
 
     if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
         STATUSBAR_WARN("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
-        m_busy = false;
         co_return;
     }
 
@@ -180,8 +160,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
         auto result = m_audioCapture->start();
         if (!result) {
             STATUSBAR_ERROR("{}", result.error());
-            m_busy = false;
-            hideOverlay();
+            setStage(PipelineStage::Idle);
             co_return;
         }
     }
@@ -200,8 +179,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     const QString trimmedText = finalText.trimmed();
     if (trimmedText.isEmpty()) {
         SPDLOG_WARN("executePipeline: empty final text, aborting");
-        m_busy = false;
-        hideOverlay();
+        setStage(PipelineStage::Idle);
         co_return;
     }
 
@@ -210,8 +188,9 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     if (ocrEnabled && m_ocrRecognizer && m_ocrRecognizer->isAvailable()) {
         setStage(PipelineStage::ReadingContext);
 
-        const QImage image = captureFocusedContextImage();
+        const QImage image = m_ocrRecognizer->captureFocusedTextInputImage();
         if (!image.isNull()) {
+            saveOcrDebugImage(image);
             SPDLOG_INFO("OCR context screenshot captured: {}x{}",
                         image.width(), image.height());
 
@@ -261,8 +240,6 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
         }
     }
 
-    hideOverlay();
-    m_busy = false;
     setStage(PipelineStage::Idle);
 }
 
@@ -276,12 +253,12 @@ void VoiceInputController::setStage(PipelineStage stage)
     switch (stage) {
     case PipelineStage::Idle:
         SPDLOG_DEBUG("Pipeline stage → Idle");
-        hideOverlay();
+        m_overlay->stopAnimation();
         emit listeningChanged(false);
         break;
     case PipelineStage::Recording:
         SPDLOG_INFO("Pipeline stage → Recording");
-        showOverlay();
+        m_overlay->startAnimation();
         m_overlay->setPreviewText({});
         emit listeningChanged(true);
         break;
@@ -328,7 +305,7 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
 
 bool VoiceInputController::startListening()
 {
-    if (m_busy) {
+    if (m_stage != PipelineStage::Idle) {
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
         return false;
     }
@@ -349,72 +326,8 @@ void VoiceInputController::stopListening()
             m_finalResultPromise->addResult(QString());
             m_finalResultPromise->finish();
         }
-        hideOverlay();
-        m_busy = false;
         setStage(PipelineStage::Idle);
     }
-}
-
-// ── Overlay ───────────────────────────────────────────────────────
-
-void VoiceInputController::showOverlay()
-{
-    if (m_overlay) {
-        m_overlay->startAnimation();
-    }
-}
-
-void VoiceInputController::hideOverlay()
-{
-    if (m_overlay) {
-        m_overlay->stopAnimation();
-    }
-}
-
-// ── OCR support ───────────────────────────────────────────────────
-
-QImage VoiceInputController::captureFocusedContextImage()
-{
-    if (m_ocrRecognizer) {
-        const QImage focusedWindowImage =
-            m_ocrRecognizer->captureFocusedTextInputImage();
-        if (!focusedWindowImage.isNull()) {
-            SPDLOG_DEBUG("OCR context focused window screenshot captured: "
-                         "{}x{}",
-                         focusedWindowImage.width(),
-                         focusedWindowImage.height());
-            saveOcrDebugImage(focusedWindowImage);
-            return focusedWindowImage;
-        }
-        SPDLOG_DEBUG("OCR context focused window screenshot failed; falling "
-                     "back to full screen");
-    }
-
-    const QString screenName =
-        m_ocrRecognizer ? m_ocrRecognizer->focusedTextInputScreenName()
-                        : QString();
-    QScreen *screen = screenByName(screenName);
-    if (screen) {
-        SPDLOG_DEBUG("OCR context matched focused screen '{}'", screen->name());
-    }
-    if (!screen) {
-        screen = QGuiApplication::screenAt(QCursor::pos());
-    }
-    if (!screen) {
-        screen = QGuiApplication::primaryScreen();
-    }
-    if (!screen) {
-        SPDLOG_DEBUG("OCR context screenshot skipped: no screen");
-        return {};
-    }
-
-    const QPixmap pixmap = screen->grabWindow(0);
-    const QImage image = pixmap.toImage();
-    SPDLOG_DEBUG("OCR context using full-screen fallback on screen '{}': "
-                 "{}x{} dpr={}",
-                 screen->name(), pixmap.width(), pixmap.height(),
-                 pixmap.devicePixelRatio());
-    return image;
 }
 
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
@@ -438,12 +351,11 @@ void VoiceInputController::unloadSpeechRecognitionModel()
 
 bool VoiceInputController::startSpeechRecognitionSession()
 {
-    if (m_busy) {
+    if (m_stage != PipelineStage::Idle) {
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
         return false;
     }
 
-    m_busy = true;
     m_lastResult.clear();
     setStage(PipelineStage::Recognizing);
 
@@ -451,7 +363,6 @@ bool VoiceInputController::startSpeechRecognitionSession()
         STATUSBAR_WARN("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
-        m_busy = false;
         setStage(PipelineStage::Idle);
         return false;
     }
@@ -470,7 +381,6 @@ void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
 void VoiceInputController::finishSpeechRecognitionSession()
 {
     if (!m_recognizerSession->finishRunningRecognitionStream()) {
-        m_busy = false;
         setStage(PipelineStage::Idle);
     }
 }

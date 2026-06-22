@@ -4,7 +4,6 @@
 
 #include <QCoro/QCoroTask>
 #include <QByteArray>
-#include <QImage>
 #include <QKeySequence>
 #include <QObject>
 
@@ -92,9 +91,6 @@ private:
     QCoro::Task<void> executePipeline(PipelineMode mode);
     void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
-    QImage captureFocusedContextImage();
-    void showOverlay();
-    void hideOverlay();
 
     std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
     std::unique_ptr<AudioInputCapture> m_audioCapture;
@@ -105,7 +101,6 @@ private:
 
     std::unique_ptr<VoiceOverlay> m_overlay;
     QString m_lastResult;
-    bool m_busy = false;
     PipelineStage m_stage = PipelineStage::Idle;
     PipelineMode m_pipelineMode = PipelineMode::AsrLlmOcr;
     QPromise<QString> *m_finalResultPromise = nullptr;

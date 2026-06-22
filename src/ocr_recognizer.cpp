@@ -2,6 +2,11 @@
 #include "rapid_ocr_recognizer.h"
 #include "system_ocr_recognizer.h"
 
+#include <QCursor>
+#include <QGuiApplication>
+#include <QPixmap>
+#include <QScreen>
+
 namespace talkinput
 {
 
@@ -28,7 +33,27 @@ QString OcrRecognizer::focusedTextInputScreenName() const
 
 QImage OcrRecognizer::captureFocusedTextInputImage() const
 {
-    return {};
+    const QString screenName = focusedTextInputScreenName();
+    QScreen *screen = nullptr;
+    if (!screenName.isEmpty()) {
+        for (QScreen *s : QGuiApplication::screens()) {
+            if (s && s->name().compare(screenName, Qt::CaseInsensitive) == 0) {
+                screen = s;
+                break;
+            }
+        }
+    }
+    if (!screen) {
+        screen = QGuiApplication::screenAt(QCursor::pos());
+    }
+    if (!screen) {
+        screen = QGuiApplication::primaryScreen();
+    }
+    if (!screen) {
+        return {};
+    }
+
+    return screen->grabWindow(0).toImage();
 }
 
 std::expected<std::unique_ptr<OcrRecognizer>, QString>
