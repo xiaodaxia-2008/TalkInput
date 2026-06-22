@@ -477,6 +477,9 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
     if (vc->isSpeechRecognitionModelLoaded()) {
         STATUSBAR_INFO("{}", tr("ASR model loaded: %1").arg(asrModelLabel(preset)));
     }
+    else {
+        STATUSBAR_INFO("{}", tr("ASR model load failed: %1").arg(asrModelLabel(preset)));
+    }
 }
 
 void AsrSettingWidget::refreshAsrModelCombo()
