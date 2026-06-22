@@ -85,18 +85,22 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
     const QString formattedInput = lines.join(", ");
     const QString cleanedContext = extractOcrWords(request.contextText);
 
-    QString systemPrompt = appConfigString("/settings/llm/systemPrompt");
+    QString systemPrompt = QString::fromStdString(
+        appConfig().settings.llmSystemPrompt);
     systemPrompt.replace("{{input}}", formattedInput);
     systemPrompt.replace("{{context}}", cleanedContext);
     systemPrompt.replace("{{hotwords}}", request.hotwords);
 
-    QString userPrompt = appConfigString("/settings/llm/userPrompt");
+    QString userPrompt = QString::fromStdString(
+        appConfig().settings.llmUserPrompt);
     userPrompt.replace("{{input}}", formattedInput);
     userPrompt.replace("{{context}}", cleanedContext);
     userPrompt.replace("{{hotwords}}", request.hotwords);
 
-    const nlohmann::json provider = currentLlmProviderPreset();
-    const QString model = llmProviderModel(provider);
+    const auto &provider =
+        appConfig().llmPresets.at(appConfig().settings.llmProviderId);
+    const QString model =
+        QString::fromStdString(provider.currentModel);
     nlohmann::json payload = {{"messages",
                                {{{"role", "system"}, {"content", systemPrompt}},
                                 {{"role", "user"}, {"content", userPrompt}}}},
@@ -106,15 +110,15 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
                               {"temperature", 0.1},
                               {"max_tokens", 2000},
                               {"stream", false}};
-    if (llmProviderUsesManagedLocalService(provider)) {
+    if (provider.managedLocalService) {
         payload["chat_template_kwargs"] = {{"enable_thinking", false}};
     }
 
     QNetworkRequest networkRequest =
-        makeRequest(QUrl(llmProviderEndpoint(provider)));
+        makeRequest(QUrl(QString::fromStdString(provider.endpoint)));
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,
                              "application/json");
-    const QString apiKey = llmProviderApiKey(provider);
+    const QString apiKey = QString::fromStdString(provider.apiKey);
     if (!apiKey.isEmpty()) {
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
@@ -125,16 +129,19 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
 
     const std::string modelName = model.toStdString();
-    const nlohmann::json models =
-        provider.value("models", nlohmann::json::object());
-    const nlohmann::json modelInfo =
-        models.value(modelName, nlohmann::json::object());
-    const nlohmann::json price =
-        modelInfo.value("price", nlohmann::json::object());
-    const double inputPer1M = price.value("inputPer1M", 0.0);
-    const double cacheHitInputPer1M = price.value("cacheHitInputPer1M", 0.0);
-    const double cacheMissInputPer1M = price.value("cacheMissInputPer1M", 0.0);
-    const double outputPer1M = price.value("outputPer1M", 0.0);
+    const auto modelIt = provider.models.find(modelName);
+    const double inputPer1M = modelIt != provider.models.end()
+                                  ? modelIt->second.price.inputPer1M
+                                  : 0.0;
+    const double cacheHitInputPer1M = modelIt != provider.models.end()
+                                          ? modelIt->second.price.cacheHitInputPer1M
+                                          : 0.0;
+    const double cacheMissInputPer1M = modelIt != provider.models.end()
+                                           ? modelIt->second.price.cacheMissInputPer1M
+                                           : 0.0;
+    const double outputPer1M = modelIt != provider.models.end()
+                                   ? modelIt->second.price.outputPer1M
+                                   : 0.0;
 
     QNetworkReply *reply = m_network.post(networkRequest, requestBody);
     co_await reply;

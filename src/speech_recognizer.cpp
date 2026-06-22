@@ -311,10 +311,13 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
             QStringLiteral("Unsupported model type: %1").arg(typeName));
     }
 
-    const QString modelDir = asrModelDir(preset);
-    if (modelDir.isEmpty()) {
+    const QString dirName = jsonString(preset, "modelDirName");
+    if (dirName.isEmpty()) {
         return std::unexpected(QStringLiteral("Model directory not set."));
     }
+    const QString modelDir =
+        QDir(appDataDir())
+            .filePath(QStringLiteral("models/%1").arg(dirName));
 
     nlohmann::json config = preset;
     config["modelDir"] = modelDir;
@@ -332,8 +335,21 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
     }
     config["files"] = resolvedFiles;
 
-    config["hotwordsText"] =
-        hotwordsTextForPreset(config, currentHotwordsConfig()).toStdString();
+    if (config.value("hotwordsSupport", false)) {
+        QStringList lines;
+        for (const auto &item : appConfig().settings.hotwords) {
+            const QString line =
+                QString::fromStdString(item).trimmed();
+            if (!line.isEmpty()) {
+                lines.append(line);
+            }
+        }
+        config["hotwordsText"] =
+            lines.join(QLatin1Char('\n')).toStdString();
+    }
+    else {
+        config["hotwordsText"] = "";
+    }
 
     std::unique_ptr<SpeechRecognizer> r;
     switch (*type) {

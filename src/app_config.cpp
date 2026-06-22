@@ -17,53 +17,43 @@ namespace talkinput
 {
 
 // ═══════════════════════════════════════════════════════════════════
-// Config loading / saving
+// Internal state
 // ═══════════════════════════════════════════════════════════════════
 
 namespace
 {
 
-nlohmann::json s_defaultConfig;
-nlohmann::json s_config;
+AppConfigData s_defaultConfig;
+AppConfigData s_config;
 bool s_loaded = false;
 bool s_dirty = false;
 QTimer *s_saveTimer = nullptr;
 
-nlohmann::json readConfigObject(const QString &path)
+void scheduleSave()
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return nlohmann::json::object();
+    if (!QCoreApplication::instance()) {
+        saveAppConfig();
+        return;
     }
 
-    try {
-        const QByteArray data = file.readAll();
-        nlohmann::json parsed = nlohmann::json::parse(
-            data.constData(), data.constData() + data.size());
-        return parsed.is_object() ? parsed : nlohmann::json::object();
+    if (!s_saveTimer) {
+        s_saveTimer = new QTimer(QCoreApplication::instance());
+        s_saveTimer->setSingleShot(true);
+        s_saveTimer->setInterval(500);
+        QObject::connect(s_saveTimer, &QTimer::timeout, []() {
+            if (s_dirty) {
+                saveAppConfig();
+            }
+        });
     }
-    catch (const nlohmann::json::exception &e) {
-        SPDLOG_WARN("config: failed to parse {}: {}", path, e.what());
-        return nlohmann::json::object();
-    }
+    s_saveTimer->start();
 }
 
-nlohmann::json mergeDefaults(const nlohmann::json &defaults,
-                             const nlohmann::json &user)
-{
-    if (!defaults.is_object() || !user.is_object()) {
-        return user.is_discarded() || user.is_null() ? defaults : user;
-    }
+} // namespace
 
-    nlohmann::json merged = defaults;
-    for (auto it = user.begin(); it != user.end(); ++it) {
-        const nlohmann::json defaultValue = merged.contains(it.key())
-                                                ? merged.at(it.key())
-                                                : nlohmann::json(nullptr);
-        merged[it.key()] = mergeDefaults(defaultValue, it.value());
-    }
-    return merged;
-}
+// ═══════════════════════════════════════════════════════════════════
+// Config loading / saving
+// ═══════════════════════════════════════════════════════════════════
 
 void ensureLoaded()
 {
@@ -73,23 +63,39 @@ void ensureLoaded()
     s_loaded = true;
 
     try {
-        s_defaultConfig = readConfigObject(":/resources/misc/config.json");
-        const nlohmann::json userConfig = readConfigObject(appConfigPath());
-        s_config = userConfig.empty()
-                       ? s_defaultConfig
-                       : mergeDefaults(s_defaultConfig, userConfig);
+        QFile defaultFile(":/resources/misc/config.json");
+        defaultFile.open(QIODevice::ReadOnly);
+        s_defaultConfig = nlohmann::json::parse(
+            defaultFile.readAll().constData()).get<AppConfigData>();
 
-        SPDLOG_INFO("config: loaded {}",
-                    userConfig.empty() ? "defaults" : appConfigPath());
+        const QString userPath = appConfigPath();
+        QFile userFile(userPath);
+        if (userFile.open(QIODevice::ReadOnly)) {
+            nlohmann::json defaultJson = nlohmann::json(s_defaultConfig);
+            nlohmann::json userJson = nlohmann::json::parse(
+                userFile.readAll().constData());
+            defaultJson.merge_patch(userJson);
+            s_config = defaultJson.get<AppConfigData>();
+            SPDLOG_INFO("config: loaded {}", userPath);
+        }
+        else {
+            s_config = s_defaultConfig;
+            SPDLOG_INFO("config: loaded defaults");
+        }
     }
     catch (const nlohmann::json::exception &e) {
-        SPDLOG_WARN("config: failed to load merged config: {}", e.what());
-        s_config = s_defaultConfig.empty() ? nlohmann::json::object()
-                                           : s_defaultConfig;
+        SPDLOG_WARN("config: failed to load: {}", e.what());
+        s_config = s_defaultConfig;
     }
 }
 
-bool writeConfigNow()
+AppConfigData &appConfig()
+{
+    ensureLoaded();
+    return s_config;
+}
+
+bool saveAppConfig()
 {
     const QString path = appConfigPath();
     QDir dir = QFileInfo(path).absoluteDir();
@@ -103,39 +109,23 @@ bool writeConfigNow()
         SPDLOG_WARN("config: cannot write {}", path);
         return false;
     }
-    const std::string text = s_config.dump(2);
+    const std::string text = nlohmann::json(s_config).dump(2);
     file.write(text.data(), static_cast<qint64>(text.size()));
     s_dirty = false;
     SPDLOG_DEBUG("config: saved {}", path);
     return true;
 }
 
-void scheduleSave()
-{
-    if (!QCoreApplication::instance()) {
-        writeConfigNow();
-        return;
-    }
-
-    if (!s_saveTimer) {
-        s_saveTimer = new QTimer(QCoreApplication::instance());
-        s_saveTimer->setSingleShot(true);
-        s_saveTimer->setInterval(500);
-        QObject::connect(s_saveTimer, &QTimer::timeout, []() {
-            if (s_dirty) {
-                writeConfigNow();
-            }
-        });
-    }
-    s_saveTimer->start();
-}
-
-} // namespace
-
-nlohmann::json appConfigRoot()
+bool resetAppConfigToDefaults()
 {
     ensureLoaded();
-    return s_config;
+    s_config = s_defaultConfig;
+    s_dirty = true;
+    if (s_saveTimer) {
+        s_saveTimer->stop();
+    }
+    SPDLOG_INFO("config: resetting user config to defaults");
+    return saveAppConfig();
 }
 
 QString appConfigPath()
@@ -143,143 +133,197 @@ QString appConfigPath()
     return QDir(talkinput::appDataDir()).filePath("config.json");
 }
 
-bool appConfigContains(std::string_view path)
+void markConfigDirty()
 {
-    ensureLoaded();
-    const auto pointer = nlohmann::json::json_pointer(std::string{path});
-    return s_config.contains(pointer);
+    s_dirty = true;
+    scheduleSave();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Typed helpers (thin wrappers over AppConfigData)
+// ═══════════════════════════════════════════════════════════════════
+
+nlohmann::json asrPresets()
+{
+    return nlohmann::json(appConfig().asrPresets);
+}
+
+nlohmann::json asrPresetById(const QString &id)
+{
+    const auto &presets = appConfig().asrPresets;
+    auto it = presets.find(id.toStdString());
+    return it != presets.end() ? nlohmann::json(it->second) : nlohmann::json::object();
+}
+
+nlohmann::json currentAsrPreset()
+{
+    return asrPresetById(
+        QString::fromStdString(appConfig().settings.asrProviderId));
+}
+
+QString currentAsrProviderId()
+{
+    return QString::fromStdString(appConfig().settings.asrProviderId);
+}
+
+void setCurrentAsrProviderId(const QString &id)
+{
+    appConfig().settings.asrProviderId = id.toStdString();
+    markConfigDirty();
+}
+
+bool isAsrPresetInstalled(const nlohmann::json &preset)
+{
+    const QString dirName = jsonString(preset, "modelDirName");
+    if (dirName.isEmpty()) {
+        return false;
+    }
+    const QString modelDir =
+        QDir(appDataDir())
+            .filePath(QStringLiteral("models/%1").arg(dirName));
+    if (!QFileInfo(modelDir).isDir()) {
+        return false;
+    }
+    const nlohmann::json files =
+        preset.value("files", nlohmann::json::object());
+    if (files.is_object()) {
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            if (!it->is_string()) continue;
+            const std::string key = it.key();
+            const QString relative =
+                QString::fromStdString(it->get<std::string>());
+            const QFileInfo fi(QDir(modelDir).filePath(relative));
+            if (key.size() > 4 && key.substr(key.size() - 4) == ">dir") {
+                if (!fi.isDir()) return false;
+            } else {
+                if (!fi.isFile()) return false;
+            }
+        }
+    }
+    return true;
+}
+
+std::string currentHotwordsText()
+{
+    QStringList lines;
+    for (const auto &item : appConfig().settings.hotwords) {
+        const QString line = QString::fromStdString(item).trimmed();
+        if (!line.isEmpty()) lines.append(line);
+    }
+    return lines.join(QLatin1Char('\n')).toStdString();
+}
+
+nlohmann::json llmPresets()
+{
+    return nlohmann::json(appConfig().llmPresets);
+}
+
+nlohmann::json llmProviderPreset(const QString &id)
+{
+    const auto &presets = appConfig().llmPresets;
+    auto it = presets.find(id.toStdString());
+    return it != presets.end() ? nlohmann::json(it->second) : nlohmann::json::object();
+}
+
+nlohmann::json currentLlmProviderPreset()
+{
+    return llmProviderPreset(
+        QString::fromStdString(appConfig().settings.llmProviderId));
+}
+
+QString currentLlmProviderId()
+{
+    return QString::fromStdString(appConfig().settings.llmProviderId);
+}
+
+void setCurrentLlmProviderId(const QString &id)
+{
+    appConfig().settings.llmProviderId = id.toStdString();
+    markConfigDirty();
+}
+
+void setLlmProviderSetting(const QString &id, const QString &key,
+                           const nlohmann::json &value)
+{
+    auto &preset = appConfig().llmPresets[id.toStdString()];
+    nlohmann::json j = nlohmann::json(preset);
+    j[key.toStdString()] = value;
+    preset = j.get<LlmPreset>();
+    markConfigDirty();
+}
+
+QString llmProviderEndpoint(const nlohmann::json &provider)
+{
+    return jsonString(provider, "endpoint").trimmed();
+}
+
+QString llmProviderModel(const nlohmann::json &provider)
+{
+    return jsonString(provider, "currentModel").trimmed();
+}
+
+QString llmProviderApiKey(const nlohmann::json &provider)
+{
+    return jsonString(provider, "apiKey").trimmed();
+}
+
+nlohmann::json ocrPresets()
+{
+    return nlohmann::json(appConfig().ocrPresets);
+}
+
+nlohmann::json ocrPresetById(const QString &id)
+{
+    const auto &presets = appConfig().ocrPresets;
+    auto it = presets.find(id.toStdString());
+    return it != presets.end() ? nlohmann::json(it->second) : nlohmann::json::object();
+}
+
+nlohmann::json currentOcrPreset()
+{
+    return ocrPresetById(
+        QString::fromStdString(appConfig().settings.ocrProviderId));
+}
+
+QString currentOcrProviderId()
+{
+    return QString::fromStdString(appConfig().settings.ocrProviderId);
+}
+
+void setCurrentOcrProviderId(const QString &id)
+{
+    appConfig().settings.ocrProviderId = id.toStdString();
+    markConfigDirty();
 }
 
 nlohmann::json appConfigValue(std::string_view path,
                               const nlohmann::json &fallback)
 {
     ensureLoaded();
+    auto j = nlohmann::json(s_config);
     const auto pointer = nlohmann::json::json_pointer(std::string{path});
-    return s_config.contains(pointer) ? s_config.at(pointer) : fallback;
+    return j.contains(pointer) ? j.at(pointer) : fallback;
 }
 
 QString appConfigString(std::string_view path, std::string_view fallback)
 {
     const nlohmann::json value = appConfigValue(path, std::string{fallback});
-    if (value.is_string()) {
-        return value.get<QString>();
-    }
-    return QString::fromUtf8(fallback.data(),
-                             static_cast<qsizetype>(fallback.size()));
-}
-
-bool appConfigBool(std::string_view path, bool fallback)
-{
-    const nlohmann::json value = appConfigValue(path, fallback);
-    return value.is_boolean() ? value.get<bool>() : fallback;
+    return value.is_string()
+               ? QString::fromStdString(value.get<std::string>())
+               : QString::fromUtf8(fallback.data(),
+                                   static_cast<qsizetype>(fallback.size()));
 }
 
 void setAppConfigValue(std::string_view path, const nlohmann::json &value)
 {
     ensureLoaded();
+    auto j = nlohmann::json(s_config);
     const auto pointer = nlohmann::json::json_pointer(std::string{path});
-    s_config[pointer] = value;
+    j[pointer] = value;
+    s_config = j.get<AppConfigData>();
     s_dirty = true;
     scheduleSave();
 }
-
-bool resetAppConfigToDefaults()
-{
-    ensureLoaded();
-    s_config =
-        s_defaultConfig.empty() ? nlohmann::json::object() : s_defaultConfig;
-    s_dirty = true;
-    if (s_saveTimer) {
-        s_saveTimer->stop();
-    }
-    SPDLOG_INFO("config: resetting user config to defaults");
-    return writeConfigNow();
-}
-
-bool saveAppConfig()
-{
-    ensureLoaded();
-    if (s_saveTimer) {
-        s_saveTimer->stop();
-    }
-    if (!s_dirty && QFileInfo::exists(appConfigPath())) {
-        return true;
-    }
-    return writeConfigNow();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Typed config accessors
-// ═══════════════════════════════════════════════════════════════════
-
-namespace
-{
-
-AppConfigData s_typedConfig;
-
-} // namespace
-
-const AppConfigData &appConfig()
-{
-    ensureLoaded();
-    if (s_config != nlohmann::json::object() && s_typedConfig.asrPresets.empty()) {
-        s_typedConfig = s_config.get<AppConfigData>();
-    }
-    return s_typedConfig;
-}
-
-void setAppConfig(const AppConfigData &config)
-{
-    s_typedConfig = config;
-    s_config = nlohmann::json(config);
-    s_dirty = true;
-    scheduleSave();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// JSON serialization
-// ═══════════════════════════════════════════════════════════════════
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AsrPresetParams, sampleRate, featureDim,
-                                   numThreads, modelingUnit, hotwordsScore,
-                                   language, senseVoiceUseItn,
-                                   funasrSystemPrompt, funasrUserPrompt,
-                                   funasrMaxNewTokens, funasrTemperature,
-                                   funasrTopP, funasrSeed, funasrItn)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AsrPreset, id, name, type, languages,
-                                   modelDirName, url, size, paramCount,
-                                   streamingSupport, hotwordsSupport, params,
-                                   files)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LlmModelPrice, inputPer1M, outputPer1M,
-                                   cacheHitInputPer1M, cacheMissInputPer1M)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LlmModel, name, url, fileName, size, price)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LlmPreset, id, name, endpoint, apiKey,
-                                   currentModel, models, managedLocalService,
-                                   localServicePort, localServiceMaxHealthAttempts,
-                                   localServiceArchiveUrl)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(OcrPreset, id, name, type)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::App, language, startMinimized)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Asr, providerId)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Ocr, providerId)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Llm, providerId, systemPrompt,
-                                   userPrompt)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings::Hotkeys, asr, asrLlm, asrLlmOcr)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppSettings, app, hotwords, asr, ocr, llm,
-                                   hotkeys)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AppConfigData, settings, asrPresets,
-                                   llmPresets, ocrPresets)
 
 // ═══════════════════════════════════════════════════════════════════
 // Language
@@ -328,12 +372,11 @@ QString systemAppLanguage()
 
 QString currentAppLanguage()
 {
-    const QString configured =
-        appConfigString("/settings/app/language").trimmed();
-    if (configured.isEmpty() || configured == QStringLiteral("system")) {
+    const auto &lang = appConfig().settings.language;
+    if (lang.empty() || lang == "system") {
         return systemAppLanguage();
     }
-    return normalizedLanguage(configured);
+    return normalizedLanguage(QString::fromStdString(lang));
 }
 
 void installAppTranslations(const QString &language, QObject *parent,
@@ -376,252 +419,6 @@ void installAppTranslations(const QString &language, QObject *parent,
 
     appTranslator = s_appTranslator;
     qtTranslator = s_qtTranslator;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// ASR presets / config
-// ═══════════════════════════════════════════════════════════════════
-
-nlohmann::json asrPresets()
-{
-    return appConfigValue("/asrPresets");
-}
-
-nlohmann::json asrPresetById(const QString &id)
-{
-    if (id.isEmpty()) {
-        return nlohmann::json::object();
-    }
-    return appConfigValue(("/asrPresets/" + id).toStdString());
-}
-
-QString currentAsrProviderId()
-{
-    return appConfigString("/settings/asr/providerId");
-}
-
-nlohmann::json currentAsrPreset()
-{
-    return asrPresetById(currentAsrProviderId());
-}
-
-void setCurrentAsrProviderId(const QString &id)
-{
-    setAppConfigValue("/settings/asr/providerId", id.toStdString());
-}
-
-QString asrModelDir(const nlohmann::json &preset)
-{
-    if (!preset.is_object()) {
-        return {};
-    }
-
-    const QString dirName = jsonString(preset, "modelDirName");
-    if (dirName.isEmpty()) {
-        return {};
-    }
-    return QDir(appDataDir())
-        .filePath(QStringLiteral("models/%1").arg(dirName));
-}
-
-bool isAsrPresetInstalled(const nlohmann::json &preset)
-{
-    if (!preset.is_object()) {
-        return false;
-    }
-    const QString modelDir = asrModelDir(preset);
-    if (modelDir.isEmpty() || !QFileInfo(modelDir).isDir()) {
-        return false;
-    }
-
-    const nlohmann::json files =
-        preset.value("files", nlohmann::json::object());
-    if (files.is_object()) {
-        for (auto it = files.begin(); it != files.end(); ++it) {
-            if (!it->is_string()) {
-                continue;
-            }
-            const std::string key = it.key();
-            const QString relative =
-                QString::fromStdString(it->get<std::string>());
-            const QFileInfo fi(
-                QDir(modelDir).filePath(relative));
-
-            if (key.size() > 4 && key.substr(key.size() - 4) == ">dir") {
-                if (!fi.isDir()) {
-                    return false;
-                }
-            } else {
-                if (!fi.isFile()) {
-                    return false;
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
-nlohmann::json currentHotwordsConfig()
-{
-    return appConfigValue("/settings/hotwords");
-}
-
-QString hotwordsTextFromConfig(const nlohmann::json &hotwordsConfig)
-{
-    QStringList lines;
-    if (!hotwordsConfig.is_array()) {
-        return {};
-    }
-
-    for (const auto &item : hotwordsConfig) {
-        if (!item.is_string()) {
-            continue;
-        }
-
-        const QString line =
-            QString::fromStdString(item.get<std::string>()).trimmed();
-        if (!line.isEmpty()) {
-            lines.append(line);
-        }
-    }
-    return lines.join(QLatin1Char('\n'));
-}
-
-QString currentHotwordsText()
-{
-    return hotwordsTextFromConfig(currentHotwordsConfig());
-}
-
-QString hotwordsTextForPreset(const nlohmann::json &preset,
-                              const nlohmann::json &hotwordsConfig)
-{
-    if (!preset.value("hotwordsSupport", false)) {
-        return {};
-    }
-    return hotwordsTextFromConfig(hotwordsConfig);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// LLM presets / config
-// ═══════════════════════════════════════════════════════════════════
-
-nlohmann::json llmPresets()
-{
-    return appConfigValue("/llmPresets");
-}
-
-nlohmann::json firstLlmProviderPreset()
-{
-    const nlohmann::json providers = llmPresets();
-    if (providers.is_object() && !providers.empty()) {
-        return providers.begin().value();
-    }
-    return nlohmann::json::object();
-}
-
-nlohmann::json llmProviderPreset(const QString &id)
-{
-    if (id.isEmpty()) {
-        return nlohmann::json::object();
-    }
-    return appConfigValue(("/llmPresets/" + id).toStdString());
-}
-
-QString currentLlmProviderId()
-{
-    return appConfigString("/settings/llm/providerId").trimmed();
-}
-
-nlohmann::json currentLlmProviderPreset()
-{
-    const nlohmann::json provider = llmProviderPreset(currentLlmProviderId());
-    if (provider.is_object() && !provider.empty()) {
-        return provider;
-    }
-    return firstLlmProviderPreset();
-}
-
-void setCurrentLlmProviderId(const QString &id)
-{
-    setAppConfigValue("/settings/llm/providerId", id.toStdString());
-}
-
-void setLlmProviderSetting(const QString &id, const QString &key,
-                           const nlohmann::json &value)
-{
-    if (id.isEmpty() || key.isEmpty()) {
-        return;
-    }
-
-    setAppConfigValue(
-        QStringLiteral("/llmPresets/%1/%2").arg(id, key).toStdString(), value);
-}
-
-QString llmProviderEndpoint(const nlohmann::json &provider)
-{
-    return jsonString(provider, "endpoint").trimmed();
-}
-
-QString llmProviderModel(const nlohmann::json &provider)
-{
-    return jsonString(provider, "currentModel").trimmed();
-}
-
-QString llmProviderApiKey(const nlohmann::json &provider)
-{
-    return jsonString(provider, "apiKey").trimmed();
-}
-
-bool llmProviderUsesManagedLocalService(const nlohmann::json &provider)
-{
-    return provider.value("managedLocalService", false);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// OCR presets / config
-// ═══════════════════════════════════════════════════════════════════
-
-nlohmann::json ocrPresets()
-{
-    return appConfigValue("/ocrPresets");
-}
-
-nlohmann::json ocrPresetById(const QString &id)
-{
-    if (id.isEmpty()) {
-        return nlohmann::json::object();
-    }
-    return appConfigValue(("/ocrPresets/" + id).toStdString());
-}
-
-QString currentOcrProviderId()
-{
-    return appConfigString("/settings/ocr/providerId");
-}
-
-nlohmann::json currentOcrPreset()
-{
-    nlohmann::json preset = ocrPresetById(currentOcrProviderId());
-    if (preset.is_object() && !preset.empty()) {
-        return preset;
-    }
-    return {{"type", "System"}};
-}
-
-void setCurrentOcrProviderId(const QString &id)
-{
-    setAppConfigValue("/settings/ocr/providerId", id.toStdString());
-}
-
-bool ocrContextEnabledForAsr()
-{
-    return appConfigBool("/settings/ocr/ocrContextEnableForAsr", false);
-}
-
-void setOcrContextEnabledForAsr(bool enabled)
-{
-    setAppConfigValue("/settings/ocr/ocrContextEnableForAsr", enabled);
 }
 
 } // namespace talkinput

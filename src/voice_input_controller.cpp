@@ -49,26 +49,39 @@ namespace talkinput
 
 QKeySequence hotkeySequence(PipelineMode mode)
 {
-    return QKeySequence(
-        appConfigString(hotkeyConfigPath(mode).toStdString()));
+    switch (mode) {
+    case PipelineMode::AsrOnly:
+        return QKeySequence(QString::fromStdString(
+            appConfig().settings.asrHotKeys));
+    case PipelineMode::AsrLlm:
+        return QKeySequence(QString::fromStdString(
+            appConfig().settings.asrLlmHotKeys));
+    case PipelineMode::AsrLlmOcr:
+        return QKeySequence(QString::fromStdString(
+            appConfig().settings.asrLlmOcrHotKeys));
+    }
+    return {};
 }
 
 void setHotkeySequence(PipelineMode mode, const QKeySequence &keys)
 {
-    setAppConfigValue(hotkeyConfigPath(mode).toStdString(),
-                      keys.toString().toStdString());
+    const std::string value = keys.toString().toStdString();
+    switch (mode) {
+    case PipelineMode::AsrOnly:
+        appConfig().settings.asrHotKeys = value;
+        break;
+    case PipelineMode::AsrLlm:
+        appConfig().settings.asrLlmHotKeys = value;
+        break;
+    case PipelineMode::AsrLlmOcr:
+        appConfig().settings.asrLlmOcrHotKeys = value;
+        break;
+    }
+    markConfigDirty();
 }
 
 QString hotkeyConfigPath(PipelineMode mode)
 {
-    switch (mode) {
-    case PipelineMode::AsrOnly:
-        return QStringLiteral("/settings/hotkeys/asr");
-    case PipelineMode::AsrLlm:
-        return QStringLiteral("/settings/hotkeys/asrLlm");
-    case PipelineMode::AsrLlmOcr:
-        return QStringLiteral("/settings/hotkeys/asrLlmOcr");
-    }
     return {};
 }
 
@@ -98,7 +111,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 
     m_overlay = std::make_unique<VoiceOverlay>();
     m_llmPostProcessor = std::make_unique<LlmPostProcessor>();
-    auto ocr = OcrRecognizer::createFromConfig(currentOcrPreset());
+    auto ocr = OcrRecognizer::createFromConfig(
+        nlohmann::json(appConfig().ocrPresets.at(appConfig().settings.ocrProviderId)));
     if (!ocr) {
         SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocr.error());
     }
@@ -191,7 +205,18 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     if (llmEnabled) {
         setStage(PipelineStage::Polishing);
         result = co_await m_llmPostProcessor->postProcess(
-            trimmedText, ocrContext, currentHotwordsText());
+            trimmedText, ocrContext,
+            QString::fromStdString([&]() {
+                QStringList lines;
+                for (const auto &item : appConfig().settings.hotwords) {
+                    const QString line =
+                        QString::fromStdString(item).trimmed();
+                    if (!line.isEmpty()) {
+                        lines.append(line);
+                    }
+                }
+                return lines.join(QLatin1Char('\n')).toStdString();
+            }()));
     }
     else {
         result = trimmedText;
@@ -321,7 +346,8 @@ void VoiceInputController::loadSpeechRecognitionModel(
             &VoiceInputController::onResult);
     m_recognizer = std::move(*recognizer);
 
-    setCurrentAsrProviderId(jsonString(preset, "id"));
+    appConfig().settings.asrProviderId = jsonString(preset, "id").toStdString();
+    markConfigDirty();
 }
 
 void VoiceInputController::unloadSpeechRecognitionModel()

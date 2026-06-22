@@ -93,37 +93,17 @@ struct OcrPreset
 
 struct AppSettings
 {
-    struct App
-    {
-        std::string language = "system";
-        bool startMinimized = false;
-    } app;
-
+    std::string language = "system";
+    bool startMinimized = false;
     std::vector<std::string> hotwords;
-
-    struct Asr
-    {
-        std::string providerId;
-    } asr;
-
-    struct Ocr
-    {
-        std::string providerId;
-    } ocr;
-
-    struct Llm
-    {
-        std::string providerId;
-        std::string systemPrompt;
-        std::string userPrompt;
-    } llm;
-
-    struct Hotkeys
-    {
-        std::string asr;
-        std::string asrLlm;
-        std::string asrLlmOcr;
-    } hotkeys;
+    std::string asrProviderId;
+    std::string ocrProviderId;
+    std::string llmProviderId;
+    std::string llmSystemPrompt;
+    std::string llmUserPrompt;
+    std::string asrHotKeys;
+    std::string asrLlmHotKeys;
+    std::string asrLlmOcrHotKeys;
 };
 
 struct AppConfigData
@@ -135,60 +115,34 @@ struct AppConfigData
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// Serialization / deserialization
-// ═══════════════════════════════════════════════════════════════════
-
-void from_json(const nlohmann::json &j, AppConfigData &c);
-void to_json(nlohmann::json &j, const AppConfigData &c);
-
-// ═══════════════════════════════════════════════════════════════════
 // Global config access
 // ═══════════════════════════════════════════════════════════════════
 
-const AppConfigData &appConfig();
-void setAppConfig(const AppConfigData &config);
+AppConfigData &appConfig();
+void markConfigDirty();
+bool resetAppConfigToDefaults();
 bool saveAppConfig();
 
 // ═══════════════════════════════════════════════════════════════════
-// Config helpers
+// Utility
 // ═══════════════════════════════════════════════════════════════════
 
 QString appConfigPath();
 
-// ── Language ─────────────────────────────────────────────────────
-
-QString systemAppLanguage();
-QString currentAppLanguage();
-void installAppTranslations(const QString &language, QObject *parent,
-                            QTranslator *&appTranslator,
-                            QTranslator *&qtTranslator);
-
-// ── Legacy JSON accessors (kept for gradual migration) ──────────
-
-nlohmann::json appConfigRoot();
-bool appConfigContains(std::string_view path);
-nlohmann::json appConfigValue(std::string_view path,
-                              const nlohmann::json &fallback = {});
-QString appConfigString(std::string_view path, std::string_view fallback = {});
-bool appConfigBool(std::string_view path, bool fallback = false);
-void setAppConfigValue(std::string_view path, const nlohmann::json &value);
-bool resetAppConfigToDefaults();
+// ═══════════════════════════════════════════════════════════════════
+// Typed helpers (thin wrappers over AppConfigData)
+// ═══════════════════════════════════════════════════════════════════
 
 nlohmann::json asrPresets();
 nlohmann::json asrPresetById(const QString &id);
 QString currentAsrProviderId();
 nlohmann::json currentAsrPreset();
 void setCurrentAsrProviderId(const QString &id);
-QString asrModelDir(const nlohmann::json &preset);
 bool isAsrPresetInstalled(const nlohmann::json &preset);
-nlohmann::json currentHotwordsConfig();
-QString hotwordsTextFromConfig(const nlohmann::json &hotwordsConfig);
-QString currentHotwordsText();
-QString hotwordsTextForPreset(const nlohmann::json &preset,
-                              const nlohmann::json &hotwordsConfig);
+
+std::string currentHotwordsText();
 
 nlohmann::json llmPresets();
-nlohmann::json firstLlmProviderPreset();
 nlohmann::json llmProviderPreset(const QString &id);
 QString currentLlmProviderId();
 nlohmann::json currentLlmProviderPreset();
@@ -198,14 +152,27 @@ void setLlmProviderSetting(const QString &id, const QString &key,
 QString llmProviderEndpoint(const nlohmann::json &provider);
 QString llmProviderModel(const nlohmann::json &provider);
 QString llmProviderApiKey(const nlohmann::json &provider);
-bool llmProviderUsesManagedLocalService(const nlohmann::json &provider);
 
 nlohmann::json ocrPresets();
 nlohmann::json ocrPresetById(const QString &id);
 QString currentOcrProviderId();
 nlohmann::json currentOcrPreset();
 void setCurrentOcrProviderId(const QString &id);
-bool ocrContextEnabledForAsr();
-void setOcrContextEnabledForAsr(bool enabled);
+
+// Legacy JSON accessors
+nlohmann::json appConfigValue(std::string_view path,
+                              const nlohmann::json &fallback = {});
+QString appConfigString(std::string_view path, std::string_view fallback = {});
+void setAppConfigValue(std::string_view path, const nlohmann::json &value);
+
+// ═══════════════════════════════════════════════════════════════════
+// Language
+// ═══════════════════════════════════════════════════════════════════
+
+QString systemAppLanguage();
+QString currentAppLanguage();
+void installAppTranslations(const QString &language, QObject *parent,
+                            QTranslator *&appTranslator,
+                            QTranslator *&qtTranslator);
 
 } // namespace talkinput

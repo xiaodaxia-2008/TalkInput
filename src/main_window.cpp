@@ -114,8 +114,7 @@ void MainWindow::setupUi()
     connect(m_ui->actionEnglish, &QAction::triggered, this,
             &MainWindow::onSwitchLanguage);
 
-    const bool startHidden =
-        appConfigBool("/settings/app/startMinimized", false);
+    const bool startHidden = appConfig().settings.startMinimized;
     m_ui->actionStartMinimized->setChecked(startHidden);
 
     connect(m_ui->actionStartMinimized, &QAction::toggled, this,
@@ -172,14 +171,14 @@ void MainWindow::setupTrayIcon()
 
 void MainWindow::updateControls(bool listening)
 {
-    const nlohmann::json preset = currentAsrPreset();
+    const auto &preset = appConfig().asrPresets.at(appConfig().settings.asrProviderId);
 
     if (listening) {
         m_ui->actionStartRecognition->setIcon(
             QIcon(":/resources/icons/stop.svg"));
         m_ui->actionStartRecognition->setText(tr("Stop recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Stop recognition"));
-        const QString name = jsonString(preset, "name");
+        const QString name = QString::fromStdString(preset.name);
         STATUSBAR_INFO("{}", name.isEmpty() ? tr("Listening...")
                                             : tr("Listening — %1").arg(name));
     }
@@ -188,14 +187,13 @@ void MainWindow::updateControls(bool listening)
             QIcon(":/resources/icons/mic.svg"));
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
-        const QString type = jsonString(preset, "type");
         if (!m_voiceInputController->isSpeechRecognitionModelLoaded())
         {
             STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
         }
         else {
             STATUSBAR_INFO("{}", tr("Speech recognition model: %1")
-                                     .arg(jsonString(preset, "name")));
+                                     .arg(QString::fromStdString(preset.name)));
         }
     }
 }
@@ -281,13 +279,15 @@ void MainWindow::onSwitchLanguage()
 
     const QString lang =
         useEnglish ? QStringLiteral("en") : QStringLiteral("zh");
-    setAppConfigValue("/settings/app/language", lang);
+    appConfig().settings.language = lang.toStdString();
+    markConfigDirty();
     installAppTranslations(lang, this, m_appTranslator, m_qtTranslator);
 }
 
 void MainWindow::onStartMinimizedToggled(bool checked)
 {
-    setAppConfigValue("/settings/app/startMinimized", checked);
+    appConfig().settings.startMinimized = checked;
+    markConfigDirty();
 }
 
 void MainWindow::onResetSettings()
@@ -323,7 +323,7 @@ void MainWindow::onResetSettings()
         m_ui->actionChinese->setChecked(resetLanguage != QStringLiteral("en"));
         m_ui->actionEnglish->setChecked(resetLanguage == QStringLiteral("en"));
         m_ui->actionStartMinimized->setChecked(
-            appConfigBool("/settings/app/startMinimized", false));
+            appConfig().settings.startMinimized);
     }
 
     if (m_asrSettingWidget) {

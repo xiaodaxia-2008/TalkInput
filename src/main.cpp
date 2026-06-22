@@ -35,8 +35,7 @@ int main(int argc, char *argv[])
 
     SPDLOG_DEBUG("config path {}", talkinput::appConfigPath());
 
-    const bool startHidden =
-        talkinput::appConfigBool("/settings/app/startMinimized", false);
+    const bool startHidden = talkinput::appConfig().settings.startMinimized;
 
     SPDLOG_DEBUG("constructing MainWindow");
     talkinput::MainWindow window;
