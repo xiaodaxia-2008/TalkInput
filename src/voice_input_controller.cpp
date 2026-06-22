@@ -190,7 +190,6 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
         const QImage image = m_ocrRecognizer->captureFocusedTextInputImage();
         if (!image.isNull()) {
-            saveOcrDebugImage(image);
             SPDLOG_INFO("OCR context screenshot captured: {}x{}",
                         image.width(), image.height());
 
