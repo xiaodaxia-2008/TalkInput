@@ -519,9 +519,14 @@ void AsrSettingWidget::updateModelComboSuffix()
         if (it == presets.end()) {
             continue;
         }
-        QString label = asrModelLabel(it->second);
+        const auto &preset = it->second;
+        QString label = asrModelLabel(preset);
         if (providerId == currentId) {
             label += tr(" (Using)");
+        } else if (isModelInstalled(preset.modelDirName, preset.files)) {
+            label += tr(" (Installed)");
+        } else {
+            label += tr(" (Not Installed)");
         }
         combo->setItemText(i, label);
     }
