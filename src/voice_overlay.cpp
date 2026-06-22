@@ -1,5 +1,4 @@
 #include "voice_overlay.h"
-#include "native_overlay_effects.h"
 #include "scroll_text_display.h"
 
 #include <QCursor>
@@ -54,7 +53,6 @@ void VoiceOverlay::startAnimation()
     show();
     raise();
     positionOnActiveScreen();
-    applyNativeOverlayEffects(this);
 }
 
 void VoiceOverlay::stopAnimation()

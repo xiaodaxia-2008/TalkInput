@@ -2,7 +2,6 @@
 #include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
-#include "parallel_downloader.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
@@ -605,23 +604,24 @@ QCoro::Task<void> AsrSettingWidget::downloadModels(QString providerId)
 
         STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
 
-        ParallelDownloader dl(&m_network, 4, this);
-        QObject::connect(&dl, &ParallelDownloader::downloadProgress, this,
-                         [this](qint64 received, qint64 total) {
-                             if (total <= 0) {
-                                 return;
-                             }
-                             const int percent =
-                                 static_cast<int>(received * 100 / total);
-                             STATUSBAR_INFO(
-                                 "{}",
-                                 tr("Downloading ASR model %1%...")
-                                     .arg(percent));
-                         });
-        dl.start(url, archivePath);
+        QNetworkRequest request(url);
+        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                             QNetworkRequest::NoLessSafeRedirectPolicy);
+        QNetworkReply *reply = m_network.get(request);
+        auto result = co_await reply;
+        bool dlOk = (reply->error() == QNetworkReply::NoError);
+        QString dlError = reply->errorString();
 
-        auto result = co_await qCoro(&dl, &ParallelDownloader::finished);
-        auto [dlOk, dlError] = result;
+        if (dlOk) {
+            QFile file(archivePath);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(reply->readAll());
+            } else {
+                dlOk = false;
+                dlError = file.errorString();
+            }
+        }
+        reply->deleteLater();
 
         if (!m_isDownloading) {
             co_return;

@@ -44,26 +44,9 @@ namespace talkinput
 
 LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
 {
-    if (QCoreApplication::instance()) {
-        connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                this, &LlmPostProcessor::shutdown);
-    }
-
-    connect(&m_serverManager, &LlamaServerManager::ready, this,
-            &LlmPostProcessor::drainQueue);
-    connect(&m_serverManager, &LlamaServerManager::failed, this,
-            &LlmPostProcessor::failPending);
 }
 
-LlmPostProcessor::~LlmPostProcessor()
-{
-    shutdown();
-}
-
-void LlmPostProcessor::shutdown()
-{
-    m_serverManager.stop();
-}
+LlmPostProcessor::~LlmPostProcessor() = default;
 
 QCoro::Task<QString> LlmPostProcessor::postProcess(const QString &text,
                                                     const QString &contextText,
@@ -83,24 +66,9 @@ QCoro::Task<QString> LlmPostProcessor::postProcess(const QString &text,
     m_pending.emplace_back(
         PendingRequest{trimmed, contextText.trimmed(), hotwords.trimmed(),
                        std::move(promise)});
-    ensureReady();
+    drainQueue();
 
     co_return co_await future;
-}
-
-void LlmPostProcessor::ensureReady()
-{
-    if (!llmProviderUsesManagedLocalService(currentLlmProviderPreset())) {
-        drainQueue();
-        return;
-    }
-
-    if (m_serverManager.isReady()) {
-        drainQueue();
-        return;
-    }
-
-    m_serverManager.start();
 }
 
 void LlmPostProcessor::drainQueue()

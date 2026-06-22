@@ -18,8 +18,6 @@ add_executable(TalkInput WIN32
     json_utils.h
     archive_utils.cpp
     archive_utils.h
-    audio_file_decoder.cpp
-    audio_file_decoder.h
     audio_utils.cpp
     audio_utils.h
     asr_setting_widget.cpp
@@ -30,11 +28,8 @@ add_executable(TalkInput WIN32
     history_widget.ui
     llm_post_processor.cpp
     llm_post_processor.h
-    native_overlay_effects.h
     rapid_ocr_recognizer.cpp
     rapid_ocr_recognizer.h
-    spawn_llama_server.cpp
-    spawn_llama_server.h
     ocr_recognizer.cpp
     ocr_recognizer.h
     system_ocr_recognizer.h
@@ -54,8 +49,6 @@ add_executable(TalkInput WIN32
     recognizers/sense_voice_speech_recognizer.h
     recognizers/funasr_nano_speech_recognizer.cpp
     recognizers/funasr_nano_speech_recognizer.h
-    parallel_downloader.cpp
-    parallel_downloader.h
     paste_text.h
     scroll_text_display.h
     scroll_text_display.cpp
@@ -117,25 +110,19 @@ if(WIN32)
     target_sources(TalkInput PRIVATE
         windows/paste_text.cpp
         windows/port_killer.cpp
-        windows/native_overlay_effects.cpp
         windows/system_ocr_recognizer.cpp
-        windows/llama_server_archive.cpp
     )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE
         macos/paste_text.cpp
         macos/port_killer.cpp
-        macos/native_overlay_effects.cpp
         macos/system_ocr_recognizer.cpp
-        macos/llama_server_archive.cpp
     )
 elseif(UNIX)
     target_sources(TalkInput PRIVATE
         linux/paste_text.cpp
         linux/port_killer.cpp
-        linux/native_overlay_effects.cpp
         linux/system_ocr_recognizer.cpp
-        linux/llama_server_archive.cpp
     )
 endif()
 

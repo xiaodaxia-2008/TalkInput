@@ -1,7 +1,6 @@
 #pragma once
 
 #include "json_utils.h"
-#include "spawn_llama_server.h"
 
 #include <QCoro/QCoroTask>
 #include <QFuture>
@@ -35,16 +34,12 @@ private:
         std::unique_ptr<QPromise<QString>> promise;
     };
 
-    void shutdown();
-
-    void ensureReady();
     void drainQueue();
     QCoro::Task<void> sendCompletion(PendingRequest request);
     void failPending(const QString &reason);
     static QString cleanupResponseText(const QString &text);
 
     QNetworkAccessManager m_network;
-    LlamaServerManager m_serverManager;
     std::deque<PendingRequest> m_pending;
 };
 
