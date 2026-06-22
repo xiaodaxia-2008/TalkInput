@@ -6,16 +6,12 @@ add_executable(TalkInput WIN32
     main_window.cpp
     main_window.h
     main_window.ui
-    text_injector.cpp
-    text_injector.h
     voice_hotkey.cpp
     voice_hotkey.h
     voice_input_controller.cpp
     voice_input_controller.h
     voice_overlay.cpp
     voice_overlay.h
-    voice_recognizer_session.cpp
-    voice_recognizer_session.h
     app_config.cpp
     app_config.h
     app_language.cpp

@@ -7,6 +7,7 @@
 #include <QKeySequence>
 #include <QObject>
 
+#include <expected>
 #include <memory>
 
 template <typename T>
@@ -18,9 +19,7 @@ namespace talkinput
 class LlmPostProcessor;
 class OcrRecognizer;
 class SpeechRecognizer;
-class TextInjector;
 class VoiceHotkey;
-class VoiceRecognizerSession;
 class VoiceOverlay;
 
 enum class PipelineMode
@@ -77,10 +76,10 @@ signals:
 public slots:
     bool startListening();
     void stopListening();
-    
+
     void loadSpeechRecognitionModel(const nlohmann::json &preset);
     void unloadSpeechRecognitionModel();
-    
+
     bool startSpeechRecognitionSession();
     void feedSpeechRecognitionAudio(const QByteArray &pcm16, int sampleRate,
                                     int channels);
@@ -91,8 +90,7 @@ private:
     void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
 
-    std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
-    std::unique_ptr<TextInjector> m_textInjector;
+    std::unique_ptr<SpeechRecognizer> m_recognizer;
     std::unique_ptr<LlmPostProcessor> m_llmPostProcessor;
     std::unique_ptr<OcrRecognizer> m_ocrRecognizer;
     std::unique_ptr<VoiceHotkey> m_hotkey;

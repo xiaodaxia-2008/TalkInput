@@ -5,11 +5,11 @@
 #include "logging.h"
 #include "ocr_config.h"
 #include "ocr_recognizer.h"
-#include "text_injector.h"
+#include "paste_text.h"
+#include "speech_recognizer.h"
 #include "utils.h"
 #include "voice_hotkey.h"
 #include "voice_overlay.h"
-#include "voice_recognizer_session.h"
 
 #include <QCoro/QCoroFuture>
 #include <QDateTime>
@@ -84,9 +84,6 @@ VoiceInputController *VoiceInputController::instance()
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
-    m_recognizerSession = std::make_unique<VoiceRecognizerSession>();
-    connect(m_recognizerSession.get(), &VoiceRecognizerSession::resultChanged,
-            this, &VoiceInputController::onResult);
 
     m_hotkey = std::make_unique<VoiceHotkey>();
     connect(m_hotkey.get(), &VoiceHotkey::activated, this,
@@ -102,7 +99,6 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
             });
 
     m_overlay = std::make_unique<VoiceOverlay>();
-    m_textInjector = std::make_unique<TextInjector>();
     m_llmPostProcessor = std::make_unique<LlmPostProcessor>();
     auto ocr = OcrRecognizer::createFromConfig(currentOcrPreset());
     if (!ocr) {
@@ -130,7 +126,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     m_lastResult.clear();
 
-    if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
+    if (!m_recognizer) {
         STATUSBAR_WARN("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
@@ -145,11 +141,10 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     // ── 1. Recording ──────────────────────────────────────────────
     setStage(PipelineStage::Recording);
-    m_recognizerSession->resetRecognitionStream();
+    m_recognizer->resetStream();
 
-    const bool external = m_recognizerSession->acceptsExternalAudio();
-    if (external) {
-        auto result = m_recognizerSession->startCapture();
+    if (m_recognizer->acceptsExternalAudio()) {
+        auto result = m_recognizer->startCapture();
         if (!result) {
             STATUSBAR_ERROR("{}", result.error());
             setStage(PipelineStage::Idle);
@@ -208,12 +203,8 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     {
         const QString committed = result.trimmed();
         if (!committed.isEmpty()) {
-            if (m_textInjector->inject(committed)) {
-                SPDLOG_INFO("VoiceInputController pasted final text");
-            }
-            else {
-                SPDLOG_WARN("VoiceInputController failed to paste final text");
-            }
+            pasteTextToActiveWindow(committed, true, false);
+            SPDLOG_INFO("VoiceInputController pasted final text");
             emit finalTextCommitted(committed);
             SPDLOG_INFO("VoiceInputController saved final text to history: {}",
                         committed);
@@ -297,14 +288,21 @@ void VoiceInputController::stopListening()
 {
     SPDLOG_INFO("VoiceInputController: stop listening");
 
-    m_recognizerSession->stopCapture();
+    if (m_recognizer) {
+        m_recognizer->stopCapture();
+    }
 
-    if (!m_recognizerSession->finishRunningRecognitionStream()) {
+    if (!m_recognizer || !m_recognizer->isRunning() ||
+        !m_recognizer->acceptsExternalAudio())
+    {
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(QString());
             m_finalResultPromise->finish();
         }
         setStage(PipelineStage::Idle);
+    }
+    else {
+        m_recognizer->finish();
     }
 }
 
@@ -313,18 +311,31 @@ void VoiceInputController::stopListening()
 void VoiceInputController::loadSpeechRecognitionModel(
     const nlohmann::json &preset)
 {
-    const auto result = m_recognizerSession->loadSpeechRecognitionModel(preset);
-    if (!result) {
+    unloadSpeechRecognitionModel();
+
+    const QString modelDir = asrModelDir(preset);
+    auto recognizer = SpeechRecognizer::createFromConfig(
+        preset, modelDir, currentHotwordsConfig(), this);
+    if (!recognizer) {
         STATUSBAR_ERROR("{}",
                         tr("Speech recognition model load failed: %1")
-                            .arg(result.error()));
+                            .arg(recognizer.error()));
         return;
     }
+
+    connect(recognizer->get(), &SpeechRecognizer::resultChanged, this,
+            &VoiceInputController::onResult);
+    m_recognizer = std::move(*recognizer);
+
+    setCurrentAsrProviderId(jsonString(preset, "id"));
 }
 
 void VoiceInputController::unloadSpeechRecognitionModel()
 {
-    m_recognizerSession->unloadSpeechRecognitionModel();
+    if (m_recognizer && m_recognizer->isRunning()) {
+        m_recognizer->stop();
+    }
+    m_recognizer.reset();
 }
 
 bool VoiceInputController::startSpeechRecognitionSession()
@@ -337,7 +348,7 @@ bool VoiceInputController::startSpeechRecognitionSession()
     m_lastResult.clear();
     setStage(PipelineStage::Recognizing);
 
-    if (!m_recognizerSession->isSpeechRecognitionModelLoaded()) {
+    if (!m_recognizer) {
         STATUSBAR_WARN("{}",
                        tr("Speech recognition model not loaded yet. Please "
                           "wait or select a model."));
@@ -345,7 +356,7 @@ bool VoiceInputController::startSpeechRecognitionSession()
         return false;
     }
 
-    m_recognizerSession->resetRecognitionStream();
+    m_recognizer->resetStream();
     return true;
 }
 
@@ -353,31 +364,37 @@ void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
                                                       int sampleRate,
                                                       int channels)
 {
-    m_recognizerSession->feedRecognitionAudio(pcm16, sampleRate, channels);
+    if (m_recognizer) {
+        m_recognizer->acceptPcm16(pcm16, sampleRate, channels);
+    }
 }
 
 void VoiceInputController::finishSpeechRecognitionSession()
 {
-    if (!m_recognizerSession->finishRunningRecognitionStream()) {
+    if (!m_recognizer || !m_recognizer->isRunning()) {
         setStage(PipelineStage::Idle);
+        return;
+    }
+
+    m_recognizer->finish();
+    if (m_recognizer->acceptsExternalAudio()) {
+        m_recognizer->resetStream();
     }
 }
 
 bool VoiceInputController::acceptsExternalAudio() const
 {
-    return !m_recognizerSession || m_recognizerSession->acceptsExternalAudio();
+    return !m_recognizer || m_recognizer->acceptsExternalAudio();
 }
 
 bool VoiceInputController::isSpeechRecognitionModelLoaded() const
 {
-    return m_recognizerSession &&
-           m_recognizerSession->isSpeechRecognitionModelLoaded();
+    return m_recognizer != nullptr;
 }
 
 SpeechRecognizer *VoiceInputController::speechRecognizer() const
 {
-    return m_recognizerSession ? m_recognizerSession->speechRecognizer()
-                               : nullptr;
+    return m_recognizer.get();
 }
 
 } // namespace talkinput
