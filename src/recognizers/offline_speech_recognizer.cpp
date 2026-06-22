@@ -55,7 +55,6 @@ OfflineSpeechRecognizer::start(const AsrPreset &preset)
 
     m_modelSampleRate = params.sampleRate;
     m_inputSampleRate = params.sampleRate;
-    m_chunkSeconds = chunkSeconds();
     return {};
 }
 
@@ -68,7 +67,6 @@ void OfflineSpeechRecognizer::stop()
 
     m_tokensPath.clear();
     m_modelingUnit.clear();
-    m_hotwordsText.clear();
     stopPunctuation();
 }
 
@@ -91,42 +89,45 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
         return;
     }
 
-    m_samplesBuffer.insert(m_samplesBuffer.end(),
-                           reinterpret_cast<const float *>(
-                               audioData.constData()),
-                           reinterpret_cast<const float *>(
-                               audioData.constData() + audioData.size()));
+    appendPcm16AsMonoFloat(audioData, channelCount, &m_samples);
 }
 
 void OfflineSpeechRecognizer::finish()
 {
-    if (!m_recognizer || m_samplesBuffer.empty()) {
+    if (!m_recognizer || m_samples.empty()) {
         return;
     }
+
+    const SherpaOnnxOfflineStream *stream =
+        SherpaOnnxCreateOfflineStream(m_recognizer);
+    if (!stream) {
+        return;
+    }
+
+    SherpaOnnxAcceptWaveformOffline(stream, m_modelSampleRate, m_samples.data(),
+                                    static_cast<int32_t>(m_samples.size()));
+
+    SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
 
     const SherpaOnnxOfflineRecognizerResult *result =
-        SherpaOnnxCreateOfflineRecognizerResult();
-    if (!result) {
-        return;
+        SherpaOnnxGetOfflineStreamResult(stream);
+    if (result) {
+        QString text = decodeSherpaText(result->text);
+        SherpaOnnxDestroyOfflineRecognizerResult(result);
+
+        if (!text.isEmpty()) {
+            text = addPunctuation(text);
+            emit resultChanged(text, true);
+        }
     }
 
-    SherpaOnnxDecodeOfflineRecognizer(m_recognizer, m_samplesBuffer.data(),
-                                      static_cast<int32_t>(m_samplesBuffer.size()),
-                                      m_modelSampleRate, result);
-
-    QString text = decodeSherpaText(result->text);
-    SherpaOnnxDestroyOfflineRecognizerResult(result);
-    m_samplesBuffer.clear();
-
-    if (!text.isEmpty()) {
-        text = addPunctuation(text);
-        emit resultChanged(text, true);
-    }
+    SherpaOnnxDestroyOfflineStream(stream);
+    m_samples.clear();
 }
 
 void OfflineSpeechRecognizer::resetStream()
 {
-    m_samplesBuffer.clear();
+    m_samples.clear();
 }
 
 int OfflineSpeechRecognizer::chunkSeconds() const
