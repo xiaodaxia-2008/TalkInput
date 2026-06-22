@@ -4,6 +4,7 @@
 
 #include <QCoro/QCoroTask>
 #include <QByteArray>
+#include <QImage>
 #include <QKeySequence>
 #include <QObject>
 
@@ -13,11 +14,12 @@ namespace talkinput
 {
 
 class AudioInputCapture;
+class LlmPostProcessor;
+class OcrRecognizer;
 class SpeechRecognizer;
 class TextInjector;
 class VoiceHotkey;
 class VoiceRecognizerSession;
-class VoiceTextProcessor;
 class VoiceOverlay;
 
 enum class PipelineMode
@@ -78,8 +80,9 @@ private:
                         PipelineMode pipelineMode = PipelineMode::AsrLlmOcr);
     void onResult(const QString &text, bool isFinal);
     QCoro::Task<void> postProcessFinalText(const QString &text,
-                                           FinalTextAction finalTextAction);
+                                            FinalTextAction finalTextAction);
     void commitFinalText(const QString &text, FinalTextAction finalTextAction);
+    QImage captureFocusedContextImage();
     void enterListeningState(const char *logMessage);
     void leaveListeningState();
     void showOverlay();
@@ -90,7 +93,8 @@ private:
     std::unique_ptr<VoiceRecognizerSession> m_recognizerSession;
     std::unique_ptr<AudioInputCapture> m_audioCapture;
     std::unique_ptr<TextInjector> m_textInjector;
-    std::unique_ptr<VoiceTextProcessor> m_textProcessor;
+    std::unique_ptr<LlmPostProcessor> m_llmPostProcessor;
+    std::unique_ptr<OcrRecognizer> m_ocrRecognizer;
     std::unique_ptr<VoiceHotkey> m_hotkey;
 
     bool m_isListening = false;

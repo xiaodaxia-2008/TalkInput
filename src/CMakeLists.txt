@@ -16,8 +16,6 @@ add_executable(TalkInput WIN32
     voice_overlay.h
     voice_recognizer_session.cpp
     voice_recognizer_session.h
-    voice_text_processor.cpp
-    voice_text_processor.h
     app_config.cpp
     app_config.h
     app_language.cpp
