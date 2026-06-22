@@ -52,12 +52,11 @@ private:
 
     QCoro::Task<void> useAsrModel(const QString &providerId);
     void loadInstalledAsrModel(const QString &providerId);
+    void updateModelComboSuffix();
 
     QCoro::Task<bool> downloadModels(const QString &providerId);
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
-
-
 };
 
 } // namespace talkinput

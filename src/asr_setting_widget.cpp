@@ -186,6 +186,7 @@ void AsrSettingWidget::updateUiFromConfig()
             m_ui->modelCombo->setCurrentIndex(asrProviderIndex);
         }
     }
+    updateModelComboSuffix();
     auto task = useAsrModel(savedAsrProviderId);
 }
 
@@ -505,6 +506,27 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
     vc->loadSpeechRecognitionModel(preset);
 }
 
+void AsrSettingWidget::updateModelComboSuffix()
+{
+    auto *combo = m_ui->modelCombo;
+    const QString currentId =
+        QString::fromStdString(appConfig().settings.asrProviderId);
+    const auto &presets = appConfig().asrPresets;
+
+    for (int i = 0; i < combo->count(); ++i) {
+        const QString providerId = combo->itemData(i).toString();
+        auto it = presets.find(providerId.toStdString());
+        if (it == presets.end()) {
+            continue;
+        }
+        QString label = asrModelLabel(it->second);
+        if (providerId == currentId) {
+            label += tr(" (Using)");
+        }
+        combo->setItemText(i, label);
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Download Chain
 // ──────────────────────────────────────────────────────────────────────────
@@ -612,6 +634,7 @@ QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
     appConfig().settings.asrProviderId = providerId.toStdString();
     markConfigDirty();
     loadInstalledAsrModel(providerId);
+    updateModelComboSuffix();
 }
 
 void AsrSettingWidget::onOpenModelUrl()
