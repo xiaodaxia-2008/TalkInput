@@ -172,8 +172,8 @@ void AsrSettingWidget::updateUiFromConfig()
     }
 
     refreshAsrModelCombo();
-    auto task = useAsrModel(QString::fromStdString(
-        appConfig().settings.asrProviderId));
+    auto task =
+        useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -365,7 +365,6 @@ void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
     markConfigDirty();
 }
 
-
 // ──────────────────────────────────────────────────────────────────────────
 // Hotwords
 // ──────────────────────────────────────────────────────────────────────────
@@ -504,9 +503,11 @@ void AsrSettingWidget::refreshAsrModelCombo()
         if (providerId == currentId) {
             label += tr(" (Using)");
             foundIndex = i;
-        } else if (isModelInstalled(p.modelDirName, p.files)) {
+        }
+        else if (isModelInstalled(p.modelDirName, p.files)) {
             label += tr(" (Installed)");
-        } else {
+        }
+        else {
             label += tr(" (Not Installed)");
         }
         combo->addItem(label, providerId);
@@ -519,7 +520,7 @@ void AsrSettingWidget::refreshAsrModelCombo()
     }
 }
 
-QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
+QCoro::Task<bool> AsrSettingWidget::downloadAsrModel(const QString &providerId)
 {
     const auto &presetsModel = appConfig().asrPresets;
     auto it = presetsModel.find(providerId.toStdString());
@@ -544,8 +545,6 @@ QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
     const QString archiveName = QFileInfo(url.path()).fileName();
     const QString archivePath = modelRoot.filePath(archiveName);
 
-    STATUSBAR_INFO("{}", tr("Downloading ASR model: %1").arg(modelName));
-
     const QPointer<AsrSettingWidget> guard(this);
 
     QNetworkAccessManager manager;
@@ -554,6 +553,28 @@ QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     QNetworkReply *reply = manager.get(request);
+    connect(reply, &QNetworkReply::downloadProgress, this,
+            [this, modelName, guard](qint64 received, qint64 total) {
+                if (!guard) {
+                    return;
+                }
+                if (total > 0) {
+                    int pct = static_cast<int>(received * 100 / total);
+                    STATUSBAR_INFO(
+                        "{}",
+                        tr("Downloading ASR model: %1 … %2%")
+                            .arg(modelName)
+                            .arg(pct));
+                }
+                else {
+                    STATUSBAR_INFO(
+                        "{}",
+                        tr("Downloading ASR model: %1 … %2/%3 MB")
+                            .arg(modelName)
+                            .arg(received / 1024 / 1024)
+                            .arg(total / 1024 / 1024));
+                }
+            });
     auto result = co_await reply;
     reply->setParent(nullptr);
 
@@ -594,10 +615,6 @@ QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
     co_return true;
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Use / Download
-// ──────────────────────────────────────────────────────────────────────────
-
 void AsrSettingWidget::onUseAsrModel()
 {
     const int index = m_ui->modelCombo->currentIndex();
@@ -615,7 +632,7 @@ void AsrSettingWidget::onUseAsrModel()
 
 QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
 {
-    if (!co_await downloadModels(providerId)) {
+    if (!co_await downloadAsrModel(providerId)) {
         co_return;
     }
 
