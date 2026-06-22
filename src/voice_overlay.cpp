@@ -19,9 +19,16 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     setWindowTitle(QStringLiteral("TalkInput"));
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
+    setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setFixedHeight(72);
+
+    setStyleSheet(QStringLiteral(
+        "#voiceOverlayMicLabel, ScrollTextDisplay {"
+        "  background: palette(window);"
+        "  border-radius: 8px;"
+        "}"));
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(14, 6, 14, 6);

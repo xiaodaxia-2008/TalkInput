@@ -398,6 +398,7 @@ void VoiceInputController::finishSpeechRecognitionSession()
 
     m_recognizer->finish();
     m_recognizer->resetStream();
+    setStage(PipelineStage::Idle);
 }
 
 bool VoiceInputController::isSpeechRecognitionModelLoaded() const
