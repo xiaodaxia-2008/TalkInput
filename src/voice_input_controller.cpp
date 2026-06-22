@@ -178,7 +178,6 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     if (external) {
         auto result = m_audioCapture->start();
         if (!result) {
-            SPDLOG_ERROR("Audio capture start failed: {}", result.error());
             STATUSBAR_ERROR("{}", result.error());
             m_busy = false;
             hideOverlay();
