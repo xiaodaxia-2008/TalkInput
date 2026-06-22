@@ -14,12 +14,8 @@ add_executable(TalkInput WIN32
     voice_overlay.h
     app_config.cpp
     app_config.h
-    app_language.cpp
-    app_language.h
     json_utils.cpp
     json_utils.h
-    asr_config.cpp
-    asr_config.h
     archive_utils.cpp
     archive_utils.h
     audio_file_decoder.cpp
@@ -32,8 +28,6 @@ add_executable(TalkInput WIN32
     history_widget.cpp
     history_widget.h
     history_widget.ui
-    llm_config.cpp
-    llm_config.h
     llm_post_processor.cpp
     llm_post_processor.h
     native_overlay_effects.h
@@ -43,8 +37,6 @@ add_executable(TalkInput WIN32
     spawn_llama_server.h
     ocr_recognizer.cpp
     ocr_recognizer.h
-    ocr_config.cpp
-    ocr_config.h
     system_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp

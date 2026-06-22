@@ -1,6 +1,6 @@
 #include "speech_recognizer.h"
 
-#include "asr_config.h"
+#include "app_config.h"
 #include "audio_utils.h"
 #include "logging.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"

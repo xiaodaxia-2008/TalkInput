@@ -1,6 +1,5 @@
 #include "llm_post_processor.h"
 #include "app_config.h"
-#include "llm_config.h"
 #include "logging.h"
 
 #include <QCoro/QCoroFuture>

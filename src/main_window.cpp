@@ -1,7 +1,5 @@
 #include "main_window.h"
 #include "app_config.h"
-#include "app_language.h"
-#include "asr_config.h"
 #include "asr_setting_widget.h"
 #include "audio_file_decoder.h"
 #include "history_widget.h"

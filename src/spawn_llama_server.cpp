@@ -1,6 +1,6 @@
 #include "spawn_llama_server.h"
 #include "archive_utils.h"
-#include "llm_config.h"
+#include "app_config.h"
 #include "logging.h"
 #include "parallel_downloader.h"
 #include "utils.h"

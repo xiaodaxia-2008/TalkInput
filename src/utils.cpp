@@ -32,4 +32,5 @@ void setButtonIcon(QAbstractButton *button, const QString &iconPath, int size,
     }
 }
 
+
 } // namespace talkinput
