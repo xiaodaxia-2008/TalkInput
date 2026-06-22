@@ -223,13 +223,6 @@ void MainWindow::onToggleSpeechRecognition()
 
 void MainWindow::onRecognizeAudioFile()
 {
-    if (m_voiceInputController && !m_voiceInputController->acceptsExternalAudio()) {
-        STATUSBAR_INFO(
-            "{}",
-            tr("Selected recognizer does not support audio file recognition."));
-        return;
-    }
-
     const QString path =
         QFileDialog::getOpenFileName(this, tr("Select Audio File"), QString(),
                                      tr("Audio Files (*.wav *.mp3 *.ogg *.flac "

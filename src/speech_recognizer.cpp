@@ -214,11 +214,6 @@ int SpeechRecognizer::appendPcm16AsMonoFloat(const QByteArray &audioData,
     return frameCount;
 }
 
-bool SpeechRecognizer::acceptsExternalAudio() const
-{
-    return true;
-}
-
 // ── Audio capture ─────────────────────────────────────────────────
 
 std::expected<void, QString> SpeechRecognizer::startCapture()
@@ -307,8 +302,6 @@ std::optional<SpeechRecognizer::Type> typeFromString(const QString &str)
 
 std::expected<std::unique_ptr<SpeechRecognizer>, QString>
 SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
-                                   const QString &modelDir,
-                                   const nlohmann::json &hotwordsConfig,
                                    QObject *parent)
 {
     const QString typeName = jsonString(preset, "type");
@@ -318,6 +311,7 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
             QStringLiteral("Unsupported model type: %1").arg(typeName));
     }
 
+    const QString modelDir = asrModelDir(preset);
     if (modelDir.isEmpty()) {
         return std::unexpected(QStringLiteral("Model directory not set."));
     }
@@ -339,9 +333,20 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
     config["files"] = resolvedFiles;
 
     config["hotwordsText"] =
-        hotwordsTextForPreset(config, hotwordsConfig).toStdString();
+        hotwordsTextForPreset(config, currentHotwordsConfig()).toStdString();
 
-    auto r = createSpeechRecognizer(*type, parent);
+    std::unique_ptr<SpeechRecognizer> r;
+    switch (*type) {
+    case SpeechRecognizer::Type::StreamingParaformer:
+        r = std::make_unique<StreamingParaformerSpeechRecognizer>(parent);
+        break;
+    case SpeechRecognizer::Type::SenseVoice:
+        r = std::make_unique<SenseVoiceSpeechRecognizer>(parent);
+        break;
+    case SpeechRecognizer::Type::FunASRNano:
+        r = std::make_unique<FunASRNanoSpeechRecognizer>(parent);
+        break;
+    }
     if (!r) {
         return std::unexpected(QString());
     }
@@ -350,21 +355,6 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
         return std::unexpected(startResult.error());
     }
     return r;
-}
-
-std::unique_ptr<SpeechRecognizer>
-createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent)
-{
-    switch (type) {
-    case SpeechRecognizer::Type::StreamingParaformer:
-        return std::make_unique<StreamingParaformerSpeechRecognizer>(parent);
-    case SpeechRecognizer::Type::SenseVoice:
-        return std::make_unique<SenseVoiceSpeechRecognizer>(parent);
-    case SpeechRecognizer::Type::FunASRNano:
-        return std::make_unique<FunASRNanoSpeechRecognizer>(parent);
-    }
-
-    return nullptr;
 }
 
 } // namespace talkinput

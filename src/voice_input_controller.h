@@ -65,8 +65,6 @@ public:
 
     bool isSpeechRecognitionModelLoaded() const;
 
-    bool acceptsExternalAudio() const;
-
     SpeechRecognizer *speechRecognizer() const;
 
 signals:

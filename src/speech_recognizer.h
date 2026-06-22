@@ -45,19 +45,16 @@ public:
                              int channelCount) = 0;
     virtual void finish() = 0;
     virtual void resetStream() = 0;
-    virtual bool acceptsExternalAudio() const;
 
     std::expected<void, QString> startCapture();
     void stopCapture();
     bool isCaptureRunning() const;
 
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-    createFromConfig(const nlohmann::json &preset, const QString &modelDir,
-                     const nlohmann::json &hotwordsConfig,
+    createFromConfig(const nlohmann::json &preset,
                      QObject *parent = nullptr);
 
 signals:
-    void logMessage(const QString &message);
     void resultChanged(const QString &text, bool isFinal);
 
 protected:
@@ -82,8 +79,4 @@ private:
     QIODevice *m_audioDevice = nullptr;
     QAudioFormat m_audioFormat;
 };
-
-std::unique_ptr<SpeechRecognizer>
-createSpeechRecognizer(SpeechRecognizer::Type type, QObject *parent = nullptr);
-
 } // namespace talkinput

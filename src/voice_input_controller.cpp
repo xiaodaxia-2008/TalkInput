@@ -141,7 +141,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     setStage(PipelineStage::Recording);
     m_recognizer->resetStream();
 
-    if (m_recognizer->acceptsExternalAudio()) {
+    {
         auto result = m_recognizer->startCapture();
         if (!result) {
             STATUSBAR_ERROR("{}", result.error());
@@ -290,9 +290,7 @@ void VoiceInputController::stopListening()
         m_recognizer->stopCapture();
     }
 
-    if (!m_recognizer || !m_recognizer->isRunning() ||
-        !m_recognizer->acceptsExternalAudio())
-    {
+    if (!m_recognizer || !m_recognizer->isRunning()) {
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(QString());
             m_finalResultPromise->finish();
@@ -311,9 +309,7 @@ void VoiceInputController::loadSpeechRecognitionModel(
 {
     unloadSpeechRecognitionModel();
 
-    const QString modelDir = asrModelDir(preset);
-    auto recognizer = SpeechRecognizer::createFromConfig(
-        preset, modelDir, currentHotwordsConfig(), this);
+    auto recognizer = SpeechRecognizer::createFromConfig(preset, this);
     if (!recognizer) {
         STATUSBAR_ERROR("{}",
                         tr("Speech recognition model load failed: %1")
@@ -375,14 +371,7 @@ void VoiceInputController::finishSpeechRecognitionSession()
     }
 
     m_recognizer->finish();
-    if (m_recognizer->acceptsExternalAudio()) {
-        m_recognizer->resetStream();
-    }
-}
-
-bool VoiceInputController::acceptsExternalAudio() const
-{
-    return !m_recognizer || m_recognizer->acceptsExternalAudio();
+    m_recognizer->resetStream();
 }
 
 bool VoiceInputController::isSpeechRecognitionModelLoaded() const
