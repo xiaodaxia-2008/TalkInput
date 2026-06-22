@@ -60,6 +60,12 @@ QLabel#hotwordsHintLabel {
 }
 
 QWidget#voiceOverlay {
+    background: rgba(16, 16, 18, 180);
+    border: 1px solid rgba(255, 255, 255, 36);
+    border-radius: 14px;
+}
+
+QWidget#voiceOverlayContainer {
     background: #2d2d2d;
     border-radius: 8px;
 }
