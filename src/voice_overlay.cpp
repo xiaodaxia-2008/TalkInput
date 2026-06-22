@@ -24,6 +24,15 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setFixedHeight(72);
 
+    setStyleSheet(QStringLiteral(
+        "#voiceOverlay {"
+        "  background: #2d2d2d;"
+        "  border-radius: 8px;"
+        "}"
+        "#voiceOverlayMicLabel {"
+        "  color: #e0e0e0;"
+        "}"));
+
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(14, 6, 14, 6);
     layout->setSpacing(8);
