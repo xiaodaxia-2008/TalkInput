@@ -24,14 +24,11 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setFixedHeight(72);
 
-    auto *container = new QWidget(this);
-    container->setObjectName("voiceOverlayContainer");
-
-    auto *layout = new QHBoxLayout(container);
+    auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(14, 6, 14, 6);
     layout->setSpacing(8);
 
-    auto *micLabel = new QLabel(QStringLiteral("🎙"), container);
+    auto *micLabel = new QLabel(QStringLiteral("🎙"), this);
     micLabel->setObjectName("voiceOverlayMicLabel");
     layout->addWidget(micLabel);
 
@@ -44,12 +41,8 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     m_blinkAnimation->setLoopCount(-1);
     m_blinkAnimation->setEasingCurve(QEasingCurve::InOutSine);
 
-    m_scrollText = new ScrollTextDisplay(container);
+    m_scrollText = new ScrollTextDisplay(this);
     layout->addWidget(m_scrollText, 1);
-
-    auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->addWidget(container);
 
     setMinimumWidth(320);
 }
