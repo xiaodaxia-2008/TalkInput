@@ -301,17 +301,17 @@ std::optional<SpeechRecognizer::Type> typeFromString(const QString &str)
 } // namespace
 
 std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
+SpeechRecognizer::createFromPreset(const AsrPreset &preset,
                                    QObject *parent)
 {
-    const QString typeName = jsonString(preset, "type");
-    const auto type = typeFromString(typeName);
+    const auto type = typeFromString(QString::fromStdString(preset.type));
     if (!type) {
         return std::unexpected(
-            QStringLiteral("Unsupported model type: %1").arg(typeName));
+            QStringLiteral("Unsupported model type: %1")
+                .arg(QString::fromStdString(preset.type)));
     }
 
-    const QString dirName = jsonString(preset, "modelDirName");
+    const QString dirName = QString::fromStdString(preset.modelDirName);
     if (dirName.isEmpty()) {
         return std::unexpected(QStringLiteral("Model directory not set."));
     }
@@ -319,23 +319,18 @@ SpeechRecognizer::createFromConfig(const nlohmann::json &preset,
         QDir(appDataDir())
             .filePath(QStringLiteral("models/%1").arg(dirName));
 
-    nlohmann::json config = preset;
-    config["modelDir"] = modelDir;
+    nlohmann::json config = nlohmann::json(preset);
+    config["modelDir"] = modelDir.toStdString();
 
     nlohmann::json resolvedFiles = nlohmann::json::object();
-    const nlohmann::json files =
-        config.value("files", nlohmann::json::object());
-    for (auto it = files.begin(); it != files.end(); ++it) {
-        if (!it->is_string()) {
-            continue;
-        }
-        const QString relative = QString::fromStdString(it->get<std::string>());
-        resolvedFiles[it.key()] =
-            QDir(modelDir).filePath(relative).toStdString();
+    for (const auto &[key, relative] : preset.files) {
+        resolvedFiles[key] =
+            QDir(modelDir).filePath(QString::fromStdString(relative))
+                .toStdString();
     }
     config["files"] = resolvedFiles;
 
-    if (config.value("hotwordsSupport", false)) {
+    if (preset.hotwordsSupport) {
         QStringList lines;
         for (const auto &item : appConfig().settings.hotwords) {
             const QString line =

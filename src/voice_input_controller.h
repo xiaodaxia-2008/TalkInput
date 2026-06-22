@@ -1,6 +1,6 @@
 #pragma once
 
-#include "json_utils.h"
+#include "app_config.h"
 
 #include <QCoro/QCoroTask>
 #include <QByteArray>
@@ -75,7 +75,7 @@ public slots:
     bool startListening();
     void stopListening();
 
-    void loadSpeechRecognitionModel(const nlohmann::json &preset);
+    void loadSpeechRecognitionModel(const AsrPreset &preset);
     void unloadSpeechRecognitionModel();
 
     bool startSpeechRecognitionSession();

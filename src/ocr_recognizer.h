@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app_config.h"
 #include "json_utils.h"
 
 #include <QCoro/QCoroTask>
@@ -30,7 +31,7 @@ public:
     virtual QCoro::Task<QString> recognizeText(const QImage &image) = 0;
 
     static std::expected<std::unique_ptr<OcrRecognizer>, QString>
-    createFromConfig(const nlohmann::json &preset,
+    createFromPreset(const OcrPreset &preset,
                      QObject *parent = nullptr);
 };
 

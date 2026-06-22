@@ -111,8 +111,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 
     m_overlay = std::make_unique<VoiceOverlay>();
     m_llmPostProcessor = std::make_unique<LlmPostProcessor>();
-    auto ocr = OcrRecognizer::createFromConfig(
-        nlohmann::json(appConfig().ocrPresets.at(appConfig().settings.ocrProviderId)));
+    auto ocr = OcrRecognizer::createFromPreset(
+        appConfig().ocrPresets.at(appConfig().settings.ocrProviderId));
     if (!ocr) {
         SPDLOG_WARN("OcrRecognizer: failed to create: {}", ocr.error());
     }
@@ -330,11 +330,11 @@ void VoiceInputController::stopListening()
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
 void VoiceInputController::loadSpeechRecognitionModel(
-    const nlohmann::json &preset)
+    const AsrPreset &preset)
 {
     unloadSpeechRecognitionModel();
 
-    auto recognizer = SpeechRecognizer::createFromConfig(preset, this);
+    auto recognizer = SpeechRecognizer::createFromPreset(preset, this);
     if (!recognizer) {
         STATUSBAR_ERROR("{}",
                         tr("Speech recognition model load failed: %1")
@@ -346,7 +346,7 @@ void VoiceInputController::loadSpeechRecognitionModel(
             &VoiceInputController::onResult);
     m_recognizer = std::move(*recognizer);
 
-    appConfig().settings.asrProviderId = jsonString(preset, "id").toStdString();
+    appConfig().settings.asrProviderId = preset.id;
     markConfigDirty();
 }
 

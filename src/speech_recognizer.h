@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app_config.h"
 #include "json_utils.h"
 
 #include <QAudioFormat>
@@ -51,7 +52,7 @@ public:
     bool isCaptureRunning() const;
 
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-    createFromConfig(const nlohmann::json &preset,
+    createFromPreset(const AsrPreset &preset,
                      QObject *parent = nullptr);
 
 signals:

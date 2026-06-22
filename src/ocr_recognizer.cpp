@@ -57,19 +57,18 @@ QImage OcrRecognizer::captureFocusedTextInputImage() const
 }
 
 std::expected<std::unique_ptr<OcrRecognizer>, QString>
-OcrRecognizer::createFromConfig(const nlohmann::json &preset, QObject *parent)
+OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
 {
-    const QString typeName = jsonString(preset, "type");
-
-    if (typeName == QStringLiteral("System")) {
+    if (preset.type == "System") {
         return std::make_unique<SystemOcrRecognizer>(parent);
     }
-    if (typeName == QStringLiteral("RapidOcr")) {
+    if (preset.type == "RapidOcr") {
         return std::make_unique<RapidOcrRecognizer>(parent);
     }
 
     return std::unexpected(
-        QStringLiteral("Unsupported OCR type: %1").arg(typeName));
+        QStringLiteral("Unsupported OCR type: %1")
+            .arg(QString::fromStdString(preset.type)));
 }
 
 } // namespace talkinput
