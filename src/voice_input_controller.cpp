@@ -193,18 +193,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
             SPDLOG_INFO("OCR context screenshot captured: {}x{}",
                         image.width(), image.height());
 
-            QPromise<QString> ocrPromise;
-            ocrPromise.start();
-            auto ocrFuture = ocrPromise.future();
-            m_ocrRecognizer->recognizeText(
-                image, this,
-                [&ocrPromise](const QString &contextText) mutable {
-                    if (!ocrPromise.isCanceled()) {
-                        ocrPromise.addResult(contextText.trimmed());
-                        ocrPromise.finish();
-                    }
-                });
-            ocrContext = co_await ocrFuture;
+            ocrContext = co_await m_ocrRecognizer->recognizeText(image);
             SPDLOG_INFO("OCR context result received: {}", ocrContext);
         }
         else {

@@ -34,15 +34,9 @@ QImage SystemOcrRecognizer::captureFocusedTextInputImage() const
     return {};
 }
 
-void SystemOcrRecognizer::recognizeText(const QImage &image, QObject *receiver,
-                                     Callback callback)
+QCoro::Task<QString> SystemOcrRecognizer::recognizeText(const QImage &image)
 {
-    if (!receiver || !callback) {
-        return;
-    }
-    QMetaObject::invokeMethod(
-        receiver, [callback = std::move(callback)]() mutable { callback({}); },
-        Qt::QueuedConnection);
+    co_return {};
 }
 
 } // namespace talkinput

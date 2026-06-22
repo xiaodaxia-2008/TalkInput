@@ -3,10 +3,13 @@
 #include "ocr_recognizer.h"
 
 #include <QNetworkAccessManager>
-#include <QPointer>
 #include <QProcess>
 #include <QTimer>
 #include <deque>
+#include <memory>
+
+template <typename T>
+class QPromise;
 
 class QNetworkReply;
 class QTemporaryFile;
@@ -23,16 +26,14 @@ public:
     ~RapidOcrRecognizer() override;
 
     bool isAvailable() const override;
-    void recognizeText(const QImage &image, QObject *receiver,
-                       Callback callback) override;
+    QCoro::Task<QString> recognizeText(const QImage &image) override;
 
 private:
     struct PendingRequest
     {
         QTemporaryFile *tempFile = nullptr;
         QString path;
-        QPointer<QObject> receiver;
-        Callback callback;
+        std::shared_ptr<QPromise<QString>> promise;
     };
 
     QString serverScriptPath() const;
@@ -43,7 +44,7 @@ private:
     void flushPendingRequests();
     void failPendingRequests();
     void dispatchRequest(PendingRequest request);
-    void completeRequest(QPointer<QObject> receiver, Callback callback,
+    void completeRequest(std::shared_ptr<QPromise<QString>> promise,
                          const QString &text);
 
     QNetworkAccessManager m_network;

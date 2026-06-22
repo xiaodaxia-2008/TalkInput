@@ -3,11 +3,13 @@
 #include "../logging.h"
 #include "../utils.h"
 
+#include <QCoro/QCoroFuture>
 #include <QBuffer>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QMetaObject>
+#include <QPromise>
 #include <QPointer>
 #include <QStandardPaths>
 #include <QThreadPool>
@@ -522,17 +524,15 @@ QImage SystemOcrRecognizer::captureFocusedTextInputImage() const
     return {};
 }
 
-void SystemOcrRecognizer::recognizeText(const QImage &image, QObject *receiver,
-                                     Callback callback)
+QCoro::Task<QString> SystemOcrRecognizer::recognizeText(const QImage &image)
 {
-    if (!receiver || !callback) {
-        return;
-    }
+    QPromise<QString> promise;
+    promise.start();
+    auto future = promise.future();
 
     const QImage imageCopy = image.copy();
-    const QPointer<QObject> context(receiver);
     QThreadPool::globalInstance()->start(
-        [imageCopy, context, callback = std::move(callback)]() mutable {
+        [imageCopy, promise = std::move(promise)]() mutable {
             QString text;
             try {
                 text = recognizeWindowsText(imageCopy);
@@ -544,15 +544,11 @@ void SystemOcrRecognizer::recognizeText(const QImage &image, QObject *receiver,
             catch (const std::exception &e) {
                 SPDLOG_WARN("OCR: Windows OCR failed: {}", e.what());
             }
-            if (!context) {
-                return;
-            }
-            QMetaObject::invokeMethod(
-                context,
-                [callback = std::move(callback),
-                 text = std::move(text)]() mutable { callback(text); },
-                Qt::QueuedConnection);
+            promise.addResult(text);
+            promise.finish();
         });
+
+    co_return co_await future;
 }
 
 } // namespace talkinput

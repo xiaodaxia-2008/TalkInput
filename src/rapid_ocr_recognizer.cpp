@@ -1,12 +1,14 @@
 #include "rapid_ocr_recognizer.h"
 #include "logging.h"
 
+#include <QCoro/QCoroFuture>
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QPromise>
 #include <QTemporaryFile>
 #include <QUrl>
 
@@ -62,42 +64,40 @@ bool RapidOcrRecognizer::isAvailable() const
     return QFileInfo::exists(serverScriptPath());
 }
 
-void RapidOcrRecognizer::recognizeText(const QImage &image, QObject *receiver,
-                                       Callback callback)
+QCoro::Task<QString> RapidOcrRecognizer::recognizeText(const QImage &image)
 {
-    if (!receiver || !callback || image.isNull()) {
-        return;
+    if (image.isNull()) {
+        co_return {};
     }
 
     auto *tempFile = new QTemporaryFile(this);
     tempFile->setAutoRemove(true);
     if (!tempFile->open()) {
         SPDLOG_WARN("RapidOcr: failed to create temp file");
-        QMetaObject::invokeMethod(
-            receiver, [callback = std::move(callback)]() { callback({}); },
-            Qt::QueuedConnection);
-        return;
+        co_return {};
     }
 
     const QString tempPath = QFileInfo(*tempFile).absoluteFilePath();
     if (!image.save(tempPath, "PNG")) {
         SPDLOG_WARN("RapidOcr: failed to save image to temp file");
-        QMetaObject::invokeMethod(
-            receiver, [callback = std::move(callback)]() { callback({}); },
-            Qt::QueuedConnection);
-        return;
+        co_return {};
     }
     tempFile->close();
 
+    auto promise = std::make_shared<QPromise<QString>>();
+    promise->start();
+    auto future = promise->future();
+
     m_pendingRequests.push_back({.tempFile = tempFile,
                                  .path = tempPath,
-                                 .receiver = QPointer<QObject>(receiver),
-                                 .callback = std::move(callback)});
+                                 .promise = std::move(promise)});
 
     ensureServiceStarted();
     if (m_ready) {
         flushPendingRequests();
     }
+
+    co_return co_await future;
 }
 
 QString RapidOcrRecognizer::serverScriptPath() const
@@ -208,7 +208,8 @@ void RapidOcrRecognizer::failPendingRequests()
         auto request = std::move(m_pendingRequests.front());
         m_pendingRequests.pop_front();
         delete request.tempFile;
-        completeRequest(request.receiver, std::move(request.callback), {});
+        request.promise->addResult({});
+        request.promise->finish();
     }
 }
 
@@ -240,22 +241,15 @@ void RapidOcrRecognizer::dispatchRequest(PendingRequest request)
 
                 reply->deleteLater();
                 delete request.tempFile;
-                completeRequest(request.receiver, std::move(request.callback),
-                                text);
+                completeRequest(std::move(request.promise), text);
             });
 }
 
-void RapidOcrRecognizer::completeRequest(QPointer<QObject> receiver,
-                                         Callback callback, const QString &text)
+void RapidOcrRecognizer::completeRequest(
+    std::shared_ptr<QPromise<QString>> promise, const QString &text)
 {
-    if (!receiver) {
-        return;
-    }
-
-    QMetaObject::invokeMethod(
-        receiver.data(),
-        [callback = std::move(callback), text]() mutable { callback(text); },
-        Qt::QueuedConnection);
+    promise->addResult(text);
+    promise->finish();
 }
 
 } // namespace talkinput

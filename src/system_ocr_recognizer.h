@@ -17,8 +17,7 @@ public:
     WId focusedTextInputWindowId() const override;
     QString focusedTextInputScreenName() const override;
     QImage captureFocusedTextInputImage() const override;
-    void recognizeText(const QImage &image, QObject *receiver,
-                       Callback callback) override;
+    QCoro::Task<QString> recognizeText(const QImage &image) override;
 };
 
 } // namespace talkinput
