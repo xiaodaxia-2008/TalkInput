@@ -52,7 +52,7 @@ private:
 
     QCoro::Task<void> useAsrModel(const QString &providerId);
     void loadInstalledAsrModel(const QString &providerId);
-    void updateModelComboSuffix();
+    void refreshAsrModelCombo();
 
     QCoro::Task<bool> downloadModels(const QString &providerId);
 

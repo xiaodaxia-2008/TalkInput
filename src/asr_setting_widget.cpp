@@ -171,7 +171,7 @@ void AsrSettingWidget::updateUiFromConfig()
             hotkeySequence(PipelineMode::AsrLlmOcr));
     }
 
-    updateModelComboSuffix();
+    refreshAsrModelCombo();
     auto task = useAsrModel(QString::fromStdString(
         appConfig().settings.asrProviderId));
 }
@@ -446,18 +446,13 @@ void AsrSettingWidget::onEditHotwords()
 
 void AsrSettingWidget::initAsrModel()
 {
-    auto *combo = m_ui->modelCombo;
-
-    for (const auto &[key, p] : appConfig().asrPresets) {
-        combo->addItem(asrModelLabel(p), QString::fromStdString(key));
-    }
-
     connect(m_ui->useButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onUseAsrModel);
     connect(m_ui->browserButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onOpenModelUrl);
     connect(m_ui->importButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onImportModel);
+    refreshAsrModelCombo();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -492,33 +487,30 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
     vc->loadSpeechRecognitionModel(preset);
 }
 
-void AsrSettingWidget::updateModelComboSuffix()
+void AsrSettingWidget::refreshAsrModelCombo()
 {
     auto *combo = m_ui->modelCombo;
     const QString currentId =
         QString::fromStdString(appConfig().settings.asrProviderId);
     const auto &presets = appConfig().asrPresets;
 
+    combo->clear();
+
     int foundIndex = -1;
-    for (int i = 0; i < combo->count(); ++i) {
-        const QString providerId = combo->itemData(i).toString();
-        if (providerId == currentId) {
-            foundIndex = i;
-        }
-        auto it = presets.find(providerId.toStdString());
-        if (it == presets.end()) {
-            continue;
-        }
-        const auto &preset = it->second;
-        QString label = asrModelLabel(preset);
+    int i = 0;
+    for (const auto &[key, p] : presets) {
+        const QString providerId = QString::fromStdString(key);
+        QString label = asrModelLabel(p);
         if (providerId == currentId) {
             label += tr(" (Using)");
-        } else if (isModelInstalled(preset.modelDirName, preset.files)) {
+            foundIndex = i;
+        } else if (isModelInstalled(p.modelDirName, p.files)) {
             label += tr(" (Installed)");
         } else {
             label += tr(" (Not Installed)");
         }
-        combo->setItemText(i, label);
+        combo->addItem(label, providerId);
+        ++i;
     }
 
     if (foundIndex >= 0) {
@@ -526,10 +518,6 @@ void AsrSettingWidget::updateModelComboSuffix()
         combo->setCurrentIndex(foundIndex);
     }
 }
-
-// ──────────────────────────────────────────────────────────────────────────
-// Download Chain
-// ──────────────────────────────────────────────────────────────────────────
 
 QCoro::Task<bool> AsrSettingWidget::downloadModels(const QString &providerId)
 {
@@ -634,7 +622,7 @@ QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
     appConfig().settings.asrProviderId = providerId.toStdString();
     markConfigDirty();
     loadInstalledAsrModel(providerId);
-    updateModelComboSuffix();
+    refreshAsrModelCombo();
 }
 
 void AsrSettingWidget::onOpenModelUrl()
