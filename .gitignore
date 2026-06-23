@@ -1,5 +1,6 @@
 # Build output
 build/
+nul
 build-release/
 _CPack_Packages/
 TalkInput-*.exe
@@ -45,6 +46,7 @@ ui_*.h
 *.log
 *.tmp
 *.bak
+nul
 *.swp
 Thumbs.db
 Desktop.ini
