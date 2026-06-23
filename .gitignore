@@ -1,6 +1,8 @@
 # Build output
 build/
 build-release/
+_CPack_Packages/
+TalkInput-*.exe
 vcpkg_installed/
 data/
 *.bz2
