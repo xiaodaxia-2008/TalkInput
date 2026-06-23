@@ -456,6 +456,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="copyToClipboardCheck">
+        <property name="text">
+         <string>Copy</string>
+        </property>
+        <property name="toolTip">
+         <string>Copy result to clipboard</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="restoreClipboardCheck">
         <property name="text">
          <string>Restore</string>

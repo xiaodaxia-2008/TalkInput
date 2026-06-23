@@ -128,29 +128,6 @@ void MainWindow::setupUi()
     connect(m_ui->actionStartMinimized, &QAction::toggled, this,
             &MainWindow::onStartMinimizedToggled);
 
-    m_ui->actionUseClipboard->setChecked(appConfig().settings.useClipboard);
-    connect(m_ui->actionUseClipboard, &QAction::toggled, this,
-            [](bool checked) {
-                appConfig().settings.useClipboard = checked;
-                markConfigDirty();
-            });
-
-    m_ui->actionCopyToClipboard->setChecked(
-        appConfig().settings.copyToClipboard);
-    connect(m_ui->actionCopyToClipboard, &QAction::toggled, this,
-            [](bool checked) {
-                appConfig().settings.copyToClipboard = checked;
-                markConfigDirty();
-            });
-
-    m_ui->actionRestoreClipboard->setChecked(
-        appConfig().settings.restoreClipboard);
-    connect(m_ui->actionRestoreClipboard, &QAction::toggled, this,
-            [](bool checked) {
-                appConfig().settings.restoreClipboard = checked;
-                markConfigDirty();
-            });
-
     connect(m_ui->actionResetSettings, &QAction::triggered, this,
             &MainWindow::onResetSettings);
 
@@ -351,19 +328,10 @@ void MainWindow::onResetSettings()
         const QSignalBlocker zhBlocker(m_ui->actionChinese);
         const QSignalBlocker enBlocker(m_ui->actionEnglish);
         const QSignalBlocker startHiddenBlocker(m_ui->actionStartMinimized);
-        const QSignalBlocker clipBlocker(m_ui->actionUseClipboard);
-        const QSignalBlocker copyBlocker(m_ui->actionCopyToClipboard);
-        const QSignalBlocker restoreBlocker(m_ui->actionRestoreClipboard);
         m_ui->actionChinese->setChecked(resetLanguage != QStringLiteral("en"));
         m_ui->actionEnglish->setChecked(resetLanguage == QStringLiteral("en"));
         m_ui->actionStartMinimized->setChecked(
             appConfig().settings.startMinimized);
-        m_ui->actionUseClipboard->setChecked(
-            appConfig().settings.useClipboard);
-        m_ui->actionCopyToClipboard->setChecked(
-            appConfig().settings.copyToClipboard);
-        m_ui->actionRestoreClipboard->setChecked(
-            appConfig().settings.restoreClipboard);
     }
 
     if (m_asrSettingWidget) {
