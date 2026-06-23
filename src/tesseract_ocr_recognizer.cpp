@@ -15,26 +15,62 @@
 namespace talkinput
 {
 
-namespace
+TesseractOcrRecognizer::TesseractOcrRecognizer(QObject *parent)
+    : OcrRecognizer(parent)
+    , m_api(std::make_unique<tesseract::TessBaseAPI>())
 {
+}
 
-QString recognizeWithTesseract(const QImage &image, const QString &dataPath)
+TesseractOcrRecognizer::~TesseractOcrRecognizer()
+{
+    if (m_initialized.load()) {
+        m_api->End();
+    }
+}
+
+bool TesseractOcrRecognizer::isAvailable() const
+{
+    return QFileInfo::exists(
+        tessdataDir() + QStringLiteral("/chi_sim.traineddata"));
+}
+
+bool TesseractOcrRecognizer::ensureInitialized()
+{
+    if (m_initialized.load(std::memory_order_acquire)) {
+        return true;
+    }
+
+    std::lock_guard lock(m_initMutex);
+    if (m_initialized.load(std::memory_order_relaxed)) {
+        return true;
+    }
+
+    const QString dataPath =
+        tessdataDir() + QStringLiteral("/chi_sim.traineddata");
+    const QString dataDir = QFileInfo(dataPath).absolutePath();
+
+    if (m_api->Init(dataDir.toUtf8().toStdString().c_str(), "chi_sim") != 0) {
+        SPDLOG_ERROR("Tesseract OCR: failed to initialize with data dir: {}",
+                     dataDir);
+        return false;
+    }
+
+    m_api->SetPageSegMode(tesseract::PSM_AUTO);
+    m_initialized.store(true, std::memory_order_release);
+    SPDLOG_DEBUG("Tesseract OCR: engine initialized");
+    return true;
+}
+
+QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
 {
     if (image.isNull()) {
         SPDLOG_DEBUG("Tesseract OCR: skipped empty image");
         return {};
     }
 
-    const QString dataDir = QFileInfo(dataPath).absolutePath();
-
-    tesseract::TessBaseAPI api;
-    if (api.Init(dataDir.toUtf8().toStdString().c_str(), "chi_sim") != 0) {
-        SPDLOG_ERROR("Tesseract OCR: failed to initialize with data dir: {}",
-                     dataDir);
+    if (!ensureInitialized()) {
         return {};
     }
-
-    api.SetPageSegMode(tesseract::PSM_AUTO);
 
     // Convert QImage to Pix (leptonica)
     const QImage rgbImage = image.convertToFormat(QImage::Format_RGB32);
@@ -61,17 +97,17 @@ QString recognizeWithTesseract(const QImage &image, const QString &dataPath)
         }
     }
 
-    api.SetImage(pix);
+    m_api->SetImage(pix);
 
     // Get recognized text
-    const char *utf8Text = api.GetUTF8Text();
+    const char *utf8Text = m_api->GetUTF8Text();
     QString result;
     if (utf8Text) {
         result = QString::fromUtf8(utf8Text).trimmed();
         delete[] utf8Text;
     }
 
-    api.End();
+    m_api->Clear();
     pixDestroy(&pix);
 
     if (!result.isEmpty()) {
@@ -84,27 +120,11 @@ QString recognizeWithTesseract(const QImage &image, const QString &dataPath)
     return result;
 }
 
-} // namespace
-
-TesseractOcrRecognizer::TesseractOcrRecognizer(QObject *parent)
-    : OcrRecognizer(parent)
-{
-}
-
-TesseractOcrRecognizer::~TesseractOcrRecognizer() = default;
-
-bool TesseractOcrRecognizer::isAvailable() const
-{
-    return QFileInfo::exists(tessdataDir() + QStringLiteral("/chi_sim.traineddata"));
-}
-
 QCoro::Task<QString> TesseractOcrRecognizer::recognizeText(const QImage &image)
 {
     if (image.isNull()) {
         co_return QString();
     }
-
-    const QString dataPath = tessdataDir() + QStringLiteral("/chi_sim.traineddata");
 
     QPromise<QString> promise;
     promise.start();
@@ -112,10 +132,10 @@ QCoro::Task<QString> TesseractOcrRecognizer::recognizeText(const QImage &image)
 
     const QImage imageCopy = image.copy();
     QThreadPool::globalInstance()->start(
-        [imageCopy, dataPath, promise = std::move(promise)]() mutable {
+        [this, imageCopy, promise = std::move(promise)]() mutable {
             QString text;
             try {
-                text = recognizeWithTesseract(imageCopy, dataPath);
+                text = recognizeWithTesseract(imageCopy);
             }
             catch (const std::exception &e) {
                 SPDLOG_WARN("Tesseract OCR: failed: {}", e.what());
