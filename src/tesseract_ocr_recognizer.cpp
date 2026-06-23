@@ -1,5 +1,6 @@
 #include "tesseract_ocr_recognizer.h"
 #include "logging.h"
+#include "utils.h"
 
 #include <QCoro/QCoroFuture>
 #include <QCoreApplication>
@@ -64,6 +65,11 @@ QImage TesseractOcrRecognizer::captureFocusedTextInputImage() const
     if (!image.isNull()) {
         SPDLOG_DEBUG("Tesseract OCR: captured window under cursor: {}x{}",
                      image.width(), image.height());
+        // Save to cache for debugging
+        const QString cachePath =
+            QDir(appDataDir()).filePath(QStringLiteral("ocr_capture.png"));
+        image.save(cachePath);
+        SPDLOG_INFO("Tesseract OCR: saved capture to {}", cachePath);
     }
     return image;
 }
@@ -106,19 +112,8 @@ QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
         return {};
     }
 
-    // Scale down large captures by 2x to balance speed and accuracy
-    constexpr int scaleThreshold = 1200;
-    QImage workImage = image;
-    if (workImage.width() > scaleThreshold || workImage.height() > scaleThreshold) {
-        workImage = workImage.scaled(workImage.size() / 2, Qt::KeepAspectRatio,
-                                     Qt::SmoothTransformation);
-        SPDLOG_DEBUG("Tesseract OCR: scaled from {}x{} to {}x{}",
-                     image.width(), image.height(),
-                     workImage.width(), workImage.height());
-    }
-
     // Convert QImage to Pix (leptonica)
-    const QImage rgbImage = workImage.convertToFormat(QImage::Format_RGB32);
+    const QImage rgbImage = image.convertToFormat(QImage::Format_RGB32);
     const int bytesPerPixel = 4;
     const int width = rgbImage.width();
     const int height = rgbImage.height();
