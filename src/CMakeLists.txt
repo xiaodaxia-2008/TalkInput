@@ -144,11 +144,6 @@ install(TARGETS TalkInput
     COMPONENT Runtime
 )
 
-install(DIRECTORY scripts/
-    DESTINATION ${CMAKE_INSTALL_BINDIR}/scripts
-    COMPONENT Runtime
-)
-
 # Copy tessdata to build output
 add_custom_command(TARGET TalkInput POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
