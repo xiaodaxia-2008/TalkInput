@@ -3,16 +3,17 @@
 #include "../logging.h"
 #include "../utils.h"
 
-#include <QCoro/QCoroFuture>
 #include <QBuffer>
+#include <QCoro/QCoroFuture>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QMetaObject>
-#include <QPromise>
 #include <QPointer>
+#include <QPromise>
 #include <QStandardPaths>
 #include <QThreadPool>
+#include <spdlog/stopwatch.h>
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -251,6 +252,8 @@ QString recognizeWindowsText(QImage image)
 
     initWinrtApartment();
 
+    const spdlog::stopwatch sw;
+
     SPDLOG_DEBUG("OCR: Windows OCR input image: {}x{} fmt={}", image.width(),
                  image.height(), static_cast<int>(image.format()));
     // NOTE: deliberately NOT scaling the image here. The OCR engine handles
@@ -342,6 +345,9 @@ QString recognizeWindowsText(QImage image)
         QString::fromStdWString(std::wstring(textHstring)).trimmed();
     SPDLOG_DEBUG("OCR: Windows OCR result: {}", text);
 
+    SPDLOG_INFO("OCR: Windows OCR completed in {:.3}s (image {}x{})", sw,
+                image.width(), image.height());
+
     return text;
 }
 
@@ -350,7 +356,8 @@ QString recognizeWindowsText(QImage image)
 namespace talkinput
 {
 
-SystemOcrRecognizer::SystemOcrRecognizer(QObject *parent) : OcrRecognizer(parent)
+SystemOcrRecognizer::SystemOcrRecognizer(QObject *parent)
+    : OcrRecognizer(parent)
 {
 }
 

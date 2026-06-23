@@ -7,12 +7,7 @@ void pasteTextToActiveWindow(const QString &, bool, bool, bool)
 {
 }
 
-WId nativeWindowAtCursor()
-{
-    return 0;
-}
-
-QRect nativeWindowRect(WId)
+SysWindowInfo nativeWindowInfoAtCursor()
 {
     return {};
 }

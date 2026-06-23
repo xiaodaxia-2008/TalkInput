@@ -14,6 +14,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QPromise>
+#include <QThread>
 
 namespace
 {
@@ -50,14 +51,14 @@ QKeySequence hotkeySequence(PipelineMode mode)
 {
     switch (mode) {
     case PipelineMode::AsrOnly:
-        return QKeySequence(QString::fromStdString(
-            appConfig().settings.asrHotKeys));
+        return QKeySequence(
+            QString::fromStdString(appConfig().settings.asrHotKeys));
     case PipelineMode::AsrLlm:
-        return QKeySequence(QString::fromStdString(
-            appConfig().settings.asrLlmHotKeys));
+        return QKeySequence(
+            QString::fromStdString(appConfig().settings.asrLlmHotKeys));
     case PipelineMode::AsrLlmOcr:
-        return QKeySequence(QString::fromStdString(
-            appConfig().settings.asrLlmOcrHotKeys));
+        return QKeySequence(
+            QString::fromStdString(appConfig().settings.asrLlmOcrHotKeys));
     }
     return {};
 }
@@ -106,7 +107,8 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     connect(m_hotkey.get(), &VoiceHotkey::activated, this,
             [this](PipelineMode mode) {
                 if (m_stage == PipelineStage::Recording ||
-                    m_stage == PipelineStage::Recognizing) {
+                    m_stage == PipelineStage::Recognizing)
+                {
                     stopListening();
                 }
                 else if (m_stage == PipelineStage::Idle) {
@@ -172,7 +174,8 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     // Stage stays Recording while capturing audio.
     // For streaming models: onResult() now shows interim text during Recording.
-    // For offline models: stopListening() transitions to Recognizing before finish().
+    // For offline models: stopListening() transitions to Recognizing before
+    // finish().
 
     QPromise<QString> resultPromise;
     resultPromise.start();
@@ -196,8 +199,8 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
         const QImage image = m_ocrRecognizer->captureContextImage();
         if (!image.isNull()) {
-            SPDLOG_INFO("OCR context screenshot captured: {}x{}",
-                        image.width(), image.height());
+            SPDLOG_INFO("OCR context screenshot captured: {}x{}", image.width(),
+                        image.height());
 
             if (appConfig().settings.saveOcrScreenshot) {
                 saveOcrDebugImage(image);
@@ -216,12 +219,10 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     if (llmEnabled) {
         setStage(PipelineStage::Polishing);
         result = co_await m_llmPostProcessor->postProcess(
-            trimmedText, ocrContext,
-            QString::fromStdString([&]() {
+            trimmedText, ocrContext, QString::fromStdString([&]() {
                 QStringList lines;
                 for (const auto &item : appConfig().settings.hotwords) {
-                    const QString line =
-                        QString::fromStdString(item).trimmed();
+                    const QString line = QString::fromStdString(item).trimmed();
                     if (!line.isEmpty()) {
                         lines.append(line);
                     }
@@ -237,6 +238,8 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     {
         const QString committed = result.trimmed();
         if (!committed.isEmpty()) {
+            // Brief delay to let foreground window settle after hotkey release
+            QThread::msleep(150);
             pasteTextToActiveWindow(committed,
                                     appConfig().settings.useClipboard,
                                     appConfig().settings.copyToClipboard,
@@ -381,16 +384,14 @@ void VoiceInputController::stopListening()
 
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
-void VoiceInputController::loadSpeechRecognitionModel(
-    const AsrPreset &preset)
+void VoiceInputController::loadSpeechRecognitionModel(const AsrPreset &preset)
 {
     unloadSpeechRecognitionModel();
 
     auto recognizer = SpeechRecognizer::createFromPreset(preset, this);
     if (!recognizer) {
-        STATUSBAR_ERROR("{}",
-                        tr("Speech recognition model load failed: %1")
-                            .arg(recognizer.error()));
+        STATUSBAR_ERROR("{}", tr("Speech recognition model load failed: %1")
+                                  .arg(recognizer.error()));
         return;
     }
 
@@ -400,6 +401,28 @@ void VoiceInputController::loadSpeechRecognitionModel(
 
     appConfig().settings.asrProviderId = preset.id;
     markConfigDirty();
+}
+
+void VoiceInputController::reloadOcrRecognizer()
+{
+    const auto &presets = appConfig().ocrPresets;
+    const auto it = presets.find(appConfig().settings.ocrProviderId);
+    if (it == presets.end()) {
+        SPDLOG_WARN("reloadOcrRecognizer: unknown OCR provider '{}'",
+                    appConfig().settings.ocrProviderId);
+        m_ocrRecognizer.reset();
+        return;
+    }
+
+    auto ocr = OcrRecognizer::createFromPreset(it->second);
+    if (!ocr) {
+        SPDLOG_WARN("reloadOcrRecognizer: failed to create: {}", ocr.error());
+        m_ocrRecognizer.reset();
+        return;
+    }
+
+    m_ocrRecognizer = std::move(*ocr);
+    SPDLOG_INFO("OCR provider reloaded: {}", it->second.name);
 }
 
 void VoiceInputController::unloadSpeechRecognitionModel()

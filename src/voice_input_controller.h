@@ -2,8 +2,8 @@
 
 #include "app_config.h"
 
-#include <QCoro/QCoroTask>
 #include <QByteArray>
+#include <QCoro/QCoroTask>
 #include <QKeySequence>
 #include <QObject>
 
@@ -81,6 +81,8 @@ public slots:
 
     void loadSpeechRecognitionModel(const AsrPreset &preset);
     void unloadSpeechRecognitionModel();
+
+    void reloadOcrRecognizer();
 
     bool startSpeechRecognitionSession();
     void feedSpeechRecognitionAudio(const QByteArray &pcm16, int sampleRate,

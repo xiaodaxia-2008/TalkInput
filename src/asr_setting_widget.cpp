@@ -116,22 +116,26 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
 
-    connect(m_ui->useClipboardCheck, &QCheckBox::toggled, this, [](bool checked) {
-        appConfig().settings.useClipboard = checked;
-        markConfigDirty();
-    });
-    connect(m_ui->copyToClipboardCheck, &QCheckBox::toggled, this, [](bool checked) {
-        appConfig().settings.copyToClipboard = checked;
-        markConfigDirty();
-    });
-    connect(m_ui->restoreClipboardCheck, &QCheckBox::toggled, this, [](bool checked) {
-        appConfig().settings.restoreClipboard = checked;
-        markConfigDirty();
-    });
-    connect(m_ui->saveOcrScreenshotCheck, &QCheckBox::toggled, this, [](bool checked) {
-        appConfig().settings.saveOcrScreenshot = checked;
-        markConfigDirty();
-    });
+    connect(m_ui->useClipboardCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.useClipboard = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->copyToClipboardCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.copyToClipboard = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->restoreClipboardCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.restoreClipboard = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->saveOcrScreenshotCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.saveOcrScreenshot = checked;
+                markConfigDirty();
+            });
 
     updateUiFromConfig();
 }
@@ -191,9 +195,12 @@ void AsrSettingWidget::updateUiFromConfig()
         const QSignalBlocker bc3(m_ui->restoreClipboardCheck);
         const QSignalBlocker bc4(m_ui->saveOcrScreenshotCheck);
         m_ui->useClipboardCheck->setChecked(appConfig().settings.useClipboard);
-        m_ui->copyToClipboardCheck->setChecked(appConfig().settings.copyToClipboard);
-        m_ui->restoreClipboardCheck->setChecked(appConfig().settings.restoreClipboard);
-        m_ui->saveOcrScreenshotCheck->setChecked(appConfig().settings.saveOcrScreenshot);
+        m_ui->copyToClipboardCheck->setChecked(
+            appConfig().settings.copyToClipboard);
+        m_ui->restoreClipboardCheck->setChecked(
+            appConfig().settings.restoreClipboard);
+        m_ui->saveOcrScreenshotCheck->setChecked(
+            appConfig().settings.saveOcrScreenshot);
     }
 
     auto task =
@@ -387,6 +394,10 @@ void AsrSettingWidget::onOcrProviderChanged(int /*index*/)
     appConfig().settings.ocrProviderId =
         m_ui->ocrCombo->currentData().toString().toStdString();
     markConfigDirty();
+
+    if (auto *vc = VoiceInputController::instance()) {
+        vc->reloadOcrRecognizer();
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -492,8 +503,8 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
     const auto &preset = it->second;
 
     if (!isModelInstalled(preset.modelDirName, preset.files)) {
-        STATUSBAR_INFO("{}",
-                       tr("Model not installed: %1").arg(asrModelLabel(preset)));
+        STATUSBAR_INFO(
+            "{}", tr("Model not installed: %1").arg(asrModelLabel(preset)));
         return;
     }
 
@@ -659,9 +670,7 @@ QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
     auto *vc = VoiceInputController::instance();
     if (vc && vc->isSpeechRecognitionModelLoaded()) {
         const std::string currentId = vc->loadedPresetId();
-        if (!currentId.empty() &&
-            currentId == providerId.toStdString())
-        {
+        if (!currentId.empty() && currentId == providerId.toStdString()) {
             const auto result = QMessageBox::question(
                 this, tr("Model Already Loaded"),
                 tr("This model is already loaded. Do you want to reload it?"),
@@ -787,24 +796,26 @@ void AsrSettingWidget::initIcons()
     m_ui->browserButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
     m_ui->importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->hotwordsButton, ":/resources/icons/hotwords.svg", iconSize);
+    setButtonIcon(m_ui->hotwordsButton, ":/resources/icons/hotwords.svg",
+                  iconSize);
     m_ui->hotwordsButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg", iconSize);
+    setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg",
+                  iconSize);
     m_ui->promptEditButton->setProperty("buttonRole", "icon");
 }
 
 void AsrSettingWidget::initShortcuts()
 {
     auto saveShortcut = [this](PipelineMode mode, QKeySequenceEdit *edit,
-                                 QPushButton *applyBtn) {
+                               QPushButton *applyBtn) {
         auto apply = [mode, edit]() {
             setHotkeySequence(mode, edit->keySequence());
             markConfigDirty();
             if (auto *ctrl = VoiceInputController::instance()) {
                 ctrl->reregisterHotkey(mode);
             }
-            STATUSBAR_INFO("{}", QCoreApplication::translate("AsrSettingWidget",
-                                                             "Shortcut applied"));
+            STATUSBAR_INFO("{}", QCoreApplication::translate(
+                                     "AsrSettingWidget", "Shortcut applied"));
         };
         connect(applyBtn, &QPushButton::clicked, this, apply);
     };

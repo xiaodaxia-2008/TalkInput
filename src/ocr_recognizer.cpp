@@ -3,9 +3,7 @@
 #include "system_ocr_recognizer.h"
 #include "tesseract_ocr_recognizer.h"
 
-#include <QCursor>
 #include <QGuiApplication>
-#include <QPixmap>
 #include <QScreen>
 
 namespace talkinput
@@ -19,17 +17,13 @@ OcrRecognizer::~OcrRecognizer() = default;
 
 QImage OcrRecognizer::captureContextImage() const
 {
-    // 1. Get the native window under the cursor
-    const WId targetWid = nativeWindowAtCursor();
-    if (!targetWid) {
+    // 1. Get the native window info under the cursor
+    const auto winInfo = nativeWindowInfoAtCursor();
+    if (!winInfo.wid || winInfo.geometry.isEmpty()) {
         return {};
     }
 
-    // 2. Get the window's bounding rect in virtual desktop coordinates
-    const QRect windowRect = nativeWindowRect(targetWid);
-    if (windowRect.isEmpty()) {
-        return {};
-    }
+    const QRect &windowRect = winInfo.geometry;
 
     // 3. Find which physical screen the window is on
     QScreen *screen = QGuiApplication::screenAt(windowRect.center());
@@ -48,11 +42,9 @@ QImage OcrRecognizer::captureContextImage() const
 
     // 5. Convert absolute coords to screen-relative and crop
     const QPoint screenTopLeft = screen->geometry().topLeft();
-    const QRect relativeRect(
-        windowRect.x() - screenTopLeft.x(),
-        windowRect.y() - screenTopLeft.y(),
-        windowRect.width(),
-        windowRect.height());
+    const QRect relativeRect(windowRect.x() - screenTopLeft.x(),
+                             windowRect.y() - screenTopLeft.y(),
+                             windowRect.width(), windowRect.height());
 
     return fullScreen.copy(relativeRect);
 }
@@ -67,9 +59,8 @@ OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
         return std::make_unique<TesseractOcrRecognizer>(parent);
     }
 
-    return std::unexpected(
-        QStringLiteral("Unsupported OCR type: %1")
-            .arg(QString::fromStdString(preset.type)));
+    return std::unexpected(QStringLiteral("Unsupported OCR type: %1")
+                               .arg(QString::fromStdString(preset.type)));
 }
 
 } // namespace talkinput

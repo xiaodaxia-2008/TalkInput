@@ -1,11 +1,11 @@
 #include "../platform_utils.h"
 
-#include <QClipboard>
 #include <QApplication>
+#include <QClipboard>
 #include <QMimeData>
+#include <QString>
 #include <QThread>
 #include <QVector>
-#include <QString>
 
 #include <Windows.h>
 
@@ -27,7 +27,7 @@ static bool tryClipboardPaste(const QString &text)
 
     const int len = text.length();
     HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, static_cast<size_t>(len + 1) *
-                                                      sizeof(wchar_t));
+                                                     sizeof(wchar_t));
     if (!hGlobal) {
         CloseClipboard();
         return false;
@@ -196,25 +196,18 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
     }
 }
 
-WId nativeWindowAtCursor()
+SysWindowInfo nativeWindowInfoAtCursor()
 {
     POINT pt;
     GetCursorPos(&pt);
-    HWND hwnd = WindowFromPoint(pt);
-    return reinterpret_cast<WId>(hwnd);
-}
-
-QRect nativeWindowRect(WId wid)
-{
-    const HWND hwnd = reinterpret_cast<HWND>(wid);
+    const HWND hwnd = WindowFromPoint(pt);
     if (!hwnd) {
         return {};
     }
 
-    // Get the top-level ancestor (the actual window frame, not a child control)
-    HWND root = GetAncestor(hwnd, GA_ROOT);
+    const HWND root = GetAncestor(hwnd, GA_ROOT);
     if (!root) {
-        root = hwnd;
+        return {};
     }
 
     RECT rect = {};
@@ -222,9 +215,15 @@ QRect nativeWindowRect(WId wid)
         return {};
     }
 
-    return QRect(rect.left, rect.top,
-                 rect.right - rect.left,
-                 rect.bottom - rect.top);
+    wchar_t title[512] = {};
+    GetWindowTextW(root, title, 512);
+
+    SysWindowInfo info;
+    info.wid = reinterpret_cast<WId>(root);
+    info.title = QString::fromWCharArray(title);
+    info.geometry = QRect(rect.left, rect.top, rect.right - rect.left,
+                          rect.bottom - rect.top);
+    return info;
 }
 
 } // namespace talkinput
