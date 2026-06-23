@@ -1,0 +1,21 @@
+set(TALKINPUT_TESSERACT_TRAIN_DATA_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/teact/train_data")
+
+set(TALKINPUT_TESSERACT_TRAIN_DATA_FILE
+    "${TALKINPUT_TESSERACT_TRAIN_DATA_DIR}/chi_sim.traineddata")
+
+if(NOT EXISTS "${TALKINPUT_TESSERACT_TRAIN_DATA_FILE}")
+    set(TALKINPUT_TESSERACT_TRAIN_DATA_URL
+        "https://github.com/tesseract-ocr/tessdata/raw/main/chi_sim.traineddata")
+    message(STATUS "Downloading Tesseract train data from ${TALKINPUT_TESSERACT_TRAIN_DATA_URL}")
+    file(MAKE_DIRECTORY "${TALKINPUT_TESSERACT_TRAIN_DATA_DIR}")
+    file(DOWNLOAD "${TALKINPUT_TESSERACT_TRAIN_DATA_URL}"
+         "${TALKINPUT_TESSERACT_TRAIN_DATA_FILE}"
+         SHOW_PROGRESS)
+    message(STATUS "Downloaded to ${TALKINPUT_TESSERACT_TRAIN_DATA_FILE}")
+endif()
+
+if(NOT EXISTS "${TALKINPUT_TESSERACT_TRAIN_DATA_FILE}")
+    message(FATAL_ERROR
+        "Missing Tesseract train data: ${TALKINPUT_TESSERACT_TRAIN_DATA_FILE}")
+endif()

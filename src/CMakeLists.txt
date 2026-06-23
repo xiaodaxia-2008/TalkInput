@@ -154,11 +154,11 @@ add_custom_command(TARGET TalkInput POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
     $<TARGET_FILE_DIR:TalkInput>/tessdata
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${PROJECT_SOURCE_DIR}/resources/tessdata/chi_sim.traineddata
+    ${PROJECT_SOURCE_DIR}/teact/train_data/chi_sim.traineddata
     $<TARGET_FILE_DIR:TalkInput>/tessdata/chi_sim.traineddata
 )
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/resources/tessdata/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/teact/train_data/
     DESTINATION ${CMAKE_INSTALL_BINDIR}/tessdata
     COMPONENT Runtime
 )
