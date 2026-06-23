@@ -6,10 +6,9 @@ namespace talkinput
 {
 
 std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
-    const AsrPreset &preset,
     SherpaOnnxOfflineRecognizerConfig *recognizer)
 {
-    const auto &files = preset.resolvedFiles;
+    const auto &files = m_preset.resolvedFiles;
     auto it = files.find("funasrEncoderAdaptorFile");
     if (it == files.end()) return std::unexpected(QStringLiteral("Missing funasrEncoderAdaptorFile"));
     auto it2 = files.find("funasrLlmFile");
@@ -19,7 +18,7 @@ std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
     auto it4 = files.find("funasrTokenizerFile");
     if (it4 == files.end()) return std::unexpected(QStringLiteral("Missing funasrTokenizerFile"));
 
-    const auto &params = preset.params;
+    const auto &params = m_preset.params;
 
     m_encoderAdaptorPath = it->second;
     m_llmPath = it2->second;
@@ -28,7 +27,7 @@ std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
     m_systemPrompt = params.funasrSystemPrompt;
     m_userPrompt = params.funasrUserPrompt;
     m_language = params.language;
-    m_hotwords = preset.hotwordsText;
+    m_hotwords = m_preset.hotwordsText;
 
     recognizer->model_config.funasr_nano.encoder_adaptor =
         m_encoderAdaptorPath.c_str();

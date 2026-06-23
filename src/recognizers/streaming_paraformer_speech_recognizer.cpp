@@ -7,10 +7,9 @@ namespace talkinput
 
 std::expected<void, QString>
 StreamingParaformerSpeechRecognizer::configureModel(
-    const AsrPreset &preset,
     SherpaOnnxOnlineRecognizerConfig *recognizer)
 {
-    const auto &files = preset.resolvedFiles;
+    const auto &files = m_preset.resolvedFiles;
     auto it = files.find("encoderFile");
     if (it == files.end()) return std::unexpected(QStringLiteral("Missing encoderFile"));
     auto it2 = files.find("decoderFile");

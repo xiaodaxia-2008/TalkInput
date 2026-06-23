@@ -18,7 +18,7 @@ public:
     ~OfflineSpeechRecognizer() override;
 
     std::expected<void, QString>
-    start(const AsrPreset &preset) final;
+    start() final;
     void stop() override;
     bool isRunning() const final;
     bool isStreaming() const final;
@@ -30,8 +30,7 @@ public:
 
 protected:
     virtual std::expected<void, QString>
-    configureModel(const AsrPreset &preset,
-                   SherpaOnnxOfflineRecognizerConfig *recognizer) = 0;
+    configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) = 0;
     virtual int chunkSeconds() const;
 
     std::string m_tokensPath;

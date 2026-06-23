@@ -441,7 +441,7 @@ SpeechRecognizer *VoiceInputController::speechRecognizer() const
 
 std::string VoiceInputController::loadedPresetId() const
 {
-    return m_recognizer ? m_recognizer->presetId() : std::string();
+    return m_recognizer ? m_recognizer->preset().id : std::string();
 }
 
 } // namespace talkinput

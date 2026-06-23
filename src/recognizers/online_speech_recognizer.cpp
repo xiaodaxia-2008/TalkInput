@@ -20,18 +20,18 @@ OnlineSpeechRecognizer::~OnlineSpeechRecognizer()
 }
 
 std::expected<void, QString>
-OnlineSpeechRecognizer::start(const AsrPreset &preset)
+OnlineSpeechRecognizer::start()
 {
     stop();
 
-    const auto &params = preset.params;
+    const auto &params = m_preset.params;
 
     SherpaOnnxOnlineRecognizerConfig recognizerConfig;
     std::memset(&recognizerConfig, 0, sizeof(recognizerConfig));
     recognizerConfig.feat_config.sample_rate = params.sampleRate;
     recognizerConfig.feat_config.feature_dim = params.featureDim;
 
-    auto modelResult = configureModel(preset, &recognizerConfig);
+    auto modelResult = configureModel(&recognizerConfig);
     if (!modelResult) {
         stop();
         return std::unexpected(modelResult.error());
@@ -43,7 +43,7 @@ OnlineSpeechRecognizer::start(const AsrPreset &preset)
     m_modelingUnit = params.modelingUnit;
     recognizerConfig.model_config.modeling_unit = m_modelingUnit.c_str();
 
-    m_hotwordsText = preset.hotwordsText;
+    m_hotwordsText = m_preset.hotwordsText;
     if (!m_hotwordsText.empty()) {
         recognizerConfig.decoding_method = supportsModifiedBeamSearch()
                                                ? "modified_beam_search"

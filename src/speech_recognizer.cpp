@@ -36,16 +36,16 @@ SpeechRecognizer::~SpeechRecognizer()
 }
 
 std::expected<void, QString>
-SpeechRecognizer::prepareRecognizer(const AsrPreset &preset)
+SpeechRecognizer::prepareRecognizer()
 {
     stopPunctuation();
 
-    if (preset.resolvedModelDir.empty()) {
+    if (m_preset.resolvedModelDir.empty()) {
         return std::unexpected(QStringLiteral("Model directory is empty."));
     }
 
-    auto it = preset.resolvedFiles.find("punctuationModelFile");
-    if (it == preset.resolvedFiles.end()) {
+    auto it = m_preset.resolvedFiles.find("punctuationModelFile");
+    if (it == m_preset.resolvedFiles.end()) {
         return {};
     }
 
@@ -55,7 +55,7 @@ SpeechRecognizer::prepareRecognizer(const AsrPreset &preset)
         return {};
     }
 
-    const int numThreads = std::max(1, preset.params.numThreads);
+    const int numThreads = std::max(1, m_preset.params.numThreads);
 
     SherpaOnnxOfflinePunctuationConfig punctConfig;
     std::memset(&punctConfig, 0, sizeof(punctConfig));
@@ -99,34 +99,6 @@ QString SpeechRecognizer::addPunctuation(const QString &text) const
     QString result = QString::fromUtf8(punctResult).trimmed();
     SherpaOfflinePunctuationFreeText(punctResult);
     return result.isEmpty() ? text : result;
-}
-
-QString SpeechRecognizer::modelPath(const QString &modelDir,
-                                    const QString &fileName)
-{
-    return QDir(modelDir).filePath(fileName);
-}
-
-std::expected<void, QString> SpeechRecognizer::fileExists(const QString &path)
-{
-    const QFileInfo info(path);
-    if (info.exists() && info.isFile()) {
-        return {};
-    }
-
-    return std::unexpected(QStringLiteral("Required model file is missing: %1")
-                               .arg(QDir::toNativeSeparators(path)));
-}
-
-std::expected<void, QString> SpeechRecognizer::pathExists(const QString &path)
-{
-    const QFileInfo info(path);
-    if (info.exists()) {
-        return {};
-    }
-
-    return std::unexpected(QStringLiteral("Required model path is missing: %1")
-                               .arg(QDir::toNativeSeparators(path)));
 }
 
 QString SpeechRecognizer::decodeSherpaText(const char *text)
@@ -308,11 +280,11 @@ SpeechRecognizer::createFromPreset(const AsrPreset &preset,
     if (!r) {
         return std::unexpected(QString());
     }
-    auto startResult = r->start(resolved);
+    r->m_preset = std::move(resolved);
+    auto startResult = r->start();
     if (!startResult) {
         return std::unexpected(startResult.error());
     }
-    r->m_presetId = preset.id;
     return r;
 }
 

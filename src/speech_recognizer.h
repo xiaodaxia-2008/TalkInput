@@ -37,7 +37,7 @@ public:
     ~SpeechRecognizer() override;
 
     virtual std::expected<void, QString>
-    start(const AsrPreset &preset) = 0;
+    start() = 0;
 
     virtual void stop() = 0;
 
@@ -62,26 +62,23 @@ public:
     createFromPreset(const AsrPreset &preset,
                      QObject *parent = nullptr);
 
-    const std::string &presetId() const { return m_presetId; }
+    const AsrPreset &preset() const { return m_preset; }
 
 signals:
     void resultChanged(const QString &text, bool isFinal);
 
 protected:
     std::expected<void, QString>
-    prepareRecognizer(const AsrPreset &preset);
+    prepareRecognizer();
     void stopPunctuation();
     QString addPunctuation(const QString &text) const;
 
-    static QString modelPath(const QString &modelDir, const QString &fileName);
-    static std::expected<void, QString> fileExists(const QString &path);
-    static std::expected<void, QString> pathExists(const QString &path);
     static QString decodeSherpaText(const char *text);
     static int appendPcm16AsMonoFloat(const QByteArray &audioData,
                                       int channelCount,
                                       std::vector<float> *samples);
 
-    std::string m_presetId;
+    AsrPreset m_preset;
 
 private:
     const SherpaOnnxOfflinePunctuation *m_punct = nullptr;

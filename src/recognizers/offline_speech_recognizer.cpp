@@ -50,23 +50,23 @@ OfflineSpeechRecognizer::~OfflineSpeechRecognizer()
 }
 
 std::expected<void, QString>
-OfflineSpeechRecognizer::start(const AsrPreset &preset)
+OfflineSpeechRecognizer::start()
 {
     stop();
 
-    auto prepResult = prepareRecognizer(preset);
+    auto prepResult = prepareRecognizer();
     if (!prepResult) {
         return std::unexpected(prepResult.error());
     }
 
-    const auto &params = preset.params;
+    const auto &params = m_preset.params;
 
     SherpaOnnxOfflineRecognizerConfig config;
     std::memset(&config, 0, sizeof(config));
     config.feat_config.sample_rate = params.sampleRate;
     config.feat_config.feature_dim = params.featureDim;
 
-    auto modelResult = configureModel(preset, &config);
+    auto modelResult = configureModel(&config);
     if (!modelResult) {
         stop();
         return std::unexpected(modelResult.error());

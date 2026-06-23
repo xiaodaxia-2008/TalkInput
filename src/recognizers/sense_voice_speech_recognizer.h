@@ -17,8 +17,7 @@ public:
 
 protected:
     std::expected<void, QString>
-    configureModel(const AsrPreset &preset,
-                   SherpaOnnxOfflineRecognizerConfig *recognizer) override;
+    configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) override;
 
 private:
     std::string m_modelPath;
