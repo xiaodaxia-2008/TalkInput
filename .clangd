@@ -1,0 +1,46 @@
+CompileFlags:
+  Add: [-ferror-limit=0]
+
+---
+
+If:
+  PathMatch: .*\.h
+CompileFlags:
+  Add: [/std:c++latest]
+
+---
+
+Index:
+  Background: Build
+  StandardLibrary: true
+
+Style:
+  AngledHeaders: ["FiberArt/.*"]
+
+Diagnostics:
+  Suppress: ["warn_missing_dependent_template_keyword"]
+  UnusedIncludes: Strict
+  MissingIncludes: None
+
+# https://clangd.llvm.org/config#completion
+Completion:
+  AllScopes: No
+  ArgumentLists: Delimiters
+  HeaderInsertion: Never
+  # HeaderInsertion: IWYU
+
+# https://clangd.llvm.org/config#inlayhints
+InlayHints:
+  BlockEnd: true
+  Designators: false
+  Enabled: true
+  ParameterNames: false
+  DeducedTypes: false
+  DefaultArguments: false
+  TypeNameLimit: 24
+
+Hover:
+  ShowAKA: true
+
+# Documentation:
+#   CommentFormat: Doxygen
