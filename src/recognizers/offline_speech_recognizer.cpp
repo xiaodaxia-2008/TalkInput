@@ -78,6 +78,10 @@ OfflineSpeechRecognizer::start(const AsrPreset &preset)
     m_modelingUnit = params.modelingUnit;
     config.model_config.modeling_unit = m_modelingUnit.c_str();
 
+    // Must be set explicitly — benchmark confirms NULL causes create to fail
+    config.decoding_method = "greedy_search";
+    config.max_active_paths = 4;
+
     m_recognizer = SherpaOnnxCreateOfflineRecognizer(&config);
     if (!m_recognizer) {
         stop();

@@ -91,7 +91,7 @@
         "funasrEncoderAdaptorFile": "encoder_adaptor.int8.onnx",
         "funasrLlmFile": "llm.int8.onnx",
         "funasrEmbeddingFile": "embedding.int8.onnx",
-        "funasrTokenizerFile>dir": "Qwen3-0.6B"
+        "funasrTokenizerFile": "Qwen3-0.6B"
       }
     }
   },

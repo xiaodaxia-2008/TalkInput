@@ -82,20 +82,15 @@ bool isModelInstalled(const std::string &modelDirName,
             .filePath(QStringLiteral("models/%1")
                           .arg(QString::fromStdString(modelDirName)));
     if (!QFileInfo(modelDir).isDir()) {
+        SPDLOG_INFO("Model directory does not exist: {}", modelDir);
         return false;
     }
     for (const auto &[key, relative] : files) {
         const QFileInfo fi(
             QDir(modelDir).filePath(QString::fromStdString(relative)));
-        if (key.size() > 4 && key.substr(key.size() - 4) == ">dir") {
-            if (!fi.isDir()) {
-                return false;
-            }
-        }
-        else {
-            if (!fi.isFile()) {
-                return false;
-            }
+        if (!fi.exists()) {
+            SPDLOG_INFO("Model file does not exist: {}", fi.absoluteFilePath());
+            return false;
         }
     }
     return true;
@@ -467,6 +462,12 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
     }
     const auto &preset = it->second;
 
+    if (!isModelInstalled(preset.modelDirName, preset.files)) {
+        STATUSBAR_INFO("{}",
+                       tr("Model not installed: %1").arg(asrModelLabel(preset)));
+        return;
+    }
+
     auto *vc = VoiceInputController::instance();
     if (!vc) {
         return;
@@ -475,10 +476,12 @@ void AsrSettingWidget::loadInstalledAsrModel(const QString &providerId)
     SPDLOG_DEBUG("AsrSettingWidget: loading ASR model {}", preset.name);
     vc->loadSpeechRecognitionModel(preset);
     if (vc->isSpeechRecognitionModelLoaded()) {
-        STATUSBAR_INFO("{}", tr("ASR model loaded: %1").arg(asrModelLabel(preset)));
+        STATUSBAR_INFO("{}",
+                       tr("ASR model loaded: %1").arg(asrModelLabel(preset)));
     }
     else {
-        STATUSBAR_INFO("{}", tr("ASR model load failed: %1").arg(asrModelLabel(preset)));
+        STATUSBAR_INFO(
+            "{}", tr("ASR model load failed: %1").arg(asrModelLabel(preset)));
     }
 }
 
@@ -551,8 +554,7 @@ QCoro::Task<bool> AsrSettingWidget::downloadAsrModel(const QString &providerId)
     QNetworkReply *reply = manager.get(request);
     int lastPct = -1;
     connect(reply, &QNetworkReply::downloadProgress, this,
-            [this, modelName, guard, &lastPct](qint64 received,
-                                                qint64 total) {
+            [this, modelName, guard, &lastPct](qint64 received, qint64 total) {
                 if (!guard) {
                     return;
                 }
@@ -562,11 +564,9 @@ QCoro::Task<bool> AsrSettingWidget::downloadAsrModel(const QString &providerId)
                         return;
                     }
                     lastPct = pct;
-                    STATUSBAR_INFO(
-                        "{}",
-                        tr("Downloading ASR model: %1 … %2%")
-                            .arg(modelName)
-                            .arg(pct));
+                    STATUSBAR_INFO("{}", tr("Downloading ASR model: %1 … %2%")
+                                             .arg(modelName)
+                                             .arg(pct));
                 }
             });
     auto result = co_await reply;
