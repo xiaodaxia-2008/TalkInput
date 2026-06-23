@@ -93,7 +93,7 @@ void installLogPanelSink(QPlainTextEdit *textEdit)
 {
     auto sink = std::make_shared<spdlog::sinks::qt_sink_mt>(
         textEdit, "appendPlainText");
-    sink->set_pattern("%M:%S [%l] %v");
+    sink->set_pattern("%H:%M:%S [%n] [%l] %v");
     sink->set_level(spdlog::level::debug);
 
     // Attach to all registered loggers
