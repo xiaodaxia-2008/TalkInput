@@ -158,6 +158,11 @@ add_custom_command(TARGET TalkInput POST_BUILD
     $<TARGET_FILE_DIR:TalkInput>/tessdata/chi_sim.traineddata
 )
 
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/resources/tessdata/
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/tessdata
+    COMPONENT Runtime
+)
+
 if(WIN32)
     add_custom_command(TARGET TalkInput
         POST_BUILD
