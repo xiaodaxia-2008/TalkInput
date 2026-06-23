@@ -4,158 +4,171 @@
 <context>
     <name>AsrSettingWidget</name>
     <message>
-        <location filename="asr_setting_widget.ui" line="24"/>
+        <location filename="asr_setting_widget.ui" line="32"/>
         <source>ASR Service</source>
         <translation>ASR 服务</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="50"/>
-        <location filename="asr_setting_widget.ui" line="206"/>
+        <location filename="asr_setting_widget.ui" line="58"/>
         <source>Model:</source>
         <translation>模型：</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="70"/>
+        <location filename="asr_setting_widget.ui" line="75"/>
         <source>Open download page in browser</source>
         <translation>在浏览器中打开下载页面</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="80"/>
+        <location filename="asr_setting_widget.ui" line="85"/>
         <source>Import downloaded model archive</source>
         <translation>导入已下载的模型压缩包</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="90"/>
+        <location filename="asr_setting_widget.ui" line="101"/>
         <source>Use this model</source>
         <translation>使用此模型</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="108"/>
+        <location filename="asr_setting_widget.ui" line="116"/>
         <source>OCR Service</source>
         <translation>OCR 服务</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="129"/>
+        <location filename="asr_setting_widget.ui" line="137"/>
         <source>Provider:</source>
         <translation>提供商：</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="149"/>
+        <location filename="asr_setting_widget.ui" line="157"/>
         <source>LLM Service</source>
         <translation>LLM 服务</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="170"/>
+        <location filename="asr_setting_widget.ui" line="163"/>
         <source>Provider</source>
         <translation>提供商</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="187"/>
+        <location filename="asr_setting_widget.ui" line="189"/>
         <source>Endpoint</source>
         <translation>端点</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="199"/>
+        <location filename="asr_setting_widget.ui" line="202"/>
         <source>https://api.openai.com</source>
         <translation>https://api.openai.com</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="231"/>
+        <location filename="asr_setting_widget.ui" line="209"/>
+        <source>Model</source>
+        <translation>模型</translation>
+    </message>
+    <message>
+        <location filename="asr_setting_widget.ui" line="241"/>
         <source>API Key</source>
         <translation>API Key</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="241"/>
+        <location filename="asr_setting_widget.ui" line="257"/>
         <source>sk-...</source>
         <translation>sk-...</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="248"/>
+        <location filename="asr_setting_widget.ui" line="264"/>
         <source>Prompt</source>
         <translation>提示词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="276"/>
+        <location filename="asr_setting_widget.ui" line="286"/>
         <source>Edit user prompt</source>
         <translation>编辑用户提示词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="288"/>
+        <location filename="asr_setting_widget.ui" line="301"/>
         <source>Shortcuts</source>
         <translation>快捷键</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="309"/>
+        <location filename="asr_setting_widget.ui" line="328"/>
         <source>ASR</source>
         <translation>语音识别</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="312"/>
+        <location filename="asr_setting_widget.ui" line="325"/>
         <source>Speech recognition only</source>
         <translation>仅语音识别</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="330"/>
-        <location filename="asr_setting_widget.ui" line="366"/>
-        <location filename="asr_setting_widget.ui" line="402"/>
+        <location filename="asr_setting_widget.ui" line="346"/>
+        <location filename="asr_setting_widget.ui" line="382"/>
+        <location filename="asr_setting_widget.ui" line="418"/>
         <source>✓</source>
         <translation>✓</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="333"/>
-        <location filename="asr_setting_widget.ui" line="369"/>
-        <location filename="asr_setting_widget.ui" line="405"/>
+        <location filename="asr_setting_widget.ui" line="343"/>
+        <location filename="asr_setting_widget.ui" line="379"/>
+        <location filename="asr_setting_widget.ui" line="415"/>
         <source>Apply shortcut</source>
         <translation>应用快捷键</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="345"/>
+        <location filename="asr_setting_widget.ui" line="364"/>
         <source>ASR + LLM</source>
         <translation>语音识别 + LLM</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="348"/>
+        <location filename="asr_setting_widget.ui" line="361"/>
         <source>Speech recognition with LLM polish</source>
         <translation>语音识别并使用 LLM 润色</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="381"/>
+        <location filename="asr_setting_widget.ui" line="400"/>
         <source>ASR + LLM + OCR</source>
         <translation>语音识别 + LLM + OCR</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="384"/>
+        <location filename="asr_setting_widget.ui" line="397"/>
         <source>Speech recognition with LLM polish and OCR context</source>
         <translation>语音识别并使用 LLM 润色和 OCR 上下文</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="441"/>
+        <location filename="asr_setting_widget.ui" line="454"/>
         <source>Edit hot words</source>
         <translation>编辑热词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="444"/>
+        <location filename="asr_setting_widget.ui" line="457"/>
         <source>Hot Words</source>
         <translation>热词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="451"/>
+        <location filename="asr_setting_widget.ui" line="470"/>
         <source>Clipboard</source>
         <translation>剪贴板</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="454"/>
+        <location filename="asr_setting_widget.ui" line="467"/>
         <source>Use clipboard to paste text</source>
-        <oldsource>Use clipboard + Ctrl+Shift+V to paste text</oldsource>
-        <translation type="unfinished">使用剪贴板 + Ctrl+Shift+V 粘贴文本</translation>
+        <translation>使用剪贴板粘贴文本</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="461"/>
+        <location filename="asr_setting_widget.ui" line="477"/>
+        <source>Copy result to clipboard</source>
+        <translation>复制结果到剪贴板</translation>
+    </message>
+    <message>
+        <location filename="asr_setting_widget.ui" line="480"/>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <location filename="asr_setting_widget.ui" line="490"/>
         <source>Restore</source>
         <translation>恢复</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.ui" line="464"/>
+        <location filename="asr_setting_widget.ui" line="487"/>
         <source>Restore original clipboard content after paste</source>
         <translation>粘贴后恢复原始剪贴板内容</translation>
     </message>
@@ -175,7 +188,7 @@
         <translation>离线</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="776"/>
+        <location filename="asr_setting_widget.cpp" line="799"/>
         <source>Shortcut applied</source>
         <translation>快捷键已应用</translation>
     </message>
@@ -241,83 +254,68 @@
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="129"/>
+        <location filename="main_window.ui" line="125"/>
         <source>Help</source>
         <translation>帮助</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="145"/>
-        <location filename="main_window.ui" line="148"/>
+        <location filename="main_window.ui" line="141"/>
+        <location filename="main_window.ui" line="144"/>
         <source>Start recognition</source>
         <translation>开始识别</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="157"/>
+        <location filename="main_window.ui" line="153"/>
         <source>Recognize file</source>
         <translation>识别文件</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="160"/>
+        <location filename="main_window.ui" line="156"/>
         <source>Import an audio file for recognition</source>
         <translation>导入音频文件进行识别</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="172"/>
+        <location filename="main_window.ui" line="168"/>
         <source>Chinese</source>
         <translation>中文</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="184"/>
+        <location filename="main_window.ui" line="180"/>
         <source>English</source>
         <translation>英文</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="192"/>
+        <location filename="main_window.ui" line="188"/>
         <source>Start minimized</source>
         <translation>启动时最小化</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="197"/>
+        <location filename="main_window.ui" line="193"/>
         <source>Reset Settings</source>
         <translation>重置设置</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="202"/>
+        <location filename="main_window.ui" line="198"/>
         <source>More Models</source>
         <translation>更多模型</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="207"/>
+        <location filename="main_window.ui" line="203"/>
         <source>About</source>
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="212"/>
+        <location filename="main_window.ui" line="208"/>
         <source>Open Data Directory</source>
         <translation>打开数据目录</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="220"/>
-        <source>Use clipboard to paste</source>
-        <translation>使用剪贴板粘贴</translation>
-    </message>
-    <message>
-        <location filename="main_window.ui" line="228"/>
-        <source>Copy result to clipboard</source>
-        <translation>复制结果到剪贴板</translation>
-    </message>
-    <message>
-        <location filename="main_window.ui" line="236"/>
-        <source>Restore clipboard after paste</source>
-        <translation>粘贴后恢复剪贴板</translation>
-    </message>
-    <message>
-        <location filename="main_window.ui" line="241"/>
+        <location filename="main_window.ui" line="214"/>
         <source>Exit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="main_window.ui" line="244"/>
+        <location filename="main_window.ui" line="217"/>
         <source>Ctrl+Q</source>
         <translation>Ctrl+Q</translation>
     </message>
@@ -347,140 +345,150 @@
 <context>
     <name>talkinput::AsrSettingWidget</name>
     <message>
-        <location filename="asr_setting_widget.cpp" line="203"/>
+        <location filename="asr_setting_widget.cpp" line="209"/>
         <source>Model name sent to the LLM service</source>
         <translation>发送到 LLM 服务的模型名称</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="267"/>
+        <location filename="asr_setting_widget.cpp" line="273"/>
         <source>LLM provider saved: %1</source>
         <translation>LLM 提供商已保存：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="220"/>
+        <location filename="asr_setting_widget.cpp" line="226"/>
         <source>LLM endpoint saved</source>
         <translation>LLM 端点已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="230"/>
+        <location filename="asr_setting_widget.cpp" line="236"/>
         <source>LLM model saved</source>
         <translation>LLM 模型已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="244"/>
+        <location filename="asr_setting_widget.cpp" line="250"/>
         <source>LLM API key saved</source>
         <translation>LLM API 密钥已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="445"/>
+        <location filename="asr_setting_widget.cpp" line="451"/>
         <source>Hot words saved, reloading speech recognition model...</source>
         <translation>热词已保存，正在重新加载语音识别模型...</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="316"/>
-        <location filename="asr_setting_widget.cpp" line="326"/>
+        <location filename="asr_setting_widget.cpp" line="322"/>
+        <location filename="asr_setting_widget.cpp" line="332"/>
         <source>User Prompt</source>
         <translation>用户提示词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="324"/>
+        <location filename="asr_setting_widget.cpp" line="330"/>
         <source>Available variables: {{input}}, {{context}}, {{hotwords}}</source>
         <translation>可用变量：{{input}}、{{context}}、{{hotwords}}</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="334"/>
+        <location filename="asr_setting_widget.cpp" line="340"/>
         <source>Use {{input}}, {{context}}, and {{hotwords}} as needed</source>
         <translation>按需使用 {{input}}、{{context}} 和 {{hotwords}}</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="353"/>
+        <location filename="asr_setting_widget.cpp" line="359"/>
         <source>LLM prompt saved</source>
         <translation>LLM 提示词已保存</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="387"/>
+        <location filename="asr_setting_widget.cpp" line="393"/>
         <source>Hot Words</source>
         <translation>热词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="400"/>
+        <location filename="asr_setting_widget.cpp" line="406"/>
         <source>One hot word per line.</source>
         <translation>每行一个热词。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="409"/>
+        <location filename="asr_setting_widget.cpp" line="415"/>
         <source>Enter hot words, one per line</source>
         <translation>每行输入一个热词</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="484"/>
+        <location filename="asr_setting_widget.cpp" line="490"/>
         <source>Model not installed: %1</source>
         <translation>模型未安装：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="497"/>
+        <location filename="asr_setting_widget.cpp" line="503"/>
         <source>ASR model loaded: %1</source>
         <translation>ASR 模型已加载：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="501"/>
+        <location filename="asr_setting_widget.cpp" line="507"/>
         <source>ASR model load failed: %1</source>
         <translation>ASR 模型加载失败：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="520"/>
+        <location filename="asr_setting_widget.cpp" line="526"/>
         <source> (Using)</source>
         <translation>（使用中）</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="524"/>
+        <location filename="asr_setting_widget.cpp" line="530"/>
         <source> (Installed)</source>
         <translation>（已安装）</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="527"/>
+        <location filename="asr_setting_widget.cpp" line="533"/>
         <source> (Not Installed)</source>
         <translation>（未安装）</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="544"/>
+        <location filename="asr_setting_widget.cpp" line="550"/>
         <source>Model preset is invalid.</source>
         <translation>模型预设无效。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="555"/>
-        <location filename="asr_setting_widget.cpp" line="719"/>
+        <location filename="asr_setting_widget.cpp" line="561"/>
+        <location filename="asr_setting_widget.cpp" line="742"/>
         <source>Failed to create model cache directory.</source>
         <translation>创建模型缓存目录失败。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="584"/>
+        <location filename="asr_setting_widget.cpp" line="590"/>
         <source>Downloading ASR model: %1 … %2%</source>
         <translation>正在下载 ASR 模型：%1 … %2%</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="671"/>
-        <location filename="asr_setting_widget.cpp" line="693"/>
+        <location filename="asr_setting_widget.cpp" line="660"/>
+        <source>Model Already Loaded</source>
+        <translation>模型已加载</translation>
+    </message>
+    <message>
+        <location filename="asr_setting_widget.cpp" line="661"/>
+        <source>This model is already loaded. Do you want to reload it?</source>
+        <translation>此模型已加载，是否重新加载？</translation>
+    </message>
+    <message>
+        <location filename="asr_setting_widget.cpp" line="694"/>
+        <location filename="asr_setting_widget.cpp" line="716"/>
         <source>No download URL for this model.</source>
         <translation>此模型无下载链接。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="700"/>
+        <location filename="asr_setting_widget.cpp" line="723"/>
         <source>Import Model Archive</source>
         <translation>导入模型压缩包</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="702"/>
+        <location filename="asr_setting_widget.cpp" line="725"/>
         <source>Archives (%1);;All files (*)</source>
         <translation>压缩包 (%1);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="711"/>
+        <location filename="asr_setting_widget.cpp" line="734"/>
         <source>Invalid File</source>
         <translation>无效文件</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="712"/>
+        <location filename="asr_setting_widget.cpp" line="735"/>
         <source>The selected file must be named:
 %1
 
@@ -493,29 +501,29 @@ Selected:
 %2</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="729"/>
+        <location filename="asr_setting_widget.cpp" line="752"/>
         <source>Failed to import model archive.</source>
         <translation>导入模型压缩包失败。</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="743"/>
+        <location filename="asr_setting_widget.cpp" line="766"/>
         <source>ASR model imported: %1</source>
         <translation>ASR 模型已导入：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="612"/>
+        <location filename="asr_setting_widget.cpp" line="618"/>
         <source>ASR model download failed: %1</source>
         <translation>ASR 模型下载失败：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="616"/>
-        <location filename="asr_setting_widget.cpp" line="734"/>
+        <location filename="asr_setting_widget.cpp" line="622"/>
+        <location filename="asr_setting_widget.cpp" line="757"/>
         <source>Extracting ASR model: %1</source>
         <translation>正在解压 ASR 模型：%1</translation>
     </message>
     <message>
-        <location filename="asr_setting_widget.cpp" line="622"/>
-        <location filename="asr_setting_widget.cpp" line="739"/>
+        <location filename="asr_setting_widget.cpp" line="628"/>
+        <location filename="asr_setting_widget.cpp" line="762"/>
         <source>ASR model extraction failed: %1</source>
         <translation>ASR 模型解压失败：%1</translation>
     </message>
@@ -597,54 +605,54 @@ Selected:
 <context>
     <name>talkinput::MainWindow</name>
     <message>
-        <location filename="main_window.cpp" line="385"/>
+        <location filename="main_window.cpp" line="353"/>
         <source>About TalkInput</source>
         <translation>关于 TalkInput</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="386"/>
+        <location filename="main_window.cpp" line="354"/>
         <source>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;Local voice input method.&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Commit&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Date&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
         <translation>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;本地语音输入法。&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;提交&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;日期&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="185"/>
+        <location filename="main_window.cpp" line="162"/>
         <source>Show Window</source>
         <translation>显示窗口</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="188"/>
+        <location filename="main_window.cpp" line="165"/>
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="244"/>
+        <location filename="main_window.cpp" line="221"/>
         <source>Speech recognition</source>
         <translation>语音识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="211"/>
-        <location filename="main_window.cpp" line="212"/>
+        <location filename="main_window.cpp" line="188"/>
+        <location filename="main_window.cpp" line="189"/>
         <source>Stop recognition</source>
         <translation>停止识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="214"/>
+        <location filename="main_window.cpp" line="191"/>
         <source>Listening...</source>
         <translation>正在听写...</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="215"/>
+        <location filename="main_window.cpp" line="192"/>
         <source>Listening — %1</source>
         <translation>正在听写 — %1</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="220"/>
-        <location filename="main_window.cpp" line="221"/>
+        <location filename="main_window.cpp" line="197"/>
+        <location filename="main_window.cpp" line="198"/>
         <source>Start recognition</source>
         <translation>开始识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="245"/>
+        <location filename="main_window.cpp" line="222"/>
         <source>Speech recognition model is still loading.
 
 Please wait for it to load, then try again.</source>
@@ -653,48 +661,48 @@ Please wait for it to load, then try again.</source>
 请等待加载完成后重试。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="223"/>
+        <location filename="main_window.cpp" line="200"/>
         <source>No speech recognition model selected</source>
         <translation>未选择语音识别模型</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="226"/>
+        <location filename="main_window.cpp" line="203"/>
         <source>Speech recognition model: %1</source>
         <translation>语音识别模型：%1</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="256"/>
+        <location filename="main_window.cpp" line="233"/>
         <source>Select Audio File</source>
         <translation>选择音频文件</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="257"/>
+        <location filename="main_window.cpp" line="234"/>
         <source>Audio Files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;All Files (*)</source>
         <translation>音频文件 (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="263"/>
+        <location filename="main_window.cpp" line="240"/>
         <source>Decoding audio...</source>
         <translation>正在解码音频...</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="268"/>
+        <location filename="main_window.cpp" line="245"/>
         <source>Failed to decode audio file.</source>
         <translation>音频文件解码失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="284"/>
+        <location filename="main_window.cpp" line="261"/>
         <source>Recognition sent to ASR engine</source>
         <translation>已发送到 ASR 引擎</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="328"/>
-        <location filename="main_window.cpp" line="339"/>
+        <location filename="main_window.cpp" line="305"/>
+        <location filename="main_window.cpp" line="316"/>
         <source>Reset Settings</source>
         <translation>重置设置</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="329"/>
+        <location filename="main_window.cpp" line="306"/>
         <source>Reset all user settings in this file to bundled defaults?
 
 %1
@@ -707,12 +715,12 @@ Model downloads and recognition history will not be deleted.</source>
 模型下载和识别历史不会被删除。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="340"/>
+        <location filename="main_window.cpp" line="317"/>
         <source>Failed to reset settings.</source>
         <translation>重置设置失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="373"/>
+        <location filename="main_window.cpp" line="341"/>
         <source>Settings reset to defaults</source>
         <translation>设置已重置为默认</translation>
     </message>
@@ -720,17 +728,17 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::SpeechRecognizer</name>
     <message>
-        <location filename="speech_recognizer.cpp" line="181"/>
+        <location filename="speech_recognizer.cpp" line="153"/>
         <source>No microphone available</source>
         <translation>没有可用的麦克风</translation>
     </message>
     <message>
-        <location filename="speech_recognizer.cpp" line="196"/>
+        <location filename="speech_recognizer.cpp" line="168"/>
         <source>Microphone format not supported.</source>
         <translation>麦克风格式不支持。</translation>
     </message>
     <message>
-        <location filename="speech_recognizer.cpp" line="204"/>
+        <location filename="speech_recognizer.cpp" line="176"/>
         <source>Failed to start microphone</source>
         <translation>启动麦克风失败</translation>
     </message>
@@ -738,35 +746,41 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::VoiceInputController</name>
     <message>
-        <location filename="voice_input_controller.cpp" line="150"/>
-        <location filename="voice_input_controller.cpp" line="400"/>
+        <location filename="voice_input_controller.cpp" line="151"/>
+        <location filename="voice_input_controller.cpp" line="423"/>
         <source>Speech recognition model not loaded yet. Please wait or select a model.</source>
         <translation>语音识别模型尚未加载。请等待或选择模型。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="142"/>
-        <location filename="voice_input_controller.cpp" line="317"/>
-        <location filename="voice_input_controller.cpp" line="391"/>
+        <location filename="voice_input_controller.cpp" line="143"/>
+        <location filename="voice_input_controller.cpp" line="324"/>
+        <location filename="voice_input_controller.cpp" line="414"/>
         <source>Recognition is still processing.</source>
         <translation>识别仍在处理中。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="267"/>
+        <location filename="voice_input_controller.cpp" line="269"/>
         <source>Recording...</source>
         <translation>正在录音...</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="284"/>
+        <location filename="voice_input_controller.cpp" line="275"/>
+        <location filename="voice_input_controller.cpp" line="360"/>
+        <source>Recognizing...</source>
+        <translation>识别中...</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="287"/>
         <source>Post-processing recognition result...</source>
         <translation>正在后处理识别结果...</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="367"/>
+        <location filename="voice_input_controller.cpp" line="390"/>
         <source>Speech recognition model load failed: %1</source>
         <translation>语音识别模型加载失败：%1</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="278"/>
+        <location filename="voice_input_controller.cpp" line="281"/>
         <source>Reading focused input context...</source>
         <translation>正在读取聚焦输入上下文...</translation>
     </message>
