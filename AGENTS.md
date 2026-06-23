@@ -25,7 +25,7 @@ Then search unfinished items in `src/TalkInput_zh.ts` and update them.
 - 源代码文件本身就是utf8格式，直接使用 utf8 字符，禁止转义。
 - 所有权定义清晰的场景下，使用 unique_ptr 表示拥有所有权的指针，裸指针默认无所有权；复杂场景下可以使用 shared_ptr/weak_ptr 。
 - 使用 clang-foramt 格式化 .h/.cpp 文件，不要使用它格式化 CMakeLists.txt 
-- Every modification must be committed immediately after a successful compile.
+- Every modification must be staged immediately after a successful compile; and ask user to confirm commit.
 
 ## Icons
 
