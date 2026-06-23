@@ -65,8 +65,6 @@ bool TesseractOcrRecognizer::ensureInitialized()
 
 QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
 {
-    spdlog::stopwatch sw;
-
     if (image.isNull()) {
         SPDLOG_DEBUG("Tesseract OCR: skipped empty image");
         return {};
@@ -76,8 +74,19 @@ QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
         return {};
     }
 
+    // Scale down large captures by 2x to balance speed and accuracy
+    constexpr int scaleThreshold = 1200;
+    QImage workImage = image;
+    if (workImage.width() > scaleThreshold || workImage.height() > scaleThreshold) {
+        workImage = workImage.scaled(workImage.size() / 2, Qt::KeepAspectRatio,
+                                     Qt::SmoothTransformation);
+        SPDLOG_DEBUG("Tesseract OCR: scaled from {}x{} to {}x{}",
+                     image.width(), image.height(),
+                     workImage.width(), workImage.height());
+    }
+
     // Convert QImage to Pix (leptonica)
-    const QImage rgbImage = image.convertToFormat(QImage::Format_RGB32);
+    const QImage rgbImage = workImage.convertToFormat(QImage::Format_RGB32);
     const int bytesPerPixel = 4;
     const int width = rgbImage.width();
     const int height = rgbImage.height();
@@ -104,7 +113,10 @@ QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
     m_api->SetImage(pix);
 
     // Get recognized text
+    spdlog::stopwatch sw;
     const char *utf8Text = m_api->GetUTF8Text();
+    SPDLOG_DEBUG("Tesseract OCR: took {:.3f} sec", sw);
+
     QString result;
     if (utf8Text) {
         result = QString::fromUtf8(utf8Text).trimmed();
@@ -113,9 +125,6 @@ QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
 
     m_api->Clear();
     pixDestroy(&pix);
-
-    SPDLOG_DEBUG("Tesseract OCR: took {:.3f} sec, result length={}",
-                 sw.elapsed().count(), result.size());
 
     if (result.isEmpty()) {
         SPDLOG_WARN("Tesseract OCR: empty result");
