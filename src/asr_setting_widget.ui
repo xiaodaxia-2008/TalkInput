@@ -467,7 +467,7 @@
         <string>Use clipboard to paste text</string>
        </property>
        <property name="text">
-        <string>Clipboard</string>
+        <string>Use Clipboard</string>
        </property>
       </widget>
      </item>
@@ -477,7 +477,7 @@
         <string>Copy result to clipboard</string>
        </property>
        <property name="text">
-        <string>Copy</string>
+        <string>Copy to Clipboard</string>
        </property>
       </widget>
      </item>
@@ -487,7 +487,7 @@
         <string>Restore original clipboard content after paste</string>
        </property>
        <property name="text">
-        <string>Restore</string>
+        <string>Restore Clipboard</string>
        </property>
       </widget>
      </item>
@@ -497,7 +497,17 @@
         <string>Save OCR context screenshot locally for debugging</string>
        </property>
        <property name="text">
-        <string>OCR Screenshot</string>
+        <string>Save Screenshot</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="saveAsrAudioCheck">
+       <property name="toolTip">
+        <string>Save recorded audio to disk for debugging</string>
+       </property>
+       <property name="text">
+        <string>Save Audio</string>
        </property>
       </widget>
      </item>

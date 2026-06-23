@@ -136,6 +136,11 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 appConfig().settings.saveOcrScreenshot = checked;
                 markConfigDirty();
             });
+    connect(m_ui->saveAsrAudioCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.saveAsrAudio = checked;
+                markConfigDirty();
+            });
 
     updateUiFromConfig();
 }
@@ -194,6 +199,7 @@ void AsrSettingWidget::updateUiFromConfig()
         const QSignalBlocker bc2(m_ui->copyToClipboardCheck);
         const QSignalBlocker bc3(m_ui->restoreClipboardCheck);
         const QSignalBlocker bc4(m_ui->saveOcrScreenshotCheck);
+        const QSignalBlocker bc5(m_ui->saveAsrAudioCheck);
         m_ui->useClipboardCheck->setChecked(appConfig().settings.useClipboard);
         m_ui->copyToClipboardCheck->setChecked(
             appConfig().settings.copyToClipboard);
@@ -201,6 +207,7 @@ void AsrSettingWidget::updateUiFromConfig()
             appConfig().settings.restoreClipboard);
         m_ui->saveOcrScreenshotCheck->setChecked(
             appConfig().settings.saveOcrScreenshot);
+        m_ui->saveAsrAudioCheck->setChecked(appConfig().settings.saveAsrAudio);
     }
 
     auto task =

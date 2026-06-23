@@ -1,4 +1,5 @@
 #include "voice_overlay.h"
+#include "app_config.h"
 #include "scroll_text_display.h"
 
 #include <QCursor>
@@ -22,6 +23,7 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TransparentForMouseEvents);
+    setWindowOpacity(appConfig().settings.overlayOpacity);
     setFixedHeight(72);
 
     auto *container = new QWidget(this);

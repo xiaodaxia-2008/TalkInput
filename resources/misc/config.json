@@ -14,7 +14,10 @@
     "useClipboard": true,
     "copyToClipboard": false,
     "restoreClipboard": true,
-    "saveOcrScreenshot": false
+    "saveOcrScreenshot": false,
+    "saveAsrAudio": false,
+    "pasteDelayMs": 200,
+    "overlayOpacity": 0.8
   },
   "asrPresets": {
     "streaming-paraformer-bilingual-zh-en-punct-int8": {

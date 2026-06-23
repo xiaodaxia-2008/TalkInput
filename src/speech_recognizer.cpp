@@ -35,8 +35,7 @@ SpeechRecognizer::~SpeechRecognizer()
     stopPunctuation();
 }
 
-std::expected<void, QString>
-SpeechRecognizer::prepareRecognizer()
+std::expected<void, QString> SpeechRecognizer::prepareRecognizer()
 {
     stopPunctuation();
 
@@ -147,6 +146,8 @@ std::expected<void, QString> SpeechRecognizer::startCapture()
         return {};
     }
 
+    m_capturedAudio.clear();
+
     const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
     if (inputDevice.isNull()) {
         SPDLOG_ERROR("No audio input device");
@@ -183,6 +184,7 @@ std::expected<void, QString> SpeechRecognizer::startCapture()
         const QByteArray audioData = m_audioDevice->readAll();
         const QByteArray pcm16 = convertAudioToPcm16(audioData, m_audioFormat);
         if (!pcm16.isEmpty()) {
+            m_capturedAudio.append(pcm16);
             acceptPcm16(pcm16, m_audioFormat.sampleRate(),
                         m_audioFormat.channelCount());
         }
@@ -226,14 +228,12 @@ std::optional<SpeechRecognizer::Type> typeFromString(const QString &str)
 } // namespace
 
 std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-SpeechRecognizer::createFromPreset(const AsrPreset &preset,
-                                   QObject *parent)
+SpeechRecognizer::createFromPreset(const AsrPreset &preset, QObject *parent)
 {
     const auto type = typeFromString(QString::fromStdString(preset.type));
     if (!type) {
-        return std::unexpected(
-            QStringLiteral("Unsupported model type: %1")
-                .arg(QString::fromStdString(preset.type)));
+        return std::unexpected(QStringLiteral("Unsupported model type: %1")
+                                   .arg(QString::fromStdString(preset.type)));
     }
 
     AsrPreset resolved = preset;
@@ -242,27 +242,25 @@ SpeechRecognizer::createFromPreset(const AsrPreset &preset,
         return std::unexpected(QStringLiteral("Model directory not set."));
     }
     const QString modelDir =
-        QDir(appDataDir())
-            .filePath(QStringLiteral("models/%1").arg(dirName));
+        QDir(appDataDir()).filePath(QStringLiteral("models/%1").arg(dirName));
     resolved.resolvedModelDir = modelDir.toStdString();
 
     for (const auto &[key, relative] : preset.files) {
         resolved.resolvedFiles[key] =
-            QDir(modelDir).filePath(QString::fromStdString(relative))
+            QDir(modelDir)
+                .filePath(QString::fromStdString(relative))
                 .toStdString();
     }
 
     if (preset.hotwordsSupport) {
         QStringList lines;
         for (const auto &item : appConfig().settings.hotwords) {
-            const QString line =
-                QString::fromStdString(item).trimmed();
+            const QString line = QString::fromStdString(item).trimmed();
             if (!line.isEmpty()) {
                 lines.append(line);
             }
         }
-        resolved.hotwordsText =
-            lines.join(QLatin1Char('\n')).toStdString();
+        resolved.hotwordsText = lines.join(QLatin1Char('\n')).toStdString();
     }
 
     std::unique_ptr<SpeechRecognizer> r;

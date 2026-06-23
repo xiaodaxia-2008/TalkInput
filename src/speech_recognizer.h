@@ -36,8 +36,7 @@ public:
     explicit SpeechRecognizer(QObject *parent = nullptr);
     ~SpeechRecognizer() override;
 
-    virtual std::expected<void, QString>
-    start() = 0;
+    virtual std::expected<void, QString> start() = 0;
 
     virtual void stop() = 0;
 
@@ -59,17 +58,28 @@ public:
     bool isCaptureRunning() const;
 
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-    createFromPreset(const AsrPreset &preset,
-                     QObject *parent = nullptr);
+    createFromPreset(const AsrPreset &preset, QObject *parent = nullptr);
 
-    const AsrPreset &preset() const { return m_preset; }
+    const AsrPreset &preset() const
+    {
+        return m_preset;
+    }
+
+    QByteArray takeCapturedAudio()
+    {
+        return std::move(m_capturedAudio);
+    }
+
+    const QAudioFormat &capturedAudioFormat() const
+    {
+        return m_audioFormat;
+    }
 
 signals:
     void resultChanged(const QString &text, bool isFinal);
 
 protected:
-    std::expected<void, QString>
-    prepareRecognizer();
+    std::expected<void, QString> prepareRecognizer();
     void stopPunctuation();
     QString addPunctuation(const QString &text) const;
 
@@ -85,5 +95,6 @@ private:
     std::unique_ptr<QAudioSource> m_audioSource;
     QIODevice *m_audioDevice = nullptr;
     QAudioFormat m_audioFormat;
+    QByteArray m_capturedAudio;
 };
 } // namespace talkinput

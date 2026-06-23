@@ -4,6 +4,7 @@
 
 #include <QByteArray>
 #include <QCoro/QCoroTask>
+#include <QElapsedTimer>
 #include <QKeySequence>
 #include <QObject>
 
@@ -101,6 +102,7 @@ private:
 
     std::unique_ptr<VoiceOverlay> m_overlay;
     QString m_lastResult;
+    QElapsedTimer m_stopRequestedAt;
     PipelineStage m_stage = PipelineStage::Idle;
     PipelineMode m_pipelineMode = PipelineMode::AsrLlmOcr;
     QPromise<QString> *m_finalResultPromise = nullptr;

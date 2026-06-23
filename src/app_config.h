@@ -111,6 +111,9 @@ struct AppSettings
     bool copyToClipboard = false;
     bool restoreClipboard = true;
     bool saveOcrScreenshot = false;
+    bool saveAsrAudio = false;
+    int pasteDelayMs = 200;
+    double overlayOpacity = 0.8;
 };
 
 struct AppConfigData

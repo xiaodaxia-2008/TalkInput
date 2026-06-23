@@ -13,8 +13,11 @@
 #include <QCoro/QCoroFuture>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QPromise>
 #include <QThread>
+
+#include <ranges>
 
 namespace
 {
@@ -38,6 +41,67 @@ void saveOcrDebugImage(const QImage &image)
     else {
         SPDLOG_WARN("OCR context screenshot save failed: {}", path);
     }
+}
+
+QString hotwordsText()
+{
+    const auto &hotwords = talkinput::appConfig().settings.hotwords;
+    return QString::fromStdString(hotwords | std::views::join_with('\n') |
+                                  std::ranges::to<std::string>());
+}
+
+void saveAsrAudio(const QByteArray &pcm16, int sampleRate, int channels)
+{
+    if (pcm16.isEmpty()) {
+        return;
+    }
+
+    const QString dir = QDir(talkinput::appDataDir()).filePath("asr_audios");
+    QDir().mkpath(dir);
+    const QString timestamp =
+        QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
+    const QString path =
+        QDir(dir).filePath(QString("asr-%1.wav").arg(timestamp));
+
+    const int dataSize = static_cast<int>(pcm16.size());
+    const int fileSize = 36 + dataSize;
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        SPDLOG_WARN("Failed to save ASR audio: {}", path);
+        return;
+    }
+
+    const quint16 audioFormat = 1;
+    const quint16 bitsPerSample = 16;
+    const int byteRate = sampleRate * channels * bitsPerSample / 8;
+    const quint16 blockAlign =
+        static_cast<quint16>(channels * bitsPerSample / 8);
+
+    auto write16 = [&](quint16 v) {
+        file.write(reinterpret_cast<const char *>(&v), 2);
+    };
+    auto write32 = [&](quint32 v) {
+        file.write(reinterpret_cast<const char *>(&v), 4);
+    };
+
+    file.write("RIFF", 4);
+    write32(static_cast<quint32>(fileSize));
+    file.write("WAVE", 4);
+    file.write("fmt ", 4);
+    write32(16);
+    write16(audioFormat);
+    write16(static_cast<quint16>(channels));
+    write32(static_cast<quint32>(sampleRate));
+    write32(static_cast<quint32>(byteRate));
+    write16(blockAlign);
+    write16(bitsPerSample);
+    file.write("data", 4);
+    write32(static_cast<quint32>(dataSize));
+    file.write(pcm16);
+
+    SPDLOG_INFO("ASR audio saved: {} ({} bytes, {}Hz, {}ch)", path, dataSize,
+                sampleRate, channels);
 }
 
 } // namespace
@@ -139,6 +203,7 @@ VoiceInputController::~VoiceInputController()
 
 QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 {
+    const auto &config = appConfig();
     if (m_stage != PipelineStage::Idle) {
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
         co_return;
@@ -202,7 +267,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
             SPDLOG_INFO("OCR context screenshot captured: {}x{}", image.width(),
                         image.height());
 
-            if (appConfig().settings.saveOcrScreenshot) {
+            if (config.settings.saveOcrScreenshot) {
                 saveOcrDebugImage(image);
             }
 
@@ -219,31 +284,44 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     if (llmEnabled) {
         setStage(PipelineStage::Polishing);
         result = co_await m_llmPostProcessor->postProcess(
-            trimmedText, ocrContext, QString::fromStdString([&]() {
-                QStringList lines;
-                for (const auto &item : appConfig().settings.hotwords) {
-                    const QString line = QString::fromStdString(item).trimmed();
-                    if (!line.isEmpty()) {
-                        lines.append(line);
-                    }
-                }
-                return lines.join(QLatin1Char('\n')).toStdString();
-            }()));
+            trimmedText, ocrContext, hotwordsText());
     }
     else {
         result = trimmedText;
+    }
+
+    // ── 4b. Save ASR audio if enabled ───────────────────────────────
+    if (config.settings.saveAsrAudio && m_recognizer) {
+        const QByteArray audio = m_recognizer->takeCapturedAudio();
+        if (!audio.isEmpty()) {
+            const auto &fmt = m_recognizer->capturedAudioFormat();
+            saveAsrAudio(audio, fmt.sampleRate(), fmt.channelCount());
+        }
     }
 
     // ── 5. Commit ─────────────────────────────────────────────────
     {
         const QString committed = result.trimmed();
         if (!committed.isEmpty()) {
-            // Brief delay to let foreground window settle after hotkey release
-            QThread::msleep(150);
-            pasteTextToActiveWindow(committed,
-                                    appConfig().settings.useClipboard,
-                                    appConfig().settings.copyToClipboard,
-                                    appConfig().settings.restoreClipboard);
+            // If the pipeline finished quickly (< pasteDelayMs since stop), the
+            // foreground window may not have settled after the hotkey release.
+            // Give it a brief pause before pasting.
+            if (m_stopRequestedAt.hasExpired(config.settings.pasteDelayMs)) {
+                SPDLOG_DEBUG("Pipeline took long enough (>={}ms), pasting "
+                             "immediately",
+                             config.settings.pasteDelayMs);
+            }
+            else {
+                const auto wait =
+                    config.settings.pasteDelayMs - m_stopRequestedAt.elapsed();
+                SPDLOG_DEBUG("Pipeline finished quickly, waiting {}ms before "
+                             "paste",
+                             wait);
+                QThread::msleep(static_cast<unsigned long>(wait));
+            }
+            pasteTextToActiveWindow(committed, config.settings.useClipboard,
+                                    config.settings.copyToClipboard,
+                                    config.settings.restoreClipboard);
             SPDLOG_INFO("VoiceInputController pasted final text");
             emit finalTextCommitted(committed);
             SPDLOG_INFO("VoiceInputController saved final text to history: {}",
@@ -335,6 +413,7 @@ bool VoiceInputController::startListening()
 
 void VoiceInputController::stopListening()
 {
+    m_stopRequestedAt.start();
     SPDLOG_INFO("VoiceInputController: stop listening");
 
     if (!m_recognizer) {
