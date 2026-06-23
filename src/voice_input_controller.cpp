@@ -9,6 +9,7 @@
 #include "voice_hotkey.h"
 #include "voice_overlay.h"
 
+#include <QApplication>
 #include <QCoro/QCoroFuture>
 #include <QDateTime>
 #include <QDir>
@@ -172,7 +173,8 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     }
 
     // Stage stays Recording while capturing audio.
-    // onResult() transitions to Recognizing when results arrive.
+    // For streaming models: onResult() now shows interim text during Recording.
+    // For offline models: stopListening() transitions to Recognizing before finish().
 
     QPromise<QString> resultPromise;
     resultPromise.start();
@@ -256,20 +258,21 @@ void VoiceInputController::setStage(PipelineStage stage)
 
     switch (stage) {
     case PipelineStage::Idle:
-        SPDLOG_DEBUG("Pipeline stage → Idle");
+        SPDLOG_DEBUG("Pipeline stage \u2192 Idle");
         m_overlay->stopAnimation();
         emit listeningChanged(false);
         break;
     case PipelineStage::Recording:
-        SPDLOG_INFO("Pipeline stage → Recording");
-        m_overlay->setIcon(QStringLiteral("🎙"));
+        SPDLOG_INFO("Pipeline stage \u2192 Recording");
+        m_overlay->setIcon(QStringLiteral("\U0001f399"));
         m_overlay->startAnimation();
         m_overlay->setPreviewText(tr("Recording..."));
         emit listeningChanged(true);
         break;
     case PipelineStage::Recognizing:
-        SPDLOG_INFO("Pipeline stage → Recognizing");
-        m_overlay->setIcon(QStringLiteral("🔊"));
+        SPDLOG_INFO("Pipeline stage \u2192 Recognizing");
+        m_overlay->setIcon(QStringLiteral("\U0001f50a"));
+        m_overlay->setPreviewText(tr("Recognizing..."));
         emit listeningChanged(true);
         break;
     case PipelineStage::ReadingContext:
@@ -301,7 +304,11 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
         return;
     }
 
-    if (m_stage == PipelineStage::Recognizing && text != m_lastResult) {
+    // Show interim results during both Recording and Recognizing stages
+    if ((m_stage == PipelineStage::Recording ||
+         m_stage == PipelineStage::Recognizing) &&
+        text != m_lastResult)
+    {
         m_lastResult = text;
         if (m_overlay) {
             m_overlay->setPreviewText(text);
@@ -325,33 +332,48 @@ void VoiceInputController::stopListening()
 {
     SPDLOG_INFO("VoiceInputController: stop listening");
 
-    if (m_recognizer) {
-        m_recognizer->stopCapture();
-    }
-
-    if (!m_recognizer || !m_recognizer->isRunning()) {
+    if (!m_recognizer) {
+        // No recognizer loaded — resolve empty and go idle
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(QString());
             m_finalResultPromise->finish();
         }
         setStage(PipelineStage::Idle);
+        return;
     }
-    else {
-        setStage(PipelineStage::Recognizing);
-        m_recognizer->finish();
-        // finish() is synchronous — recognition is complete after it returns.
-        // If the recognizer already emitted resultChanged(isFinal=true),
-        // onResult already resolved the promise; otherwise resolve it now
-        // with empty text so the pipeline doesn't hang forever.
-        // Only force Idle when the promise was NOT already resolved by
-        // a real recognition result — otherwise let the pipeline continue.
-        if (m_finalResultPromise && !m_finalResultPromise->isCanceled() &&
-            !m_finalResultPromise->future().isFinished())
-        {
+
+    m_recognizer->stopCapture();
+
+    if (!m_recognizer->isRunning()) {
+        // Recognizer not started (shouldn't happen during pipeline)
+        if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(QString());
             m_finalResultPromise->finish();
-            setStage(PipelineStage::Idle);
         }
+        setStage(PipelineStage::Idle);
+        return;
+    }
+
+    // Transition to Recognizing stage BEFORE the blocking finish() call
+    // so the overlay icon/text update is visible.
+    setStage(PipelineStage::Recognizing);
+    m_overlay->setPreviewText(tr("Recognizing..."));
+    QApplication::processEvents();
+
+    // finish() processes all accumulated audio.
+    // For streaming models this is fast; for offline models it decodes
+    // all audio synchronously (may block briefly for long audio).
+    m_recognizer->finish();
+
+    // finish() should have emitted resultChanged(isFinal=true) which
+    // resolved the promise via onResult(). If not, resolve with empty
+    // to prevent the pipeline from hanging.
+    if (m_finalResultPromise && !m_finalResultPromise->isCanceled() &&
+        !m_finalResultPromise->future().isFinished())
+    {
+        m_finalResultPromise->addResult(QString());
+        m_finalResultPromise->finish();
+        setStage(PipelineStage::Idle);
     }
 }
 

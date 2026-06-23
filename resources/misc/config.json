@@ -5,7 +5,7 @@
     "hotwords": ["TalkInput", "开口输入法"],
     "asrProviderId": "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
     "ocrProviderId": "system-ocr",
-    "llmProviderId": "llama.cpp",
+    "llmProviderId": "deepseek",
     "llmSystemPrompt": "You are a helpful assistant",
     "llmUserPrompt": "请结合输入框附近的上下文与用户热词后处理这段语音识别文本，修改错别字、漏字、口语重叠词语，使之通顺，待处理文本是：\n{{input}}\n\n上下文如下（仅用于判断专有名词、代码、文件名或上下文语义）：\n{{context}}\n\n用户自定义的热词：\n{{hotwords}}",
     "asrHotKeys": "Alt+Q",

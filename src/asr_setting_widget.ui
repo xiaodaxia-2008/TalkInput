@@ -164,35 +164,41 @@
       <property name="spacing">
        <number>8</number>
       </property>
-      <item row="0" column="0">
-       <widget class="QLabel" name="providerFormLabel">
-        <property name="text">
-         <string>Provider</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="providerCombo">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="endpointFormLabel">
-        <property name="text">
-         <string>Endpoint</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <layout class="QHBoxLayout" name="endpointModelRow">
+      <item row="0" column="0" colspan="2">
+       <layout class="QHBoxLayout" name="providerEndpointRow">
         <property name="spacing">
          <number>8</number>
         </property>
+        <item>
+         <widget class="QLabel" name="providerFormLabel">
+          <property name="text">
+           <string>Provider</string>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="providerCombo">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="endpointFormLabel">
+          <property name="text">
+           <string>Endpoint</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="QLineEdit" name="endpointEdit">
           <property name="placeholderText">
@@ -200,10 +206,17 @@
           </property>
          </widget>
         </item>
+       </layout>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <layout class="QHBoxLayout" name="modelApiKeyRow">
+        <property name="spacing">
+         <number>8</number>
+        </property>
         <item>
          <widget class="QLabel" name="llmModelFormLabel">
           <property name="text">
-           <string>Model:</string>
+           <string>Model</string>
           </property>
          </widget>
         </item>
@@ -217,39 +230,39 @@
           </property>
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
+            <horstretch>1</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="apiKeyFormLabel">
+          <property name="text">
+           <string>API Key</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="apiKeyEdit">
+          <property name="echoMode">
+           <enum>QLineEdit::Password</enum>
+          </property>
+          <property name="placeholderText">
+           <string>sk-...</string>
           </property>
          </widget>
         </item>
        </layout>
       </item>
       <item row="2" column="0">
-       <widget class="QLabel" name="apiKeyFormLabel">
-        <property name="text">
-         <string>API Key</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="apiKeyEdit">
-        <property name="echoMode">
-         <enum>QLineEdit::Password</enum>
-        </property>
-        <property name="placeholderText">
-         <string>sk-...</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
        <widget class="QLabel" name="promptFormLabel">
         <property name="text">
          <string>Prompt</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="2" column="1">
        <layout class="QHBoxLayout" name="promptLayout">
         <property name="spacing">
          <number>6</number>
