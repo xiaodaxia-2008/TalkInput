@@ -1,5 +1,6 @@
 #include "ocr_recognizer.h"
 #include "system_ocr_recognizer.h"
+#include "tesseract_ocr_recognizer.h"
 
 #include <QCursor>
 #include <QGuiApplication>
@@ -60,6 +61,9 @@ OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
 {
     if (preset.type == "System") {
         return std::make_unique<SystemOcrRecognizer>(parent);
+    }
+    if (preset.type == "Tesseract") {
+        return std::make_unique<TesseractOcrRecognizer>(parent);
     }
 
     return std::unexpected(

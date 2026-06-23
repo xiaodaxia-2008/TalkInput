@@ -161,6 +161,11 @@
       "id": "system-ocr",
       "name": "System",
       "type": "System"
+    },
+    "tesseract-ocr": {
+      "id": "tesseract-ocr",
+      "name": "Tesseract",
+      "type": "Tesseract"
     }
   }
 }

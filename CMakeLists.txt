@@ -19,6 +19,7 @@ find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network 
 find_package(LibArchive REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Tesseract REQUIRED)
 
 include(FetchContent)
 FetchContent_Declare(QHotkey

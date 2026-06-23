@@ -31,6 +31,8 @@ add_executable(TalkInput WIN32
     ocr_recognizer.cpp
     ocr_recognizer.h
     system_ocr_recognizer.h
+    tesseract_ocr_recognizer.cpp
+    tesseract_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
     log_panel.cpp
@@ -101,6 +103,7 @@ target_link_libraries(TalkInput
     spdlog::spdlog_header_only
     fmt::fmt-header-only
     nlohmann_json::nlohmann_json
+    Tesseract::libtesseract
 )
 
 qcoro_enable_coroutines(TalkInput)
@@ -144,6 +147,15 @@ install(TARGETS TalkInput
 install(DIRECTORY scripts/
     DESTINATION ${CMAKE_INSTALL_BINDIR}/scripts
     COMPONENT Runtime
+)
+
+# Copy tessdata to build output
+add_custom_command(TARGET TalkInput POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+    $<TARGET_FILE_DIR:TalkInput>/tessdata
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${PROJECT_SOURCE_DIR}/resources/tessdata/chi_sim.traineddata
+    $<TARGET_FILE_DIR:TalkInput>/tessdata/chi_sim.traineddata
 )
 
 if(WIN32)

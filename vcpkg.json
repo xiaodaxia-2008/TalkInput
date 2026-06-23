@@ -3,12 +3,11 @@
   "dependencies": [
     {
       "name": "libarchive",
-      "features": [
-        "bzip2"
-      ]
+      "features": ["bzip2"]
     },
     "spdlog",
     "nlohmann-json",
-    "boost-pfr"
+    "boost-pfr",
+    "tesseract"
   ]
 }
