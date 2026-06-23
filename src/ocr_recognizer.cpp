@@ -1,4 +1,5 @@
 #include "ocr_recognizer.h"
+#include "platform_utils.h"
 #include "system_ocr_recognizer.h"
 #include "tesseract_ocr_recognizer.h"
 
@@ -16,36 +17,22 @@ OcrRecognizer::OcrRecognizer(QObject *parent) : QObject(parent)
 
 OcrRecognizer::~OcrRecognizer() = default;
 
-QRect OcrRecognizer::focusedTextInputRect() const
+QImage OcrRecognizer::captureContextImage() const
 {
-    return {};
-}
-
-WId OcrRecognizer::focusedTextInputWindowId() const
-{
-    return 0;
-}
-
-QString OcrRecognizer::focusedTextInputScreenName() const
-{
-    return {};
-}
-
-QImage OcrRecognizer::captureFocusedTextInputImage() const
-{
-    const QString screenName = focusedTextInputScreenName();
-    QScreen *screen = nullptr;
-    if (!screenName.isEmpty()) {
-        for (QScreen *s : QGuiApplication::screens()) {
-            if (s && s->name().compare(screenName, Qt::CaseInsensitive) == 0) {
-                screen = s;
-                break;
-            }
-        }
+    // 1. Get the native window under the cursor
+    const WId targetWid = nativeWindowAtCursor();
+    if (!targetWid) {
+        return {};
     }
-    if (!screen) {
-        screen = QGuiApplication::screenAt(QCursor::pos());
+
+    // 2. Get the window's bounding rect in virtual desktop coordinates
+    const QRect windowRect = nativeWindowRect(targetWid);
+    if (windowRect.isEmpty()) {
+        return {};
     }
+
+    // 3. Find which physical screen the window is on
+    QScreen *screen = QGuiApplication::screenAt(windowRect.center());
     if (!screen) {
         screen = QGuiApplication::primaryScreen();
     }
@@ -53,7 +40,21 @@ QImage OcrRecognizer::captureFocusedTextInputImage() const
         return {};
     }
 
-    return screen->grabWindow(0).toImage();
+    // 4. Capture the full screen of that display
+    const QImage fullScreen = screen->grabWindow(0).toImage();
+    if (fullScreen.isNull()) {
+        return {};
+    }
+
+    // 5. Convert absolute coords to screen-relative and crop
+    const QPoint screenTopLeft = screen->geometry().topLeft();
+    const QRect relativeRect(
+        windowRect.x() - screenTopLeft.x(),
+        windowRect.y() - screenTopLeft.y(),
+        windowRect.width(),
+        windowRect.height());
+
+    return fullScreen.copy(relativeRect);
 }
 
 std::expected<std::unique_ptr<OcrRecognizer>, QString>

@@ -22,7 +22,6 @@ public:
     ~TesseractOcrRecognizer() override;
 
     bool isAvailable() const override;
-    QImage captureFocusedTextInputImage() const override;
     QCoro::Task<QString> recognizeText(const QImage &image) override;
 
 private:

@@ -13,7 +13,8 @@
     "asrLlmOcrHotKeys": "Alt+E",
     "useClipboard": true,
     "copyToClipboard": false,
-    "restoreClipboard": true
+    "restoreClipboard": true,
+    "saveOcrScreenshot": false
   },
   "asrPresets": {
     "streaming-paraformer-bilingual-zh-en-punct-int8": {

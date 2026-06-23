@@ -6,6 +6,8 @@ Requires C++23, Qt6 (Widgets/Core/Gui/Multimedia/Network/Svg/Sql), libarchive (v
 
 The CMake module `cmake/SherpaOnnxRelease.cmake` auto-extracts the matching Debug/Release archive into `build/third_parties/sherpa-onnx/`. If the archive is missing, configure fails with a clear message.
 
+kill the `build/bin/TalkInput` process if it's locked before build.
+
 ```powershell
 pwsh msvc.ps1 cmake --preset release --fresh
 pwsh msvc.ps1 cmake --build build

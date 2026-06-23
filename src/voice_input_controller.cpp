@@ -3,7 +3,7 @@
 #include "llm_post_processor.h"
 #include "logging.h"
 #include "ocr_recognizer.h"
-#include "paste_text.h"
+#include "platform_utils.h"
 #include "speech_recognizer.h"
 #include "utils.h"
 #include "voice_hotkey.h"
@@ -24,20 +24,18 @@ void saveOcrDebugImage(const QImage &image)
         return;
     }
 
-    const QString dir = QDir(talkinput::appDataDir()).filePath("ocr");
+    const QString dir = QDir(talkinput::appDataDir()).filePath("ocr_images");
     QDir().mkpath(dir);
     const QString timestamp =
         QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
     const QString path =
         QDir(dir).filePath(QString("ocr-context-%1.png").arg(timestamp));
-    const QString latestPath = QDir(dir).filePath("ocr-context-latest.png");
 
     if (image.save(path, "PNG")) {
-        image.save(latestPath, "PNG");
-        SPDLOG_DEBUG("OCR context debug screenshot saved: {}", path);
+        SPDLOG_DEBUG("OCR context screenshot saved: {}", path);
     }
     else {
-        SPDLOG_WARN("OCR context debug screenshot save failed: {}", path);
+        SPDLOG_WARN("OCR context screenshot save failed: {}", path);
     }
 }
 
@@ -196,10 +194,14 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     if (ocrEnabled && m_ocrRecognizer && m_ocrRecognizer->isAvailable()) {
         setStage(PipelineStage::ReadingContext);
 
-        const QImage image = m_ocrRecognizer->captureFocusedTextInputImage();
+        const QImage image = m_ocrRecognizer->captureContextImage();
         if (!image.isNull()) {
             SPDLOG_INFO("OCR context screenshot captured: {}x{}",
                         image.width(), image.height());
+
+            if (appConfig().settings.saveOcrScreenshot) {
+                saveOcrDebugImage(image);
+            }
 
             ocrContext = co_await m_ocrRecognizer->recognizeText(image);
             SPDLOG_INFO("OCR context result received: {}", ocrContext);

@@ -14,24 +14,9 @@ bool SystemOcrRecognizer::isAvailable() const
     return false;
 }
 
-QRect SystemOcrRecognizer::focusedTextInputRect() const
+QImage SystemOcrRecognizer::captureContextImage() const
 {
-    return {};
-}
-
-WId SystemOcrRecognizer::focusedTextInputWindowId() const
-{
-    return 0;
-}
-
-QString SystemOcrRecognizer::focusedTextInputScreenName() const
-{
-    return {};
-}
-
-QImage SystemOcrRecognizer::captureFocusedTextInputImage() const
-{
-    return {};
+return {};
 }
 
 QCoro::Task<QString> SystemOcrRecognizer::recognizeText(const QImage &image)

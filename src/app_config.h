@@ -110,6 +110,7 @@ struct AppSettings
     bool useClipboard = true;
     bool copyToClipboard = false;
     bool restoreClipboard = true;
+    bool saveOcrScreenshot = false;
 };
 
 struct AppConfigData

@@ -51,7 +51,7 @@ add_executable(TalkInput WIN32
     recognizers/sense_voice_speech_recognizer.h
     recognizers/funasr_nano_speech_recognizer.cpp
     recognizers/funasr_nano_speech_recognizer.h
-    paste_text.h
+    platform_utils.h
     scroll_text_display.h
     scroll_text_display.cpp
     utils.h
@@ -111,17 +111,17 @@ qcoro_enable_coroutines(TalkInput)
 if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore imm32)
     target_sources(TalkInput PRIVATE
-        windows/paste_text.cpp
+        windows/platform_utils.cpp
         windows/system_ocr_recognizer.cpp
     )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE
-        macos/paste_text.cpp
+        macos/platform_utils.cpp
         macos/system_ocr_recognizer.cpp
     )
 elseif(UNIX)
     target_sources(TalkInput PRIVATE
-        linux/paste_text.cpp
+        linux/platform_utils.cpp
         linux/system_ocr_recognizer.cpp
     )
 endif()

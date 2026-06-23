@@ -13,10 +13,7 @@ public:
     explicit SystemOcrRecognizer(QObject *parent = nullptr);
 
     bool isAvailable() const override;
-    QRect focusedTextInputRect() const override;
-    WId focusedTextInputWindowId() const override;
-    QString focusedTextInputScreenName() const override;
-    QImage captureFocusedTextInputImage() const override;
+    QImage captureContextImage() const override;
     QCoro::Task<QString> recognizeText(const QImage &image) override;
 };
 

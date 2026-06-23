@@ -35,27 +35,6 @@
 namespace
 {
 
-constexpr int MaxContextWidth = 900;
-constexpr int MaxContextHeight = 360;
-
-QRect rectFromWinRect(const RECT &rect)
-{
-    return QRect(QPoint(rect.left, rect.top), QPoint(rect.right, rect.bottom))
-        .normalized();
-}
-
-QRect contextRectAround(const QRect &rect)
-{
-    if (rect.isEmpty()) {
-        return {};
-    }
-
-    const QPoint center = rect.center();
-    return QRect(center.x() - MaxContextWidth / 2,
-                 center.y() - MaxContextHeight / 2, MaxContextWidth,
-                 MaxContextHeight);
-}
-
 QImage imageFromHbitmap(HBITMAP bitmap, int width, int height)
 {
     if (!bitmap || width <= 0 || height <= 0) {
@@ -244,44 +223,6 @@ HWND focusedInputWindow()
     return hwnd;
 }
 
-QRect focusedRectFromUiAutomation()
-{
-    initComApartment();
-
-    IUIAutomation *automation = nullptr;
-    HRESULT hr =
-        CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
-                         IID_PPV_ARGS(&automation));
-    if (FAILED(hr) || !automation) {
-        SPDLOG_DEBUG("OCR: UI Automation unavailable: 0x{:08x}",
-                     static_cast<unsigned>(hr));
-        return {};
-    }
-
-    IUIAutomationElement *element = nullptr;
-    hr = automation->GetFocusedElement(&element);
-    releaseCom(automation);
-    if (FAILED(hr) || !element) {
-        SPDLOG_DEBUG("OCR: UI Automation focused element unavailable: "
-                     "0x{:08x}",
-                     static_cast<unsigned>(hr));
-        return {};
-    }
-
-    RECT rect = {};
-    hr = element->get_CurrentBoundingRectangle(&rect);
-    releaseCom(element);
-    if (FAILED(hr) || IsRectEmpty(&rect)) {
-        SPDLOG_DEBUG("OCR: UI Automation focused element has no bounds: "
-                     "0x{:08x}",
-                     static_cast<unsigned>(hr));
-        return {};
-    }
-
-    SPDLOG_DEBUG("OCR: using UI Automation focused element rect for context");
-    return contextRectAround(rectFromWinRect(rect));
-}
-
 void initWinrtApartment()
 {
     thread_local bool initialized = false;
@@ -401,15 +342,6 @@ QString recognizeWindowsText(QImage image)
         QString::fromStdWString(std::wstring(textHstring)).trimmed();
     SPDLOG_DEBUG("OCR: Windows OCR result: {}", text);
 
-    if (text.isEmpty()) {
-        // Save the temp BMP for debugging when OCR produced empty
-        const QString debugPath = QDir(talkinput::appDataDir())
-                                      .filePath("ocr/ocr-debug-failed.bmp");
-        QDir().mkpath(QFileInfo(debugPath).absolutePath());
-        image.save(debugPath, "BMP");
-        SPDLOG_WARN("OCR: empty result; debug image saved: {}", debugPath);
-    }
-
     return text;
 }
 
@@ -427,77 +359,7 @@ bool SystemOcrRecognizer::isAvailable() const
     return true;
 }
 
-QRect SystemOcrRecognizer::focusedTextInputRect() const
-{
-    const QRect uiAutomationRect = focusedRectFromUiAutomation();
-    if (!uiAutomationRect.isEmpty()) {
-        return uiAutomationRect;
-    }
-
-    HWND foreground = GetForegroundWindow();
-    if (!foreground) {
-        SPDLOG_DEBUG("OCR: no foreground window");
-        return {};
-    }
-
-    const DWORD threadId = GetWindowThreadProcessId(foreground, nullptr);
-    GUITHREADINFO info = {};
-    info.cbSize = sizeof(info);
-    if (GetGUIThreadInfo(threadId, &info)) {
-        if (info.hwndCaret && !IsRectEmpty(&info.rcCaret)) {
-            RECT caretRect = info.rcCaret;
-            MapWindowPoints(info.hwndCaret, nullptr,
-                            reinterpret_cast<POINT *>(&caretRect), 2);
-            SPDLOG_DEBUG("OCR: using caret rect for focused context");
-            return contextRectAround(rectFromWinRect(caretRect));
-        }
-
-        if (info.hwndFocus) {
-            RECT focusRect = {};
-            if (GetWindowRect(info.hwndFocus, &focusRect) &&
-                !IsRectEmpty(&focusRect))
-            {
-                SPDLOG_DEBUG("OCR: using focused window rect for context");
-                return contextRectAround(rectFromWinRect(focusRect));
-            }
-        }
-    }
-
-    SPDLOG_DEBUG("OCR: no focused text rect; caller should use full-screen "
-                 "fallback");
-
-    return {};
-}
-
-WId SystemOcrRecognizer::focusedTextInputWindowId() const
-{
-    return reinterpret_cast<WId>(focusedInputWindow());
-}
-
-QString SystemOcrRecognizer::focusedTextInputScreenName() const
-{
-    const HWND hwnd = focusedInputWindow();
-    if (!hwnd) {
-        return {};
-    }
-
-    const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    if (!monitor) {
-        return {};
-    }
-
-    MONITORINFOEXW info = {};
-    info.cbSize = sizeof(info);
-    if (!GetMonitorInfoW(monitor, &info)) {
-        return {};
-    }
-
-    const QString name = QString::fromWCharArray(info.szDevice);
-    SPDLOG_DEBUG("OCR: focused input monitor: {}", name);
-    return name;
-}
-
-QImage SystemOcrRecognizer::captureFocusedTextInputImage() const
+QImage SystemOcrRecognizer::captureContextImage() const
 {
     const HWND hwnd = focusedInputWindow();
     if (!hwnd) {

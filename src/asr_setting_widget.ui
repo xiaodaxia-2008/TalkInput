@@ -492,6 +492,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="saveOcrScreenshotCheck">
+       <property name="toolTip">
+        <string>Save OCR context screenshot locally for debugging</string>
+       </property>
+       <property name="text">
+        <string>OCR Screenshot</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="bottomSpacer">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>

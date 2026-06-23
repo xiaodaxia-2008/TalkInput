@@ -24,10 +24,11 @@ public:
     ~OcrRecognizer() override;
 
     virtual bool isAvailable() const = 0;
-    virtual QRect focusedTextInputRect() const;
-    virtual WId focusedTextInputWindowId() const;
-    virtual QString focusedTextInputScreenName() const;
-    virtual QImage captureFocusedTextInputImage() const;
+
+    /// Captures an image of the context under the cursor (the window at the
+    /// cursor position) using full-screen grab + crop for reliability.
+    virtual QImage captureContextImage() const;
+
     virtual QCoro::Task<QString> recognizeText(const QImage &image) = 0;
 
     static std::expected<std::unique_ptr<OcrRecognizer>, QString>

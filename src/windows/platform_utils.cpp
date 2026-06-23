@@ -1,4 +1,4 @@
-#include "../paste_text.h"
+#include "../platform_utils.h"
 
 #include <QClipboard>
 #include <QApplication>
@@ -194,6 +194,37 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
             clipboard->setText(text);
         }
     }
+}
+
+WId nativeWindowAtCursor()
+{
+    POINT pt;
+    GetCursorPos(&pt);
+    HWND hwnd = WindowFromPoint(pt);
+    return reinterpret_cast<WId>(hwnd);
+}
+
+QRect nativeWindowRect(WId wid)
+{
+    const HWND hwnd = reinterpret_cast<HWND>(wid);
+    if (!hwnd) {
+        return {};
+    }
+
+    // Get the top-level ancestor (the actual window frame, not a child control)
+    HWND root = GetAncestor(hwnd, GA_ROOT);
+    if (!root) {
+        root = hwnd;
+    }
+
+    RECT rect = {};
+    if (!GetWindowRect(root, &rect)) {
+        return {};
+    }
+
+    return QRect(rect.left, rect.top,
+                 rect.right - rect.left,
+                 rect.bottom - rect.top);
 }
 
 } // namespace talkinput

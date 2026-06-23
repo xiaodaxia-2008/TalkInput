@@ -128,6 +128,10 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
         appConfig().settings.restoreClipboard = checked;
         markConfigDirty();
     });
+    connect(m_ui->saveOcrScreenshotCheck, &QCheckBox::toggled, this, [](bool checked) {
+        appConfig().settings.saveOcrScreenshot = checked;
+        markConfigDirty();
+    });
 
     updateUiFromConfig();
 }
@@ -185,9 +189,11 @@ void AsrSettingWidget::updateUiFromConfig()
         const QSignalBlocker bc1(m_ui->useClipboardCheck);
         const QSignalBlocker bc2(m_ui->copyToClipboardCheck);
         const QSignalBlocker bc3(m_ui->restoreClipboardCheck);
+        const QSignalBlocker bc4(m_ui->saveOcrScreenshotCheck);
         m_ui->useClipboardCheck->setChecked(appConfig().settings.useClipboard);
         m_ui->copyToClipboardCheck->setChecked(appConfig().settings.copyToClipboard);
         m_ui->restoreClipboardCheck->setChecked(appConfig().settings.restoreClipboard);
+        m_ui->saveOcrScreenshotCheck->setChecked(appConfig().settings.saveOcrScreenshot);
     }
 
     auto task =
