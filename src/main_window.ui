@@ -49,10 +49,20 @@
         <property name="bottomMargin">0</property>
        </layout>
       </widget>
+      <widget class="QWidget" name="logTab">
+       <attribute name="title"><string>Log</string></attribute>
+       <layout class="QVBoxLayout" name="logLayout">
+        <property name="spacing">0</property>
+        <property name="leftMargin">0</property>
+        <property name="topMargin">0</property>
+        <property name="rightMargin">0</property>
+        <property name="bottomMargin">0</property>
+       </layout>
+      </widget>
      </widget>
-    </item>
-   </layout>
-  </widget>
+     </item>
+    </layout>
+   </widget>
   <widget class="QToolBar" name="recognitionToolBar">
    <property name="windowTitle">
     <string>Recognition</string>

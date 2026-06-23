@@ -35,6 +35,8 @@ add_executable(TalkInput WIN32
     system_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
+    log_panel.cpp
+    log_panel.h
     logging.cpp
     logging.h
     recognition_history.cpp

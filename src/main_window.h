@@ -20,6 +20,7 @@ namespace talkinput
 
 class AsrSettingWidget;
 class HistoryWidget;
+class LogPanel;
 
 class MainWindow final : public QMainWindow
 {
@@ -53,6 +54,7 @@ private:
     std::unique_ptr<Ui::MainWindow> m_ui;
     AsrSettingWidget *m_asrSettingWidget = nullptr;
     HistoryWidget *m_historyWidget = nullptr;
+    LogPanel *m_logPanel = nullptr;
     VoiceInputController *m_voiceInputController = nullptr;
     RecognitionHistory m_history;
 

@@ -12,6 +12,8 @@
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <QPlainTextEdit>
+#include <spdlog/sinks/qt_sinks.h>
 
 namespace talkinput
 {
@@ -85,6 +87,25 @@ void installStatusBarLogger(QStatusBar *statusBar)
     logger->sinks().push_back(getFileSink());
     logger->flush_on(spdlog::level::info);
     spdlog::register_or_replace(logger);
+}
+
+void installLogPanelSink(QPlainTextEdit *textEdit)
+{
+    auto sink = std::make_shared<spdlog::sinks::qt_sink_mt>(
+        textEdit, "appendPlainText");
+    sink->set_pattern("%M:%S [%l] %v");
+    sink->set_level(spdlog::level::debug);
+
+    // Attach to all registered loggers
+    spdlog::apply_all([&sink](std::shared_ptr<spdlog::logger> logger) {
+        logger->sinks().push_back(sink);
+    });
+
+    // Also attach to the default logger (safe even if already registered)
+    auto defaultLogger = spdlog::default_logger();
+    if (defaultLogger) {
+        defaultLogger->sinks().push_back(sink);
+    }
 }
 
 void initLogger()

@@ -23,6 +23,7 @@
     SPDLOG_LOGGER_CALL(spdlog::get("statusbar"), spdlog::level::critical,      \
                        __VA_ARGS__)
 
+class QPlainTextEdit;
 class QStatusBar;
 
 namespace talkinput
@@ -31,5 +32,7 @@ namespace talkinput
 void installStatusBarLogger(QStatusBar *statusBar);
 
 void initLogger();
+
+void installLogPanelSink(QPlainTextEdit *textEdit);
 
 } // namespace talkinput

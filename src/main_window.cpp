@@ -3,6 +3,7 @@
 #include "asr_setting_widget.h"
 #include "audio_utils.h"
 #include "history_widget.h"
+#include "log_panel.h"
 #include "logging.h"
 #include "ui_main_window.h"
 #include "utils.h"
@@ -58,7 +59,8 @@ void MainWindow::changeEvent(QEvent *event)
     }
 
     m_ui->retranslateUi(this);
-    updateControls(m_voiceInputController && m_voiceInputController->isListening());
+    updateControls(m_voiceInputController &&
+                   m_voiceInputController->isListening());
 }
 
 void MainWindow::setupUi()
@@ -80,6 +82,11 @@ void MainWindow::setupUi()
     // ── ASR settings tab ────────────────────────────────────────
     setupAsrSettingWidget();
 
+    // ── Log panel tab ───────────────────────────────────────────
+    m_logPanel = new LogPanel(m_ui->logTab);
+    m_ui->logLayout->addWidget(m_logPanel);
+    installLogPanelSink(m_logPanel->textEdit());
+
     connect(m_ui->actionStartRecognition, &QAction::triggered, this,
             &MainWindow::onToggleSpeechRecognition);
 
@@ -89,15 +96,15 @@ void MainWindow::setupUi()
     SPDLOG_INFO("Starting ASR service");
 
     // resultChanged comes from VoiceInputController → onResult
-    connect(m_voiceInputController, &VoiceInputController::finalTextCommitted, this,
-            [this](const QString &text) {
+    connect(m_voiceInputController, &VoiceInputController::finalTextCommitted,
+            this, [this](const QString &text) {
                 m_history.addEntry(text);
                 if (m_historyWidget) {
                     m_historyWidget->refreshHistory();
                 }
             });
-    connect(m_voiceInputController, &VoiceInputController::listeningChanged, this,
-            [this](bool listening) { updateControls(listening); });
+    connect(m_voiceInputController, &VoiceInputController::listeningChanged,
+            this, [this](bool listening) { updateControls(listening); });
 
     // ── System tray ────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: setting up tray icon");
@@ -172,7 +179,8 @@ void MainWindow::setupTrayIcon()
 
 void MainWindow::updateControls(bool listening)
 {
-    const auto &preset = appConfig().asrPresets.at(appConfig().settings.asrProviderId);
+    const auto &preset =
+        appConfig().asrPresets.at(appConfig().settings.asrProviderId);
 
     if (listening) {
         m_ui->actionStartRecognition->setIcon(
@@ -188,8 +196,7 @@ void MainWindow::updateControls(bool listening)
             QIcon(":/resources/icons/mic.svg"));
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
-        if (!m_voiceInputController->isSpeechRecognitionModelLoaded())
-        {
+        if (!m_voiceInputController->isSpeechRecognitionModelLoaded()) {
             STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
         }
         else {
