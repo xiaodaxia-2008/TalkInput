@@ -6,7 +6,7 @@
 
 ScrollTextDisplay::ScrollTextDisplay(QWidget *parent) : QWidget(parent)
 {
-    m_placeholder = tr("Listening...");
+    m_placeholder = tr("Recording...");
 
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);

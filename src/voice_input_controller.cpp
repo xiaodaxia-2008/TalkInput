@@ -171,8 +171,8 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
         }
     }
 
-    // ── 2. Recognizing ────────────────────────────────────────────
-    setStage(PipelineStage::Recognizing);
+    // Stage stays Recording while capturing audio.
+    // onResult() transitions to Recognizing when results arrive.
 
     QPromise<QString> resultPromise;
     resultPromise.start();
@@ -264,7 +264,7 @@ void VoiceInputController::setStage(PipelineStage stage)
         SPDLOG_INFO("Pipeline stage → Recording");
         m_overlay->setIcon(QStringLiteral("🎙"));
         m_overlay->startAnimation();
-        m_overlay->setPreviewText({});
+        m_overlay->setPreviewText(tr("Recording..."));
         emit listeningChanged(true);
         break;
     case PipelineStage::Recognizing:
@@ -291,6 +291,12 @@ void VoiceInputController::setStage(PipelineStage stage)
 
 void VoiceInputController::onResult(const QString &text, bool isFinal)
 {
+    // Transition from Recording to Recognizing when the first result
+    // (intermediate or final) arrives from the recognizer.
+    if (m_stage == PipelineStage::Recording) {
+        setStage(PipelineStage::Recognizing);
+    }
+
     if (isFinal) {
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(text);
