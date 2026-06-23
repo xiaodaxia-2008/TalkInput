@@ -28,8 +28,6 @@ add_executable(TalkInput WIN32
     history_widget.ui
     llm_post_processor.cpp
     llm_post_processor.h
-    rapid_ocr_recognizer.cpp
-    rapid_ocr_recognizer.h
     ocr_recognizer.cpp
     ocr_recognizer.h
     system_ocr_recognizer.h
@@ -158,15 +156,6 @@ if(WIN32)
     )
 endif()
 
-add_custom_command(TARGET TalkInput POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-    $<TARGET_FILE_DIR:TalkInput>/scripts
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/rapidocr_cli.py
-    $<TARGET_FILE_DIR:TalkInput>/scripts/rapidocr_cli.py
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/rapidocr_server.py
-    $<TARGET_FILE_DIR:TalkInput>/scripts/rapidocr_server.py
-)
+
 
 add_subdirectory(tests)

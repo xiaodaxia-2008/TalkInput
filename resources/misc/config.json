@@ -161,11 +161,6 @@
       "id": "system-ocr",
       "name": "System",
       "type": "System"
-    },
-    "rapid-ocr": {
-      "id": "rapid-ocr",
-      "name": "RapidOCR",
-      "type": "RapidOcr"
     }
   }
 }

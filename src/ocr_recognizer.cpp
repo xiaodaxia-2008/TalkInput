@@ -1,5 +1,4 @@
 #include "ocr_recognizer.h"
-#include "rapid_ocr_recognizer.h"
 #include "system_ocr_recognizer.h"
 
 #include <QCursor>
@@ -61,9 +60,6 @@ OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
 {
     if (preset.type == "System") {
         return std::make_unique<SystemOcrRecognizer>(parent);
-    }
-    if (preset.type == "RapidOcr") {
-        return std::make_unique<RapidOcrRecognizer>(parent);
     }
 
     return std::unexpected(
