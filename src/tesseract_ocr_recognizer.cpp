@@ -12,6 +12,8 @@
 #include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
 
+#include <spdlog/stopwatch.h>
+
 namespace talkinput
 {
 
@@ -63,6 +65,8 @@ bool TesseractOcrRecognizer::ensureInitialized()
 
 QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
 {
+    spdlog::stopwatch sw;
+
     if (image.isNull()) {
         SPDLOG_DEBUG("Tesseract OCR: skipped empty image");
         return {};
@@ -110,10 +114,10 @@ QString TesseractOcrRecognizer::recognizeWithTesseract(const QImage &image)
     m_api->Clear();
     pixDestroy(&pix);
 
-    if (!result.isEmpty()) {
-        SPDLOG_DEBUG("Tesseract OCR: result length={}", result.size());
-    }
-    else {
+    SPDLOG_DEBUG("Tesseract OCR: took {:.3f} sec, result length={}",
+                 sw.elapsed().count(), result.size());
+
+    if (result.isEmpty()) {
         SPDLOG_WARN("Tesseract OCR: empty result");
     }
 
