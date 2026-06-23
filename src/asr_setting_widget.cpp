@@ -643,6 +643,23 @@ void AsrSettingWidget::onUseAsrModel()
 
 QCoro::Task<void> AsrSettingWidget::useAsrModel(const QString &providerId)
 {
+    // Check if this model is already loaded
+    auto *vc = VoiceInputController::instance();
+    if (vc && vc->isSpeechRecognitionModelLoaded()) {
+        const std::string currentId = vc->loadedPresetId();
+        if (!currentId.empty() &&
+            currentId == providerId.toStdString())
+        {
+            const auto result = QMessageBox::question(
+                this, tr("Model Already Loaded"),
+                tr("This model is already loaded. Do you want to reload it?"),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (result != QMessageBox::Yes) {
+                co_return;
+            }
+        }
+    }
+
     if (!co_await downloadAsrModel(providerId)) {
         co_return;
     }

@@ -38,29 +38,31 @@ public:
 
     virtual std::expected<void, QString>
     start(const AsrPreset &preset) = 0;
-    
+
     virtual void stop() = 0;
-    
+
     virtual bool isRunning() const = 0;
-    
+
     virtual bool isStreaming() const = 0;
 
     virtual void acceptPcm16(const QByteArray &audioData, int sampleRate,
                              int channelCount) = 0;
-    
+
     virtual void finish() = 0;
-    
+
     virtual void resetStream() = 0;
 
     std::expected<void, QString> startCapture();
-    
+
     void stopCapture();
-    
+
     bool isCaptureRunning() const;
 
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
     createFromPreset(const AsrPreset &preset,
                      QObject *parent = nullptr);
+
+    const std::string &presetId() const { return m_presetId; }
 
 signals:
     void resultChanged(const QString &text, bool isFinal);
@@ -78,6 +80,8 @@ protected:
     static int appendPcm16AsMonoFloat(const QByteArray &audioData,
                                       int channelCount,
                                       std::vector<float> *samples);
+
+    std::string m_presetId;
 
 private:
     const SherpaOnnxOfflinePunctuation *m_punct = nullptr;

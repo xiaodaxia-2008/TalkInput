@@ -67,6 +67,8 @@ public:
 
     SpeechRecognizer *speechRecognizer() const;
 
+    std::string loadedPresetId() const;
+
     void reregisterHotkey(PipelineMode mode);
 
 signals:

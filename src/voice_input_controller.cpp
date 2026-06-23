@@ -291,12 +291,6 @@ void VoiceInputController::setStage(PipelineStage stage)
 
 void VoiceInputController::onResult(const QString &text, bool isFinal)
 {
-    // Transition from Recording to Recognizing when the first result
-    // (intermediate or final) arrives from the recognizer.
-    if (m_stage == PipelineStage::Recording) {
-        setStage(PipelineStage::Recognizing);
-    }
-
     if (isFinal) {
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(text);
@@ -343,6 +337,7 @@ void VoiceInputController::stopListening()
         setStage(PipelineStage::Idle);
     }
     else {
+        setStage(PipelineStage::Recognizing);
         m_recognizer->finish();
         // finish() is synchronous — recognition is complete after it returns.
         // If the recognizer already emitted resultChanged(isFinal=true),
@@ -442,6 +437,11 @@ bool VoiceInputController::isSpeechRecognitionModelLoaded() const
 SpeechRecognizer *VoiceInputController::speechRecognizer() const
 {
     return m_recognizer.get();
+}
+
+std::string VoiceInputController::loadedPresetId() const
+{
+    return m_recognizer ? m_recognizer->presetId() : std::string();
 }
 
 } // namespace talkinput

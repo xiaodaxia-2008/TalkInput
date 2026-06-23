@@ -312,6 +312,7 @@ SpeechRecognizer::createFromPreset(const AsrPreset &preset,
     if (!startResult) {
         return std::unexpected(startResult.error());
     }
+    r->m_presetId = preset.id;
     return r;
 }
 
