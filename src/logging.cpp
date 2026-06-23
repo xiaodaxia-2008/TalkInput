@@ -100,12 +100,6 @@ void installLogPanelSink(QPlainTextEdit *textEdit)
     spdlog::apply_all([&sink](std::shared_ptr<spdlog::logger> logger) {
         logger->sinks().push_back(sink);
     });
-
-    // Also attach to the default logger (safe even if already registered)
-    auto defaultLogger = spdlog::default_logger();
-    if (defaultLogger) {
-        defaultLogger->sinks().push_back(sink);
-    }
 }
 
 void initLogger()
