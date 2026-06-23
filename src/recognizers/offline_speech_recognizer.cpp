@@ -1,7 +1,5 @@
 #include "offline_speech_recognizer.h"
 
-#include "../logging.h"
-
 #include <sherpa-onnx/c-api/c-api.h>
 
 #include <cstring>
@@ -83,37 +81,6 @@ OfflineSpeechRecognizer::start(const AsrPreset &preset)
     // Must be set explicitly — benchmark confirms NULL causes create to fail
     config.decoding_method = "greedy_search";
     config.max_active_paths = 4;
-
-    SPDLOG_DEBUG("Calling SherpaOnnxCreateOfflineRecognizer with:");
-    SPDLOG_DEBUG("  sample_rate={} feature_dim={}",
-                 config.feat_config.sample_rate, config.feat_config.feature_dim);
-    SPDLOG_DEBUG("  provider={} num_threads={} modeling_unit={}",
-                 config.model_config.provider ? config.model_config.provider : "(null)",
-                 config.model_config.num_threads,
-                 config.model_config.modeling_unit ? config.model_config.modeling_unit : "(null)");
-    SPDLOG_DEBUG("  decoding_method={} max_active_paths={}",
-                 config.decoding_method ? config.decoding_method : "(null)",
-                 config.max_active_paths);
-#if defined(SPDLOG_ACTIVE_LEVEL) && SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_DEBUG
-    const auto &fn = config.model_config.funasr_nano;
-    SPDLOG_DEBUG("  funasr_nano.encoder_adaptor={}",
-                 fn.encoder_adaptor ? fn.encoder_adaptor : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.llm={}", fn.llm ? fn.llm : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.embedding={}",
-                 fn.embedding ? fn.embedding : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.tokenizer={}",
-                 fn.tokenizer ? fn.tokenizer : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.language={}",
-                 fn.language ? fn.language : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.system_prompt={}",
-                 fn.system_prompt ? fn.system_prompt : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.user_prompt={}",
-                 fn.user_prompt ? fn.user_prompt : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.hotwords={}",
-                 fn.hotwords ? fn.hotwords : "(null)");
-    SPDLOG_DEBUG("  funasr_nano.max_new_tokens={} temperature={} top_p={} seed={} itn={}",
-                 fn.max_new_tokens, fn.temperature, fn.top_p, fn.seed, fn.itn);
-#endif
 
     m_recognizer = SherpaOnnxCreateOfflineRecognizer(&config);
     if (!m_recognizer) {

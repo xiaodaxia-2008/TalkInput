@@ -116,6 +116,15 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
 
+    connect(m_ui->useClipboardCheck, &QCheckBox::toggled, this, [](bool checked) {
+        appConfig().settings.useClipboard = checked;
+        markConfigDirty();
+    });
+    connect(m_ui->restoreClipboardCheck, &QCheckBox::toggled, this, [](bool checked) {
+        appConfig().settings.restoreClipboard = checked;
+        markConfigDirty();
+    });
+
     updateUiFromConfig();
 }
 
@@ -167,6 +176,14 @@ void AsrSettingWidget::updateUiFromConfig()
     }
 
     refreshAsrModelCombo();
+
+    {
+        const QSignalBlocker bc1(m_ui->useClipboardCheck);
+        const QSignalBlocker bc2(m_ui->restoreClipboardCheck);
+        m_ui->useClipboardCheck->setChecked(appConfig().settings.useClipboard);
+        m_ui->restoreClipboardCheck->setChecked(appConfig().settings.restoreClipboard);
+    }
+
     auto task =
         useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
 }
@@ -748,17 +765,26 @@ void AsrSettingWidget::initIcons()
 
 void AsrSettingWidget::initShortcuts()
 {
-    auto saveShortcut = [this](PipelineMode mode, QKeySequenceEdit *edit) {
-        connect(edit, &QKeySequenceEdit::editingFinished, this, [mode, edit]() {
+    auto saveShortcut = [this](PipelineMode mode, QKeySequenceEdit *edit,
+                                 QPushButton *applyBtn) {
+        auto apply = [mode, edit]() {
             setHotkeySequence(mode, edit->keySequence());
+            markConfigDirty();
+            if (auto *ctrl = VoiceInputController::instance()) {
+                ctrl->reregisterHotkey(mode);
+            }
             STATUSBAR_INFO("{}", QCoreApplication::translate("AsrSettingWidget",
-                                                             "Shortcut saved"));
-        });
+                                                             "Shortcut applied"));
+        };
+        connect(applyBtn, &QPushButton::clicked, this, apply);
     };
 
-    saveShortcut(PipelineMode::AsrOnly, m_ui->asrShortcutEdit);
-    saveShortcut(PipelineMode::AsrLlm, m_ui->asrLlmShortcutEdit);
-    saveShortcut(PipelineMode::AsrLlmOcr, m_ui->asrLlmOcrShortcutEdit);
+    saveShortcut(PipelineMode::AsrOnly, m_ui->asrShortcutEdit,
+                 m_ui->asrShortcutApplyBtn);
+    saveShortcut(PipelineMode::AsrLlm, m_ui->asrLlmShortcutEdit,
+                 m_ui->asrLlmShortcutApplyBtn);
+    saveShortcut(PipelineMode::AsrLlmOcr, m_ui->asrLlmOcrShortcutEdit,
+                 m_ui->asrLlmOcrShortcutApplyBtn);
 }
 
 // ──────────────────────────────────────────────────────────────────────────

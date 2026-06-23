@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class QGraphicsOpacityEffect;
+class QLabel;
 class QPropertyAnimation;
 class ScrollTextDisplay;
 
@@ -17,11 +18,14 @@ public:
 
     void startAnimation();
     void stopAnimation();
+    void stopBlinking();
     void setPreviewText(const QString &text);
+    void setIcon(const QString &iconText);
 
 private:
     void positionOnActiveScreen();
 
+    QLabel *m_iconLabel = nullptr;
     QPropertyAnimation *m_blinkAnimation = nullptr;
     ScrollTextDisplay *m_scrollText = nullptr;
 };

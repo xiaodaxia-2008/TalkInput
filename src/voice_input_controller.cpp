@@ -92,6 +92,13 @@ VoiceInputController *VoiceInputController::instance()
     return s_instance;
 }
 
+void VoiceInputController::reregisterHotkey(PipelineMode mode)
+{
+    if (m_hotkey) {
+        m_hotkey->reregisterShortcut(mode);
+    }
+}
+
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
@@ -226,7 +233,9 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
     {
         const QString committed = result.trimmed();
         if (!committed.isEmpty()) {
-            pasteTextToActiveWindow(committed, true, false);
+            pasteTextToActiveWindow(committed,
+                                    appConfig().settings.useClipboard,
+                                    appConfig().settings.restoreClipboard);
             SPDLOG_INFO("VoiceInputController pasted final text");
             emit finalTextCommitted(committed);
             SPDLOG_INFO("VoiceInputController saved final text to history: {}",
@@ -252,21 +261,25 @@ void VoiceInputController::setStage(PipelineStage stage)
         break;
     case PipelineStage::Recording:
         SPDLOG_INFO("Pipeline stage → Recording");
+        m_overlay->setIcon(QStringLiteral("🎙"));
         m_overlay->startAnimation();
         m_overlay->setPreviewText({});
         emit listeningChanged(true);
         break;
     case PipelineStage::Recognizing:
         SPDLOG_INFO("Pipeline stage → Recognizing");
+        m_overlay->setIcon(QStringLiteral("🔊"));
         emit listeningChanged(true);
         break;
     case PipelineStage::ReadingContext:
         SPDLOG_INFO("Pipeline stage → ReadingContext");
+        m_overlay->setIcon(QStringLiteral("📄"));
         m_overlay->setPreviewText(tr("Reading focused input context..."));
         emit listeningChanged(false);
         break;
     case PipelineStage::Polishing:
         SPDLOG_INFO("Pipeline stage → Polishing");
+        m_overlay->setIcon(QStringLiteral("✨"));
         m_overlay->setPreviewText(tr("Post-processing recognition result..."));
         emit listeningChanged(false);
         break;

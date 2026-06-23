@@ -20,6 +20,8 @@ public:
     explicit VoiceHotkey(QObject *parent = nullptr);
     ~VoiceHotkey() override;
 
+    void reregisterShortcut(PipelineMode mode);
+
 signals:
     void activated(PipelineMode mode);
 

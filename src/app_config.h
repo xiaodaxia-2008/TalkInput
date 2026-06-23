@@ -107,6 +107,8 @@ struct AppSettings
     std::string asrHotKeys;
     std::string asrLlmHotKeys;
     std::string asrLlmOcrHotKeys;
+    bool useClipboard = true;
+    bool restoreClipboard = true;
 };
 
 struct AppConfigData

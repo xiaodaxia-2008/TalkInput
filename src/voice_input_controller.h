@@ -67,6 +67,8 @@ public:
 
     SpeechRecognizer *speechRecognizer() const;
 
+    void reregisterHotkey(PipelineMode mode);
+
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);

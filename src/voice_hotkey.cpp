@@ -53,6 +53,16 @@ void VoiceHotkey::registerShortcut(PipelineMode mode)
     }
 }
 
+void VoiceHotkey::reregisterShortcut(PipelineMode mode)
+{
+    const int idx = static_cast<int>(mode);
+    if (m_hotkeys[idx]) {
+        m_hotkeys[idx]->setRegistered(false);
+        m_hotkeys[idx].reset();
+    }
+    registerShortcut(mode);
+}
+
 void VoiceHotkey::unregisterShortcuts()
 {
     for (auto &hk : m_hotkeys) {
