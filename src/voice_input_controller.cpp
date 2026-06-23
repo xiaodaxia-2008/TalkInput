@@ -337,6 +337,19 @@ void VoiceInputController::stopListening()
     }
     else {
         m_recognizer->finish();
+        // finish() is synchronous — recognition is complete after it returns.
+        // If the recognizer already emitted resultChanged(isFinal=true),
+        // onResult already resolved the promise; otherwise resolve it now
+        // with empty text so the pipeline doesn't hang forever.
+        // Only force Idle when the promise was NOT already resolved by
+        // a real recognition result — otherwise let the pipeline continue.
+        if (m_finalResultPromise && !m_finalResultPromise->isCanceled() &&
+            !m_finalResultPromise->future().isFinished())
+        {
+            m_finalResultPromise->addResult(QString());
+            m_finalResultPromise->finish();
+            setStage(PipelineStage::Idle);
+        }
     }
 }
 
