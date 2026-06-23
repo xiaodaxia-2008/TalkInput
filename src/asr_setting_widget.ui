@@ -2,7 +2,18 @@
 <ui version="4.0">
  <class>AsrSettingWidget</class>
  <widget class="QWidget" name="AsrSettingWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>596</width>
+    <height>492</height>
+   </rect>
+  </property>
   <layout class="QVBoxLayout" name="rootLayout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
    <property name="leftMargin">
     <number>8</number>
    </property>
@@ -15,15 +26,15 @@
    <property name="bottomMargin">
     <number>8</number>
    </property>
-   <property name="spacing">
-    <number>8</number>
-   </property>
    <item>
     <widget class="QGroupBox" name="modelGroup">
      <property name="title">
       <string>ASR Service</string>
      </property>
      <layout class="QVBoxLayout" name="modelLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
       <property name="leftMargin">
        <number>10</number>
       </property>
@@ -35,9 +46,6 @@
       </property>
       <property name="bottomMargin">
        <number>10</number>
-      </property>
-      <property name="spacing">
-       <number>8</number>
       </property>
       <item>
        <layout class="QHBoxLayout" name="modelRow">
@@ -63,39 +71,39 @@
         </item>
         <item>
          <widget class="QPushButton" name="browserButton">
-          <property name="flat">
-           <bool>true</bool>
-          </property>
           <property name="toolTip">
            <string>Open download page in browser</string>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="importButton">
-          <property name="flat">
-           <bool>true</bool>
-          </property>
           <property name="toolTip">
            <string>Import downloaded model archive</string>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="useButton">
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <property name="toolTip">
-            <string>Use this model</string>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Use this model</string>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -108,6 +116,9 @@
       <string>OCR Service</string>
      </property>
      <layout class="QHBoxLayout" name="ocrLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
       <property name="leftMargin">
        <number>10</number>
       </property>
@@ -119,9 +130,6 @@
       </property>
       <property name="bottomMargin">
        <number>10</number>
-      </property>
-      <property name="spacing">
-       <number>8</number>
       </property>
       <item>
        <widget class="QLabel" name="ocrLabel">
@@ -148,7 +156,157 @@
      <property name="title">
       <string>LLM Service</string>
      </property>
-     <layout class="QFormLayout" name="llmForm">
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="providerFormLabel">
+        <property name="text">
+         <string>Provider</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="providerCombo">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="sizeAdjustPolicy">
+         <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="endpointFormLabel">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Endpoint</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QLineEdit" name="endpointEdit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="placeholderText">
+         <string>https://api.openai.com</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="llmModelFormLabel">
+        <property name="text">
+         <string>Model</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="llmModelCombo">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="editable">
+         <bool>true</bool>
+        </property>
+        <property name="insertPolicy">
+         <enum>QComboBox::InsertPolicy::NoInsert</enum>
+        </property>
+        <property name="sizeAdjustPolicy">
+         <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="apiKeyFormLabel">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>API Key</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLineEdit" name="apiKeyEdit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="echoMode">
+         <enum>QLineEdit::EchoMode::Password</enum>
+        </property>
+        <property name="placeholderText">
+         <string>sk-...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="promptFormLabel">
+        <property name="text">
+         <string>Prompt</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1" colspan="3">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="promptLabel">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="textInteractionFlags">
+           <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="promptEditButton">
+          <property name="toolTip">
+           <string>Edit user prompt</string>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="shortcutGroup">
+     <property name="title">
+      <string>Shortcuts</string>
+     </property>
+     <layout class="QFormLayout" name="shortcutForm">
+      <property name="horizontalSpacing">
+       <number>8</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>8</number>
+      </property>
       <property name="leftMargin">
        <number>10</number>
       </property>
@@ -161,132 +319,109 @@
       <property name="bottomMargin">
        <number>10</number>
       </property>
-      <property name="spacing">
-       <number>8</number>
-      </property>
-      <item row="0" column="0" colspan="2">
-       <layout class="QHBoxLayout" name="providerEndpointRow">
+      <item row="0" column="0">
+       <widget class="QLabel" name="asrShortcutLabel">
+        <property name="toolTip">
+         <string>Speech recognition only</string>
+        </property>
+        <property name="text">
+         <string>ASR</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QHBoxLayout" name="asrShortcutRow">
         <property name="spacing">
-         <number>8</number>
+         <number>4</number>
         </property>
         <item>
-         <widget class="QLabel" name="providerFormLabel">
+         <widget class="QKeySequenceEdit" name="asrShortcutEdit"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="asrShortcutApplyBtn">
+          <property name="toolTip">
+           <string>Apply shortcut</string>
+          </property>
           <property name="text">
-           <string>Provider</string>
+           <string>✓</string>
           </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
+          <property name="flat">
+           <bool>true</bool>
           </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="providerCombo">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>1</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="endpointFormLabel">
-          <property name="text">
-           <string>Endpoint</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="endpointEdit">
-          <property name="placeholderText">
-           <string>https://api.openai.com</string>
+          <property name="fixedWidth" stdset="0">
+           <number>28</number>
           </property>
          </widget>
         </item>
        </layout>
       </item>
-      <item row="1" column="0" colspan="2">
-       <layout class="QHBoxLayout" name="modelApiKeyRow">
+      <item row="1" column="0">
+       <widget class="QLabel" name="asrLlmShortcutLabel">
+        <property name="toolTip">
+         <string>Speech recognition with LLM polish</string>
+        </property>
+        <property name="text">
+         <string>ASR + LLM</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <layout class="QHBoxLayout" name="asrLlmShortcutRow">
         <property name="spacing">
-         <number>8</number>
+         <number>4</number>
         </property>
         <item>
-         <widget class="QLabel" name="llmModelFormLabel">
-          <property name="text">
-           <string>Model</string>
-          </property>
-         </widget>
+         <widget class="QKeySequenceEdit" name="asrLlmShortcutEdit"/>
         </item>
         <item>
-         <widget class="QComboBox" name="llmModelCombo">
-          <property name="editable">
+         <widget class="QPushButton" name="asrLlmShortcutApplyBtn">
+          <property name="toolTip">
+           <string>Apply shortcut</string>
+          </property>
+          <property name="text">
+           <string>✓</string>
+          </property>
+          <property name="flat">
            <bool>true</bool>
           </property>
-          <property name="insertPolicy">
-           <enum>QComboBox::NoInsert</enum>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>1</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="apiKeyFormLabel">
-          <property name="text">
-           <string>API Key</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="apiKeyEdit">
-          <property name="echoMode">
-           <enum>QLineEdit::Password</enum>
-          </property>
-          <property name="placeholderText">
-           <string>sk-...</string>
+          <property name="fixedWidth" stdset="0">
+           <number>28</number>
           </property>
          </widget>
         </item>
        </layout>
       </item>
       <item row="2" column="0">
-       <widget class="QLabel" name="promptFormLabel">
+       <widget class="QLabel" name="asrLlmOcrShortcutLabel">
+        <property name="toolTip">
+         <string>Speech recognition with LLM polish and OCR context</string>
+        </property>
         <property name="text">
-         <string>Prompt</string>
+         <string>ASR + LLM + OCR</string>
         </property>
        </widget>
       </item>
       <item row="2" column="1">
-       <layout class="QHBoxLayout" name="promptLayout">
+       <layout class="QHBoxLayout" name="asrLlmOcrShortcutRow">
         <property name="spacing">
-         <number>6</number>
+         <number>4</number>
         </property>
         <item>
-         <widget class="QLabel" name="promptLabel">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="textInteractionFlags">
-           <set>Qt::TextSelectableByMouse</set>
-          </property>
-         </widget>
+         <widget class="QKeySequenceEdit" name="asrLlmOcrShortcutEdit"/>
         </item>
         <item>
-          <widget class="QPushButton" name="promptEditButton">
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <property name="toolTip">
-           <string>Edit user prompt</string>
+         <widget class="QPushButton" name="asrLlmOcrShortcutApplyBtn">
+          <property name="toolTip">
+           <string>Apply shortcut</string>
+          </property>
+          <property name="text">
+           <string>✓</string>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+          <property name="fixedWidth" stdset="0">
+           <number>28</number>
           </property>
          </widget>
         </item>
@@ -294,214 +429,82 @@
       </item>
      </layout>
     </widget>
-    </item>
-    <item>
-     <widget class="QGroupBox" name="shortcutGroup">
-      <property name="title">
-       <string>Shortcuts</string>
-      </property>
-      <layout class="QFormLayout" name="shortcutForm">
-       <property name="leftMargin">
-        <number>10</number>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="bottomRow">
+     <property name="spacing">
+      <number>8</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="hotwordsButton">
+       <property name="toolTip">
+        <string>Edit hot words</string>
        </property>
-       <property name="topMargin">
-        <number>10</number>
+       <property name="text">
+        <string>Hot Words</string>
        </property>
-       <property name="rightMargin">
-        <number>10</number>
+       <property name="flat">
+        <bool>true</bool>
        </property>
-       <property name="bottomMargin">
-        <number>10</number>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="useClipboardCheck">
+       <property name="toolTip">
+        <string>Use clipboard to paste text</string>
        </property>
-       <property name="spacing">
-        <number>8</number>
+       <property name="text">
+        <string>Clipboard</string>
        </property>
-       <item row="0" column="0">
-        <widget class="QLabel" name="asrShortcutLabel">
-         <property name="text">
-          <string>ASR</string>
-         </property>
-         <property name="toolTip">
-          <string>Speech recognition only</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <layout class="QHBoxLayout" name="asrShortcutRow">
-         <property name="spacing">
-          <number>4</number>
-         </property>
-         <item>
-          <widget class="QKeySequenceEdit" name="asrShortcutEdit"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="asrShortcutApplyBtn">
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>✓</string>
-           </property>
-           <property name="toolTip">
-            <string>Apply shortcut</string>
-           </property>
-           <property name="fixedWidth">
-            <number>28</number>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="asrLlmShortcutLabel">
-         <property name="text">
-          <string>ASR + LLM</string>
-         </property>
-         <property name="toolTip">
-          <string>Speech recognition with LLM polish</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <layout class="QHBoxLayout" name="asrLlmShortcutRow">
-         <property name="spacing">
-          <number>4</number>
-         </property>
-         <item>
-          <widget class="QKeySequenceEdit" name="asrLlmShortcutEdit"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="asrLlmShortcutApplyBtn">
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>✓</string>
-           </property>
-           <property name="toolTip">
-            <string>Apply shortcut</string>
-           </property>
-           <property name="fixedWidth">
-            <number>28</number>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="asrLlmOcrShortcutLabel">
-         <property name="text">
-          <string>ASR + LLM + OCR</string>
-         </property>
-         <property name="toolTip">
-          <string>Speech recognition with LLM polish and OCR context</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <layout class="QHBoxLayout" name="asrLlmOcrShortcutRow">
-         <property name="spacing">
-          <number>4</number>
-         </property>
-         <item>
-          <widget class="QKeySequenceEdit" name="asrLlmOcrShortcutEdit"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="asrLlmOcrShortcutApplyBtn">
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>✓</string>
-           </property>
-           <property name="toolTip">
-            <string>Apply shortcut</string>
-           </property>
-           <property name="fixedWidth">
-            <number>28</number>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>0</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="bottomRow">
-      <property name="spacing">
-       <number>8</number>
-      </property>
-      <item>
-        <widget class="QPushButton" name="hotwordsButton">
-         <property name="flat">
-          <bool>true</bool>
-         </property>
-         <property name="toolTip">
-         <string>Edit hot words</string>
-        </property>
-        <property name="text">
-         <string>Hot Words</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="useClipboardCheck">
-        <property name="text">
-         <string>Clipboard</string>
-        </property>
-        <property name="toolTip">
-         <string>Use clipboard to paste text</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="copyToClipboardCheck">
-        <property name="text">
-         <string>Copy</string>
-        </property>
-        <property name="toolTip">
-         <string>Copy result to clipboard</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="restoreClipboardCheck">
-        <property name="text">
-         <string>Restore</string>
-        </property>
-        <property name="toolTip">
-         <string>Restore original clipboard content after paste</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="bottomSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="copyToClipboardCheck">
+       <property name="toolTip">
+        <string>Copy result to clipboard</string>
+       </property>
+       <property name="text">
+        <string>Copy</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="restoreClipboardCheck">
+       <property name="toolTip">
+        <string>Restore original clipboard content after paste</string>
+       </property>
+       <property name="text">
+        <string>Restore</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="bottomSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
