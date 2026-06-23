@@ -3,11 +3,15 @@
 
 #include <QCoro/QCoroFuture>
 #include <QCoreApplication>
+#include <QCursor>
 #include <QDir>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QImage>
 #include <QPromise>
+#include <QScreen>
 #include <QThreadPool>
+#include <QWindow>
 
 #include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
@@ -34,6 +38,34 @@ bool TesseractOcrRecognizer::isAvailable() const
 {
     return QFileInfo::exists(
         tessdataDir() + QStringLiteral("/chi_sim.traineddata"));
+}
+
+QImage TesseractOcrRecognizer::captureFocusedTextInputImage() const
+{
+    // Capture the top-level window under the cursor instead of full screen
+    const QPoint cursorPos = QCursor::pos();
+    QWindow *window = QGuiApplication::topLevelAt(cursorPos);
+    if (!window) {
+        return OcrRecognizer::captureFocusedTextInputImage();
+    }
+
+    QScreen *screen = window->screen();
+    if (!screen) {
+        screen = QGuiApplication::screenAt(cursorPos);
+    }
+    if (!screen) {
+        screen = QGuiApplication::primaryScreen();
+    }
+    if (!screen) {
+        return {};
+    }
+
+    const QImage image = screen->grabWindow(window->winId()).toImage();
+    if (!image.isNull()) {
+        SPDLOG_DEBUG("Tesseract OCR: captured window under cursor: {}x{}",
+                     image.width(), image.height());
+    }
+    return image;
 }
 
 bool TesseractOcrRecognizer::ensureInitialized()
