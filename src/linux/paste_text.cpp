@@ -3,7 +3,7 @@
 namespace talkinput
 {
 
-void pasteTextToActiveWindow(const QString &, bool, bool)
+void pasteTextToActiveWindow(const QString &, bool, bool, bool)
 {
 }
 

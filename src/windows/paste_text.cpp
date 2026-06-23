@@ -133,7 +133,7 @@ static bool isTerminalWindow(HWND hwnd)
 }
 
 void pasteTextToActiveWindow(const QString &text, bool useClipboard,
-                             bool restoreClipboard)
+                             bool copyToClipboard, bool restoreClipboard)
 {
     if (text.isEmpty()) {
         return;
@@ -155,7 +155,9 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
             QClipboard *clipboard = QApplication::clipboard();
             QMimeData *originalData = nullptr;
 
-            if (restoreClipboard) {
+            // Save original clipboard only when we intend to restore it
+            const bool shouldRestore = restoreClipboard && !copyToClipboard;
+            if (shouldRestore) {
                 const QMimeData *currentData = clipboard->mimeData();
                 originalData = new QMimeData();
                 for (const QString &format : currentData->formats()) {
@@ -178,7 +180,7 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
             inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
             SendInput(4, inputs, sizeof(INPUT));
 
-            if (restoreClipboard && originalData) {
+            if (shouldRestore && originalData) {
                 QThread::msleep(50);
                 clipboard->setMimeData(originalData);
             }
@@ -186,6 +188,11 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
     }
     else {
         sendViaSendInput(text);
+
+        if (copyToClipboard) {
+            QClipboard *clipboard = QApplication::clipboard();
+            clipboard->setText(text);
+        }
     }
 }
 

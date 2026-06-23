@@ -116,6 +116,10 @@
     <addaction name="separator"/>
     <addaction name="actionStartMinimized"/>
     <addaction name="separator"/>
+    <addaction name="actionUseClipboard"/>
+    <addaction name="actionCopyToClipboard"/>
+    <addaction name="actionRestoreClipboard"/>
+    <addaction name="separator"/>
     <addaction name="actionResetSettings"/>
     <addaction name="separator"/>
     <addaction name="actionOpenDataDirectory"/>
@@ -206,6 +210,30 @@
   <action name="actionOpenDataDirectory">
    <property name="text">
     <string>Open Data Directory</string>
+   </property>
+  </action>
+  <action name="actionUseClipboard">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use clipboard to paste</string>
+   </property>
+  </action>
+  <action name="actionCopyToClipboard">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Copy result to clipboard</string>
+   </property>
+  </action>
+  <action name="actionRestoreClipboard">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Restore clipboard after paste</string>
    </property>
   </action>
   <action name="actionExit">

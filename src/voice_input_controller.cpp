@@ -235,6 +235,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
         if (!committed.isEmpty()) {
             pasteTextToActiveWindow(committed,
                                     appConfig().settings.useClipboard,
+                                    appConfig().settings.copyToClipboard,
                                     appConfig().settings.restoreClipboard);
             SPDLOG_INFO("VoiceInputController pasted final text");
             emit finalTextCommitted(committed);

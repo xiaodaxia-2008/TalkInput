@@ -108,6 +108,7 @@ struct AppSettings
     std::string asrLlmHotKeys;
     std::string asrLlmOcrHotKeys;
     bool useClipboard = true;
+    bool copyToClipboard = false;
     bool restoreClipboard = true;
 };
 

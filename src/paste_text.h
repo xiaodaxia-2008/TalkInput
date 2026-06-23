@@ -5,5 +5,5 @@ namespace talkinput
 {
 
 void pasteTextToActiveWindow(const QString &text, bool useClipboard,
-                             bool restoreClipboard);
+                             bool copyToClipboard, bool restoreClipboard);
 }
