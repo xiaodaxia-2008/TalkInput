@@ -1,0 +1,12 @@
+QT.QCoroNetwork.VERSION = 0.12.0
+QT.QCoroNetwork.MAJOR_VERSION = 0
+QT.QCoroNetwork.MINOR_VERSION = 12
+QT.QCoroNetwork.PATCH_VERSION = 0
+QT.QCoroNetwork.name = QCoro6Network
+QT.QCoroNetwork.module = QCoro6Network
+QT.QCoroNetwork.defines = 
+QT.QCoroNetwork.includes =  $$PWD/../../include/qcoro6/qcoro $$PWD/../../include/qcoro6/QCoro
+QT.QCoroNetwork.private_includes =
+QT.QCoroNetwork.libs = $$PWD/../../lib
+QT.QCoroNetwork.depends =  core network  QCoroCoro QCoroCore
+QT.QCoroNetwork.module_config = staticlib

@@ -1,0 +1,12 @@
+QT.QCoroCoro.VERSION = 0.12.0
+QT.QCoroCoro.MAJOR_VERSION = 0
+QT.QCoroCoro.MINOR_VERSION = 12
+QT.QCoroCoro.PATCH_VERSION = 0
+QT.QCoroCoro.name = QCoro6Coro
+QT.QCoroCoro.module = 
+QT.QCoroCoro.defines = 
+QT.QCoroCoro.includes =  $$PWD/../../include/qcoro6/qcoro $$PWD/../../include/qcoro6/QCoro
+QT.QCoroCoro.private_includes =
+QT.QCoroCoro.libs = $$PWD/../../lib
+QT.QCoroCoro.depends =  
+QT.QCoroCoro.module_config = 

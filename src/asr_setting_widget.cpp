@@ -734,6 +734,8 @@ void AsrSettingWidget::onImportModel()
 
 void AsrSettingWidget::initIcons()
 {
+    setButtonIcon(m_ui->useButton, ":/resources/icons/check.svg", 22);
+    m_ui->useButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", 22);
     m_ui->browserButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", 22);
