@@ -774,15 +774,16 @@ void AsrSettingWidget::onImportModel()
 
 void AsrSettingWidget::initIcons()
 {
-    setButtonIcon(m_ui->useButton, ":/resources/icons/check.svg", 22);
+    const int iconSize = m_ui->useButton->fontMetrics().height();
+    setButtonIcon(m_ui->useButton, ":/resources/icons/check.svg", iconSize);
     m_ui->useButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", 22);
+    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", iconSize);
     m_ui->browserButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", 22);
+    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
     m_ui->importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->hotwordsButton, ":/resources/icons/hotwords.svg", 22);
+    setButtonIcon(m_ui->hotwordsButton, ":/resources/icons/hotwords.svg", iconSize);
     m_ui->hotwordsButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg", 22);
+    setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg", iconSize);
     m_ui->promptEditButton->setProperty("buttonRole", "icon");
 }
 
