@@ -61,7 +61,6 @@ void VoiceOverlay::startAnimation()
 {
     m_blinkAnimation->start();
     show();
-    raise();
     positionOnActiveScreen();
 }
 
