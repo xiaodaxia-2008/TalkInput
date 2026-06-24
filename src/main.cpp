@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QFile>
 #include <QIcon>
+#include <QMessageBox>
 
 int main(int argc, char *argv[])
 {
@@ -35,19 +36,38 @@ int main(int argc, char *argv[])
 
     SPDLOG_DEBUG("config path {}", talkinput::appConfigPath());
 
-    const bool startHidden = talkinput::appConfig().settings.startMinimized;
+    try {
+        const bool startHidden = talkinput::appConfig().settings.startMinimized;
 
-    SPDLOG_DEBUG("constructing MainWindow");
-    talkinput::MainWindow window;
-    SPDLOG_DEBUG("MainWindow constructed");
-    if (!startHidden) {
-        SPDLOG_DEBUG("showing MainWindow");
-        window.show();
-    }
-    else {
-        SPDLOG_DEBUG("start hidden is enabled");
-    }
+        SPDLOG_DEBUG("constructing MainWindow");
+        talkinput::MainWindow window;
+        SPDLOG_DEBUG("MainWindow constructed");
+        if (!startHidden) {
+            SPDLOG_DEBUG("showing MainWindow");
+            window.show();
+        }
+        else {
+            SPDLOG_DEBUG("start hidden is enabled");
+        }
 
-    SPDLOG_DEBUG("entering event loop");
-    return app.exec();
+        SPDLOG_DEBUG("entering event loop");
+        return app.exec();
+    }
+    catch (const std::exception &e) {
+        SPDLOG_ERROR("exception during startup: {}", e.what());
+        const auto result = QMessageBox::critical(
+            nullptr, QStringLiteral("TalkInput"),
+            QObject::tr("An error occurred: %1\n\n"
+                        "Reset configuration to defaults?")
+                .arg(e.what()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (result == QMessageBox::Yes) {
+            talkinput::resetAppConfigToDefaults();
+            QMessageBox::information(
+                nullptr, QStringLiteral("TalkInput"),
+                QObject::tr("Configuration has been reset. "
+                            "Please restart the application."));
+        }
+        return 1;
+    }
 }
