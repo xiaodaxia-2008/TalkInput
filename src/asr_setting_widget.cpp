@@ -77,23 +77,36 @@ bool isModelInstalled(const std::string &modelDirName,
     if (modelDirName.empty()) {
         return false;
     }
-    const QString modelDir =
-        QDir(appDataDir())
-            .filePath(QStringLiteral("models/%1")
-                          .arg(QString::fromStdString(modelDirName)));
-    if (!QFileInfo(modelDir).isDir()) {
-        SPDLOG_INFO("Model directory does not exist: {}", modelDir);
-        return false;
-    }
-    for (const auto &[key, relative] : files) {
-        const QFileInfo fi(
-            QDir(modelDir).filePath(QString::fromStdString(relative)));
-        if (!fi.exists()) {
-            SPDLOG_INFO("Model file does not exist: {}", fi.absoluteFilePath());
+
+    const auto checkDir = [&](const QString &baseDir) -> bool {
+        const QString modelDir = QDir(baseDir).filePath(
+            QStringLiteral("models/%1")
+                .arg(QString::fromStdString(modelDirName)));
+        if (!QFileInfo(modelDir).isDir()) {
             return false;
         }
+        for (const auto &[key, relative] : files) {
+            const QFileInfo fi(
+                QDir(modelDir).filePath(QString::fromStdString(relative)));
+            if (!fi.exists()) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    // Check binary directory first (bundled with installation),
+    // then fall back to user data directory (downloaded at runtime).
+    const QString exeDir = QCoreApplication::applicationDirPath();
+    if (checkDir(exeDir)) {
+        return true;
     }
-    return true;
+    if (checkDir(appDataDir())) {
+        return true;
+    }
+
+    SPDLOG_INFO("Model not found in binary dir nor data dir: {}", modelDirName);
+    return false;
 }
 
 } // namespace
