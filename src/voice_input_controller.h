@@ -93,7 +93,7 @@ public slots:
     void finishSpeechRecognitionSession();
 
 private:
-    QCoro::Task<void> executePipeline(PipelineMode mode);
+    QCoro::Task<void> executePipeline();
     void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
 

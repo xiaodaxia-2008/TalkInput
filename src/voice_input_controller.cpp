@@ -245,7 +245,7 @@ VoiceInputController::~VoiceInputController()
 
 // ── Pipeline ─────────────────────────────────────────────────────
 
-QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
+QCoro::Task<void> VoiceInputController::executePipeline()
 {
     const auto &config = appConfig();
     if (m_stage != PipelineStage::Idle) {
@@ -262,11 +262,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
         co_return;
     }
 
-    const bool ocrEnabled = mode == PipelineMode::AsrLlmOcr;
-    const bool llmEnabled = mode != PipelineMode::AsrOnly;
-
-    SPDLOG_INFO("executePipeline: mode={} ocrEnabled={} llmEnabled={}",
-                static_cast<int>(mode), ocrEnabled, llmEnabled);
+    SPDLOG_INFO("executePipeline: mode={}", static_cast<int>(m_pipelineMode));
 
     // ── 1. Recording ──────────────────────────────────────────────
     setStage(PipelineStage::Recording);
@@ -303,6 +299,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     // ── 3. Optional: OCR ──────────────────────────────────────────
     QString ocrContext;
+    const bool ocrEnabled = m_pipelineMode == PipelineMode::AsrLlmOcr;
     if (ocrEnabled && m_ocrRecognizer && m_ocrRecognizer->isAvailable()) {
         setStage(PipelineStage::ReadingContext);
 
@@ -325,6 +322,7 @@ QCoro::Task<void> VoiceInputController::executePipeline(PipelineMode mode)
 
     // ── 4. Optional: LLM Polishing ────────────────────────────────
     QString result;
+    const bool llmEnabled = m_pipelineMode != PipelineMode::AsrOnly;
     if (llmEnabled) {
         setStage(PipelineStage::Polishing);
         result = co_await m_llmPostProcessor->postProcess(
@@ -448,7 +446,7 @@ bool VoiceInputController::startListening()
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
         return false;
     }
-    executePipeline(m_pipelineMode);
+    executePipeline();
     return true;
 }
 
