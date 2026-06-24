@@ -512,6 +512,38 @@
       </widget>
      </item>
      <item>
+      <widget class="QLabel" name="inputDelayLabel">
+       <property name="toolTip">
+        <string>Delay (ms) between each character sent via keyboard input</string>
+       </property>
+       <property name="text">
+        <string>Input Delay</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="inputDelaySpin">
+       <property name="toolTip">
+        <string>Delay in milliseconds between each keystroke (0 = no delay)</string>
+       </property>
+       <property name="suffix">
+        <string>ms</string>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+       <property name="singleStep">
+        <number>10</number>
+       </property>
+       <property name="fixedWidth" stdset="0">
+        <number>80</number>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="bottomSpacer">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>

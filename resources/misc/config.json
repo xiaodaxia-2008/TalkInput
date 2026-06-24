@@ -11,12 +11,13 @@
     "asrHotKeys": "Alt+Q",
     "asrLlmHotKeys": "Alt+W",
     "asrLlmOcrHotKeys": "Alt+E",
-    "useClipboard": true,
+    "useClipboard": false,
     "copyToClipboard": false,
     "restoreClipboard": true,
     "saveOcrScreenshot": false,
     "saveAsrAudio": false,
     "pasteDelayMs": 200,
+    "inputCharDelayMs": 0,
     "overlayOpacity": 0.8
   },
   "asrPresets": {

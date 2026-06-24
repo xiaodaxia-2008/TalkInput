@@ -142,6 +142,12 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
                 markConfigDirty();
             });
 
+    connect(m_ui->inputDelaySpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, [](int ms) {
+                appConfig().settings.inputCharDelayMs = ms;
+                markConfigDirty();
+            });
+
     updateUiFromConfig();
 }
 
@@ -200,6 +206,7 @@ void AsrSettingWidget::updateUiFromConfig()
         const QSignalBlocker bc3(m_ui->restoreClipboardCheck);
         const QSignalBlocker bc4(m_ui->saveOcrScreenshotCheck);
         const QSignalBlocker bc5(m_ui->saveAsrAudioCheck);
+        const QSignalBlocker bd1(m_ui->inputDelaySpin);
         m_ui->useClipboardCheck->setChecked(appConfig().settings.useClipboard);
         m_ui->copyToClipboardCheck->setChecked(
             appConfig().settings.copyToClipboard);
@@ -208,6 +215,7 @@ void AsrSettingWidget::updateUiFromConfig()
         m_ui->saveOcrScreenshotCheck->setChecked(
             appConfig().settings.saveOcrScreenshot);
         m_ui->saveAsrAudioCheck->setChecked(appConfig().settings.saveAsrAudio);
+        m_ui->inputDelaySpin->setValue(appConfig().settings.inputCharDelayMs);
     }
 
     auto task =
