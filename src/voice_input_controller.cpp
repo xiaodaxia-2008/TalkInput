@@ -111,41 +111,43 @@ void saveAsrAudio(const QByteArray &pcm16, int sampleRate, int channels)
 namespace talkinput
 {
 
-QKeySequence hotkeySequence(PipelineMode mode)
+PipelineMode pipelineModeFromString(const std::string &s)
+{
+    if (s == "asr_only") {
+        return PipelineMode::AsrOnly;
+    }
+    if (s == "asr_llm") {
+        return PipelineMode::AsrLlm;
+    }
+    if (s == "asr_llm_ocr") {
+        return PipelineMode::AsrLlmOcr;
+    }
+    return PipelineMode::AsrLlmOcr;
+}
+
+std::string pipelineModeToString(PipelineMode mode)
 {
     switch (mode) {
     case PipelineMode::AsrOnly:
-        return QKeySequence(
-            QString::fromStdString(appConfig().settings.asrHotKeys));
+        return "asr_only";
     case PipelineMode::AsrLlm:
-        return QKeySequence(
-            QString::fromStdString(appConfig().settings.asrLlmHotKeys));
+        return "asr_llm";
     case PipelineMode::AsrLlmOcr:
-        return QKeySequence(
-            QString::fromStdString(appConfig().settings.asrLlmOcrHotKeys));
+        return "asr_llm_ocr";
     }
-    return {};
+    return "asr_llm_ocr";
 }
 
-void setHotkeySequence(PipelineMode mode, const QKeySequence &keys)
+QString pipelineModeDisplayName(PipelineMode mode)
 {
-    const std::string value = keys.toString().toStdString();
     switch (mode) {
     case PipelineMode::AsrOnly:
-        appConfig().settings.asrHotKeys = value;
-        break;
+        return QStringLiteral("🎙");
     case PipelineMode::AsrLlm:
-        appConfig().settings.asrLlmHotKeys = value;
-        break;
+        return QStringLiteral("🎙✨");
     case PipelineMode::AsrLlmOcr:
-        appConfig().settings.asrLlmOcrHotKeys = value;
-        break;
+        return QStringLiteral("🎙✨📄");
     }
-    markConfigDirty();
-}
-
-QString hotkeyConfigPath(PipelineMode mode)
-{
     return {};
 }
 
@@ -156,30 +158,72 @@ VoiceInputController *VoiceInputController::instance()
     return s_instance;
 }
 
-void VoiceInputController::reregisterHotkey(PipelineMode mode)
+void VoiceInputController::reregisterTriggerHotkey()
 {
     if (m_hotkey) {
-        m_hotkey->reregisterShortcut(mode);
+        m_hotkey->reregisterTriggerShortcut();
     }
+}
+
+void VoiceInputController::reregisterModeSwitchHotkey()
+{
+    if (m_hotkey) {
+        m_hotkey->reregisterModeSwitchShortcut();
+    }
+}
+
+void VoiceInputController::cyclePipelineMode()
+{
+    switch (m_pipelineMode) {
+    case PipelineMode::AsrOnly:
+        m_pipelineMode = PipelineMode::AsrLlm;
+        break;
+    case PipelineMode::AsrLlm:
+        m_pipelineMode = PipelineMode::AsrLlmOcr;
+        break;
+    case PipelineMode::AsrLlmOcr:
+        m_pipelineMode = PipelineMode::AsrOnly;
+        break;
+    }
+    appConfig().settings.activeMode = pipelineModeToString(m_pipelineMode);
+    markConfigDirty();
+    emit modeChanged(m_pipelineMode);
 }
 
 VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
 {
     s_instance = this;
 
+    m_pipelineMode = pipelineModeFromString(appConfig().settings.activeMode);
+
     m_hotkey = std::make_unique<VoiceHotkey>();
-    connect(m_hotkey.get(), &VoiceHotkey::activated, this,
-            [this](PipelineMode mode) {
-                if (m_stage == PipelineStage::Recording ||
-                    m_stage == PipelineStage::Recognizing)
-                {
-                    stopListening();
-                }
-                else if (m_stage == PipelineStage::Idle) {
-                    m_pipelineMode = mode;
-                    startListening();
-                }
-            });
+
+    // Unified trigger: start/stop voice input with current active mode
+    connect(m_hotkey.get(), &VoiceHotkey::triggerActivated, this, [this]() {
+        if (m_stage == PipelineStage::Recording ||
+            m_stage == PipelineStage::Recognizing)
+        {
+            stopListening();
+        }
+        else if (m_stage == PipelineStage::Idle) {
+            m_pipelineMode =
+                pipelineModeFromString(appConfig().settings.activeMode);
+            startListening();
+        }
+    });
+
+    // Mode switch: cycle mode — works globally at any time, no popup
+    connect(m_hotkey.get(), &VoiceHotkey::modeSwitchActivated, this, [this]() {
+        cyclePipelineMode();
+
+        // Update mode text in overlay if recording
+        if (m_overlay && m_overlay->isVisible()) {
+            m_overlay->setModeText(pipelineModeDisplayName(m_pipelineMode));
+        }
+
+        SPDLOG_INFO("Pipeline mode switched to: {}",
+                    pipelineModeToString(m_pipelineMode));
+    });
 
     m_overlay = std::make_unique<VoiceOverlay>();
     m_llmPostProcessor = std::make_unique<LlmPostProcessor>();
@@ -341,32 +385,29 @@ void VoiceInputController::setStage(PipelineStage stage)
 
     switch (stage) {
     case PipelineStage::Idle:
-        SPDLOG_DEBUG("Pipeline stage \u2192 Idle");
+        SPDLOG_DEBUG("Pipeline stage → Idle");
         m_overlay->stopAnimation();
         emit listeningChanged(false);
         break;
     case PipelineStage::Recording:
-        SPDLOG_INFO("Pipeline stage \u2192 Recording");
-        m_overlay->setIcon(QStringLiteral("\U0001f399"));
+        SPDLOG_INFO("Pipeline stage → Recording");
+        m_overlay->setModeText(pipelineModeDisplayName(m_pipelineMode));
         m_overlay->startAnimation();
         m_overlay->setPreviewText(tr("Recording..."));
         emit listeningChanged(true);
         break;
     case PipelineStage::Recognizing:
-        SPDLOG_INFO("Pipeline stage \u2192 Recognizing");
-        m_overlay->setIcon(QStringLiteral("\U0001f50a"));
+        SPDLOG_INFO("Pipeline stage → Recognizing");
         m_overlay->setPreviewText(tr("Recognizing..."));
         emit listeningChanged(true);
         break;
     case PipelineStage::ReadingContext:
         SPDLOG_INFO("Pipeline stage → ReadingContext");
-        m_overlay->setIcon(QStringLiteral("📄"));
         m_overlay->setPreviewText(tr("Reading focused input context..."));
         emit listeningChanged(false);
         break;
     case PipelineStage::Polishing:
         SPDLOG_INFO("Pipeline stage → Polishing");
-        m_overlay->setIcon(QStringLiteral("✨"));
         m_overlay->setPreviewText(tr("Post-processing recognition result..."));
         emit listeningChanged(false);
         break;

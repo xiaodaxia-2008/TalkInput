@@ -112,6 +112,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     initAsrModel();
     initIcons();
     initShortcuts();
+    initActiveMode();
 
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
@@ -181,15 +182,19 @@ void AsrSettingWidget::updateUiFromConfig()
     }
 
     {
-        const QSignalBlocker b1(m_ui->asrShortcutEdit);
-        const QSignalBlocker b2(m_ui->asrLlmShortcutEdit);
-        const QSignalBlocker b3(m_ui->asrLlmOcrShortcutEdit);
-        m_ui->asrShortcutEdit->setKeySequence(
-            hotkeySequence(PipelineMode::AsrOnly));
-        m_ui->asrLlmShortcutEdit->setKeySequence(
-            hotkeySequence(PipelineMode::AsrLlm));
-        m_ui->asrLlmOcrShortcutEdit->setKeySequence(
-            hotkeySequence(PipelineMode::AsrLlmOcr));
+        const QSignalBlocker b1(m_ui->triggerHotkeyEdit);
+        const QSignalBlocker b2(m_ui->modeSwitchHotkeyEdit);
+        const QSignalBlocker b3(m_ui->activeModeCombo);
+        m_ui->triggerHotkeyEdit->setKeySequence(QKeySequence(
+            QString::fromStdString(appConfig().settings.triggerHotkey)));
+        m_ui->modeSwitchHotkeyEdit->setKeySequence(QKeySequence(
+            QString::fromStdString(appConfig().settings.modeSwitchHotkey)));
+        const QString activeMode =
+            QString::fromStdString(appConfig().settings.activeMode);
+        const int modeIdx = m_ui->activeModeCombo->findData(activeMode);
+        if (modeIdx >= 0) {
+            m_ui->activeModeCombo->setCurrentIndex(modeIdx);
+        }
     }
 
     refreshAsrModelCombo();
@@ -813,26 +818,72 @@ void AsrSettingWidget::initIcons()
 
 void AsrSettingWidget::initShortcuts()
 {
-    auto saveShortcut = [this](PipelineMode mode, QKeySequenceEdit *edit,
-                               QPushButton *applyBtn) {
-        auto apply = [mode, edit]() {
-            setHotkeySequence(mode, edit->keySequence());
-            markConfigDirty();
-            if (auto *ctrl = VoiceInputController::instance()) {
-                ctrl->reregisterHotkey(mode);
-            }
-            STATUSBAR_INFO("{}", QCoreApplication::translate(
-                                     "AsrSettingWidget", "Shortcut applied"));
-        };
-        connect(applyBtn, &QPushButton::clicked, this, apply);
+    // Trigger hotkey — save and re-register
+    auto applyTrigger = [this]() {
+        appConfig().settings.triggerHotkey =
+            m_ui->triggerHotkeyEdit->keySequence().toString().toStdString();
+        markConfigDirty();
+        if (auto *ctrl = VoiceInputController::instance()) {
+            ctrl->reregisterTriggerHotkey();
+        }
+        STATUSBAR_INFO("{}",
+                       QCoreApplication::translate("AsrSettingWidget",
+                                                   "Trigger shortcut applied"));
     };
+    connect(m_ui->triggerHotkeyApplyBtn, &QPushButton::clicked, this,
+            applyTrigger);
 
-    saveShortcut(PipelineMode::AsrOnly, m_ui->asrShortcutEdit,
-                 m_ui->asrShortcutApplyBtn);
-    saveShortcut(PipelineMode::AsrLlm, m_ui->asrLlmShortcutEdit,
-                 m_ui->asrLlmShortcutApplyBtn);
-    saveShortcut(PipelineMode::AsrLlmOcr, m_ui->asrLlmOcrShortcutEdit,
-                 m_ui->asrLlmOcrShortcutApplyBtn);
+    // Mode-switch hotkey — save and re-register
+    auto applyModeSwitch = [this]() {
+        appConfig().settings.modeSwitchHotkey =
+            m_ui->modeSwitchHotkeyEdit->keySequence().toString().toStdString();
+        markConfigDirty();
+        if (auto *ctrl = VoiceInputController::instance()) {
+            ctrl->reregisterModeSwitchHotkey();
+        }
+        STATUSBAR_INFO(
+            "{}", QCoreApplication::translate("AsrSettingWidget",
+                                              "Mode switch shortcut applied"));
+    };
+    connect(m_ui->modeSwitchHotkeyApplyBtn, &QPushButton::clicked, this,
+            applyModeSwitch);
+}
+
+void AsrSettingWidget::initActiveMode()
+{
+    auto *combo = m_ui->activeModeCombo;
+    combo->addItem(tr("ASR only"), QStringLiteral("asr_only"));
+    combo->addItem(tr("ASR + AI Polish"), QStringLiteral("asr_llm"));
+    combo->addItem(tr("ASR + OCR context + AI Polish"),
+                   QStringLiteral("asr_llm_ocr"));
+
+    const QString activeMode =
+        QString::fromStdString(appConfig().settings.activeMode);
+    const int idx = combo->findData(activeMode);
+    if (idx >= 0) {
+        combo->setCurrentIndex(idx);
+    }
+
+    connect(combo, &QComboBox::currentIndexChanged, this, [this, combo]() {
+        const QString mode = combo->currentData().toString();
+        appConfig().settings.activeMode = mode.toStdString();
+        markConfigDirty();
+        STATUSBAR_INFO("{}",
+                       QCoreApplication::translate("AsrSettingWidget",
+                                                   "Active mode changed to %1")
+                           .arg(combo->currentText()));
+    });
+}
+
+void AsrSettingWidget::updateActiveModeDisplay()
+{
+    auto *combo = m_ui->activeModeCombo;
+    const QString activeMode =
+        QString::fromStdString(appConfig().settings.activeMode);
+    const int idx = combo->findData(activeMode);
+    if (idx >= 0) {
+        combo->setCurrentIndex(idx);
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

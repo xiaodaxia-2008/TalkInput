@@ -30,16 +30,16 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     container->setObjectName("voiceOverlayContainer");
 
     auto *layout = new QHBoxLayout(container);
-    layout->setContentsMargins(14, 6, 14, 6);
-    layout->setSpacing(8);
+    layout->setContentsMargins(14, 6, 8, 6);
+    layout->setSpacing(4);
 
-    auto *micLabel = new QLabel(QStringLiteral("🎙"), container);
-    micLabel->setObjectName("voiceOverlayMicLabel");
-    m_iconLabel = micLabel;
-    layout->addWidget(m_iconLabel);
+    auto *modeLabel = new QLabel(QStringLiteral("🎙"), container);
+    modeLabel->setObjectName("voiceOverlayModeLabel");
+    m_modeLabel = modeLabel;
+    layout->addWidget(m_modeLabel);
 
-    auto *effect = new QGraphicsOpacityEffect(m_iconLabel);
-    m_iconLabel->setGraphicsEffect(effect);
+    auto *effect = new QGraphicsOpacityEffect(m_modeLabel);
+    m_modeLabel->setGraphicsEffect(effect);
     m_blinkAnimation = new QPropertyAnimation(effect, "opacity", this);
     m_blinkAnimation->setDuration(1200);
     m_blinkAnimation->setStartValue(1.0);
@@ -83,9 +83,9 @@ void VoiceOverlay::setPreviewText(const QString &text)
     m_scrollText->setText(text);
 }
 
-void VoiceOverlay::setIcon(const QString &iconText)
+void VoiceOverlay::setModeText(const QString &text)
 {
-    m_iconLabel->setText(iconText);
+    m_modeLabel->setText(text);
 }
 
 void VoiceOverlay::positionOnActiveScreen()

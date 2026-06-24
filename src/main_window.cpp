@@ -105,6 +105,12 @@ void MainWindow::setupUi()
             });
     connect(m_voiceInputController, &VoiceInputController::listeningChanged,
             this, [this](bool listening) { updateControls(listening); });
+    connect(m_voiceInputController, &VoiceInputController::modeChanged, this,
+            [this](PipelineMode) {
+                if (m_asrSettingWidget) {
+                    m_asrSettingWidget->updateActiveModeDisplay();
+                }
+            });
 
     // ── System tray ────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: setting up tray icon");

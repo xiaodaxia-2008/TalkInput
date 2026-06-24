@@ -20,12 +20,12 @@ public:
     void stopAnimation();
     void stopBlinking();
     void setPreviewText(const QString &text);
-    void setIcon(const QString &iconText);
+    void setModeText(const QString &text);
 
 private:
     void positionOnActiveScreen();
 
-    QLabel *m_iconLabel = nullptr;
+    QLabel *m_modeLabel = nullptr;
     QPropertyAnimation *m_blinkAnimation = nullptr;
     ScrollTextDisplay *m_scrollText = nullptr;
 };

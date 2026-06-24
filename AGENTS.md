@@ -24,7 +24,7 @@ Then search unfinished items in `src/TalkInput_zh.ts` and update them.
 ## Common Rules
 - 特定操作系统相关的代码: 在 src 目录放声明的 .h, 实现全部放在 windows/linux/macos 子文件夹中， 编译时在 cmake 中配置使用哪些源文件，在代码库中禁止使用任何判断平台的宏， 比如 `Q_OS_WIN` ，第三方库的代码除外。
 - 使用相对路径 include 项目里的头文件，如果在子文件夹中，比如 `src/windows/system_ocr_recognizer.cpp`, 使用 `#include "../system_ocr_recognizer.h"`
-- 源代码文件本身就是utf8格式，直接使用 utf8 字符，禁止转义。
+- 源代码文件本身就是 **UTF-8** 格式，**必须直接使用 UTF-8 原始字符**，严禁使用 `\uXXXX` / `\UXXXXXXXX` 转义序列（如 `🎙` ✅，`\U0001f399` ❌）。
 - 所有权定义清晰的场景下，使用 unique_ptr 表示拥有所有权的指针，裸指针默认无所有权；复杂场景下可以使用 shared_ptr/weak_ptr 。
 - 使用 clang-foramt 格式化 .h/.cpp 文件，不要使用它格式化 CMakeLists.txt 
 - Every modification must be staged immediately after a successful compile; and ask user to confirm commit.

@@ -5,7 +5,6 @@
 #include <QByteArray>
 #include <QCoro/QCoroTask>
 #include <QElapsedTimer>
-#include <QKeySequence>
 #include <QObject>
 
 #include <expected>
@@ -39,9 +38,9 @@ enum class PipelineStage
     Polishing
 };
 
-QKeySequence hotkeySequence(PipelineMode mode);
-void setHotkeySequence(PipelineMode mode, const QKeySequence &keys);
-QString hotkeyConfigPath(PipelineMode mode);
+PipelineMode pipelineModeFromString(const std::string &s);
+std::string pipelineModeToString(PipelineMode mode);
+QString pipelineModeDisplayName(PipelineMode mode);
 
 class VoiceInputController final : public QObject
 {
@@ -70,11 +69,14 @@ public:
 
     std::string loadedPresetId() const;
 
-    void reregisterHotkey(PipelineMode mode);
+    void reregisterTriggerHotkey();
+    void reregisterModeSwitchHotkey();
+    void cyclePipelineMode();
 
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);
+    void modeChanged(PipelineMode mode);
 
 public slots:
     bool startListening();

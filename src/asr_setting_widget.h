@@ -28,6 +28,7 @@ public:
     explicit AsrSettingWidget(QWidget *parent = nullptr);
     ~AsrSettingWidget() override;
     void updateUiFromConfig();
+    void updateActiveModeDisplay();
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -49,6 +50,7 @@ private:
     void initAsrModel();
     void initIcons();
     void initShortcuts();
+    void initActiveMode();
 
     QCoro::Task<void> useAsrModel(const QString &providerId);
     void loadInstalledAsrModel(const QString &providerId);

@@ -104,10 +104,10 @@ struct AppSettings
     std::string llmProviderId;
     std::string llmSystemPrompt;
     std::string llmUserPrompt;
-    std::string asrHotKeys;
-    std::string asrLlmHotKeys;
-    std::string asrLlmOcrHotKeys;
-    bool useClipboard = true;
+    std::string activeMode = "asr_llm_ocr";
+    std::string triggerHotkey = "Ctrl+Alt+Space";
+    std::string modeSwitchHotkey = "Ctrl+Alt+Enter";
+    bool useClipboard = false;
     bool copyToClipboard = false;
     bool restoreClipboard = true;
     bool saveOcrScreenshot = false;
