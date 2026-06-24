@@ -50,6 +50,7 @@ include(cmake/QtDeploy.cmake)
 include(cmake/SherpaOnnxRelease.cmake)
 include(cmake/GitInfo.cmake)
 include(cmake/TesseractTrainData.cmake)
+include(cmake/ModelDownload.cmake)
 
 if(MSVC)
     add_compile_options(/utf-8)

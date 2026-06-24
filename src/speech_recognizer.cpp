@@ -12,6 +12,7 @@
 
 #include <QAudioDevice>
 #include <QAudioSource>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QIODevice>
@@ -241,8 +242,16 @@ SpeechRecognizer::createFromPreset(const AsrPreset &preset, QObject *parent)
     if (dirName.isEmpty()) {
         return std::unexpected(QStringLiteral("Model directory not set."));
     }
-    const QString modelDir =
+
+    // Try bundled models in the executable directory first, then fall
+    // back to the user's app data cache (e.g. runtime downloads).
+    const QString exeModelDir =
+        QDir(QCoreApplication::applicationDirPath())
+            .filePath(QStringLiteral("models/%1").arg(dirName));
+    const QString dataModelDir =
         QDir(appDataDir()).filePath(QStringLiteral("models/%1").arg(dirName));
+    const QString modelDir =
+        QFileInfo::exists(exeModelDir) ? exeModelDir : dataModelDir;
     resolved.resolvedModelDir = modelDir.toStdString();
 
     for (const auto &[key, relative] : preset.files) {

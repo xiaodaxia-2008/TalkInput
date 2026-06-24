@@ -144,17 +144,29 @@ install(TARGETS TalkInput
     COMPONENT Runtime
 )
 
-# Copy tessdata to build output
+# ── Development symlinks ─────────────────────────────────────────
+# Create directory symlinks in the binary output so models and
+# tessdata are available at runtime without manual copying.
 add_custom_command(TARGET TalkInput POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-    $<TARGET_FILE_DIR:TalkInput>/tessdata
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${PROJECT_SOURCE_DIR}/teact/train_data/chi_sim.traineddata
-    $<TARGET_FILE_DIR:TalkInput>/tessdata/chi_sim.traineddata
+    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:TalkInput>/models"
+    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:TalkInput>/tessdata"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        "${PROJECT_SOURCE_DIR}/models"
+        "$<TARGET_FILE_DIR:TalkInput>/models"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        "${PROJECT_SOURCE_DIR}/teact/train_data"
+        "$<TARGET_FILE_DIR:TalkInput>/tessdata"
+    COMMENT "Creating symlinks for models & tessdata"
 )
 
+# ── Install assets ───────────────────────────────────────────────
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/teact/train_data/
     DESTINATION ${CMAKE_INSTALL_BINDIR}/tessdata
+    COMPONENT Runtime
+)
+
+install(DIRECTORY ${TALKINPUT_SENSEVOICE_MODEL_DIR}/
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_SENSEVOICE_MODEL_NAME}
     COMPONENT Runtime
 )
 
