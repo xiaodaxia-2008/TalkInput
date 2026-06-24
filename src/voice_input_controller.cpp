@@ -305,15 +305,10 @@ QCoro::Task<void> VoiceInputController::executePipeline()
 
         const QImage image = m_ocrRecognizer->captureContextImage();
         if (!image.isNull()) {
-            SPDLOG_INFO("OCR context screenshot captured: {}x{}", image.width(),
-                        image.height());
-
             if (config.settings.saveOcrScreenshot) {
                 saveOcrDebugImage(image);
             }
-
             ocrContext = co_await m_ocrRecognizer->recognizeText(image);
-            SPDLOG_INFO("OCR context result received: {}", ocrContext);
         }
         else {
             SPDLOG_WARN("OCR context skipped: no focused screenshot");

@@ -28,6 +28,8 @@ add_executable(TalkInput WIN32
     history_widget.ui
     llm_post_processor.cpp
     llm_post_processor.h
+    clean_text.cpp
+    clean_text.h
     ocr_recognizer.cpp
     ocr_recognizer.h
     system_ocr_recognizer.h

@@ -29,7 +29,7 @@ LogPanel::LogPanel(QWidget *parent) : QWidget(parent)
     m_textEdit = new QPlainTextEdit(this);
     m_textEdit->setReadOnly(true);
     m_textEdit->setFrameShape(QFrame::NoFrame);
-    m_textEdit->setLineWrapMode(QPlainTextEdit::NoWrap);
+    m_textEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_textEdit->setMaximumBlockCount(kMaxLines);
     m_textEdit->setObjectName("logPanelTextEdit");
 

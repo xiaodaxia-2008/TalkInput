@@ -1,34 +1,21 @@
 #include "llm_post_processor.h"
 #include "app_config.h"
+#include "clean_text.h"
 #include "logging.h"
 
-#include <QCoro/QCoroFuture>
-#include <QCoro/QCoroNetworkReply>
 #include <QByteArray>
 #include <QCoreApplication>
+#include <QCoro/QCoroFuture>
+#include <QCoro/QCoroNetworkReply>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QRegularExpression>
 #include <QUrl>
+
+namespace talkinput
+{
 
 namespace
 {
-
-QString extractOcrWords(const QString &text)
-{
-    if (text.isEmpty()) {
-        return {};
-    }
-    static const QRegularExpression re(
-        QStringLiteral("[\\x{4e00}-\\x{9fff}]+|[a-zA-Z0-9]+"));
-    QStringList words;
-    auto it = QRegularExpressionMatchIterator(re.globalMatch(text));
-    while (it.hasNext()) {
-        words << it.next().captured();
-    }
-    return words.join(' ');
-}
-
 QNetworkRequest makeRequest(const QUrl &url)
 {
     QNetworkRequest request(url);
@@ -37,10 +24,43 @@ QNetworkRequest makeRequest(const QUrl &url)
     return request;
 }
 
-} // namespace
-
-namespace talkinput
+void logLlmCost(const nlohmann::json &doc, const LlmPreset &provider,
+                const QString &model)
 {
+    const auto it = provider.models.find(model.toStdString());
+    if (it == provider.models.end()) {
+        return;
+    }
+    const auto &price = it->second.price;
+    if (price.inputPer1M <= 0) {
+        return;
+    }
+    const double promptCacheHit = doc.value(
+        nlohmann::json::json_pointer("/usage/prompt_cache_hit_tokens"), 0.0);
+    const double promptCacheMiss = doc.value(
+        nlohmann::json::json_pointer("/usage/prompt_cache_miss_tokens"), 0.0);
+    const double outputTokens = doc.value(
+        nlohmann::json::json_pointer("/usage/completion_tokens"), 0.0);
+    const double totalTokens =
+        doc.value(nlohmann::json::json_pointer("/usage/total_tokens"), 0.0);
+
+    const double inputCost = promptCacheHit * price.cacheHitInputPer1M / 1e6 +
+                             promptCacheMiss * price.cacheMissInputPer1M / 1e6;
+    const double outputCost = outputTokens * price.outputPer1M / 1e6;
+    const double totalCost = inputCost + outputCost;
+
+    SPDLOG_INFO("LLM cost: {} tokens, ¥"
+                "{:.6f} (cache hit: "
+                "{:.0f} * ¥{:.4f}/M, cache "
+                "miss: {:.0f} * ¥{:.4f}/M, "
+                "output: {:.0f} * "
+                "¥{:.4f}/M)",
+                totalTokens, totalCost, promptCacheHit,
+                price.cacheHitInputPer1M, promptCacheMiss,
+                price.cacheMissInputPer1M, outputTokens, price.outputPer1M);
+}
+
+} // namespace
 
 LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
 {
@@ -49,23 +69,21 @@ LlmPostProcessor::LlmPostProcessor(QObject *parent) : QObject(parent)
 LlmPostProcessor::~LlmPostProcessor() = default;
 
 QCoro::Task<QString> LlmPostProcessor::postProcess(const QString &text,
-                                                    const QString &contextText,
-                                                    const QString &hotwords)
+                                                   const QString &contextText,
+                                                   const QString &hotwords)
 {
     const QString trimmed = text.trimmed();
     if (trimmed.isEmpty()) {
         co_return text;
     }
 
-    SPDLOG_DEBUG("LLM post-process queued input: {}", trimmed);
-
     auto promise = std::make_unique<QPromise<QString>>();
     promise->start();
     QFuture<QString> future = promise->future();
 
-    m_pending.emplace_back(
-        PendingRequest{trimmed, contextText.trimmed(), hotwords.trimmed(),
-                       std::move(promise)});
+    m_pending.emplace_back(PendingRequest{trimmed, contextText.trimmed(),
+                                          hotwords.trimmed(),
+                                          std::move(promise)});
     drainQueue();
 
     co_return co_await future;
@@ -85,22 +103,21 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
     const QString formattedInput = lines.join(", ");
     const QString cleanedContext = extractOcrWords(request.contextText);
 
-    QString systemPrompt = QString::fromStdString(
-        appConfig().settings.llmSystemPrompt);
+    QString systemPrompt =
+        QString::fromStdString(appConfig().settings.llmSystemPrompt);
     systemPrompt.replace("{{input}}", formattedInput);
     systemPrompt.replace("{{context}}", cleanedContext);
     systemPrompt.replace("{{hotwords}}", request.hotwords);
 
-    QString userPrompt = QString::fromStdString(
-        appConfig().settings.llmUserPrompt);
+    QString userPrompt =
+        QString::fromStdString(appConfig().settings.llmUserPrompt);
     userPrompt.replace("{{input}}", formattedInput);
     userPrompt.replace("{{context}}", cleanedContext);
     userPrompt.replace("{{hotwords}}", request.hotwords);
 
     const auto &provider =
         appConfig().llmPresets.at(appConfig().settings.llmProviderId);
-    const QString model =
-        QString::fromStdString(provider.currentModel);
+    const QString model = QString::fromStdString(provider.currentModel);
     nlohmann::json payload = {{"messages",
                                {{{"role", "system"}, {"content", systemPrompt}},
                                 {{"role", "user"}, {"content", userPrompt}}}},
@@ -123,25 +140,10 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
         networkRequest.setRawHeader("Authorization",
                                     QString("Bearer %1").arg(apiKey).toUtf8());
     }
-    SPDLOG_DEBUG("LLM chat request body:\n{}", payload.dump(2));
+    SPDLOG_DEBUG("LLM request:\n{}", payload.dump(2));
 
     const std::string requestJson = payload.dump();
     const QByteArray requestBody = QByteArray::fromStdString(requestJson);
-
-    const std::string modelName = model.toStdString();
-    const auto modelIt = provider.models.find(modelName);
-    const double inputPer1M = modelIt != provider.models.end()
-                                  ? modelIt->second.price.inputPer1M
-                                  : 0.0;
-    const double cacheHitInputPer1M = modelIt != provider.models.end()
-                                          ? modelIt->second.price.cacheHitInputPer1M
-                                          : 0.0;
-    const double cacheMissInputPer1M = modelIt != provider.models.end()
-                                           ? modelIt->second.price.cacheMissInputPer1M
-                                           : 0.0;
-    const double outputPer1M = modelIt != provider.models.end()
-                                   ? modelIt->second.price.outputPer1M
-                                   : 0.0;
 
     QNetworkReply *reply = m_network.post(networkRequest, requestBody);
     co_await reply;
@@ -154,50 +156,13 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
             const nlohmann::json doc = nlohmann::json::parse(
                 responseBody.constData(),
                 responseBody.constData() + responseBody.size());
-            SPDLOG_DEBUG("LLM chat response JSON: {}", doc.dump(2));
+            SPDLOG_DEBUG("LLM response: {}", doc.dump(2));
 
-            const auto &choices =
-                doc.value("choices", nlohmann::json::array());
-            if (!choices.empty()) {
-                const auto &message = choices.front().value(
-                    "message", nlohmann::json::object());
-                const QString content =
-                    message.value("content", QString()).trimmed();
-                if (!content.isEmpty()) {
-                    result = cleanupResponseText(content);
-                }
-            }
-
-            const auto &usage =
-                doc.value("usage", nlohmann::json::object());
-            if (!usage.empty() && inputPer1M > 0) {
-                const double promptCacheHit =
-                    usage.value("prompt_cache_hit_tokens", 0.0);
-                const double promptCacheMiss =
-                    usage.value("prompt_cache_miss_tokens", 0.0);
-                const double outputTokens =
-                    usage.value("completion_tokens", 0.0);
-                const double totalTokens =
-                    usage.value("total_tokens", 0.0);
-
-                const double inputCost =
-                    promptCacheHit * cacheHitInputPer1M / 1e6 +
-                    promptCacheMiss * cacheMissInputPer1M / 1e6;
-                const double outputCost =
-                    outputTokens * outputPer1M / 1e6;
-                const double totalCost = inputCost + outputCost;
-
-                SPDLOG_INFO("LLM cost: {} tokens, ¥"
-                            "{:.6f} (cache hit: "
-                            "{:.0f} * ¥{:.4f}/M, cache "
-                            "miss: {:.0f} * ¥{:.4f}/M, "
-                            "output: {:.0f} * "
-                            "¥{:.4f}/M)",
-                            totalTokens, totalCost, promptCacheHit,
-                            cacheHitInputPer1M, promptCacheMiss,
-                            cacheMissInputPer1M, outputTokens,
-                            outputPer1M);
-            }
+            const QString content = doc.value(
+                nlohmann::json::json_pointer("/choices/0/message/content"),
+                QString{});
+            result = cleanupResponseText(content);
+            logLlmCost(doc, provider, model);
         }
         catch (const nlohmann::json::exception &e) {
             SPDLOG_WARN("LLM response parse failed: {}", e.what());
@@ -205,21 +170,18 @@ QCoro::Task<void> LlmPostProcessor::sendCompletion(PendingRequest request)
         }
     }
     else {
-        SPDLOG_WARN("LLM post-process failed: {}",
-                    reply->errorString());
+        SPDLOG_WARN("LLM post-process failed: {}", reply->errorString());
         requestFailed = true;
     }
-    SPDLOG_DEBUG("LLM post-process output: {}", result);
     reply->deleteLater();
 
     if (request.promise && !request.promise->isCanceled()) {
         request.promise->addResult(result);
         request.promise->finish();
     }
-    STATUSBAR_INFO("{}", requestFailed
-                              ? tr("LLM post-processing failed; "
-                                   "using original text.")
-                              : tr("LLM post-processing complete."));
+    STATUSBAR_INFO("{}", requestFailed ? tr("LLM post-processing failed; "
+                                            "using original text.")
+                                       : tr("LLM post-processing complete."));
 }
 
 void LlmPostProcessor::failPending(const QString &reason)
@@ -239,6 +201,9 @@ void LlmPostProcessor::failPending(const QString &reason)
 QString LlmPostProcessor::cleanupResponseText(const QString &text)
 {
     QString result = text.trimmed();
+    if (result.isEmpty()) {
+        return {};
+    }
     const QString thinkEnd = "</think>";
     const qsizetype thinkEndIndex = result.indexOf(thinkEnd);
     if (thinkEndIndex >= 0) {

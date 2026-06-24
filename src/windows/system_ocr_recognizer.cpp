@@ -84,7 +84,6 @@ QImage captureWindowWithPrintWindow(HWND hwnd)
     DeleteDC(memoryDc);
     ReleaseDC(hwnd, windowDc);
 
-    SPDLOG_DEBUG("OCR: PrintWindow returned {}", ok ? "true" : "false");
     return image;
 }
 
@@ -114,7 +113,6 @@ QImage captureWindowFromDesktop(HWND hwnd)
     DeleteDC(memoryDc);
     ReleaseDC(nullptr, desktopDc);
 
-    SPDLOG_DEBUG("OCR: desktop BitBlt returned {}", ok ? "true" : "false");
     return image;
 }
 
@@ -153,8 +151,6 @@ HWND focusedWindowFromUiAutomation()
         CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
                          IID_PPV_ARGS(&automation));
     if (FAILED(hr) || !automation) {
-        SPDLOG_DEBUG("OCR: UI Automation unavailable: 0x{:08x}",
-                     static_cast<unsigned>(hr));
         return nullptr;
     }
 
@@ -162,9 +158,6 @@ HWND focusedWindowFromUiAutomation()
     hr = automation->GetFocusedElement(&element);
     releaseCom(automation);
     if (FAILED(hr) || !element) {
-        SPDLOG_DEBUG("OCR: UI Automation focused element unavailable: "
-                     "0x{:08x}",
-                     static_cast<unsigned>(hr));
         return nullptr;
     }
 
@@ -172,9 +165,6 @@ HWND focusedWindowFromUiAutomation()
     hr = element->get_CurrentNativeWindowHandle(&nativeWindow);
     releaseCom(element);
     if (FAILED(hr) || nativeWindow == 0) {
-        SPDLOG_DEBUG("OCR: UI Automation focused element has no native "
-                     "window: 0x{:08x}",
-                     static_cast<unsigned>(hr));
         return nullptr;
     }
 
@@ -183,8 +173,6 @@ HWND focusedWindowFromUiAutomation()
     if (root) {
         hwnd = root;
     }
-    SPDLOG_DEBUG("OCR: using UI Automation focused native window for "
-                 "screenshot");
     return hwnd;
 }
 
@@ -199,17 +187,12 @@ HWND focusedWindowFromWin32()
         if (GetGUIThreadInfo(threadId, &info) && info.hwndFocus) {
             hwnd = GetAncestor(info.hwndFocus, GA_ROOT);
             if (hwnd) {
-                SPDLOG_DEBUG("OCR: using Win32 focused root window for "
-                             "screenshot");
             }
         }
     }
 
     if (!hwnd) {
         hwnd = foreground;
-        if (hwnd) {
-            SPDLOG_DEBUG("OCR: using foreground window for screenshot");
-        }
     }
 
     return hwnd;
@@ -245,17 +228,13 @@ void initWinrtApartment()
 
 QString recognizeWindowsText(QImage image)
 {
+    spdlog::stopwatch sw;
     if (image.isNull()) {
-        SPDLOG_DEBUG("OCR: Windows OCR skipped empty image");
         return {};
     }
 
     initWinrtApartment();
 
-    const spdlog::stopwatch sw;
-
-    SPDLOG_DEBUG("OCR: Windows OCR input image: {}x{} fmt={}", image.width(),
-                 image.height(), static_cast<int>(image.format()));
     // NOTE: deliberately NOT scaling the image here. The OCR engine handles
     // large images well (~250ms for 2576x1456). Scaling to 900x360 made text
     // unreadable and caused the empty result bug. MaxContextWidth/Height are
@@ -266,7 +245,6 @@ QString recognizeWindowsText(QImage image)
     // and decode matches what the OCR engine expects.
     if (image.format() != QImage::Format_RGB32) {
         image = image.convertToFormat(QImage::Format_RGB32);
-        SPDLOG_DEBUG("OCR: converted image to Format_RGB32");
     }
 
     // Write BMP to a temporary file and open it via StorageFile (same
@@ -277,10 +255,8 @@ QString recognizeWindowsText(QImage image)
         QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation))
             .filePath("talkinput-ocr.bmp");
     if (!image.save(tempPath, "BMP")) {
-        SPDLOG_WARN("OCR: failed to save temp BMP: {}", tempPath);
         return {};
     }
-    SPDLOG_DEBUG("OCR: temp BMP saved: {}", tempPath);
 
     winrt::Windows::Storage::StorageFile file = nullptr;
     try {
@@ -309,10 +285,6 @@ QString recognizeWindowsText(QImage image)
                 winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
                 winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Ignore)
             .get();
-    SPDLOG_DEBUG("OCR: decoder bitmap: {}x{} fmt={} alpha={}",
-                 bitmap.PixelWidth(), bitmap.PixelHeight(),
-                 static_cast<int>(bitmap.BitmapPixelFormat()),
-                 static_cast<int>(bitmap.BitmapAlphaMode()));
 
     // Clean up temp file
     QFile::remove(tempPath);
@@ -335,16 +307,12 @@ QString recognizeWindowsText(QImage image)
         SPDLOG_WARN("OCR: Windows OCR engine is not available");
         return {};
     }
-    SPDLOG_DEBUG("OCR: engine language={}",
-                 winrt::to_string(engine.RecognizerLanguage().LanguageTag()));
 
     const auto result = engine.RecognizeAsync(bitmap).get();
     const auto textHstring = result.Text();
-    SPDLOG_DEBUG("OCR: result text length={}", textHstring.size());
     const QString text =
         QString::fromStdWString(std::wstring(textHstring)).trimmed();
     SPDLOG_DEBUG("OCR: Windows OCR result: {}", text);
-
     SPDLOG_INFO("OCR: Windows OCR completed in {:.3}s (image {}x{})", sw,
                 image.width(), image.height());
 
@@ -370,27 +338,23 @@ QImage SystemOcrRecognizer::captureContextImage() const
 {
     const HWND hwnd = focusedInputWindow();
     if (!hwnd) {
-        return {};
+        return OcrRecognizer::captureContextImage();
     }
 
     // Desktop BitBlt first: reliable for all window types (including
     // DirectX-accelerated windows where PrintWindow returns blank).
     QImage image = captureWindowFromDesktop(hwnd);
     if (!image.isNull()) {
-        SPDLOG_DEBUG("OCR: focused window captured from desktop: {}x{}",
-                     image.width(), image.height());
         return image;
     }
 
     // Fallback to PrintWindow for off-screen or obscured windows.
     image = captureWindowWithPrintWindow(hwnd);
     if (!image.isNull()) {
-        SPDLOG_DEBUG("OCR: focused window captured by PrintWindow: {}x{}",
-                     image.width(), image.height());
         return image;
     }
 
-    return {};
+    return OcrRecognizer::captureContextImage();
 }
 
 QCoro::Task<QString> SystemOcrRecognizer::recognizeText(const QImage &image)
