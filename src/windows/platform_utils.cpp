@@ -1,5 +1,4 @@
 #include "../platform_utils.h"
-#include "../app_config.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -89,8 +88,6 @@ static void sendViaSendInput(const QString &text)
         ImmSetOpenStatus(himc, FALSE);
     }
 
-    const int charDelayMs = appConfig().settings.inputCharDelayMs;
-
     for (const QChar ch : text) {
         const ushort code = ch.unicode();
         if (code == 0) {
@@ -110,8 +107,8 @@ static void sendViaSendInput(const QString &text)
 
         SendInput(2, pair, sizeof(INPUT));
 
-        if (charDelayMs > 0) {
-            Sleep(static_cast<DWORD>(charDelayMs));
+        if (code < 0x80) {
+            Sleep(15);
         }
     }
 
@@ -147,29 +144,55 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
         return;
     }
 
-    // Terminal windows: clipboard + Ctrl+V / Ctrl+Shift+V is the standard way.
-    // KEYEVENTF_UNICODE doesn't work well in terminals.
-    if (isTerminalWindow(hwnd)) {
-        if (useClipboard) {
+    if (useClipboard) {
+        if (isTerminalWindow(hwnd)) {
             if (!tryClipboardPaste(text)) {
                 sendViaSendInput(text);
             }
         }
         else {
-            sendViaSendInput(text);
+            // Use Qt clipboard + Ctrl+V with optional restore
+            QClipboard *clipboard = QApplication::clipboard();
+            QMimeData *originalData = nullptr;
+
+            // Save original clipboard only when we intend to restore it
+            const bool shouldRestore = restoreClipboard && !copyToClipboard;
+            if (shouldRestore) {
+                const QMimeData *currentData = clipboard->mimeData();
+                originalData = new QMimeData();
+                for (const QString &format : currentData->formats()) {
+                    originalData->setData(format, currentData->data(format));
+                }
+            }
+
+            clipboard->setText(text);
+
+            INPUT inputs[4] = {};
+            inputs[0].type = INPUT_KEYBOARD;
+            inputs[0].ki.wVk = VK_CONTROL;
+            inputs[1].type = INPUT_KEYBOARD;
+            inputs[1].ki.wVk = 'V';
+            inputs[2].type = INPUT_KEYBOARD;
+            inputs[2].ki.wVk = 'V';
+            inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+            inputs[3].type = INPUT_KEYBOARD;
+            inputs[3].ki.wVk = VK_CONTROL;
+            inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+            SendInput(4, inputs, sizeof(INPUT));
+
+            if (shouldRestore && originalData) {
+                QThread::msleep(50);
+                clipboard->setMimeData(originalData);
+            }
         }
-        return;
     }
+    else {
+        sendViaSendInput(text);
 
-    // Non-terminal windows: primary method is character-by-character SendInput
-    // (KEYEVENTF_UNICODE). This works in every application regardless of what
-    // paste shortcut the app uses (Ctrl+V, Ctrl+Shift+V, or custom handlers).
-    sendViaSendInput(text);
-
-    // Optional clipboard copy for the user's convenience
-    if (copyToClipboard) {
-        QClipboard *clipboard = QApplication::clipboard();
-        clipboard->setText(text);
+        if (copyToClipboard) {
+            QClipboard *clipboard = QApplication::clipboard();
+            clipboard->setText(text);
+        }
     }
 }
 

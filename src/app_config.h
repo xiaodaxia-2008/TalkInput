@@ -107,13 +107,12 @@ struct AppSettings
     std::string asrHotKeys;
     std::string asrLlmHotKeys;
     std::string asrLlmOcrHotKeys;
-    bool useClipboard = false;
+    bool useClipboard = true;
     bool copyToClipboard = false;
     bool restoreClipboard = true;
     bool saveOcrScreenshot = false;
     bool saveAsrAudio = false;
     int pasteDelayMs = 200;
-    int inputCharDelayMs = 0;
     double overlayOpacity = 0.8;
 };
 
