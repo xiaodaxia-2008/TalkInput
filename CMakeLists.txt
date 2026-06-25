@@ -84,4 +84,5 @@ set(CPACK_NSIS_DELETE_ICONS_EXTRA
     "Delete '$DESKTOP\\\\TalkInput 语音输入法.lnk'"
 )
 
+set(CPACK_COMPONENTS_ALL Runtime)
 include(CPack)
