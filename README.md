@@ -73,8 +73,8 @@
 ```powershell
 git clone https://github.com/ZenShawn/TalkInput.git
 cd TalkInput
-pwsh msvc.ps1 cmake --preset release --fresh
-pwsh msvc.ps1 cmake --build build
+cmake --preset release --fresh
+cmake --build build
 .\build\bin\TalkInput.exe
 ```
 
