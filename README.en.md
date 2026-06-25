@@ -1,17 +1,17 @@
-English | [简体中文](README.md)
+<img src="docs/imgs/icon.png" height="1.2em" alt="TalkInput" /> English | [简体中文](README.md)
 
 # TalkInput
 
 A local voice input tool that captures speech via microphone, performs OCR on the active input window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
-
-![Voice Overlay](docs/imgs/overlay_en.png)
-![ASR Settings](docs/imgs/talkinput_asr_setting_en.png)
 
 ## Features
 
 - **Multi-engine ASR** — Built-in support for Paraformer (streaming bilingual zh/en), SenseVoice (multilingual), FunASR Nano (600M params, hotwords support), and system-native speech recognition. Download and switch on demand.
 - **LLM Post-processing** — Recognized text is refined by an LLM to fix typos, add punctuation, and improve phrasing using surrounding context. Supports local llama.cpp (auto-managed), DeepSeek, or any custom API endpoint.
 - **OCR Context Awareness** — Before recognition, captures on-screen text near the focused input field as context, improving LLM correction accuracy.
+
+![ASR Settings](docs/imgs/talkinput_asr_setting_en.png)
+
 - **Three Pipeline Modes** — Cycle through modes with the mode switch hotkey:
   - 🎙 — ASR only
   - 🎙✨ — ASR + LLM post-processing
@@ -22,8 +22,10 @@ A local voice input tool that captures speech via microphone, performs OCR on th
 ![Recognition History](docs/imgs/talkinput_history_en.png)
 
 - **Voice Overlay** — A floating text preview window appears during recording, showing real-time recognition progress and pipeline mode, auto-positioning on the active screen.
+
+![Voice Overlay](docs/imgs/overlay_en.png)
+
 - **System Tray** — Minimize to tray, respond to hotkeys in the background. Optional start on boot.
-- **Bilingual UI** — Switch between English and Simplified Chinese.
 
 ## Usage
 
@@ -62,21 +64,22 @@ On first launch, choose and download a speech recognition model in Settings. The
 - [vcpkg](https://github.com/microsoft/vcpkg) (libarchive, spdlog, nlohmann-json)
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) v1.13.3 static library
 
-**Windows (PowerShell):**
-```powershell
+```bash
 git clone https://github.com/ZenShawn/TalkInput.git
 cd TalkInput
-cmake --preset release --fresh
+cmake --preset release
 cmake --build build
-.\build\bin\TalkInput.exe
+./build/bin/TalkInput
 ```
 
-To package the installer:
+To package the installer
 
-```powershell
+```bash
 cd build
 cpack
 ```
+
+> The preset file contains Qt and vcpkg paths — edit `CMakePresets.json` to match your environment before building.
 
 ## Development
 
@@ -95,36 +98,9 @@ third_parties/       — Third-party libraries
   KDToolBox/         — Utility library
 ```
 
-### Tech Stack
-
-| Dependency | Purpose |
-|-----------|---------|
-| Qt 6 | GUI, audio capture, networking, SQLite |
-| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Offline speech recognition |
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) | Local LLM inference server |
-| [QCoro](https://github.com/qcoro/qcoro) | C++20 coroutines |
-| [QHotkey](https://github.com/Skycoder42/QHotkey) | Global hotkeys |
-| [spdlog](https://github.com/gabime/spdlog) | Logging |
-| [nlohmann/json](https://github.com/nlohmann/json) | JSON parsing |
-| [libarchive](https://github.com/libarchive/libarchive) | Model archive extraction |
-
-### Translations
-
-```powershell
-pwsh msvc.ps1 cmake --build build -t update_translations
-```
-
-Then edit unfinished entries in `src/TalkInput_zh.ts`.
-
-### Code Style
-
-- C++23 standard. No platform macros — platform-specific code lives in separate directories.
-- Source files are UTF-8 encoded. Use UTF-8 characters directly.
-
 ## Credits
 
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) — Offline speech recognition engine
-- [llama.cpp](https://github.com/ggml-org/llama.cpp) — Local LLM inference
 - [Qt](https://www.qt.io/) — Cross-platform framework
 - [QCoro](https://github.com/qcoro/qcoro) — C++ coroutine library
 - [QHotkey](https://github.com/Skycoder42/QHotkey) — Global hotkey library

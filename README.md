@@ -1,17 +1,17 @@
-[English](README.en.md) | 简体中文
+<img src="docs/imgs/icon.png" height="1.2em" alt="TalkInput" /> [English](README.en.md) | 简体中文
 
 # TalkInput 语音输入法
 
 本地语音输入工具，通过麦克风采集语音，支持 OCR 识别输入框所在窗口的文字作为上下文，结合 LLM 后处理修正识别错误，结果自动注入到任意应用程序的输入框。
-
-![语音覆盖层](docs/imgs/overlay_zh.png)
-![ASR 设置](docs/imgs/talkinput_asr_setting_zh.png)
 
 ## 功能
 
 - **多引擎语音识别** — 内置 Paraformer（流式中英双语）、SenseVoice（多语言）、FunASR Nano（600M 参数，支持热词）及系统原生语音识别，可按需下载切换。
 - **LLM 后处理** — 识别文本经由 LLM 修正错别字、补全标点、结合上下文优化表达。支持本地 llama.cpp 服务（自动管理）或 DeepSeek 等云端 API，可配置自定义端点。
 - **OCR 上下文感知** — 识别前自动截取当前输入框附近的屏幕文字作为上下文，提升 LLM 修正准确率。
+
+![ASR 设置](docs/imgs/talkinput_asr_setting_zh.png)
+
 - **三级流水线** — 依次为纯语音识别 → LLM 后处理 → OCR 上下文，通过快捷键循环切换：
   - 🎙 — 仅语音识别
   - 🎙✨ — 语音识别 + LLM 后处理
@@ -22,8 +22,10 @@
 ![识别历史](docs/imgs/talkinput_history_zh.png)
 
 - **语音覆盖层** — 录音时显示浮动文字预览窗口，实时展示识别进度与流水线模式，自动定位到当前屏幕。
+
+![语音覆盖层](docs/imgs/overlay_zh.png)
+
 - **系统托盘** — 最小化到系统托盘，后台响应快捷键，开机自启动可选。
-- **中英文界面** — 支持简体中文和英文界面切换。
 
 ## 使用方法
 
@@ -62,21 +64,22 @@
 - [vcpkg](https://github.com/microsoft/vcpkg)（管理 libarchive、spdlog、nlohmann-json）
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) v1.13.3 静态库
 
-**Windows (PowerShell):**
-```powershell
+```bash
 git clone https://github.com/ZenShawn/TalkInput.git
 cd TalkInput
-cmake --preset release --fresh
+cmake --preset release
 cmake --build build
-.\build\bin\TalkInput.exe
+./build/bin/TalkInput
 ```
 
-打包安装程序：
+打包安装程序
 
-```powershell
+```bash
 cd build
 cpack
 ```
+
+> 预设文件中包含了 Qt 与 vcpkg 路径，使用前请根据你的环境修改 `CMakePresets.json`。
 
 ## 开发
 
@@ -95,36 +98,9 @@ third_parties/       — 第三方库
   KDToolBox/         — 工具库
 ```
 
-### 技术栈
-
-| 依赖 | 用途 |
-|------|------|
-| Qt 6 | GUI、音频采集、网络、SQLite |
-| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | 离线语音识别 |
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) | 本地 LLM 推理服务 |
-| [QCoro](https://github.com/qcoro/qcoro) | C++20 协程 |
-| [QHotkey](https://github.com/Skycoder42/QHotkey) | 全局热键 |
-| [spdlog](https://github.com/gabime/spdlog) | 日志 |
-| [nlohmann/json](https://github.com/nlohmann/json) | JSON 解析 |
-| [libarchive](https://github.com/libarchive/libarchive) | 模型压缩包解压 |
-
-### 翻译
-
-```powershell
-pwsh msvc.ps1 cmake --build build -t update_translations
-```
-
-随后编辑 `src/TalkInput_zh.ts` 中的未完成条目。
-
-### 代码风格
-
-- C++23 标准，不使用平台宏，平台相关代码分目录存放。
-- 源文件为 UTF-8 编码，直接使用 UTF-8 字符。
-
 ## 致谢
 
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) — 离线语音识别引擎
-- [llama.cpp](https://github.com/ggml-org/llama.cpp) — 本地 LLM 推理
 - [Qt](https://www.qt.io/) — 跨平台框架
 - [QCoro](https://github.com/qcoro/qcoro) — C++ 协程库
 - [QHotkey](https://github.com/Skycoder42/QHotkey) — 全局热键库
