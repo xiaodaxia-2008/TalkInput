@@ -4,20 +4,55 @@ English | [简体中文](README.md)
 
 A local voice input tool that captures speech via microphone, performs OCR on the active input window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
 
+<p align="center">
+  <img src="docs/imgs/overlay_en.png" width="380" alt="Voice Overlay" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/imgs/talkinput_asr_setting_en.png" width="380" alt="ASR Settings" />
+</p>
+
 ## Features
 
 - **Multi-engine ASR** — Built-in support for Paraformer (streaming bilingual zh/en), SenseVoice (multilingual), FunASR Nano (600M params, hotwords support), and system-native speech recognition. Download and switch on demand.
 - **LLM Post-processing** — Recognized text is refined by an LLM to fix typos, add punctuation, and improve phrasing using surrounding context. Supports local llama.cpp (auto-managed), DeepSeek, or any custom API endpoint.
 - **OCR Context Awareness** — Before recognition, captures on-screen text near the focused input field as context, improving LLM correction accuracy.
-- **Three Pipeline Modes** — Each processing depth has its own global hotkey:
-  - `Alt+Q` — ASR only
-  - `Alt+W` — ASR + LLM post-processing
-  - `Alt+A` — ASR + LLM post-processing + OCR context (full pipeline)
+- **Three Pipeline Modes** — Cycle through modes with the mode switch hotkey:
+  - 🎙 — ASR only
+  - 🎙✨ — ASR + LLM post-processing
+  - 🎙✨📄 — ASR + LLM post-processing + OCR context (full pipeline)
 - **Audio File Recognition** — Decode audio files (WAV, MP3, etc.) and transcribe them to text.
 - **Recognition History** — All results saved in a local SQLite database. Browse, copy, edit, or delete entries.
-- **Voice Overlay** — A floating text preview window appears during recording, showing real-time recognition progress and auto-positioning on the active screen.
+
+<p align="center">
+  <img src="docs/imgs/talkinput_history_en.png" width="760" alt="Recognition History" />
+</p>
+
+- **Voice Overlay** — A floating text preview window appears during recording, showing real-time recognition progress and pipeline mode, auto-positioning on the active screen.
 - **System Tray** — Minimize to tray, respond to hotkeys in the background. Optional start on boot.
 - **Bilingual UI** — Switch between English and Simplified Chinese.
+
+## Usage
+
+### Global Hotkeys
+
+| Hotkey (configurable) | Action |
+|---|---|
+| `Ctrl+Alt+Space` | Start / stop voice input (uses current pipeline mode) |
+| `Ctrl+Alt+Enter` | Cycle pipeline mode 🎙 → 🎙✨ → 🎙✨📄 |
+
+Both hotkeys can be customized in the settings.
+
+### Main Window
+
+![Main Window](docs/imgs/talkinput_asr_setting_en.png)
+
+- **Toolbar** — "Start Recognition" button to begin/stop voice input. "Recognize File" to import audio files.
+- **Settings** — Choose ASR engine, download models, manage hotwords, configure LLM endpoint.
+- **History** — View, copy, edit, or delete all recognition records.
+- **Log** — Runtime logs for troubleshooting.
+
+### Audio File Recognition
+
+Click "Recognize File" on the toolbar or select it from the menu to import audio files (WAV, MP3, M4A, etc.). The recognized text is displayed and saved to history.
 
 ## Installation
 
