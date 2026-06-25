@@ -1,4 +1,4 @@
-<img src="docs/imgs/icon.png" height="1.2em" alt="TalkInput" /> English | [简体中文](README.md)
+English | [简体中文](README.md)
 
 # TalkInput
 
