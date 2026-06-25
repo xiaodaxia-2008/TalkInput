@@ -141,31 +141,127 @@ void OfflineSpeechRecognizer::finish()
         return;
     }
 
-    const SherpaOnnxOfflineStream *stream =
-        SherpaOnnxCreateOfflineStream(m_recognizer);
-    if (!stream) {
-        return;
-    }
+    const int sampleRate = m_modelSampleRate;
+    const int targetSamples = chunkSeconds() * sampleRate;
+    const int maxSamples = targetSamples * 3 / 2;
 
-    SherpaOnnxAcceptWaveformOffline(stream, m_modelSampleRate, m_samples.data(),
-                                    static_cast<int32_t>(m_samples.size()));
+    // ── 1. Detect silence split points ──
+    // Frame-based RMS energy detection; split at the midpoint of any
+    // continuous silence run ≥ 500 ms.
+    constexpr int frameMs = 30;
+    constexpr int minSilenceMs = 500;
+    constexpr float silenceThresh = 0.005f;
 
-    SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
+    const int frameSize = sampleRate * frameMs / 1000;
+    std::vector<int> splits;
 
-    const SherpaOnnxOfflineRecognizerResult *result =
-        SherpaOnnxGetOfflineStreamResult(stream);
-    if (result) {
-        QString text = decodeSherpaText(result->text);
-        SherpaOnnxDestroyOfflineRecognizerResult(result);
+    if (frameSize > 0 && static_cast<size_t>(frameSize) <= m_samples.size()) {
+        int run = 0;
+        size_t runStart = 0;
+        for (size_t i = 0; i + frameSize <= m_samples.size(); i += frameSize) {
+            float rms = 0.0f;
+            for (int j = 0; j < frameSize; ++j) {
+                rms += m_samples[i + j] * m_samples[i + j];
+            }
+            rms = std::sqrt(rms / static_cast<float>(frameSize));
 
-        if (!text.isEmpty()) {
-            text = addPunctuation(text);
-            emit resultChanged(text, true);
+            if (rms < silenceThresh) {
+                if (run == 0) runStart = i;
+                ++run;
+            }
+            else {
+                if (run >= minSilenceMs / frameMs) {
+                    splits.push_back(
+                        static_cast<int>(runStart + (run * frameSize) / 2));
+                }
+                run = 0;
+            }
         }
     }
 
-    SherpaOnnxDestroyOfflineStream(stream);
+    // ── 2. Pre-split into segments at silence boundaries ──
+    // (start, size) pairs
+    struct Segment { int start; int size; };
+    std::vector<Segment> raw;
+
+    int prev = 0;
+    for (int sp : splits) {
+        sp = std::clamp(sp, prev, static_cast<int>(m_samples.size()));
+        int sz = sp - prev;
+        if (sz > 0) raw.push_back({prev, sz});
+        prev = sp;
+    }
+    if (prev < static_cast<int>(m_samples.size())) {
+        raw.push_back({prev, static_cast<int>(m_samples.size()) - prev});
+    }
+    if (raw.empty()) {
+        raw.push_back({0, static_cast<int>(m_samples.size())});
+    }
+
+    // ── 3. For any segment longer than maxSamples, split it evenly ──
+    std::vector<Segment> segs;
+    for (const auto &seg : raw) {
+        if (seg.size > maxSamples) {
+            const int parts = (seg.size + maxSamples - 1) / maxSamples;
+            const int base = seg.size / parts;
+            for (int i = 0; i < parts; ++i) {
+                const int start = seg.start + i * base;
+                const int size =
+                    (i == parts - 1) ? (seg.start + seg.size - start) : base;
+                segs.push_back({start, size});
+            }
+        }
+        else {
+            segs.push_back(seg);
+        }
+    }
+
+    // ── 4. Greedy merge: accumulate segments until targetSamples ──
+    std::vector<Segment> blocks;
+    int accStart = segs[0].start;
+    int accSize = segs[0].size;
+
+    for (size_t i = 1; i < segs.size(); ++i) {
+        if (accSize + segs[i].size <= targetSamples) {
+            accSize += segs[i].size;
+        }
+        else {
+            blocks.push_back({accStart, accSize});
+            accStart = segs[i].start;
+            accSize = segs[i].size;
+        }
+    }
+    blocks.push_back({accStart, accSize});
+
+    // ── 5. Decode each merged block ──
+    QStringList transcript;
+    for (const auto &blk : blocks) {
+        const SherpaOnnxOfflineStream *stream =
+            SherpaOnnxCreateOfflineStream(m_recognizer);
+        if (!stream) continue;
+
+        SherpaOnnxAcceptWaveformOffline(stream, sampleRate,
+                                        m_samples.data() + blk.start, blk.size);
+        SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
+
+        const SherpaOnnxOfflineRecognizerResult *result =
+            SherpaOnnxGetOfflineStreamResult(stream);
+        if (result) {
+            const QString text = decodeSherpaText(result->text);
+            if (!text.isEmpty()) {
+                transcript.append(text);
+            }
+            SherpaOnnxDestroyOfflineRecognizerResult(result);
+        }
+        SherpaOnnxDestroyOfflineStream(stream);
+    }
+
     m_samples.clear();
+
+    if (!transcript.isEmpty()) {
+        const QString fullText = addPunctuation(transcript.join(QString()));
+        emit resultChanged(fullText, true);
+    }
 }
 
 void OfflineSpeechRecognizer::resetStream()
@@ -175,7 +271,7 @@ void OfflineSpeechRecognizer::resetStream()
 
 int OfflineSpeechRecognizer::chunkSeconds() const
 {
-    return 10;
+    return 60;
 }
 
 } // namespace talkinput
