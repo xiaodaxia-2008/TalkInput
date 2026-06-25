@@ -4,11 +4,8 @@
 
 本地语音输入工具，通过麦克风采集语音，支持 OCR 识别输入框所在窗口的文字作为上下文，结合 LLM 后处理修正识别错误，结果自动注入到任意应用程序的输入框。
 
-<p align="center">
-  <img src="docs/imgs/overlay_zh.png" width="380" alt="语音覆盖层" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/imgs/talkinput_asr_setting_zh.png" width="380" alt="ASR 设置" />
-</p>
+![语音覆盖层](docs/imgs/overlay_zh.png)
+![ASR 设置](docs/imgs/talkinput_asr_setting_zh.png)
 
 ## 功能
 
@@ -22,9 +19,7 @@
 - **音频文件识别** — 支持将音频文件（WAV、MP3 等）解码并识别为文字。
 - **识别历史** — 所有识别结果自动存入本地 SQLite 数据库，支持浏览、复制、编辑、删除。
 
-<p align="center">
-  <img src="docs/imgs/talkinput_history_zh.png" width="760" alt="识别历史" />
-</p>
+![识别历史](docs/imgs/talkinput_history_zh.png)
 
 - **语音覆盖层** — 录音时显示浮动文字预览窗口，实时展示识别进度与流水线模式，自动定位到当前屏幕。
 - **系统托盘** — 最小化到系统托盘，后台响应快捷键，开机自启动可选。
@@ -42,8 +37,6 @@
 在设置界面中可以自定义这两个快捷键。
 
 ### 主窗口
-
-![主窗口](docs/imgs/talkinput_asr_setting_zh.png)
 
 - **工具栏** — 「开始识别」按钮启动/停止语音输入，「识别文件」导入音频文件。
 - **设置** — 选择语音识别引擎、下载模型、管理热词、配置 LLM 端点。

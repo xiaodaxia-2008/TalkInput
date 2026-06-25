@@ -4,11 +4,8 @@ English | [简体中文](README.md)
 
 A local voice input tool that captures speech via microphone, performs OCR on the active input window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
 
-<p align="center">
-  <img src="docs/imgs/overlay_en.png" width="380" alt="Voice Overlay" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/imgs/talkinput_asr_setting_en.png" width="380" alt="ASR Settings" />
-</p>
+![Voice Overlay](docs/imgs/overlay_en.png)
+![ASR Settings](docs/imgs/talkinput_asr_setting_en.png)
 
 ## Features
 
@@ -22,9 +19,7 @@ A local voice input tool that captures speech via microphone, performs OCR on th
 - **Audio File Recognition** — Decode audio files (WAV, MP3, etc.) and transcribe them to text.
 - **Recognition History** — All results saved in a local SQLite database. Browse, copy, edit, or delete entries.
 
-<p align="center">
-  <img src="docs/imgs/talkinput_history_en.png" width="760" alt="Recognition History" />
-</p>
+![Recognition History](docs/imgs/talkinput_history_en.png)
 
 - **Voice Overlay** — A floating text preview window appears during recording, showing real-time recognition progress and pipeline mode, auto-positioning on the active screen.
 - **System Tray** — Minimize to tray, respond to hotkeys in the background. Optional start on boot.
@@ -42,8 +37,6 @@ A local voice input tool that captures speech via microphone, performs OCR on th
 Both hotkeys can be customized in the settings.
 
 ### Main Window
-
-![Main Window](docs/imgs/talkinput_asr_setting_en.png)
 
 - **Toolbar** — "Start Recognition" button to begin/stop voice input. "Recognize File" to import audio files.
 - **Settings** — Choose ASR engine, download models, manage hotwords, configure LLM endpoint.
