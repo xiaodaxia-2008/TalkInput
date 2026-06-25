@@ -2,7 +2,11 @@
 
 #include <sherpa-onnx/c-api/c-api.h>
 
+#include <algorithm>
+#include <climits>
 #include <cstring>
+#include <numeric>
+#include <span>
 #include <vector>
 
 namespace
@@ -34,13 +38,59 @@ std::vector<float> resampleFloats(const std::vector<float> &input,
     return output;
 }
 
+float computeFrameRms(std::span<const float> data)
+{
+    return std::sqrt(
+        std::inner_product(data.begin(), data.end(), data.begin(), 0.0f)
+        / data.size());
+}
+
+std::vector<int> silenceSplitPoints(std::span<const float> samples,
+                                    int sampleRate,
+                                    int frameMs = 30,
+                                    int minSilenceMs = 500,
+                                    float silenceThresh = 0.005f)
+{
+    const int frameSize = sampleRate * frameMs / 1000;
+    const int maxPos = static_cast<int>(samples.size());
+    if (frameSize <= 0 || frameSize > maxPos) return {};
+
+    std::vector<int> splits;
+    int run = 0, runStart = 0;
+
+    for (int i = 0; i + frameSize <= maxPos; i += frameSize) {
+        if (computeFrameRms(samples.subspan(i, frameSize)) < silenceThresh) {
+            if (run == 0) runStart = i;
+            ++run;
+        }
+        else {
+            if (run >= minSilenceMs / frameMs)
+                splits.push_back(runStart + (run * frameSize) / 2);
+            run = 0;
+        }
+    }
+    if (run >= minSilenceMs / frameMs)
+        splits.push_back(runStart + (run * frameSize) / 2);
+
+    return splits;
+}
+
 } // namespace
 
 namespace talkinput
 {
 
 OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent)
+    : OfflineSpeechRecognizer(parent, 10, 15)
+{
+}
+
+OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent,
+                                                 int chunkSeconds,
+                                                 int maxChunkSeconds)
     : SpeechRecognizer(parent)
+    , m_chunkSeconds(chunkSeconds)
+    , m_maxChunkSeconds(maxChunkSeconds)
 {
 }
 
@@ -75,8 +125,7 @@ OfflineSpeechRecognizer::start()
     config.model_config.provider = "cpu";
     config.model_config.num_threads = std::max(1, params.numThreads);
     config.model_config.debug = false;
-    m_modelingUnit = params.modelingUnit;
-    config.model_config.modeling_unit = m_modelingUnit.c_str();
+    config.model_config.modeling_unit = params.modelingUnit.c_str();
 
     // Must be set explicitly — benchmark confirms NULL causes create to fail
     config.decoding_method = "greedy_search";
@@ -101,8 +150,6 @@ void OfflineSpeechRecognizer::stop()
         m_recognizer = nullptr;
     }
 
-    m_tokensPath.clear();
-    m_modelingUnit.clear();
     stopPunctuation();
 }
 
@@ -133,145 +180,163 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
     }
 
     m_samples.insert(m_samples.end(), chunk.begin(), chunk.end());
+
+    flushCompletedChunks();
 }
 
 void OfflineSpeechRecognizer::finish()
 {
-    if (!m_recognizer || m_samples.empty()) {
-        return;
-    }
+    flushCompletedChunks();
 
-    const int sampleRate = m_modelSampleRate;
-    const int targetSamples = chunkSeconds() * sampleRate;
-    const int maxSamples = targetSamples * 3 / 2;
+    if (!m_samples.empty() && m_recognizer) {
+        const int sampleRate = m_modelSampleRate;
+        const int targetSamples = chunkSeconds() * sampleRate;
+        const int maxSeconds = std::min(maxChunkSeconds(), targetSamples * 6 / sampleRate);
+        const int maxSamples = maxSeconds * sampleRate;
 
-    // ── 1. Detect silence split points ──
-    // Frame-based RMS energy detection; split at the midpoint of any
-    // continuous silence run ≥ 500 ms.
-    constexpr int frameMs = 30;
-    constexpr int minSilenceMs = 500;
-    constexpr float silenceThresh = 0.005f;
+        // ── Silence detection on remainder ──
+        auto splits = silenceSplitPoints(m_samples, sampleRate);
 
-    const int frameSize = sampleRate * frameMs / 1000;
-    std::vector<int> splits;
+        // ── Pre-split ──
+        struct Segment { int start; int size; };
+        std::vector<Segment> raw;
 
-    if (frameSize > 0 && static_cast<size_t>(frameSize) <= m_samples.size()) {
-        int run = 0;
-        size_t runStart = 0;
-        for (size_t i = 0; i + frameSize <= m_samples.size(); i += frameSize) {
-            float rms = 0.0f;
-            for (int j = 0; j < frameSize; ++j) {
-                rms += m_samples[i + j] * m_samples[i + j];
-            }
-            rms = std::sqrt(rms / static_cast<float>(frameSize));
+        int prev = 0;
+        for (int sp : splits) {
+            sp = std::clamp(sp, prev, static_cast<int>(m_samples.size()));
+            int sz = sp - prev;
+            if (sz > 0) raw.push_back({prev, sz});
+            prev = sp;
+        }
+        if (prev < static_cast<int>(m_samples.size())) {
+            raw.push_back({prev, static_cast<int>(m_samples.size()) - prev});
+        }
+        if (raw.empty()) {
+            raw.push_back({0, static_cast<int>(m_samples.size())});
+        }
 
-            if (rms < silenceThresh) {
-                if (run == 0) runStart = i;
-                ++run;
+        // ── Oversize split ──
+        std::vector<Segment> segs;
+        for (const auto &seg : raw) {
+            if (seg.size > maxSamples) {
+                const int parts = (seg.size + maxSamples - 1) / maxSamples;
+                const int base = seg.size / parts;
+                for (int i = 0; i < parts; ++i) {
+                    const int start = seg.start + i * base;
+                    const int size =
+                        (i == parts - 1) ? (seg.start + seg.size - start) : base;
+                    segs.push_back({start, size});
+                }
             }
             else {
-                if (run >= minSilenceMs / frameMs) {
-                    splits.push_back(
-                        static_cast<int>(runStart + (run * frameSize) / 2));
-                }
-                run = 0;
+                segs.push_back(seg);
             }
         }
-    }
 
-    // ── 2. Pre-split into segments at silence boundaries ──
-    // (start, size) pairs
-    struct Segment { int start; int size; };
-    std::vector<Segment> raw;
+        // ── Greedy merge ──
+        std::vector<Segment> blocks;
+        int accStart = segs[0].start;
+        int accSize = segs[0].size;
 
-    int prev = 0;
-    for (int sp : splits) {
-        sp = std::clamp(sp, prev, static_cast<int>(m_samples.size()));
-        int sz = sp - prev;
-        if (sz > 0) raw.push_back({prev, sz});
-        prev = sp;
-    }
-    if (prev < static_cast<int>(m_samples.size())) {
-        raw.push_back({prev, static_cast<int>(m_samples.size()) - prev});
-    }
-    if (raw.empty()) {
-        raw.push_back({0, static_cast<int>(m_samples.size())});
-    }
-
-    // ── 3. For any segment longer than maxSamples, split it evenly ──
-    std::vector<Segment> segs;
-    for (const auto &seg : raw) {
-        if (seg.size > maxSamples) {
-            const int parts = (seg.size + maxSamples - 1) / maxSamples;
-            const int base = seg.size / parts;
-            for (int i = 0; i < parts; ++i) {
-                const int start = seg.start + i * base;
-                const int size =
-                    (i == parts - 1) ? (seg.start + seg.size - start) : base;
-                segs.push_back({start, size});
+        for (size_t i = 1; i < segs.size(); ++i) {
+            if (accSize + segs[i].size <= targetSamples) {
+                accSize += segs[i].size;
+            }
+            else {
+                blocks.push_back({accStart, accSize});
+                accStart = segs[i].start;
+                accSize = segs[i].size;
             }
         }
-        else {
-            segs.push_back(seg);
+        blocks.push_back({accStart, accSize});
+
+        // ── Decode each block ──
+        for (const auto &blk : blocks) {
+            decodeBlock(blk.start, blk.size);
         }
-    }
-
-    // ── 4. Greedy merge: accumulate segments until targetSamples ──
-    std::vector<Segment> blocks;
-    int accStart = segs[0].start;
-    int accSize = segs[0].size;
-
-    for (size_t i = 1; i < segs.size(); ++i) {
-        if (accSize + segs[i].size <= targetSamples) {
-            accSize += segs[i].size;
-        }
-        else {
-            blocks.push_back({accStart, accSize});
-            accStart = segs[i].start;
-            accSize = segs[i].size;
-        }
-    }
-    blocks.push_back({accStart, accSize});
-
-    // ── 5. Decode each merged block ──
-    QStringList transcript;
-    for (const auto &blk : blocks) {
-        const SherpaOnnxOfflineStream *stream =
-            SherpaOnnxCreateOfflineStream(m_recognizer);
-        if (!stream) continue;
-
-        SherpaOnnxAcceptWaveformOffline(stream, sampleRate,
-                                        m_samples.data() + blk.start, blk.size);
-        SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
-
-        const SherpaOnnxOfflineRecognizerResult *result =
-            SherpaOnnxGetOfflineStreamResult(stream);
-        if (result) {
-            const QString text = decodeSherpaText(result->text);
-            if (!text.isEmpty()) {
-                transcript.append(text);
-            }
-            SherpaOnnxDestroyOfflineRecognizerResult(result);
-        }
-        SherpaOnnxDestroyOfflineStream(stream);
     }
 
     m_samples.clear();
 
-    if (!transcript.isEmpty()) {
-        const QString fullText = addPunctuation(transcript.join(QString()));
-        emit resultChanged(fullText, true);
+    if (!m_transcript.isEmpty()) {
+        emit resultChanged(addPunctuation(m_transcript.join(QString())), true);
+        m_transcript.clear();
     }
 }
 
 void OfflineSpeechRecognizer::resetStream()
 {
     m_samples.clear();
+    m_transcript.clear();
 }
 
-int OfflineSpeechRecognizer::chunkSeconds() const
+// ── Pseudo-online helpers ─────────────────────────────────────
+
+int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
 {
-    return 60;
+    auto splits = silenceSplitPoints({m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate);
+    auto it = std::find_if(splits.rbegin(), splits.rend(),
+                           [minPos](int s) { return s >= minPos; });
+    return it != splits.rend() ? *it : 0;
+}
+
+void OfflineSpeechRecognizer::decodeBlock(int start, int size)
+{
+    const SherpaOnnxOfflineStream *stream =
+        SherpaOnnxCreateOfflineStream(m_recognizer);
+    if (!stream) return;
+
+    SherpaOnnxAcceptWaveformOffline(stream, m_modelSampleRate,
+                                    m_samples.data() + start, size);
+    SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
+
+    const SherpaOnnxOfflineRecognizerResult *result =
+        SherpaOnnxGetOfflineStreamResult(stream);
+    if (result) {
+        const QString text = decodeSherpaText(result->text);
+        if (!text.isEmpty()) {
+            m_transcript.append(text);
+        }
+        SherpaOnnxDestroyOfflineRecognizerResult(result);
+    }
+    SherpaOnnxDestroyOfflineStream(stream);
+}
+
+void OfflineSpeechRecognizer::flushCompletedChunks()
+{
+    if (m_processing || !m_recognizer) return;
+    m_processing = true;
+
+    const int targetSamples = chunkSeconds() * m_modelSampleRate;
+    const int hardLimit = maxChunkSeconds();
+
+    while (static_cast<int>(m_samples.size()) >= targetSamples) {
+        const int searchEnd = hardLimit < INT_MAX
+            ? std::min(hardLimit * m_modelSampleRate,
+                       static_cast<int>(m_samples.size()))
+            : static_cast<int>(m_samples.size());
+        int split = findSplitBefore(targetSamples, searchEnd);
+
+        if (split == 0) {
+            if (hardLimit < INT_MAX) {
+                split = targetSamples;
+            }
+            else {
+                break;
+            }
+        }
+
+        decodeBlock(0, split);
+
+        m_samples.erase(m_samples.begin(),
+                        m_samples.begin() + split);
+
+        if (!m_transcript.isEmpty()) {
+            emit resultChanged(m_transcript.join(QString()), false);
+        }
+    }
+
+    m_processing = false;
 }
 
 } // namespace talkinput

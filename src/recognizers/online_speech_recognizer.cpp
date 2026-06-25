@@ -40,17 +40,16 @@ OnlineSpeechRecognizer::start()
     recognizerConfig.model_config.provider = "cpu";
     recognizerConfig.model_config.num_threads =
         std::max(1, params.numThreads);
-    m_modelingUnit = params.modelingUnit;
-    recognizerConfig.model_config.modeling_unit = m_modelingUnit.c_str();
+    recognizerConfig.model_config.modeling_unit =
+        params.modelingUnit.c_str();
 
-    m_hotwordsText = m_preset.hotwordsText;
-    if (!m_hotwordsText.empty()) {
+    if (!m_preset.hotwordsText.empty()) {
         recognizerConfig.decoding_method = supportsModifiedBeamSearch()
                                                ? "modified_beam_search"
                                                : "greedy_search";
-        recognizerConfig.hotwords_buf = m_hotwordsText.c_str();
+        recognizerConfig.hotwords_buf = m_preset.hotwordsText.c_str();
         recognizerConfig.hotwords_buf_size =
-            static_cast<int32_t>(m_hotwordsText.size());
+            static_cast<int32_t>(m_preset.hotwordsText.size());
         recognizerConfig.hotwords_score =
             static_cast<float>(params.hotwordsScore);
     }
@@ -94,12 +93,6 @@ void OnlineSpeechRecognizer::stop()
     }
 
     m_lastText.clear();
-    m_encoderPath.clear();
-    m_decoderPath.clear();
-    m_joinerPath.clear();
-    m_tokensPath.clear();
-    m_modelingUnit.clear();
-    m_hotwordsText.clear();
     stopPunctuation();
 }
 

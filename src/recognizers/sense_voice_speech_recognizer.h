@@ -2,7 +2,7 @@
 
 #include "offline_speech_recognizer.h"
 
-#include <string>
+#include <climits>
 
 namespace talkinput
 {
@@ -11,17 +11,13 @@ class SenseVoiceSpeechRecognizer final : public OfflineSpeechRecognizer
 {
 public:
     explicit SenseVoiceSpeechRecognizer(QObject *parent = nullptr)
-        : OfflineSpeechRecognizer(parent)
+        : OfflineSpeechRecognizer(parent, 10, INT_MAX)
     {
     }
 
 protected:
     std::expected<void, QString>
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) override;
-
-private:
-    std::string m_modelPath;
-    std::string m_language;
 };
 
 } // namespace talkinput

@@ -2,8 +2,6 @@
 
 #include "offline_speech_recognizer.h"
 
-#include <string>
-
 namespace talkinput
 {
 
@@ -11,24 +9,13 @@ class FunASRNanoSpeechRecognizer final : public OfflineSpeechRecognizer
 {
 public:
     explicit FunASRNanoSpeechRecognizer(QObject *parent = nullptr)
-        : OfflineSpeechRecognizer(parent)
+        : OfflineSpeechRecognizer(parent, 10, 15)
     {
     }
 
 protected:
     std::expected<void, QString>
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) override;
-    int chunkSeconds() const override;
-
-private:
-    std::string m_encoderAdaptorPath;
-    std::string m_llmPath;
-    std::string m_embeddingPath;
-    std::string m_tokenizerPath;
-    std::string m_systemPrompt;
-    std::string m_userPrompt;
-    std::string m_language;
-    std::string m_hotwords;
 };
 
 } // namespace talkinput

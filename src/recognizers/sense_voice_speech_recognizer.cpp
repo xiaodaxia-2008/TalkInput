@@ -14,15 +14,12 @@ std::expected<void, QString> SenseVoiceSpeechRecognizer::configureModel(
     auto it2 = files.find("tokensFile");
     if (it2 == files.end()) return std::unexpected(QStringLiteral("Missing tokensFile"));
 
-    m_modelPath = it->second;
-    m_tokensPath = it2->second;
-    m_language = m_preset.params.language;
-
-    recognizer->model_config.sense_voice.model = m_modelPath.c_str();
-    recognizer->model_config.sense_voice.language = m_language.c_str();
+    recognizer->model_config.sense_voice.model = it->second.c_str();
+    recognizer->model_config.sense_voice.language =
+        m_preset.params.language.c_str();
     recognizer->model_config.sense_voice.use_itn =
         m_preset.params.senseVoiceUseItn ? 1 : 0;
-    recognizer->model_config.tokens = m_tokensPath.c_str();
+    recognizer->model_config.tokens = it2->second.c_str();
     return {};
 }
 

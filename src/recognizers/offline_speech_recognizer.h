@@ -28,21 +28,29 @@ public:
     void finish() final;
     void resetStream() final;
 
+    int chunkSeconds() const { return m_chunkSeconds; }
+    int maxChunkSeconds() const { return m_maxChunkSeconds; }
+
 protected:
+    OfflineSpeechRecognizer(QObject *parent, int chunkSeconds,
+                            int maxChunkSeconds);
+
     virtual std::expected<void, QString>
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) = 0;
-    virtual int chunkSeconds() const;
-
-    std::string m_tokensPath;
-    std::string m_modelingUnit;
 
 private:
-    void decode();
+    int findSplitBefore(int minPos, int maxPos) const;
+    void decodeBlock(int start, int size);
+    void flushCompletedChunks();
 
     const SherpaOnnxOfflineRecognizer *m_recognizer = nullptr;
     std::vector<float> m_samples;
     int m_modelSampleRate = 16000;
     int m_inputSampleRate = 0;
+    QStringList m_transcript;
+    bool m_processing = false;
+    int m_chunkSeconds = 10;
+    int m_maxChunkSeconds = 15;
 };
 
 } // namespace talkinput

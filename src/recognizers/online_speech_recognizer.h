@@ -2,9 +2,6 @@
 
 #include "speech_recognizer.h"
 
-#include <string>
-#include <vector>
-
 struct SherpaOnnxOnlineRecognizer;
 struct SherpaOnnxOnlineRecognizerConfig;
 struct SherpaOnnxOnlineStream;
@@ -33,11 +30,6 @@ protected:
     configureModel(SherpaOnnxOnlineRecognizerConfig *recognizer) = 0;
     virtual bool supportsModifiedBeamSearch() const;
 
-    std::string m_encoderPath;
-    std::string m_decoderPath;
-    std::string m_joinerPath;
-    std::string m_tokensPath;
-
 private:
     void decodePending();
     void publishResult(bool isFinal);
@@ -45,8 +37,6 @@ private:
     const SherpaOnnxOnlineRecognizer *m_recognizer = nullptr;
     const SherpaOnnxOnlineStream *m_stream = nullptr;
     QString m_lastText;
-    std::string m_modelingUnit;
-    std::string m_hotwordsText;
 };
 
 } // namespace talkinput
