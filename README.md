@@ -1,38 +1,38 @@
-English | [简体中文](README.zh.md)
+[English](README.en.md) | 简体中文
 
-# TalkInput
+# TalkInput 语音输入法
 
-A local voice input tool that captures speech via microphone, performs OCR on the active input window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
+本地语音输入工具，支持 OCR 识别输入框所在窗口的文字，结合 LLM 后处理修正识别错误，可自动注入到任意应用程序的输入框。
 
-## Features
+## 功能
 
-- **Multi-engine ASR** — Built-in support for Paraformer (streaming bilingual zh/en), SenseVoice (multilingual), FunASR Nano (600M params, hotwords support), and system-native speech recognition. Download and switch on demand.
-- **LLM Post-processing** — Recognized text is refined by an LLM to fix typos, add punctuation, and improve phrasing using surrounding context. Supports local llama.cpp (auto-managed), DeepSeek, or any custom API endpoint.
-- **OCR Context Awareness** — Before recognition, captures on-screen text near the focused input field as context, improving LLM correction accuracy.
-- **Three Pipeline Modes** — Each processing depth has its own global hotkey:
-  - `Alt+Q` — ASR only
-  - `Alt+W` — ASR + LLM post-processing
-  - `Alt+A` — ASR + LLM post-processing + OCR context (full pipeline)
-- **Audio File Recognition** — Decode audio files (WAV, MP3, etc.) and transcribe them to text.
-- **Recognition History** — All results saved in a local SQLite database. Browse, copy, edit, or delete entries.
-- **Voice Overlay** — A floating text preview window appears during recording, showing real-time recognition progress and auto-positioning on the active screen.
-- **System Tray** — Minimize to tray, respond to hotkeys in the background. Optional start on boot.
-- **Bilingual UI** — Switch between English and Simplified Chinese.
+- **多引擎语音识别** — 内置 Paraformer（流式中英双语）、SenseVoice（多语言）、FunASR Nano（600M 参数，支持热词）及系统原生语音识别，可按需下载切换。
+- **LLM 后处理** — 识别文本经由 LLM 修正错别字、补全标点、结合上下文优化表达。支持本地 llama.cpp 服务（自动管理）或 DeepSeek 等云端 API，可配置自定义端点。
+- **OCR 上下文感知** — 识别前自动截取当前输入框附近的屏幕文字作为上下文，提升 LLM 修正准确率。
+- **三档流水线** — 为三种处理深度配置独立全局快捷键：
+  - `Alt+Q` — 仅语音识别
+  - `Alt+W` — 语音识别 + LLM 后处理
+  - `Alt+A` — 语音识别 + LLM 后处理 + OCR 上下文（完整流水线）
+- **音频文件识别** — 支持将音频文件（WAV、MP3 等）解码并识别为文字。
+- **识别历史** — 所有识别结果自动存入本地 SQLite 数据库，支持浏览、复制、编辑、删除。
+- **语音覆盖层** — 录音时显示浮动文字预览窗口，实时展示识别进度，自动定位到当前屏幕。
+- **系统托盘** — 最小化到系统托盘，后台响应快捷键，开机自启动可选。
+- **中英文界面** — 支持简体中文和英文界面切换。
 
-## Installation
+## 安装
 
-Download the pre-built NSIS installer from [GitHub Releases](https://github.com/ZenShawn/TalkInput/releases) and run it.
+从 [GitHub Releases](https://github.com/ZenShawn/TalkInput/releases) 下载预编译的 NSIS 安装包，运行安装即可。
 
-On first launch, choose and download a speech recognition model in Settings. The LLM model (llama.cpp) will be downloaded automatically on first use.
+首次启动后，在「设置」中选择语音识别模型并下载。LLM 模型（llama.cpp）也会在首次使用时自动下载。
 
-### Build from Source
+### 从源码构建
 
-**Prerequisites:**
-- C++23 compiler (MSVC / Clang / GCC)
+**前置要求：**
+- C++23 编译器（MSVC / Clang / GCC）
 - [CMake](https://cmake.org/) ≥ 3.21
 - [Qt 6](https://www.qt.io/) (Widgets / Core / Gui / Multimedia / Network / Svg / Sql)
-- [vcpkg](https://github.com/microsoft/vcpkg) (libarchive, spdlog, nlohmann-json)
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) v1.13.3 static library
+- [vcpkg](https://github.com/microsoft/vcpkg)（管理 libarchive、spdlog、nlohmann-json）
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) v1.13.3 静态库
 
 **Windows (PowerShell):**
 ```powershell
@@ -43,64 +43,64 @@ pwsh msvc.ps1 cmake --build build
 .\build\bin\TalkInput.exe
 ```
 
-To package the installer:
+打包安装程序：
 
 ```powershell
 cd build
 cpack
 ```
 
-## Development
+## 开发
 
-### Project Structure
+### 项目结构
 
 ```
-src/                 — Application source
-  recognizers/       — ASR engine implementations (Paraformer / SenseVoice / FunASR / System)
-  windows/           — Windows-specific implementation
-  linux/             — Linux-specific implementation
-  macos/             — macOS-specific implementation
-resources/           — Icons, stylesheets, default configuration
-cmake/               — CMake modules
-third_parties/       — Third-party libraries
-  sherpa-onnx/       — sherpa-onnx SDK and headers
-  KDToolBox/         — Utility library
+src/                 — 应用源码
+  recognizers/       — ASR 引擎实现（Paraformer / SenseVoice / FunASR / System）
+  windows/           — Windows 平台特定实现
+  linux/             — Linux 平台特定实现
+  macos/             — macOS 平台特定实现
+resources/           — 图标、样式表、默认配置
+cmake/               — CMake 模块
+third_parties/       — 第三方库
+  sherpa-onnx/       — sherpa-onnx SDK 及头文件
+  KDToolBox/         — 工具库
 ```
 
-### Tech Stack
+### 技术栈
 
-| Dependency | Purpose |
-|-----------|---------|
-| Qt 6 | GUI, audio capture, networking, SQLite |
-| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Offline speech recognition |
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) | Local LLM inference server |
-| [QCoro](https://github.com/qcoro/qcoro) | C++20 coroutines |
-| [QHotkey](https://github.com/Skycoder42/QHotkey) | Global hotkeys |
-| [spdlog](https://github.com/gabime/spdlog) | Logging |
-| [nlohmann/json](https://github.com/nlohmann/json) | JSON parsing |
-| [libarchive](https://github.com/libarchive/libarchive) | Model archive extraction |
+| 依赖 | 用途 |
+|------|------|
+| Qt 6 | GUI、音频采集、网络、SQLite |
+| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | 离线语音识别 |
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) | 本地 LLM 推理服务 |
+| [QCoro](https://github.com/qcoro/qcoro) | C++20 协程 |
+| [QHotkey](https://github.com/Skycoder42/QHotkey) | 全局热键 |
+| [spdlog](https://github.com/gabime/spdlog) | 日志 |
+| [nlohmann/json](https://github.com/nlohmann/json) | JSON 解析 |
+| [libarchive](https://github.com/libarchive/libarchive) | 模型压缩包解压 |
 
-### Translations
+### 翻译
 
 ```powershell
 pwsh msvc.ps1 cmake --build build -t update_translations
 ```
 
-Then edit unfinished entries in `src/TalkInput_zh.ts`.
+随后编辑 `src/TalkInput_zh.ts` 中的未完成条目。
 
-### Code Style
+### 代码风格
 
-- C++23 standard. No platform macros — platform-specific code lives in separate directories.
-- Source files are UTF-8 encoded. Use UTF-8 characters directly.
+- C++23 标准，不使用平台宏，平台相关代码分目录存放。
+- 源文件为 UTF-8 编码，直接使用 UTF-8 字符。
 
-## Credits
+## 致谢
 
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) — Offline speech recognition engine
-- [llama.cpp](https://github.com/ggml-org/llama.cpp) — Local LLM inference
-- [Qt](https://www.qt.io/) — Cross-platform framework
-- [QCoro](https://github.com/qcoro/qcoro) — C++ coroutine library
-- [QHotkey](https://github.com/Skycoder42/QHotkey) — Global hotkey library
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) — 离线语音识别引擎
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) — 本地 LLM 推理
+- [Qt](https://www.qt.io/) — 跨平台框架
+- [QCoro](https://github.com/qcoro/qcoro) — C++ 协程库
+- [QHotkey](https://github.com/Skycoder42/QHotkey) — 全局热键库
 
-## License
+## 许可证
 
 [GNU General Public License v3.0](LICENSE)
