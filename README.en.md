@@ -2,58 +2,91 @@ English | [简体中文](README.md)
 
 # TalkInput
 
-A local voice input tool that captures speech via microphone, performs OCR on the active input window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
+A local voice input tool that captures speech via microphone, supports OCR on the currently focused window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
 
 ## Features
 
-- **Multi-engine ASR** — Built-in support for Paraformer (streaming bilingual zh/en), SenseVoice (multilingual), FunASR Nano (600M params, hotwords support), and system-native speech recognition. Download and switch on demand.
-- **LLM Post-processing** — Recognized text is refined by an LLM to fix typos, add punctuation, and improve phrasing using surrounding context. Supports local llama.cpp (auto-managed), DeepSeek, or any custom API endpoint.
-- **OCR Context Awareness** — Before recognition, captures on-screen text near the focused input field as context, improving LLM correction accuracy.
+- **Multi-engine ASR**: Supports multiple ASR models.
+- **AI Polish**: Recognized text is refined by an LLM for corrections and improvements.
+- **OCR Context Awareness**: Captures the currently focused window, extracts text via OCR as LLM context, improving correction accuracy.
 
 ![ASR Settings](docs/imgs/talkinput_asr_setting_en.png)
 
-- **Three Pipeline Modes** — Cycle through modes with the mode switch hotkey:
-  - 🎙 — ASR only
-  - 🎙✨ — ASR + LLM post-processing
-  - 🎙✨📄 — ASR + LLM post-processing + OCR context (full pipeline)
-- **Audio File Recognition** — Decode audio files (WAV, MP3, etc.) and transcribe them to text.
-- **Recognition History** — All results saved in a local SQLite database. Browse, copy, edit, or delete entries.
-
-![Recognition History](docs/imgs/talkinput_history_en.png)
-
-- **Voice Overlay** — A floating text preview window appears during recording, showing real-time recognition progress and pipeline mode, auto-positioning on the active screen.
+- **Global Hotkey**: `Ctrl+Alt+Space` to start anytime.
+- **Voice Overlay**: A floating text preview window appears during recording, showing real-time recognition progress and mode.
 
 ![Voice Overlay](docs/imgs/overlay_en.png)
 
-- **System Tray** — Minimize to tray, respond to hotkeys in the background. Optional start on boot.
+- **Multiple Input Modes**:
+  - 🎙 (ASR only)
+  - 🎙✨ (ASR + AI polish)
+  - 🎙✨📄 (ASR + OCR context + AI polish)
+
+- **Recognition History**: All results are saved in a local SQLite database. Browse, copy, edit, or delete entries.
+
+![Recognition History](docs/imgs/talkinput_history_en.png)
+
+## Installation
+
+On Windows, download the pre-built NSIS installer from [GitHub Releases](https://github.com/ZenShawn/TalkInput/releases) and run it.
+
+On macOS / Linux, you need to build from source for now.
 
 ## Usage
+
+After installation, click into any text input field, press `Ctrl+Alt+Space` to start recording, press again to stop and recognize. The result is automatically pasted into the input field.
+
+### Speech Recognition Models
+
+The installer bundles the `SenseVoice` model, which supports Chinese and English. The three preset ASR models are:
+
+| Model | Languages | Streaming | Hotwords | Notes |
+|---|---|---|---|
+| **Paraformer** | zh, en | ✅ | ❌ | Real-time streaming, low latency, ideal for conversations |
+| **SenseVoice** | zh/en/ja/ko/yue | ❌ | ❌ | Multilingual high accuracy, offline, very fast |
+| **FunASR Nano** | zh, en | ❌ | ✅ | Highest accuracy, hotword correction, moderate speed |
+
+After switching models, click the checkmark button to load the model. If the model hasn't been downloaded, it will download automatically. If the download fails, click the browser button next to the checkmark to download with your system browser. Once downloaded, click the import button in the middle to load the model.
+
+### Optical Character Recognition (OCR) Models
+
+Supports system OCR (built into Windows) or Tesseract OCR.
+
+### Large Language Model (LLM)
+
+Supports any OpenAI-compatible API endpoint.
+
+With roughly 100 characters per recognition plus OCR context, a single recognition consumes less than 1,000 tokens. At DeepSeek V4 Flash pricing, this costs approximately $0.0001 per use.
 
 ### Global Hotkeys
 
 | Hotkey (configurable) | Action |
 |---|---|
-| `Ctrl+Alt+Space` | Start / stop voice input (uses current pipeline mode) |
-| `Ctrl+Alt+Enter` | Cycle pipeline mode 🎙 → 🎙✨ → 🎙✨📄 |
+| `Ctrl+Alt+Space` | Start / stop voice input |
+| `Ctrl+Alt+Enter` | Cycle input mode: 🎙 (ASR) → 🎙✨ (ASR + AI polish) → 🎙✨📄 (ASR + OCR context + AI polish) |
 
-Both hotkeys can be customized in the settings.
-
-### Main Window
-
-- **Toolbar** — "Start Recognition" button to begin/stop voice input. "Recognize File" to import audio files.
-- **Settings** — Choose ASR engine, download models, manage hotwords, configure LLM endpoint.
-- **History** — View, copy, edit, or delete all recognition records.
-- **Log** — Runtime logs for troubleshooting.
+In the settings, click into a hotkey input field and then press your desired key combination to customize.
 
 ### Audio File Recognition
 
 Click "Recognize File" on the toolbar or select it from the menu to import audio files (WAV, MP3, M4A, etc.). The recognized text is displayed and saved to history.
 
-## Installation
+## Development
 
-Download the pre-built NSIS installer from [GitHub Releases](https://github.com/ZenShawn/TalkInput/releases) and run it.
+### Project Structure
 
-On first launch, choose and download a speech recognition model in Settings. The LLM model (llama.cpp) will be downloaded automatically on first use.
+```
+src/                 — Application source
+  recognizers/       — ASR engine implementations (Paraformer / SenseVoice / FunASR / System)
+  windows/           — Windows-specific implementation
+  linux/             — Linux-specific implementation
+  macos/             — macOS-specific implementation
+resources/           — Icons, stylesheets, default configuration
+cmake/               — CMake modules
+third_parties/       — Third-party libraries
+  sherpa-onnx/       — sherpa-onnx SDK and headers
+  KDToolBox/         — Utility library
+```
 
 ### Build from Source
 
@@ -80,23 +113,6 @@ cpack
 ```
 
 > The preset file contains Qt and vcpkg paths — edit `CMakePresets.json` to match your environment before building.
-
-## Development
-
-### Project Structure
-
-```
-src/                 — Application source
-  recognizers/       — ASR engine implementations (Paraformer / SenseVoice / FunASR / System)
-  windows/           — Windows-specific implementation
-  linux/             — Linux-specific implementation
-  macos/             — macOS-specific implementation
-resources/           — Icons, stylesheets, default configuration
-cmake/               — CMake modules
-third_parties/       — Third-party libraries
-  sherpa-onnx/       — sherpa-onnx SDK and headers
-  KDToolBox/         — Utility library
-```
 
 ## Credits
 
