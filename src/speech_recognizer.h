@@ -3,7 +3,6 @@
 #include "app_config.h"
 #include "json_utils.h"
 
-#include <QAudioFormat>
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -12,9 +11,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-class QAudioSource;
-class QIODevice;
 
 struct SherpaOnnxOfflinePunctuation;
 
@@ -51,28 +47,13 @@ public:
 
     virtual void resetStream() = 0;
 
-    std::expected<void, QString> startCapture();
-
-    void stopCapture();
-
-    bool isCaptureRunning() const;
-
     static std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-    createFromPreset(const AsrPreset &preset, QObject *parent = nullptr);
+    createFromPreset(const AsrPreset &preset, QObject *parent = nullptr,
+                     bool startRecognizer = true);
 
     const AsrPreset &preset() const
     {
         return m_preset;
-    }
-
-    QByteArray takeCapturedAudio()
-    {
-        return std::move(m_capturedAudio);
-    }
-
-    const QAudioFormat &capturedAudioFormat() const
-    {
-        return m_audioFormat;
     }
 
 signals:
@@ -92,9 +73,5 @@ protected:
 
 private:
     const SherpaOnnxOfflinePunctuation *m_punct = nullptr;
-    std::unique_ptr<QAudioSource> m_audioSource;
-    QIODevice *m_audioDevice = nullptr;
-    QAudioFormat m_audioFormat;
-    QByteArray m_capturedAudio;
 };
 } // namespace talkinput

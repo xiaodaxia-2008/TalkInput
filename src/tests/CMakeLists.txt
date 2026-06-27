@@ -86,3 +86,19 @@ target_link_libraries(TalkInputWinRTSpeechTest
     PRIVATE
     windowsapp
 )
+
+add_executable(TalkInputSegmentTest
+    segment_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../audio_utils.cpp
+)
+target_link_libraries(TalkInputSegmentTest
+    PRIVATE
+    Qt6::Core
+    Qt6::Multimedia
+    spdlog::spdlog_header_only
+)
+target_compile_definitions(TalkInputSegmentTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(TalkInputSegmentTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
+)

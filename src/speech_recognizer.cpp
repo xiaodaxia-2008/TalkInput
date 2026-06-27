@@ -1,7 +1,6 @@
 #include "speech_recognizer.h"
 
 #include "app_config.h"
-#include "audio_utils.h"
 #include "logging.h"
 #include "recognizers/funasr_nano_speech_recognizer.h"
 #include "recognizers/sense_voice_speech_recognizer.h"
@@ -10,13 +9,9 @@
 
 #include <sherpa-onnx/c-api/c-api.h>
 
-#include <QAudioDevice>
-#include <QAudioSource>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
-#include <QIODevice>
-#include <QMediaDevices>
 #include <QtEndian>
 
 #include <algorithm>
@@ -32,7 +27,6 @@ SpeechRecognizer::SpeechRecognizer(QObject *parent) : QObject(parent)
 
 SpeechRecognizer::~SpeechRecognizer()
 {
-    stopCapture();
     stopPunctuation();
 }
 
@@ -139,75 +133,6 @@ int SpeechRecognizer::appendPcm16AsMonoFloat(const QByteArray &audioData,
     return frameCount;
 }
 
-// ── Audio capture ─────────────────────────────────────────────────
-
-std::expected<void, QString> SpeechRecognizer::startCapture()
-{
-    if (m_audioSource) {
-        return {};
-    }
-
-    m_capturedAudio.clear();
-
-    const QAudioDevice inputDevice = QMediaDevices::defaultAudioInput();
-    if (inputDevice.isNull()) {
-        SPDLOG_ERROR("No audio input device");
-        return std::unexpected(tr("No microphone available"));
-    }
-
-    m_audioFormat = inputDevice.preferredFormat();
-    if (!m_audioFormat.isValid() ||
-        m_audioFormat.sampleFormat() == QAudioFormat::Unknown)
-    {
-        m_audioFormat = QAudioFormat();
-        m_audioFormat.setSampleRate(48000);
-        m_audioFormat.setChannelCount(1);
-        m_audioFormat.setSampleFormat(QAudioFormat::Int16);
-    }
-
-    if (!inputDevice.isFormatSupported(m_audioFormat)) {
-        SPDLOG_ERROR("Audio format not supported");
-        return std::unexpected(tr("Microphone format not supported."));
-    }
-
-    m_audioSource = std::make_unique<QAudioSource>(inputDevice, m_audioFormat);
-    m_audioDevice = m_audioSource->start();
-    if (!m_audioDevice) {
-        SPDLOG_ERROR("Failed to start microphone");
-        m_audioSource.reset();
-        return std::unexpected(tr("Failed to start microphone"));
-    }
-
-    connect(m_audioDevice, &QIODevice::readyRead, this, [this]() {
-        if (!m_audioDevice) {
-            return;
-        }
-        const QByteArray audioData = m_audioDevice->readAll();
-        const QByteArray pcm16 = convertAudioToPcm16(audioData, m_audioFormat);
-        if (!pcm16.isEmpty()) {
-            m_capturedAudio.append(pcm16);
-            acceptPcm16(pcm16, m_audioFormat.sampleRate(),
-                        m_audioFormat.channelCount());
-        }
-    });
-
-    return {};
-}
-
-void SpeechRecognizer::stopCapture()
-{
-    if (m_audioSource) {
-        m_audioSource->stop();
-    }
-    m_audioDevice = nullptr;
-    m_audioSource.reset();
-}
-
-bool SpeechRecognizer::isCaptureRunning() const
-{
-    return m_audioSource != nullptr;
-}
-
 // ── Static factory ────────────────────────────────────────────────
 namespace
 {
@@ -229,7 +154,8 @@ std::optional<SpeechRecognizer::Type> typeFromString(const QString &str)
 } // namespace
 
 std::expected<std::unique_ptr<SpeechRecognizer>, QString>
-SpeechRecognizer::createFromPreset(const AsrPreset &preset, QObject *parent)
+SpeechRecognizer::createFromPreset(const AsrPreset &preset, QObject *parent,
+                                   bool startRecognizer)
 {
     const auto type = typeFromString(QString::fromStdString(preset.type));
     if (!type) {
@@ -288,9 +214,11 @@ SpeechRecognizer::createFromPreset(const AsrPreset &preset, QObject *parent)
         return std::unexpected(QString());
     }
     r->m_preset = std::move(resolved);
-    auto startResult = r->start();
-    if (!startResult) {
-        return std::unexpected(startResult.error());
+    if (startRecognizer) {
+        auto startResult = r->start();
+        if (!startResult) {
+            return std::unexpected(startResult.error());
+        }
     }
     return r;
 }

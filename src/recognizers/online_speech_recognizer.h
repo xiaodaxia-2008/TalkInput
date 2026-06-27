@@ -31,8 +31,8 @@ protected:
     virtual bool supportsModifiedBeamSearch() const;
 
 private:
-    void decodePending();
-    void publishResult(bool isFinal);
+    bool decodePending();
+    bool publishResult(bool isFinal);
 
     const SherpaOnnxOnlineRecognizer *m_recognizer = nullptr;
     const SherpaOnnxOnlineStream *m_stream = nullptr;

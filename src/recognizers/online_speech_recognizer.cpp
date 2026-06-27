@@ -19,8 +19,7 @@ OnlineSpeechRecognizer::~OnlineSpeechRecognizer()
     stop();
 }
 
-std::expected<void, QString>
-OnlineSpeechRecognizer::start()
+std::expected<void, QString> OnlineSpeechRecognizer::start()
 {
     stop();
 
@@ -38,10 +37,8 @@ OnlineSpeechRecognizer::start()
     }
 
     recognizerConfig.model_config.provider = "cpu";
-    recognizerConfig.model_config.num_threads =
-        std::max(1, params.numThreads);
-    recognizerConfig.model_config.modeling_unit =
-        params.modelingUnit.c_str();
+    recognizerConfig.model_config.num_threads = std::max(1, params.numThreads);
+    recognizerConfig.model_config.modeling_unit = params.modelingUnit.c_str();
 
     if (!m_preset.hotwordsText.empty()) {
         recognizerConfig.decoding_method = supportsModifiedBeamSearch()
@@ -132,8 +129,10 @@ void OnlineSpeechRecognizer::finish()
     }
 
     SherpaOnnxOnlineStreamInputFinished(m_stream);
-    decodePending();
-    publishResult(true);
+    const bool finalAlreadyPublished = decodePending();
+    if (!publishResult(true) && !finalAlreadyPublished) {
+        emit resultChanged(QString(), true);
+    }
 }
 
 void OnlineSpeechRecognizer::resetStream()
@@ -149,7 +148,7 @@ void OnlineSpeechRecognizer::resetStream()
     m_lastText.clear();
 }
 
-void OnlineSpeechRecognizer::decodePending()
+bool OnlineSpeechRecognizer::decodePending()
 {
     while (SherpaOnnxIsOnlineStreamReady(m_recognizer, m_stream)) {
         SherpaOnnxDecodeOnlineStream(m_recognizer, m_stream);
@@ -158,25 +157,28 @@ void OnlineSpeechRecognizer::decodePending()
     publishResult(false);
 
     if (SherpaOnnxOnlineStreamIsEndpoint(m_recognizer, m_stream)) {
-        publishResult(true);
+        const bool published = publishResult(true);
         SherpaOnnxOnlineStreamReset(m_recognizer, m_stream);
         m_lastText.clear();
+        return published;
     }
+
+    return false;
 }
 
-void OnlineSpeechRecognizer::publishResult(bool isFinal)
+bool OnlineSpeechRecognizer::publishResult(bool isFinal)
 {
     const SherpaOnnxOnlineRecognizerResult *result =
         SherpaOnnxGetOnlineStreamResult(m_recognizer, m_stream);
     if (!result) {
-        return;
+        return false;
     }
 
     QString text = decodeSherpaText(result->text);
     SherpaOnnxDestroyOnlineRecognizerResult(result);
 
     if (text.isEmpty()) {
-        return;
+        return false;
     }
 
     if (isFinal) {
@@ -184,11 +186,12 @@ void OnlineSpeechRecognizer::publishResult(bool isFinal)
     }
 
     if (!isFinal && text == m_lastText) {
-        return;
+        return false;
     }
 
     m_lastText = text;
     emit resultChanged(text, isFinal);
+    return true;
 }
 
 } // namespace talkinput

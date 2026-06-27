@@ -2,6 +2,8 @@
 
 #include "speech_recognizer.h"
 
+#include <QStringList>
+
 #include <string>
 #include <vector>
 
@@ -17,8 +19,7 @@ public:
     explicit OfflineSpeechRecognizer(QObject *parent = nullptr);
     ~OfflineSpeechRecognizer() override;
 
-    std::expected<void, QString>
-    start() final;
+    std::expected<void, QString> start() final;
     void stop() override;
     bool isRunning() const final;
     bool isStreaming() const final;
@@ -28,8 +29,15 @@ public:
     void finish() final;
     void resetStream() final;
 
-    int chunkSeconds() const { return m_chunkSeconds; }
-    int maxChunkSeconds() const { return m_maxChunkSeconds; }
+    int chunkSeconds() const
+    {
+        return m_chunkSeconds;
+    }
+
+    int maxChunkSeconds() const
+    {
+        return m_maxChunkSeconds;
+    }
 
 protected:
     OfflineSpeechRecognizer(QObject *parent, int chunkSeconds,
@@ -41,16 +49,17 @@ protected:
 private:
     int findSplitBefore(int minPos, int maxPos) const;
     void decodeBlock(int start, int size);
+    void saveSegment(int start, int size);
     void flushCompletedChunks();
 
     const SherpaOnnxOfflineRecognizer *m_recognizer = nullptr;
     std::vector<float> m_samples;
-    int m_modelSampleRate = 16000;
-    int m_inputSampleRate = 0;
     QStringList m_transcript;
-    bool m_processing = false;
+    int m_modelSampleRate = 16000;
     int m_chunkSeconds = 10;
     int m_maxChunkSeconds = 15;
+    bool m_processing = false;
+    int m_segmentIndex = 0;
 };
 
 } // namespace talkinput

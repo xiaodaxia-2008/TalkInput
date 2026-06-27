@@ -1,12 +1,16 @@
 #include "offline_speech_recognizer.h"
 
+#include "audio_utils.h"
+#include "utils.h"
+
 #include <sherpa-onnx/c-api/c-api.h>
+
+#include <QDateTime>
+#include <QDir>
 
 #include <algorithm>
 #include <climits>
 #include <cstring>
-#include <numeric>
-#include <span>
 #include <vector>
 
 namespace
@@ -27,8 +31,8 @@ std::vector<float> resampleFloats(const std::vector<float> &input,
         const size_t idx = static_cast<size_t>(pos);
         if (idx + 1 < input.size()) {
             const double frac = pos - idx;
-            output[i] = static_cast<float>(
-                input[idx] * (1.0 - frac) + input[idx + 1] * frac);
+            output[i] = static_cast<float>(input[idx] * (1.0 - frac) +
+                                           input[idx + 1] * frac);
         }
         else {
             output[i] = input[idx];
@@ -38,47 +42,12 @@ std::vector<float> resampleFloats(const std::vector<float> &input,
     return output;
 }
 
-float computeFrameRms(std::span<const float> data)
-{
-    return std::sqrt(
-        std::inner_product(data.begin(), data.end(), data.begin(), 0.0f)
-        / data.size());
-}
-
-std::vector<int> silenceSplitPoints(std::span<const float> samples,
-                                    int sampleRate,
-                                    int frameMs = 30,
-                                    int minSilenceMs = 500,
-                                    float silenceThresh = 0.005f)
-{
-    const int frameSize = sampleRate * frameMs / 1000;
-    const int maxPos = static_cast<int>(samples.size());
-    if (frameSize <= 0 || frameSize > maxPos) return {};
-
-    std::vector<int> splits;
-    int run = 0, runStart = 0;
-
-    for (int i = 0; i + frameSize <= maxPos; i += frameSize) {
-        if (computeFrameRms(samples.subspan(i, frameSize)) < silenceThresh) {
-            if (run == 0) runStart = i;
-            ++run;
-        }
-        else {
-            if (run >= minSilenceMs / frameMs)
-                splits.push_back(runStart + (run * frameSize) / 2);
-            run = 0;
-        }
-    }
-    if (run >= minSilenceMs / frameMs)
-        splits.push_back(runStart + (run * frameSize) / 2);
-
-    return splits;
-}
-
 } // namespace
 
 namespace talkinput
 {
+
+// ── OfflineSpeechRecognizer ──────────────────────────────────────
 
 OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent)
     : OfflineSpeechRecognizer(parent, 10, 15)
@@ -88,9 +57,8 @@ OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent)
 OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent,
                                                  int chunkSeconds,
                                                  int maxChunkSeconds)
-    : SpeechRecognizer(parent)
-    , m_chunkSeconds(chunkSeconds)
-    , m_maxChunkSeconds(maxChunkSeconds)
+    : SpeechRecognizer(parent), m_chunkSeconds(chunkSeconds),
+      m_maxChunkSeconds(maxChunkSeconds)
 {
 }
 
@@ -99,8 +67,7 @@ OfflineSpeechRecognizer::~OfflineSpeechRecognizer()
     stop();
 }
 
-std::expected<void, QString>
-OfflineSpeechRecognizer::start()
+std::expected<void, QString> OfflineSpeechRecognizer::start()
 {
     stop();
 
@@ -127,7 +94,6 @@ OfflineSpeechRecognizer::start()
     config.model_config.debug = false;
     config.model_config.modeling_unit = params.modelingUnit.c_str();
 
-    // Must be set explicitly — benchmark confirms NULL causes create to fail
     config.decoding_method = "greedy_search";
     config.max_active_paths = 4;
 
@@ -139,7 +105,7 @@ OfflineSpeechRecognizer::start()
     }
 
     m_modelSampleRate = params.sampleRate;
-    m_inputSampleRate = params.sampleRate;
+
     return {};
 }
 
@@ -150,6 +116,10 @@ void OfflineSpeechRecognizer::stop()
         m_recognizer = nullptr;
     }
 
+    m_samples.clear();
+    m_transcript.clear();
+    m_processing = false;
+    m_segmentIndex = 0;
     stopPunctuation();
 }
 
@@ -180,101 +150,49 @@ void OfflineSpeechRecognizer::acceptPcm16(const QByteArray &audioData,
     }
 
     m_samples.insert(m_samples.end(), chunk.begin(), chunk.end());
-
     flushCompletedChunks();
 }
 
 void OfflineSpeechRecognizer::finish()
 {
+    if (!m_recognizer) {
+        emit resultChanged(QString(), true);
+        return;
+    }
+
     flushCompletedChunks();
 
-    if (!m_samples.empty() && m_recognizer) {
-        const int sampleRate = m_modelSampleRate;
-        const int targetSamples = chunkSeconds() * sampleRate;
-        const int maxSeconds = std::min(maxChunkSeconds(), targetSamples * 6 / sampleRate);
-        const int maxSamples = maxSeconds * sampleRate;
-
-        // ── Silence detection on remainder ──
-        auto splits = silenceSplitPoints(m_samples, sampleRate);
-
-        // ── Pre-split ──
-        struct Segment { int start; int size; };
-        std::vector<Segment> raw;
-
-        int prev = 0;
-        for (int sp : splits) {
-            sp = std::clamp(sp, prev, static_cast<int>(m_samples.size()));
-            int sz = sp - prev;
-            if (sz > 0) raw.push_back({prev, sz});
-            prev = sp;
-        }
-        if (prev < static_cast<int>(m_samples.size())) {
-            raw.push_back({prev, static_cast<int>(m_samples.size()) - prev});
-        }
-        if (raw.empty()) {
-            raw.push_back({0, static_cast<int>(m_samples.size())});
-        }
-
-        // ── Oversize split ──
-        std::vector<Segment> segs;
-        for (const auto &seg : raw) {
-            if (seg.size > maxSamples) {
-                const int parts = (seg.size + maxSamples - 1) / maxSamples;
-                const int base = seg.size / parts;
-                for (int i = 0; i < parts; ++i) {
-                    const int start = seg.start + i * base;
-                    const int size =
-                        (i == parts - 1) ? (seg.start + seg.size - start) : base;
-                    segs.push_back({start, size});
-                }
-            }
-            else {
-                segs.push_back(seg);
-            }
-        }
-
-        // ── Greedy merge ──
-        std::vector<Segment> blocks;
-        int accStart = segs[0].start;
-        int accSize = segs[0].size;
-
-        for (size_t i = 1; i < segs.size(); ++i) {
-            if (accSize + segs[i].size <= targetSamples) {
-                accSize += segs[i].size;
-            }
-            else {
-                blocks.push_back({accStart, accSize});
-                accStart = segs[i].start;
-                accSize = segs[i].size;
-            }
-        }
-        blocks.push_back({accStart, accSize});
-
-        // ── Decode each block ──
-        for (const auto &blk : blocks) {
-            decodeBlock(blk.start, blk.size);
+    if (!m_samples.empty()) {
+        auto segs = segmentAudioBySilence(m_samples, m_modelSampleRate,
+                                          m_maxChunkSeconds, m_chunkSeconds);
+        for (const auto &seg : segs) {
+            decodeBlock(seg.startSample, seg.sampleCount);
         }
     }
 
     m_samples.clear();
 
-    if (!m_transcript.isEmpty()) {
-        emit resultChanged(addPunctuation(m_transcript.join(QString())), true);
-        m_transcript.clear();
-    }
+    const QString finalText =
+        m_transcript.isEmpty() ? QString()
+                               : addPunctuation(m_transcript.join(QString()));
+    m_transcript.clear();
+    emit resultChanged(finalText, true);
 }
 
 void OfflineSpeechRecognizer::resetStream()
 {
     m_samples.clear();
     m_transcript.clear();
+    m_processing = false;
+    m_segmentIndex = 0;
 }
 
 // ── Pseudo-online helpers ─────────────────────────────────────
 
 int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
 {
-    auto splits = silenceSplitPoints({m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate);
+    auto splits = talkinput::findSilenceSplits(
+        {m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate);
     auto it = std::find_if(splits.rbegin(), splits.rend(),
                            [minPos](int s) { return s >= minPos; });
     return it != splits.rend() ? *it : 0;
@@ -284,7 +202,9 @@ void OfflineSpeechRecognizer::decodeBlock(int start, int size)
 {
     const SherpaOnnxOfflineStream *stream =
         SherpaOnnxCreateOfflineStream(m_recognizer);
-    if (!stream) return;
+    if (!stream) {
+        return;
+    }
 
     SherpaOnnxAcceptWaveformOffline(stream, m_modelSampleRate,
                                     m_samples.data() + start, size);
@@ -300,21 +220,52 @@ void OfflineSpeechRecognizer::decodeBlock(int start, int size)
         SherpaOnnxDestroyOfflineRecognizerResult(result);
     }
     SherpaOnnxDestroyOfflineStream(stream);
+
+    saveSegment(start, size);
+}
+
+void OfflineSpeechRecognizer::saveSegment(int start, int size)
+{
+    if (size <= 0) {
+        return;
+    }
+
+    QByteArray pcm16;
+    pcm16.reserve(size * 2);
+    for (int i = 0; i < size; ++i) {
+        const float clamped =
+            std::clamp(m_samples[static_cast<size_t>(start) + i], -1.0f, 1.0f);
+        const qint16 sample = static_cast<qint16>(clamped * 32767.0f);
+        pcm16.append(reinterpret_cast<const char *>(&sample), 2);
+    }
+
+    const QString dir = QDir(talkinput::appDataDir()).filePath("asr_segments");
+    QDir().mkpath(dir);
+    const QString ts =
+        QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
+    const QString path =
+        QDir(dir).filePath(QString("seg-%1-%2.wav")
+                               .arg(ts)
+                               .arg(m_segmentIndex++, 3, 10, QLatin1Char('0')));
+
+    talkinput::savePcm16ToWav(pcm16, m_modelSampleRate, 1, path);
 }
 
 void OfflineSpeechRecognizer::flushCompletedChunks()
 {
-    if (m_processing || !m_recognizer) return;
+    if (m_processing || !m_recognizer) {
+        return;
+    }
     m_processing = true;
 
-    const int targetSamples = chunkSeconds() * m_modelSampleRate;
-    const int hardLimit = maxChunkSeconds();
+    const int targetSamples = m_chunkSeconds * m_modelSampleRate;
+    const int hardLimit = m_maxChunkSeconds;
 
     while (static_cast<int>(m_samples.size()) >= targetSamples) {
         const int searchEnd = hardLimit < INT_MAX
-            ? std::min(hardLimit * m_modelSampleRate,
-                       static_cast<int>(m_samples.size()))
-            : static_cast<int>(m_samples.size());
+                                  ? std::min(hardLimit * m_modelSampleRate,
+                                             static_cast<int>(m_samples.size()))
+                                  : static_cast<int>(m_samples.size());
         int split = findSplitBefore(targetSamples, searchEnd);
 
         if (split == 0) {
@@ -328,8 +279,7 @@ void OfflineSpeechRecognizer::flushCompletedChunks()
 
         decodeBlock(0, split);
 
-        m_samples.erase(m_samples.begin(),
-                        m_samples.begin() + split);
+        m_samples.erase(m_samples.begin(), m_samples.begin() + split);
 
         if (!m_transcript.isEmpty()) {
             emit resultChanged(m_transcript.join(QString()), false);

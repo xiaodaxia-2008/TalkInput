@@ -5,12 +5,16 @@
 #include <QAudioDecoder>
 #include <QAudioFormat>
 #include <QEventLoop>
+#include <QFile>
 #include <QTimer>
 #include <QUrl>
 #include <QtEndian>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <numeric>
+#include <span>
 
 namespace talkinput
 {
@@ -151,6 +155,175 @@ decodeAudioFileToPcm16(const QString &path, int timeoutMs)
     }
 
     return decoded;
+}
+
+bool savePcm16ToWav(const QByteArray &pcm16, int sampleRate, int channels,
+                    const QString &filePath)
+{
+    if (pcm16.isEmpty()) {
+        return false;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        SPDLOG_WARN("Failed to write WAV: {}", filePath);
+        return false;
+    }
+
+    const int dataSize = pcm16.size();
+    const int fileSize = 36 + dataSize;
+    const quint16 audioFormat = 1;
+    const quint16 bitsPerSample = 16;
+    const int byteRate = sampleRate * channels * bitsPerSample / 8;
+    const quint16 blockAlign =
+        static_cast<quint16>(channels * bitsPerSample / 8);
+
+    auto write16 = [&](quint16 v) {
+        file.write(reinterpret_cast<const char *>(&v), 2);
+    };
+    auto write32 = [&](quint32 v) {
+        file.write(reinterpret_cast<const char *>(&v), 4);
+    };
+
+    file.write("RIFF", 4);
+    write32(static_cast<quint32>(fileSize));
+    file.write("WAVE", 4);
+    file.write("fmt ", 4);
+    write32(16);
+    write16(audioFormat);
+    write16(static_cast<quint16>(channels));
+    write32(static_cast<quint32>(sampleRate));
+    write32(static_cast<quint32>(byteRate));
+    write16(blockAlign);
+    write16(bitsPerSample);
+    file.write("data", 4);
+    write32(static_cast<quint32>(dataSize));
+    file.write(pcm16);
+
+    SPDLOG_INFO("WAV saved: {}", filePath);
+    return true;
+}
+
+// ── Silence-based audio segmentation ──────────────────────────────
+
+namespace
+{
+
+float computeFrameRms(std::span<const float> data)
+{
+    return std::sqrt(
+        std::inner_product(data.begin(), data.end(), data.begin(), 0.0f) /
+        data.size());
+}
+
+} // namespace
+
+std::vector<int> findSilenceSplits(std::span<const float> samples,
+                                   int sampleRate, int frameMs,
+                                   int minSilenceMs, float silenceThresh)
+{
+    const int frameSize = sampleRate * frameMs / 1000;
+    const int maxPos = static_cast<int>(samples.size());
+    if (frameSize <= 0 || frameSize > maxPos) {
+        return {};
+    }
+
+    std::vector<int> splits;
+    int run = 0, runStart = 0;
+
+    for (int i = 0; i + frameSize <= maxPos; i += frameSize) {
+        if (computeFrameRms(samples.subspan(i, frameSize)) < silenceThresh) {
+            if (run == 0) {
+                runStart = i;
+            }
+            ++run;
+        }
+        else {
+            if (run >= minSilenceMs / frameMs) {
+                splits.push_back(runStart + (run * frameSize) / 2);
+            }
+            run = 0;
+        }
+    }
+    if (run >= minSilenceMs / frameMs) {
+        splits.push_back(runStart + (run * frameSize) / 2);
+    }
+
+    return splits;
+}
+
+std::vector<AudioSegment>
+segmentAudioBySilence(std::span<const float> samples, int sampleRate,
+                      int maxChunkSeconds, int targetChunkSeconds, int frameMs,
+                      int minSilenceMs, float silenceThresh)
+{
+    const int targetSamples = targetChunkSeconds * sampleRate;
+    const int maxSamples = maxChunkSeconds * sampleRate;
+
+    auto splits = findSilenceSplits(samples, sampleRate, frameMs, minSilenceMs,
+                                    silenceThresh);
+
+    // ── Split at silence points ──
+    struct RawSeg
+    {
+        int start;
+        int size;
+    };
+
+    std::vector<RawSeg> raw;
+
+    int prev = 0;
+    for (int sp : splits) {
+        sp = std::clamp(sp, prev, static_cast<int>(samples.size()));
+        int sz = sp - prev;
+        if (sz > 0) {
+            raw.push_back({prev, sz});
+        }
+        prev = sp;
+    }
+    if (prev < static_cast<int>(samples.size())) {
+        raw.push_back({prev, static_cast<int>(samples.size()) - prev});
+    }
+    if (raw.empty()) {
+        raw.push_back({0, static_cast<int>(samples.size())});
+    }
+
+    // ── Split oversized segments (> maxChunkSeconds) ──
+    std::vector<RawSeg> segs;
+    for (const auto &seg : raw) {
+        if (seg.size > maxSamples) {
+            const int parts = (seg.size + maxSamples - 1) / maxSamples;
+            const int base = seg.size / parts;
+            for (int i = 0; i < parts; ++i) {
+                const int start = seg.start + i * base;
+                const int size =
+                    (i == parts - 1) ? (seg.start + seg.size - start) : base;
+                segs.push_back({start, size});
+            }
+        }
+        else {
+            segs.push_back(seg);
+        }
+    }
+
+    // ── Greedy merge small segments up to targetChunkSeconds ──
+    std::vector<AudioSegment> blocks;
+    int accStart = segs[0].start;
+    int accSize = segs[0].size;
+
+    for (size_t i = 1; i < segs.size(); ++i) {
+        if (accSize + segs[i].size <= targetSamples) {
+            accSize += segs[i].size;
+        }
+        else {
+            blocks.push_back({accStart, accSize});
+            accStart = segs[i].start;
+            accSize = segs[i].size;
+        }
+    }
+    blocks.push_back({accStart, accSize});
+
+    return blocks;
 }
 
 } // namespace talkinput

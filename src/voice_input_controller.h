@@ -2,6 +2,7 @@
 
 #include "app_config.h"
 
+#include <QAudioFormat>
 #include <QByteArray>
 #include <QCoro/QCoroTask>
 #include <QElapsedTimer>
@@ -12,6 +13,10 @@
 
 template <typename T>
 class QPromise;
+
+class QAudioSource;
+class QIODevice;
+class QThread;
 
 namespace talkinput
 {
@@ -96,18 +101,31 @@ private:
     QCoro::Task<void> executePipeline();
     void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
+    std::expected<void, QString> startAudioCapture();
+    void stopAudioCapture();
+    bool isAudioCaptureRunning() const;
+    void queueRecognizerReset();
+    void queueRecognizerAudio(const QByteArray &pcm16, int sampleRate,
+                              int channels);
+    void queueRecognizerFinish();
 
-    std::unique_ptr<SpeechRecognizer> m_recognizer;
+    SpeechRecognizer *m_recognizer = nullptr;
+    std::unique_ptr<QThread> m_recognizerThread;
     std::unique_ptr<LlmPostProcessor> m_llmPostProcessor;
     std::unique_ptr<OcrRecognizer> m_ocrRecognizer;
     std::unique_ptr<VoiceHotkey> m_hotkey;
 
     std::unique_ptr<VoiceOverlay> m_overlay;
+    std::unique_ptr<QAudioSource> m_audioSource;
+    QIODevice *m_audioDevice = nullptr;
+    QAudioFormat m_audioFormat;
+    QByteArray m_capturedAudio;
     QString m_lastResult;
     QElapsedTimer m_stopRequestedAt;
     PipelineStage m_stage = PipelineStage::Idle;
     PipelineMode m_pipelineMode = PipelineMode::AsrLlmOcr;
     QPromise<QString> *m_finalResultPromise = nullptr;
+    std::string m_loadedPresetId;
 };
 
 } // namespace talkinput
