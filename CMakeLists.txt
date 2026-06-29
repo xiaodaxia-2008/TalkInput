@@ -13,7 +13,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-project(TalkInput VERSION 0.6.0 DESCRIPTION "Voice input method")
+project(TalkInput VERSION 0.7.0 DESCRIPTION "Voice input method")
 
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql LinguistTools)
 find_package(LibArchive REQUIRED)

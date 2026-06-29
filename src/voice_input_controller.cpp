@@ -328,10 +328,8 @@ QCoro::Task<void> VoiceInputController::executePipeline()
             pasteTextToActiveWindow(committed, config.settings.useClipboard,
                                     config.settings.copyToClipboard,
                                     config.settings.restoreClipboard);
-            SPDLOG_INFO("VoiceInputController pasted final text");
             emit finalTextCommitted(committed);
-            SPDLOG_INFO("VoiceInputController saved final text to history: {}",
-                        committed);
+            SPDLOG_INFO("emit final text signal: {}", committed);
         }
     }
 
