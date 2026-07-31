@@ -573,6 +573,9 @@ void VoiceInputController::loadSpeechRecognitionModel(const AsrPreset &preset)
     m_recognizer = recognizer->release();
     m_recognizer->moveToThread(m_recognizerThread.get());
 
+    connect(m_recognizerThread.get(), &QThread::finished, m_recognizer,
+            &QObject::deleteLater);
+
     connect(m_recognizer, &SpeechRecognizer::resultChanged, this,
             &VoiceInputController::onResult);
 
@@ -628,14 +631,10 @@ void VoiceInputController::unloadSpeechRecognitionModel()
         auto *recognizer = m_recognizer;
         QThread *thread = m_recognizerThread.get();
         if (thread && thread->isRunning()) {
-            connect(recognizer, &QObject::destroyed, thread, &QThread::quit);
             QMetaObject::invokeMethod(
-                recognizer,
-                [recognizer]() {
-                    recognizer->stop();
-                    recognizer->deleteLater();
-                },
-                Qt::QueuedConnection);
+                recognizer, [recognizer]() { recognizer->stop(); },
+                Qt::BlockingQueuedConnection);
+            thread->quit();
             thread->wait();
         }
         else {
