@@ -44,9 +44,15 @@ std::vector<int> findSilenceSplits(std::span<const float> samples,
                                    int minSilenceMs = 300,
                                    float silenceThresh = 0.02f);
 
-/// Segment audio at silence points, split any resulting segment
-/// larger than @p maxChunkSeconds, then greedily merge small
-/// segments up to @p targetChunkSeconds.
+/// Find the midpoint of the longest silence between @p minSample and
+/// @p maxSample. Returns 0 when no suitable silence exists.
+int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
+                         int minSample, int maxSample, int frameMs = 30,
+                         int minSilenceMs = 300, float silenceThresh = 0.02f);
+
+/// Keep audio intact up to @p maxChunkSeconds. Longer audio is split at the
+/// longest available silence after @p targetChunkSeconds, or at the hard
+/// limit when no suitable silence exists.
 std::vector<AudioSegment>
 segmentAudioBySilence(std::span<const float> samples, int sampleRate,
                       int maxChunkSeconds = 15, int targetChunkSeconds = 10,

@@ -91,6 +91,11 @@ add_executable(TalkInputSegmentTest
     segment_test.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../audio_utils.cpp
 )
+
+add_executable(TalkInputAudioUtilsTest
+    audio_utils_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../audio_utils.cpp
+)
 target_link_libraries(TalkInputSegmentTest
     PRIVATE
     Qt6::Core
@@ -99,6 +104,18 @@ target_link_libraries(TalkInputSegmentTest
 )
 target_compile_definitions(TalkInputSegmentTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 target_include_directories(TalkInputSegmentTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
+)
+
+target_link_libraries(TalkInputAudioUtilsTest
+    PRIVATE
+    Qt6::Core
+    Qt6::Multimedia
+    spdlog::spdlog_header_only
+)
+target_compile_definitions(TalkInputAudioUtilsTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(TalkInputAudioUtilsTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
