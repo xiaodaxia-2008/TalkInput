@@ -1,5 +1,6 @@
 #include "audio_utils.h"
 
+#include <algorithm>
 #include <climits>
 #include <iostream>
 #include <string_view>

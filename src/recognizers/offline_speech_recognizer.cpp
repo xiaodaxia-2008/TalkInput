@@ -262,9 +262,8 @@ void OfflineSpeechRecognizer::flushCompletedChunks()
     const int maxSamples =
         maxSamples64 > INT_MAX ? INT_MAX : static_cast<int>(maxSamples64);
 
-    while (static_cast<int>(m_samples.size()) > maxSamples) {
-        const int searchEnd =
-            std::min(maxSamples, static_cast<int>(m_samples.size()));
+    while (m_samples.size() > static_cast<size_t>(maxSamples)) {
+        const int searchEnd = maxSamples;
         int split = findSplitBefore(targetSamples, searchEnd);
 
         if (split == 0) {
