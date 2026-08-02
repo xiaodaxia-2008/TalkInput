@@ -1,6 +1,7 @@
 #include "app_config.h"
 #include "logging.h"
 #include "main_window.h"
+#include "single_instance.h"
 
 #include <QApplication>
 #include <QFile>
@@ -20,6 +21,12 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(PROJECT_VERSION_STR);
     QApplication::setOrganizationName("ZenShawn");
     QApplication::setWindowIcon(QIcon(":/resources/icons/icon.png"));
+
+    talkinput::SingleInstance singleInstance(QStringLiteral("TalkInput"));
+    if (!singleInstance.start()) {
+        return 0;
+    }
+
     QObject::connect(&app, &QCoreApplication::aboutToQuit,
                      &talkinput::saveAppConfig);
 
@@ -41,6 +48,13 @@ int main(int argc, char *argv[])
 
         SPDLOG_DEBUG("constructing MainWindow");
         talkinput::MainWindow window;
+        QObject::connect(&singleInstance,
+                         &talkinput::SingleInstance::activationRequested,
+                         &window, [&window]() {
+                             window.showNormal();
+                             window.raise();
+                             window.activateWindow();
+                         });
         SPDLOG_DEBUG("MainWindow constructed");
         if (!startHidden) {
             SPDLOG_DEBUG("showing MainWindow");

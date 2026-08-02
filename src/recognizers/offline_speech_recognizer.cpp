@@ -191,11 +191,9 @@ void OfflineSpeechRecognizer::resetStream()
 
 int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
 {
-    auto splits = talkinput::findSilenceSplits(
-        {m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate);
-    auto it = std::find_if(splits.rbegin(), splits.rend(),
-                           [minPos](int s) { return s >= minPos; });
-    return it != splits.rend() ? *it : 0;
+    return talkinput::findBestSilenceSplit(
+        {m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate,
+        minPos, maxPos);
 }
 
 void OfflineSpeechRecognizer::decodeBlock(int start, int size)
@@ -258,23 +256,25 @@ void OfflineSpeechRecognizer::flushCompletedChunks()
     }
     m_processing = true;
 
-    const int targetSamples = m_chunkSeconds * m_modelSampleRate;
-    const int hardLimit = m_maxChunkSeconds;
+    const qint64 targetSamples64 =
+        static_cast<qint64>(m_chunkSeconds) * m_modelSampleRate;
+    const qint64 maxSamples64 =
+        static_cast<qint64>(m_maxChunkSeconds) * m_modelSampleRate;
+    if (targetSamples64 <= 0 || maxSamples64 <= 0) {
+        m_processing = false;
+        return;
+    }
+    const int targetSamples =
+        targetSamples64 > INT_MAX ? INT_MAX : static_cast<int>(targetSamples64);
+    const int maxSamples =
+        maxSamples64 > INT_MAX ? INT_MAX : static_cast<int>(maxSamples64);
 
-    while (static_cast<int>(m_samples.size()) >= targetSamples) {
-        const int searchEnd = hardLimit < INT_MAX
-                                  ? std::min(hardLimit * m_modelSampleRate,
-                                             static_cast<int>(m_samples.size()))
-                                  : static_cast<int>(m_samples.size());
+    while (m_samples.size() > static_cast<size_t>(maxSamples)) {
+        const int searchEnd = maxSamples;
         int split = findSplitBefore(targetSamples, searchEnd);
 
         if (split == 0) {
-            if (hardLimit < INT_MAX) {
-                split = targetSamples;
-            }
-            else {
-                break;
-            }
+            split = searchEnd;
         }
 
         decodeBlock(0, split);

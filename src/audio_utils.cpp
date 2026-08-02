@@ -11,6 +11,7 @@
 #include <QtEndian>
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstring>
 #include <numeric>
@@ -209,11 +210,63 @@ bool savePcm16ToWav(const QByteArray &pcm16, int sampleRate, int channels,
 namespace
 {
 
+struct SilenceRun
+{
+    int midpoint = 0;
+    int sampleCount = 0;
+};
+
 float computeFrameRms(std::span<const float> data)
 {
     return std::sqrt(
         std::inner_product(data.begin(), data.end(), data.begin(), 0.0f) /
         data.size());
+}
+
+std::vector<SilenceRun> findSilenceRuns(std::span<const float> samples,
+                                        int sampleRate, int frameMs,
+                                        int minSilenceMs, float silenceThresh)
+{
+    if (sampleRate <= 0 || frameMs <= 0 || minSilenceMs <= 0) {
+        return {};
+    }
+
+    const int frameSize = sampleRate * frameMs / 1000;
+    const int maxPos = samples.size() > static_cast<size_t>(INT_MAX)
+                           ? INT_MAX
+                           : static_cast<int>(samples.size());
+    if (frameSize <= 0 || frameSize > maxPos) {
+        return {};
+    }
+
+    std::vector<SilenceRun> runs;
+    int runFrames = 0;
+    int runStart = 0;
+    const int requiredFrames = std::max(
+        1, minSilenceMs / frameMs + (minSilenceMs % frameMs != 0 ? 1 : 0));
+
+    const auto appendRun = [&]() {
+        if (runFrames >= requiredFrames) {
+            const int sampleCount = runFrames * frameSize;
+            runs.push_back({runStart + sampleCount / 2, sampleCount});
+        }
+    };
+
+    for (int i = 0; i + frameSize <= maxPos; i += frameSize) {
+        if (computeFrameRms(samples.subspan(i, frameSize)) < silenceThresh) {
+            if (runFrames == 0) {
+                runStart = i;
+            }
+            ++runFrames;
+        }
+        else {
+            appendRun();
+            runFrames = 0;
+        }
+    }
+    appendRun();
+
+    return runs;
 }
 
 } // namespace
@@ -222,34 +275,41 @@ std::vector<int> findSilenceSplits(std::span<const float> samples,
                                    int sampleRate, int frameMs,
                                    int minSilenceMs, float silenceThresh)
 {
-    const int frameSize = sampleRate * frameMs / 1000;
-    const int maxPos = static_cast<int>(samples.size());
-    if (frameSize <= 0 || frameSize > maxPos) {
-        return {};
-    }
-
     std::vector<int> splits;
-    int run = 0, runStart = 0;
-
-    for (int i = 0; i + frameSize <= maxPos; i += frameSize) {
-        if (computeFrameRms(samples.subspan(i, frameSize)) < silenceThresh) {
-            if (run == 0) {
-                runStart = i;
-            }
-            ++run;
-        }
-        else {
-            if (run >= minSilenceMs / frameMs) {
-                splits.push_back(runStart + (run * frameSize) / 2);
-            }
-            run = 0;
-        }
+    for (const auto &run : findSilenceRuns(samples, sampleRate, frameMs,
+                                           minSilenceMs, silenceThresh))
+    {
+        splits.push_back(run.midpoint);
     }
-    if (run >= minSilenceMs / frameMs) {
-        splits.push_back(runStart + (run * frameSize) / 2);
-    }
-
     return splits;
+}
+
+int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
+                         int minSample, int maxSample, int frameMs,
+                         int minSilenceMs, float silenceThresh)
+{
+    const int sampleCount = samples.size() > static_cast<size_t>(INT_MAX)
+                                ? INT_MAX
+                                : static_cast<int>(samples.size());
+    minSample = std::clamp(minSample, 0, sampleCount);
+    maxSample = std::clamp(maxSample, minSample, sampleCount);
+
+    SilenceRun best;
+    for (const auto &run :
+         findSilenceRuns(samples.first(maxSample), sampleRate, frameMs,
+                         minSilenceMs, silenceThresh))
+    {
+        if (run.midpoint < minSample) {
+            continue;
+        }
+        if (run.sampleCount > best.sampleCount ||
+            (run.sampleCount == best.sampleCount &&
+             run.midpoint > best.midpoint))
+        {
+            best = run;
+        }
+    }
+    return best.midpoint;
 }
 
 std::vector<AudioSegment>
@@ -257,71 +317,39 @@ segmentAudioBySilence(std::span<const float> samples, int sampleRate,
                       int maxChunkSeconds, int targetChunkSeconds, int frameMs,
                       int minSilenceMs, float silenceThresh)
 {
-    const int targetSamples = targetChunkSeconds * sampleRate;
-    const int maxSamples = maxChunkSeconds * sampleRate;
-
-    auto splits = findSilenceSplits(samples, sampleRate, frameMs, minSilenceMs,
-                                    silenceThresh);
-
-    // ── Split at silence points ──
-    struct RawSeg
-    {
-        int start;
-        int size;
-    };
-
-    std::vector<RawSeg> raw;
-
-    int prev = 0;
-    for (int sp : splits) {
-        sp = std::clamp(sp, prev, static_cast<int>(samples.size()));
-        int sz = sp - prev;
-        if (sz > 0) {
-            raw.push_back({prev, sz});
-        }
-        prev = sp;
-    }
-    if (prev < static_cast<int>(samples.size())) {
-        raw.push_back({prev, static_cast<int>(samples.size()) - prev});
-    }
-    if (raw.empty()) {
-        raw.push_back({0, static_cast<int>(samples.size())});
-    }
-
-    // ── Split oversized segments (> maxChunkSeconds) ──
-    std::vector<RawSeg> segs;
-    for (const auto &seg : raw) {
-        if (seg.size > maxSamples) {
-            const int parts = (seg.size + maxSamples - 1) / maxSamples;
-            const int base = seg.size / parts;
-            for (int i = 0; i < parts; ++i) {
-                const int start = seg.start + i * base;
-                const int size =
-                    (i == parts - 1) ? (seg.start + seg.size - start) : base;
-                segs.push_back({start, size});
-            }
-        }
-        else {
-            segs.push_back(seg);
-        }
-    }
-
-    // ── Greedy merge small segments up to targetChunkSeconds ──
     std::vector<AudioSegment> blocks;
-    int accStart = segs[0].start;
-    int accSize = segs[0].size;
-
-    for (size_t i = 1; i < segs.size(); ++i) {
-        if (accSize + segs[i].size <= targetSamples) {
-            accSize += segs[i].size;
-        }
-        else {
-            blocks.push_back({accStart, accSize});
-            accStart = segs[i].start;
-            accSize = segs[i].size;
-        }
+    if (samples.empty() || sampleRate <= 0 || maxChunkSeconds <= 0 ||
+        targetChunkSeconds <= 0)
+    {
+        return blocks;
     }
-    blocks.push_back({accStart, accSize});
+
+    const qint64 maxSamples64 =
+        static_cast<qint64>(maxChunkSeconds) * sampleRate;
+    const int totalSamples = static_cast<int>(samples.size());
+    if (maxSamples64 >= totalSamples) {
+        return {{0, totalSamples}};
+    }
+
+    const int maxSamples = static_cast<int>(maxSamples64);
+    const qint64 targetSamples64 =
+        static_cast<qint64>(targetChunkSeconds) * sampleRate;
+    const int targetSamples =
+        static_cast<int>(std::min(maxSamples64, targetSamples64));
+
+    int start = 0;
+    while (totalSamples - start > maxSamples) {
+        const auto remaining = samples.subspan(static_cast<size_t>(start));
+        int split = findBestSilenceSplit(remaining, sampleRate, targetSamples,
+                                         maxSamples, frameMs, minSilenceMs,
+                                         silenceThresh);
+        if (split == 0) {
+            split = maxSamples;
+        }
+        blocks.push_back({start, split});
+        start += split;
+    }
+    blocks.push_back({start, totalSamples - start});
 
     return blocks;
 }

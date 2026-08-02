@@ -2,8 +2,6 @@
 
 #include "offline_speech_recognizer.h"
 
-#include <climits>
-
 namespace talkinput
 {
 
@@ -11,7 +9,7 @@ class SenseVoiceSpeechRecognizer final : public OfflineSpeechRecognizer
 {
 public:
     explicit SenseVoiceSpeechRecognizer(QObject *parent = nullptr)
-        : OfflineSpeechRecognizer(parent, 10, INT_MAX)
+        : OfflineSpeechRecognizer(parent, 10, 30)
     {
     }
 

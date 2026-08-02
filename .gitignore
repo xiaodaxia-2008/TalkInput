@@ -12,6 +12,7 @@ data/
 out/
 cmake-build-*/
 .cache/
+.mindfs/
 temp/
 Models/
 CMakeUserPresets.json
