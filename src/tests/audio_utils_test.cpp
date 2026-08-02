@@ -64,5 +64,16 @@ int main()
     addSilence(pausedAudio, 50, 52);
     passed &= expectSegments("longest silence", pausedAudio, 30, {26, 25, 19});
 
+    const std::vector<float> tenFrames(10 * 30, 0.0F);
+    const std::vector<float> elevenFrames(11 * 30, 0.0F);
+    passed &= talkinput::findSilenceSplits(tenFrames, sampleRate, 30, 305, 0.1F)
+                  .empty();
+    passed &=
+        talkinput::findSilenceSplits(elevenFrames, sampleRate, 30, 305, 0.1F)
+            .size() == 1;
+    passed &=
+        talkinput::findBestSilenceSplit(tenFrames, sampleRate, 10 * 30 + 1,
+                                        11 * 30, 30, 300, 0.1F) == 0;
+
     return passed ? 0 : 1;
 }

@@ -11,6 +11,7 @@
 #include <QtEndian>
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstring>
 #include <numeric>
@@ -231,7 +232,9 @@ std::vector<SilenceRun> findSilenceRuns(std::span<const float> samples,
     }
 
     const int frameSize = sampleRate * frameMs / 1000;
-    const int maxPos = static_cast<int>(samples.size());
+    const int maxPos = samples.size() > static_cast<size_t>(INT_MAX)
+                           ? INT_MAX
+                           : static_cast<int>(samples.size());
     if (frameSize <= 0 || frameSize > maxPos) {
         return {};
     }
@@ -239,7 +242,8 @@ std::vector<SilenceRun> findSilenceRuns(std::span<const float> samples,
     std::vector<SilenceRun> runs;
     int runFrames = 0;
     int runStart = 0;
-    const int requiredFrames = std::max(1, minSilenceMs / frameMs);
+    const int requiredFrames = std::max(
+        1, minSilenceMs / frameMs + (minSilenceMs % frameMs != 0 ? 1 : 0));
 
     const auto appendRun = [&]() {
         if (runFrames >= requiredFrames) {
@@ -284,9 +288,11 @@ int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
                          int minSample, int maxSample, int frameMs,
                          int minSilenceMs, float silenceThresh)
 {
-    minSample = std::max(0, minSample);
-    maxSample =
-        std::clamp(maxSample, minSample, static_cast<int>(samples.size()));
+    const int sampleCount = samples.size() > static_cast<size_t>(INT_MAX)
+                                ? INT_MAX
+                                : static_cast<int>(samples.size());
+    minSample = std::clamp(minSample, 0, sampleCount);
+    maxSample = std::clamp(maxSample, minSample, sampleCount);
 
     SilenceRun best;
     for (const auto &run :
