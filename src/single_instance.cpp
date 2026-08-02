@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QLocalSocket>
 #include <QStandardPaths>
+#include <QThread>
 
 namespace talkinput
 {
@@ -41,18 +42,30 @@ bool SingleInstance::start()
 
 void SingleInstance::notifyPrimaryInstance() const
 {
-    QLocalSocket socket;
-    socket.connectToServer(m_serverName, QIODevice::WriteOnly);
-    if (!socket.waitForConnected(1000)) {
-        SPDLOG_WARN("Another TalkInput instance is running, but it could not "
-                    "be activated: {}",
-                    socket.errorString());
-        return;
+    constexpr int maxAttempts = 3;
+    for (int attempt = 1; attempt <= maxAttempts; ++attempt) {
+        QLocalSocket socket;
+        socket.connectToServer(m_serverName, QIODevice::WriteOnly);
+        if (socket.waitForConnected(500)) {
+            if (socket.write("activate") < 0 ||
+                !socket.waitForBytesWritten(1000))
+            {
+                SPDLOG_WARN("Failed to notify the primary TalkInput instance: "
+                            "{}",
+                            socket.errorString());
+            }
+            socket.disconnectFromServer();
+            return;
+        }
+
+        if (attempt < maxAttempts) {
+            QThread::msleep(100);
+        }
     }
 
-    socket.write("activate");
-    socket.waitForBytesWritten(1000);
-    socket.disconnectFromServer();
+    SPDLOG_WARN("Another TalkInput instance is running, but it could not be "
+                "activated after {} attempts",
+                maxAttempts);
 }
 
 void SingleInstance::handleConnection()

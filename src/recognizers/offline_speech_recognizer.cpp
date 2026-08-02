@@ -256,9 +256,16 @@ void OfflineSpeechRecognizer::flushCompletedChunks()
     }
     m_processing = true;
 
-    const int targetSamples = m_chunkSeconds * m_modelSampleRate;
+    const qint64 targetSamples64 =
+        static_cast<qint64>(m_chunkSeconds) * m_modelSampleRate;
     const qint64 maxSamples64 =
         static_cast<qint64>(m_maxChunkSeconds) * m_modelSampleRate;
+    if (targetSamples64 <= 0 || maxSamples64 <= 0) {
+        m_processing = false;
+        return;
+    }
+    const int targetSamples =
+        targetSamples64 > INT_MAX ? INT_MAX : static_cast<int>(targetSamples64);
     const int maxSamples =
         maxSamples64 > INT_MAX ? INT_MAX : static_cast<int>(maxSamples64);
 

@@ -9,6 +9,7 @@
 namespace
 {
 
+// A 1 kHz rate makes milliseconds map directly to sample counts.
 constexpr int sampleRate = 1000;
 
 bool expectSegments(std::string_view name, const std::vector<float> &samples,
