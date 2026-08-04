@@ -9,7 +9,7 @@ class FunASRNanoSpeechRecognizer final : public OfflineSpeechRecognizer
 {
 public:
     explicit FunASRNanoSpeechRecognizer(QObject *parent = nullptr)
-        : OfflineSpeechRecognizer(parent, 10, 30)
+        : OfflineSpeechRecognizer(parent, 10, 15)
     {
     }
 
