@@ -187,6 +187,11 @@ void OfflineSpeechRecognizer::resetStream()
     m_segmentIndex = 0;
 }
 
+QString OfflineSpeechRecognizer::normalizeResultText(const QString &text) const
+{
+    return text;
+}
+
 // ── Pseudo-online helpers ─────────────────────────────────────
 
 int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
@@ -211,7 +216,8 @@ void OfflineSpeechRecognizer::decodeBlock(int start, int size)
     const SherpaOnnxOfflineRecognizerResult *result =
         SherpaOnnxGetOfflineStreamResult(stream);
     if (result) {
-        const QString text = decodeSherpaText(result->text);
+        const QString text =
+            normalizeResultText(decodeSherpaText(result->text));
         if (!text.isEmpty()) {
             m_transcript.append(text);
         }

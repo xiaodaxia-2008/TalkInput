@@ -45,6 +45,7 @@ protected:
 
     virtual std::expected<void, QString>
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) = 0;
+    virtual QString normalizeResultText(const QString &text) const;
 
 private:
     int findSplitBefore(int minPos, int maxPos) const;

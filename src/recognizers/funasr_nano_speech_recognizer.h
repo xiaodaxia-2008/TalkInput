@@ -16,6 +16,7 @@ public:
 protected:
     std::expected<void, QString>
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) override;
+    QString normalizeResultText(const QString &text) const override;
 };
 
 } // namespace talkinput

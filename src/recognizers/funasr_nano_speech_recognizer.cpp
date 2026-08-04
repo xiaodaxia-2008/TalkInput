@@ -5,23 +5,39 @@
 namespace talkinput
 {
 
+QString
+FunASRNanoSpeechRecognizer::normalizeResultText(const QString &text) const
+{
+    QString normalized = text;
+    normalized.replace(QStringLiteral("/sil"), QString());
+    return normalized.trimmed();
+}
+
 std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
     SherpaOnnxOfflineRecognizerConfig *recognizer)
 {
     const auto &files = m_preset.resolvedFiles;
     auto it = files.find("funasrEncoderAdaptorFile");
-    if (it == files.end()) return std::unexpected(QStringLiteral("Missing funasrEncoderAdaptorFile"));
+    if (it == files.end()) {
+        return std::unexpected(
+            QStringLiteral("Missing funasrEncoderAdaptorFile"));
+    }
     auto it2 = files.find("funasrLlmFile");
-    if (it2 == files.end()) return std::unexpected(QStringLiteral("Missing funasrLlmFile"));
+    if (it2 == files.end()) {
+        return std::unexpected(QStringLiteral("Missing funasrLlmFile"));
+    }
     auto it3 = files.find("funasrEmbeddingFile");
-    if (it3 == files.end()) return std::unexpected(QStringLiteral("Missing funasrEmbeddingFile"));
+    if (it3 == files.end()) {
+        return std::unexpected(QStringLiteral("Missing funasrEmbeddingFile"));
+    }
     auto it4 = files.find("funasrTokenizerFile");
-    if (it4 == files.end()) return std::unexpected(QStringLiteral("Missing funasrTokenizerFile"));
+    if (it4 == files.end()) {
+        return std::unexpected(QStringLiteral("Missing funasrTokenizerFile"));
+    }
 
     const auto &params = m_preset.params;
 
-    recognizer->model_config.funasr_nano.encoder_adaptor =
-        it->second.c_str();
+    recognizer->model_config.funasr_nano.encoder_adaptor = it->second.c_str();
     recognizer->model_config.funasr_nano.llm = it2->second.c_str();
     recognizer->model_config.funasr_nano.embedding = it3->second.c_str();
     recognizer->model_config.funasr_nano.tokenizer = it4->second.c_str();
@@ -29,7 +45,8 @@ std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
         params.funasrSystemPrompt.c_str();
     recognizer->model_config.funasr_nano.user_prompt =
         params.funasrUserPrompt.c_str();
-    recognizer->model_config.funasr_nano.max_new_tokens = params.funasrMaxNewTokens;
+    recognizer->model_config.funasr_nano.max_new_tokens =
+        params.funasrMaxNewTokens;
     recognizer->model_config.funasr_nano.temperature =
         static_cast<float>(params.funasrTemperature);
     recognizer->model_config.funasr_nano.top_p =
