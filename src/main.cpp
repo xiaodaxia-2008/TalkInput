@@ -2,6 +2,7 @@
 #include "logging.h"
 #include "main_window.h"
 #include "single_instance.h"
+#include "speech_api_server.h"
 
 #include <QApplication>
 #include <QFile>
@@ -44,6 +45,11 @@ int main(int argc, char *argv[])
     SPDLOG_DEBUG("config path {}", talkinput::appConfigPath());
 
     try {
+        // Owned before MainWindow so VoiceInputController (created inside
+        // MainWindow) is guaranteed to outlive any in-flight API request.
+        talkinput::SpeechApiServer apiServer;
+        apiServer.applySettings();
+
         const bool startHidden = talkinput::appConfig().settings.startMinimized;
 
         SPDLOG_DEBUG("constructing MainWindow");

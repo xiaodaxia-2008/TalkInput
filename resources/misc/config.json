@@ -17,7 +17,11 @@
     "saveOcrScreenshot": false,
     "saveAsrAudio": false,
     "pasteDelayMs": 200,
-    "overlayOpacity": 0.8
+    "overlayOpacity": 0.8,
+    "apiServerEnabled": false,
+    "apiServerHost": "127.0.0.1",
+    "apiServerPort": 8766,
+    "apiServerApiKey": ""
   },
   "asrPresets": {
     "streaming-paraformer-bilingual-zh-en-punct-int8": {

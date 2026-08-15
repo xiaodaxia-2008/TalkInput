@@ -20,6 +20,7 @@
 #include <QIODevice>
 #include <QMediaDevices>
 #include <QMetaObject>
+#include <QPointer>
 #include <QPromise>
 #include <QThread>
 
@@ -371,6 +372,10 @@ void VoiceInputController::setStage(PipelineStage stage)
         m_overlay->setPreviewText(tr("Post-processing recognition result..."));
         emit listeningChanged(false);
         break;
+    case PipelineStage::ApiTranscribing:
+        SPDLOG_INFO("Pipeline stage → ApiTranscribing");
+        emit listeningChanged(false);
+        break;
     }
 }
 
@@ -378,6 +383,12 @@ void VoiceInputController::setStage(PipelineStage stage)
 
 void VoiceInputController::onResult(const QString &text, bool isFinal)
 {
+    // Final/interim results of an HTTP API transcription are handled by the
+    // API request flow itself — never commit them as if from a mic session.
+    if (m_stage == PipelineStage::ApiTranscribing) {
+        return;
+    }
+
     if (isFinal) {
         if (m_finalResultPromise && !m_finalResultPromise->isCanceled()) {
             m_finalResultPromise->addResult(text);
@@ -692,6 +703,83 @@ void VoiceInputController::finishSpeechRecognitionSession()
     }
 
     queueRecognizerFinish();
+}
+
+void VoiceInputController::submitApiTranscription(
+    const QByteArray &pcm16, int sampleRate, int channels,
+    std::function<void(const ApiTranscriptionResult &)> callback)
+{
+    const auto reject = [&callback](const QString &error) {
+        ApiTranscriptionResult result;
+        result.error = error;
+        callback(result);
+    };
+
+    if (m_stage != PipelineStage::Idle) {
+        reject(tr("ASR engine is busy."));
+        return;
+    }
+    if (!m_recognizer) {
+        reject(tr("Speech recognition model not loaded yet."));
+        return;
+    }
+
+    setStage(PipelineStage::ApiTranscribing);
+
+    // Guard against the model being unloaded while the request is queued.
+    QPointer<SpeechRecognizer> recognizer(m_recognizer);
+    const double duration = sampleRate > 0 && channels > 0
+                                ? pcm16.size() / 2.0 / channels / sampleRate
+                                : 0.0;
+
+    QMetaObject::invokeMethod(
+        recognizer,
+        [this, recognizer, pcm16, sampleRate, channels, duration,
+         callback = std::move(callback)]() mutable {
+            if (!recognizer) {
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, callback = std::move(callback)]() mutable {
+                        setStage(PipelineStage::Idle);
+                        ApiTranscriptionResult result;
+                        result.error =
+                            tr("Speech recognition model was unloaded.");
+                        callback(std::move(result));
+                    },
+                    Qt::QueuedConnection);
+                return;
+            }
+
+            ApiTranscriptionResult result;
+            result.duration = duration;
+
+            // Captured synchronously on the recognizer thread: both
+            // recognizer kinds emit their single final resultChanged from
+            // finish(), which runs here.
+            const auto connection = connect(
+                recognizer, &SpeechRecognizer::resultChanged, recognizer,
+                [&result](const QString &text, bool isFinal) {
+                    if (isFinal) {
+                        result.text = text;
+                    }
+                },
+                Qt::DirectConnection);
+
+            recognizer->resetStream();
+            recognizer->acceptPcm16(pcm16, sampleRate, channels);
+            recognizer->finish();
+            disconnect(connection);
+
+            QMetaObject::invokeMethod(
+                this,
+                [this, callback = std::move(callback),
+                 result = std::move(result)]() mutable {
+                    setStage(PipelineStage::Idle);
+                    callback(std::move(result));
+                },
+                Qt::QueuedConnection);
+        },
+        Qt::QueuedConnection);
 }
 
 bool VoiceInputController::isSpeechRecognitionModelLoaded() const

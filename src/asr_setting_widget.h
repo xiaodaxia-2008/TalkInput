@@ -51,6 +51,8 @@ private:
     void initIcons();
     void initShortcuts();
     void initActiveMode();
+    void initApiServer();
+    void applyApiServerSettings();
 
     QCoro::Task<void> useAsrModel(const QString &providerId);
     void loadInstalledAsrModel(const QString &providerId);

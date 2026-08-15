@@ -2,6 +2,7 @@
 #include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
+#include "speech_api_server.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
@@ -28,6 +29,7 @@
 #include <QNetworkRequest>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QSpinBox>
 #include <QStandardPaths>
 #include <QTextEdit>
 #include <QUrl>
@@ -126,6 +128,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     initIcons();
     initShortcuts();
     initActiveMode();
+    initApiServer();
 
     connect(m_ui->hotwordsButton, &QPushButton::clicked, this,
             &AsrSettingWidget::onEditHotwords);
@@ -226,6 +229,20 @@ void AsrSettingWidget::updateUiFromConfig()
         m_ui->saveOcrScreenshotCheck->setChecked(
             appConfig().settings.saveOcrScreenshot);
         m_ui->saveAsrAudioCheck->setChecked(appConfig().settings.saveAsrAudio);
+    }
+
+    {
+        const QSignalBlocker bc1(m_ui->apiServerEnableCheck);
+        const QSignalBlocker bc2(m_ui->apiServerHostEdit);
+        const QSignalBlocker bc3(m_ui->apiServerPortSpin);
+        const QSignalBlocker bc4(m_ui->apiServerKeyEdit);
+        m_ui->apiServerEnableCheck->setChecked(
+            appConfig().settings.apiServerEnabled);
+        m_ui->apiServerHostEdit->setText(
+            QString::fromStdString(appConfig().settings.apiServerHost));
+        m_ui->apiServerPortSpin->setValue(appConfig().settings.apiServerPort);
+        m_ui->apiServerKeyEdit->setText(
+            QString::fromStdString(appConfig().settings.apiServerApiKey));
     }
 
     auto task =
@@ -897,6 +914,47 @@ void AsrSettingWidget::updateActiveModeDisplay()
     if (idx >= 0) {
         combo->setCurrentIndex(idx);
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// API Server
+// ──────────────────────────────────────────────────────────────────────────
+
+void AsrSettingWidget::applyApiServerSettings()
+{
+    if (auto *server = SpeechApiServer::instance()) {
+        server->applySettings();
+    }
+}
+
+void AsrSettingWidget::initApiServer()
+{
+    connect(m_ui->apiServerEnableCheck, &QCheckBox::toggled, this, [this]() {
+        appConfig().settings.apiServerEnabled =
+            m_ui->apiServerEnableCheck->isChecked();
+        markConfigDirty();
+        applyApiServerSettings();
+    });
+    connect(m_ui->apiServerHostEdit, &QLineEdit::editingFinished, this,
+            [this]() {
+                appConfig().settings.apiServerHost =
+                    m_ui->apiServerHostEdit->text().trimmed().toStdString();
+                markConfigDirty();
+                applyApiServerSettings();
+            });
+    connect(m_ui->apiServerPortSpin, &QSpinBox::valueChanged, this,
+            [this](int value) {
+                appConfig().settings.apiServerPort = value;
+                markConfigDirty();
+                applyApiServerSettings();
+            });
+    connect(m_ui->apiServerKeyEdit, &QLineEdit::editingFinished, this,
+            [this]() {
+                appConfig().settings.apiServerApiKey =
+                    m_ui->apiServerKeyEdit->text().trimmed().toStdString();
+                markConfigDirty();
+                applyApiServerSettings();
+            });
 }
 
 // ──────────────────────────────────────────────────────────────────────────

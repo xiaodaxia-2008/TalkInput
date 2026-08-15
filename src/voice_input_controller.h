@@ -9,6 +9,7 @@
 #include <QObject>
 
 #include <expected>
+#include <functional>
 #include <memory>
 
 template <typename T>
@@ -40,7 +41,17 @@ enum class PipelineStage
     Recording,
     Recognizing,
     ReadingContext,
-    Polishing
+    Polishing,
+    ApiTranscribing
+};
+
+/// Result of a transcription submitted through the shared recognizer by the
+/// HTTP API server. `error` is non-empty on failure.
+struct ApiTranscriptionResult
+{
+    QString text;
+    QString error;
+    double duration = 0.0;
 };
 
 PipelineMode pipelineModeFromString(const std::string &s);
@@ -77,6 +88,14 @@ public:
     void reregisterTriggerHotkey();
     void reregisterModeSwitchHotkey();
     void cyclePipelineMode();
+
+    /// Transcribes @p pcm16 on the shared recognizer thread. Runs on the GUI
+    /// thread; rejects the request (error set) when the recognizer is busy
+    /// with a microphone session or another API request. The callback is
+    /// invoked on the GUI thread once the result is available.
+    void submitApiTranscription(
+        const QByteArray &pcm16, int sampleRate, int channels,
+        std::function<void(const ApiTranscriptionResult &)> callback);
 
 signals:
     void listeningChanged(bool listening);

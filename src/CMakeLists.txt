@@ -39,6 +39,8 @@ add_executable(TalkInput WIN32
     tesseract_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
+    speech_api_server.h
+    speech_api_server.cpp
     log_panel.cpp
     log_panel.h
     logging.cpp

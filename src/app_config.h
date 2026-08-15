@@ -114,6 +114,10 @@ struct AppSettings
     bool saveAsrAudio = false;
     int pasteDelayMs = 200;
     double overlayOpacity = 0.8;
+    bool apiServerEnabled = false;
+    std::string apiServerHost = "127.0.0.1";
+    int apiServerPort = 8766;
+    std::string apiServerApiKey;
 };
 
 struct AppConfigData
