@@ -28,6 +28,7 @@ public:
     void updateEntry(int id, const QString &text);
     void deleteEntry(int id);
     void clearAll();
+    QVector<Entry> entries(int offset, int limit) const;
     QVector<Entry> allEntries() const;
 
 private:

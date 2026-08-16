@@ -101,6 +101,37 @@ void RecognitionHistory::clearAll()
     }
 }
 
+QVector<RecognitionHistory::Entry> RecognitionHistory::entries(int offset,
+                                                                int limit) const
+{
+    QVector<Entry> result;
+
+    if (!m_db || offset < 0 || limit <= 0) {
+        return result;
+    }
+
+    QSqlQuery q(*m_db);
+    q.prepare(QStringLiteral(
+        "SELECT id, text, created_at FROM recognitions "
+        "ORDER BY id DESC LIMIT ? OFFSET ?"));
+    q.addBindValue(limit);
+    q.addBindValue(offset);
+    if (!q.exec()) {
+        SPDLOG_ERROR("Failed to load history page: {}", q.lastError().text());
+        return result;
+    }
+
+    while (q.next()) {
+        Entry e;
+        e.id = q.value(0).toInt();
+        e.text = q.value(1).toString();
+        e.createdAt = QDateTime::fromString(q.value(2).toString(), Qt::ISODate);
+        result.append(e);
+    }
+
+    return result;
+}
+
 QVector<RecognitionHistory::Entry> RecognitionHistory::allEntries() const
 {
     QVector<Entry> result;

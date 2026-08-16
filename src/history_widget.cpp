@@ -5,6 +5,7 @@
 #include "utils.h"
 
 #include <QAbstractItemView>
+#include <QAbstractTableModel>
 #include <QApplication>
 #include <QClipboard>
 #include <QDialog>
@@ -13,8 +14,7 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QTableWidget>
-#include <QTableWidgetItem>
+#include <QTableView>
 #include <QTextEdit>
 #include <QTextOption>
 #include <QVBoxLayout>
@@ -22,23 +22,134 @@
 namespace talkinput
 {
 
+class HistoryTableModel final : public QAbstractTableModel
+{
+public:
+    explicit HistoryTableModel(RecognitionHistory *history, QObject *parent)
+        : QAbstractTableModel(parent), m_history(history)
+    {
+    }
+
+    int rowCount(const QModelIndex &parent = {}) const override
+    {
+        return parent.isValid() ? 0 : m_entries.size();
+    }
+
+    int columnCount(const QModelIndex &parent = {}) const override
+    {
+        return parent.isValid() ? 0 : 1;
+    }
+
+    QVariant data(const QModelIndex &index, int role) const override
+    {
+        if (!index.isValid() || index.column() != 0 ||
+            index.row() >= m_entries.size()) {
+            return {};
+        }
+
+        const auto &entry = m_entries.at(index.row());
+        if (role == Qt::DisplayRole) {
+            QString display = entry.text;
+            if (display.length() > 55) {
+                display += QStringLiteral("...");
+                display.truncate(58);
+            }
+            return display;
+        }
+        if (role == Qt::ToolTipRole) {
+            return entry.text;
+        }
+        if (role == Qt::UserRole) {
+            return entry.id;
+        }
+        return {};
+    }
+
+    bool canFetchMore(const QModelIndex &parent = {}) const override
+    {
+        return !parent.isValid() && m_hasMore;
+    }
+
+    void fetchMore(const QModelIndex &parent = {}) override
+    {
+        if (parent.isValid() || !m_hasMore || !m_history) {
+            return;
+        }
+
+        constexpr int pageSize = 100;
+        auto page = m_history->entries(m_entries.size(), pageSize + 1);
+        m_hasMore = page.size() > pageSize;
+        if (m_hasMore) {
+            page.removeLast();
+        }
+        if (page.isEmpty()) {
+            return;
+        }
+
+        const int first = m_entries.size();
+        const int last = first + page.size() - 1;
+        beginInsertRows({}, first, last);
+        m_entries += page;
+        endInsertRows();
+    }
+
+    const RecognitionHistory::Entry *entryAt(int row) const
+    {
+        if (row < 0 || row >= m_entries.size()) {
+            return nullptr;
+        }
+        return &m_entries.at(row);
+    }
+
+    void reload()
+    {
+        beginResetModel();
+        m_entries.clear();
+        m_hasMore = true;
+        endResetModel();
+        fetchMore();
+    }
+
+private:
+    RecognitionHistory *m_history = nullptr;
+    QVector<RecognitionHistory::Entry> m_entries;
+    bool m_hasMore = true;
+};
+
 HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::HistoryWidget>()),
       m_history(history)
 {
     SPDLOG_DEBUG("HistoryWidget: constructor begin");
     m_ui->setupUi(this);
+    m_model = new HistoryTableModel(m_history, this);
+    m_ui->table->setModel(m_model);
     connect(m_ui->clearButton, &QPushButton::clicked, this,
             &HistoryWidget::clearHistory);
+    connect(m_ui->editButton, &QPushButton::clicked, this,
+            &HistoryWidget::editEntry);
+    connect(m_ui->copyButton, &QPushButton::clicked, this,
+            &HistoryWidget::copyEntry);
+    connect(m_ui->deleteButton, &QPushButton::clicked, this,
+            &HistoryWidget::deleteEntry);
+    connect(m_ui->table->selectionModel(), &QItemSelectionModel::currentChanged,
+            this, [this](const QModelIndex &, const QModelIndex &) {
+                const bool enabled = selectedRow() >= 0;
+                m_ui->editButton->setEnabled(enabled);
+                m_ui->copyButton->setEnabled(enabled);
+                m_ui->deleteButton->setEnabled(enabled);
+            });
 
     m_ui->table->horizontalHeader()->hide();
-    m_ui->table->horizontalHeader()->setSectionResizeMode(0,
-                                                          QHeaderView::Stretch);
-    m_ui->table->setColumnWidth(1, 32);
-    m_ui->table->setColumnWidth(2, 32);
-    m_ui->table->setColumnWidth(3, 32);
+    m_ui->table->horizontalHeader()->setSectionResizeMode(
+        0, QHeaderView::Stretch);
     m_ui->table->verticalHeader()->hide();
     m_ui->table->verticalHeader()->setDefaultSectionSize(30);
+    m_ui->table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_ui->editButton->setEnabled(false);
+    m_ui->copyButton->setEnabled(false);
+    m_ui->deleteButton->setEnabled(false);
     refreshHistory();
     SPDLOG_DEBUG("HistoryWidget: constructor end");
 }
@@ -62,68 +173,22 @@ void HistoryWidget::refreshHistory()
         return;
     }
 
-    const auto entries = m_history->allEntries();
-    SPDLOG_DEBUG("refreshHistory: {} entries", entries.size());
-
-    m_ui->table->setUpdatesEnabled(false);
-    m_ui->table->setRowCount(entries.size());
-
-    for (int i = 0; i < entries.size(); ++i) {
-        const auto &entry = entries.at(i);
-
-        QString display = entry.text;
-        if (display.length() > 55) {
-            display = display.left(55) + "...";
-        }
-
-        auto *textItem = new QTableWidgetItem(display);
-        textItem->setData(Qt::UserRole, entry.id);
-        textItem->setToolTip(entry.text);
-        textItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        m_ui->table->setItem(i, 0, textItem);
-
-        auto *editButton = new QPushButton();
-        setButtonIcon(editButton, ":/resources/icons/edit.svg", 18);
-        editButton->setToolTip(tr("Edit text"));
-        editButton->setFlat(true);
-        connect(editButton, &QPushButton::clicked, this,
-                [this, i]() { editEntry(i); });
-
-        auto *copyButton = new QPushButton();
-        setButtonIcon(copyButton, ":/resources/icons/copy.svg", 18);
-        copyButton->setToolTip(tr("Copy text"));
-        copyButton->setFlat(true);
-        connect(copyButton, &QPushButton::clicked, this,
-                [this, i]() { copyEntry(i); });
-
-        auto *deleteButton = new QPushButton();
-        setButtonIcon(deleteButton, ":/resources/icons/delete.svg", 18);
-        deleteButton->setToolTip(tr("Delete entry"));
-        deleteButton->setFlat(true);
-        connect(deleteButton, &QPushButton::clicked, this,
-                [this, i]() { deleteEntry(i); });
-
-        m_ui->table->setCellWidget(i, 1, editButton);
-        m_ui->table->setCellWidget(i, 2, copyButton);
-        m_ui->table->setCellWidget(i, 3, deleteButton);
-    }
-
-    m_ui->table->setUpdatesEnabled(true);
+    m_model->reload();
     SPDLOG_DEBUG("refreshHistory: end");
 }
 
-void HistoryWidget::editEntry(int row)
+int HistoryWidget::selectedRow() const
 {
-    if (!m_history || row < 0) {
+    const QModelIndex index = m_ui->table->currentIndex();
+    return index.isValid() ? index.row() : -1;
+}
+
+void HistoryWidget::editEntry()
+{
+    const auto *entry = m_model->entryAt(selectedRow());
+    if (!m_history || !entry) {
         return;
     }
-
-    const auto entries = m_history->allEntries();
-    if (row >= entries.size()) {
-        return;
-    }
-
-    const auto &entry = entries.at(row);
 
     QDialog dialog(this);
     dialog.setWindowTitle(tr("Edit Recognition Text"));
@@ -132,7 +197,7 @@ void HistoryWidget::editEntry(int row)
     auto *layout = new QVBoxLayout(&dialog);
 
     auto *editor = new QTextEdit(&dialog);
-    editor->setPlainText(entry.text);
+    editor->setPlainText(entry->text);
     editor->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     editor->selectAll();
     layout->addWidget(editor);
@@ -148,39 +213,34 @@ void HistoryWidget::editEntry(int row)
     }
 
     const QString newText = editor->toPlainText().trimmed();
-    if (newText.isEmpty() || newText == entry.text) {
+    if (newText.isEmpty() || newText == entry->text) {
         return;
     }
 
-    m_history->updateEntry(entry.id, newText);
+    m_history->updateEntry(entry->id, newText);
     refreshHistory();
     STATUSBAR_INFO("{}", tr("Updated"));
 }
 
-void HistoryWidget::copyEntry(int row)
+void HistoryWidget::copyEntry()
 {
-    if (!m_history || row < 0) {
+    const auto *entry = m_model->entryAt(selectedRow());
+    if (!m_history || !entry) {
         return;
     }
 
-    const auto entries = m_history->allEntries();
-    if (row >= entries.size()) {
-        return;
-    }
-
-    QApplication::clipboard()->setText(entries.at(row).text);
+    QApplication::clipboard()->setText(entry->text);
     STATUSBAR_INFO("{}", tr("Copied"));
 }
 
-void HistoryWidget::deleteEntry(int row)
+void HistoryWidget::deleteEntry()
 {
-    auto *item = m_ui->table->item(row, 0);
-    if (!m_history || !item) {
+    const auto *entry = m_model->entryAt(selectedRow());
+    if (!m_history || !entry) {
         return;
     }
 
-    const int id = item->data(Qt::UserRole).toInt();
-    m_history->deleteEntry(id);
+    m_history->deleteEntry(entry->id);
     refreshHistory();
     STATUSBAR_INFO("{}", tr("Deleted"));
 }

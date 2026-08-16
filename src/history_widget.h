@@ -15,6 +15,7 @@ namespace talkinput
 {
 
 class RecognitionHistory;
+class HistoryTableModel;
 
 class HistoryWidget final : public QWidget
 {
@@ -31,13 +32,15 @@ protected:
     void changeEvent(QEvent *event) override;
 
 private:
-    void editEntry(int row);
-    void copyEntry(int row);
-    void deleteEntry(int row);
+    void editEntry();
+    void copyEntry();
+    void deleteEntry();
     void clearHistory();
+    int selectedRow() const;
 
     std::unique_ptr<Ui::HistoryWidget> m_ui;
     RecognitionHistory *m_history = nullptr;
+    HistoryTableModel *m_model = nullptr;
 };
 
 } // namespace talkinput
