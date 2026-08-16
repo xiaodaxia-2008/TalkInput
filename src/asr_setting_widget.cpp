@@ -3,6 +3,7 @@
 #include "archive_utils.h"
 #include "logging.h"
 #include "speech_api_server.h"
+#include "tts/melo_tts_engine.h"
 #include "ui_asr_setting_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
@@ -111,6 +112,100 @@ bool isModelInstalled(const std::string &modelDirName,
     return false;
 }
 
+struct ModelArchiveResult
+{
+    bool ok = false;
+    QString error;
+};
+
+/// Downloads @p url into the user model cache, extracts the archive with
+/// libarchive, and deletes the archive. Shared by the ASR and TTS model
+/// download flows. @p serviceName is used in status bar messages, e.g.
+/// "ASR" or "TTS".
+QCoro::Task<ModelArchiveResult> downloadModelArchive(const QString &modelLabel,
+                                                     const QString &url,
+                                                     const QString &serviceName)
+{
+    ModelArchiveResult result;
+
+    if (url.isEmpty()) {
+        result.error = QCoreApplication::translate("AsrSettingWidget",
+                                                   "Model preset is invalid.");
+        co_return result;
+    }
+
+    QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
+    if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
+        result.error = QCoreApplication::translate(
+            "AsrSettingWidget", "Failed to create model cache directory.");
+        co_return result;
+    }
+
+    const QUrl qurl(url);
+    const QString archiveName = QFileInfo(qurl.path()).fileName();
+    const QString archivePath = modelRoot.filePath(archiveName);
+
+    QNetworkAccessManager manager;
+    manager.setTransferTimeout(600000);
+    QNetworkRequest request(qurl);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    QNetworkReply *reply = manager.get(request);
+    int lastPct = -1;
+    QObject::connect(
+        reply, &QNetworkReply::downloadProgress,
+        [modelLabel, serviceName, &lastPct](qint64 received, qint64 total) {
+            if (total <= 0) {
+                return;
+            }
+            const int pct = static_cast<int>(received * 100 / total);
+            if (pct == lastPct) {
+                return;
+            }
+            lastPct = pct;
+            STATUSBAR_INFO(
+                "{}", QCoreApplication::translate(
+                          "AsrSettingWidget", "Downloading %1 model: %2 … %3%")
+                          .arg(serviceName, modelLabel)
+                          .arg(pct));
+        });
+    co_await reply;
+    reply->setParent(nullptr);
+
+    bool downloadOk = (reply->error() == QNetworkReply::NoError);
+    QString downloadError = reply->errorString();
+
+    if (downloadOk) {
+        QFile file(archivePath);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(reply->readAll());
+        }
+        else {
+            downloadOk = false;
+            downloadError = file.errorString();
+        }
+    }
+    reply->deleteLater();
+
+    if (!downloadOk) {
+        result.error = downloadError;
+        co_return result;
+    }
+
+    STATUSBAR_INFO("{}", QCoreApplication::translate("AsrSettingWidget",
+                                                     "Extracting %1 model: %2")
+                             .arg(serviceName, modelLabel));
+    auto extractResult = extractArchive(archivePath, modelRoot.absolutePath());
+    QFile::remove(archivePath);
+    if (!extractResult) {
+        result.error = extractResult.error();
+        co_return result;
+    }
+
+    result.ok = true;
+    co_return result;
+}
+
 } // namespace
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -125,6 +220,7 @@ AsrSettingWidget::AsrSettingWidget(QWidget *parent)
     initLlmPrompt();
     initOcrProvider();
     initAsrModel();
+    initTtsSettings();
     initIcons();
     initShortcuts();
     initActiveMode();
@@ -244,6 +340,8 @@ void AsrSettingWidget::updateUiFromConfig()
         m_ui->apiServerKeyEdit->setText(
             QString::fromStdString(appConfig().settings.apiServerApiKey));
     }
+
+    applyTtsConfigToUi();
 
     auto task =
         useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
@@ -615,76 +713,16 @@ QCoro::Task<bool> AsrSettingWidget::downloadAsrModel(const QString &providerId)
         co_return true;
     }
 
-    QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
-    if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
-        STATUSBAR_INFO("{}", tr("Failed to create model cache directory."));
-        co_return false;
-    }
-
-    const QUrl url(QString::fromStdString(model.url));
-    const QString modelName = QString::fromStdString(model.name);
-    const QString archiveName = QFileInfo(url.path()).fileName();
-    const QString archivePath = modelRoot.filePath(archiveName);
-
     const QPointer<AsrSettingWidget> guard(this);
-
-    QNetworkAccessManager manager;
-    manager.setTransferTimeout(600000);
-    QNetworkRequest request(url);
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
-    QNetworkReply *reply = manager.get(request);
-    int lastPct = -1;
-    connect(reply, &QNetworkReply::downloadProgress, this,
-            [this, modelName, guard, &lastPct](qint64 received, qint64 total) {
-                if (!guard) {
-                    return;
-                }
-                if (total > 0) {
-                    int pct = static_cast<int>(received * 100 / total);
-                    if (pct == lastPct) {
-                        return;
-                    }
-                    lastPct = pct;
-                    STATUSBAR_INFO("{}", tr("Downloading ASR model: %1 … %2%")
-                                             .arg(modelName)
-                                             .arg(pct));
-                }
-            });
-    auto result = co_await reply;
-    reply->setParent(nullptr);
-
+    auto result = co_await downloadModelArchive(
+        QString::fromStdString(model.name), QString::fromStdString(model.url),
+        QStringLiteral("ASR"));
     if (!guard) {
         co_return false;
     }
-
-    bool dlOk = (reply->error() == QNetworkReply::NoError);
-    QString dlError = reply->errorString();
-
-    if (dlOk) {
-        QFile file(archivePath);
-        if (file.open(QIODevice::WriteOnly)) {
-            file.write(reply->readAll());
-        }
-        else {
-            dlOk = false;
-            dlError = file.errorString();
-        }
-    }
-    reply->deleteLater();
-
-    if (!dlOk) {
-        STATUSBAR_INFO("{}", tr("ASR model download failed: %1").arg(dlError));
-        co_return false;
-    }
-
-    STATUSBAR_INFO("{}", tr("Extracting ASR model: %1").arg(modelName));
-    auto extractResult = extractArchive(archivePath, modelRoot.absolutePath());
-    QFile::remove(archivePath);
-    if (!extractResult) {
-        STATUSBAR_INFO(
-            "{}",
-            tr("ASR model extraction failed: %1").arg(extractResult.error()));
+    if (!result.ok) {
+        STATUSBAR_INFO("{}",
+                       tr("ASR model download failed: %1").arg(result.error));
         co_return false;
     }
 
@@ -826,6 +864,196 @@ void AsrSettingWidget::onImportModel()
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// TTS Settings
+// ──────────────────────────────────────────────────────────────────────────
+
+void AsrSettingWidget::initTtsSettings()
+{
+    auto *providerCombo = m_ui->ttsProviderCombo;
+    auto *voiceCombo = m_ui->ttsVoiceCombo;
+
+    providerCombo->addItem(tr("Edge (Online)"), QStringLiteral("edge"));
+    providerCombo->addItem(tr("MeloTTS (Offline)"), QStringLiteral("melo"));
+
+    const char *voices[] = {
+        "zh-CN-XiaoxiaoNeural", "zh-CN-XiaoyiNeural",  "zh-CN-YunxiNeural",
+        "zh-CN-YunjianNeural",  "zh-CN-YunyangNeural", "en-US-AriaNeural",
+        "en-US-GuyNeural",      "en-US-JennyNeural",   "ja-JP-NanamiNeural",
+        "ko-KR-SunHiNeural",
+    };
+    for (const char *voice : voices) {
+        voiceCombo->addItem(QString::fromLatin1(voice));
+    }
+    voiceCombo->lineEdit()->setPlaceholderText(
+        tr("Voice name, e.g. zh-CN-XiaoxiaoNeural"));
+
+    connect(providerCombo, &QComboBox::currentIndexChanged, this,
+            &AsrSettingWidget::onTtsProviderChanged);
+
+    auto saveVoice = [this, voiceCombo]() {
+        appConfig().settings.ttsEdgeVoice =
+            voiceCombo->currentText().trimmed().toStdString();
+        markConfigDirty();
+        STATUSBAR_INFO("{}", tr("TTS voice saved"));
+    };
+    connect(voiceCombo->lineEdit(), &QLineEdit::editingFinished, this,
+            saveVoice);
+    connect(voiceCombo, &QComboBox::activated, this,
+            [saveVoice](int) { saveVoice(); });
+
+    connect(m_ui->ttsDownloadButton, &QPushButton::clicked, this,
+            [this]() { auto task = downloadTtsModel(); });
+    connect(m_ui->ttsBrowserButton, &QPushButton::clicked, this,
+            &AsrSettingWidget::onOpenTtsModelUrl);
+    connect(m_ui->ttsImportButton, &QPushButton::clicked, this,
+            &AsrSettingWidget::onImportTtsModel);
+}
+
+void AsrSettingWidget::applyTtsConfigToUi()
+{
+    const QString provider =
+        QString::fromStdString(appConfig().settings.ttsProvider);
+    const int providerIndex = m_ui->ttsProviderCombo->findData(provider);
+    {
+        const QSignalBlocker blocker(m_ui->ttsProviderCombo);
+        if (providerIndex >= 0) {
+            m_ui->ttsProviderCombo->setCurrentIndex(providerIndex);
+        }
+    }
+
+    {
+        const QSignalBlocker blocker(m_ui->ttsVoiceCombo);
+        m_ui->ttsVoiceCombo->setEditText(
+            QString::fromStdString(appConfig().settings.ttsEdgeVoice));
+    }
+
+    updateTtsWidgetStates();
+    refreshTtsModelStatus();
+}
+
+void AsrSettingWidget::updateTtsWidgetStates()
+{
+    const bool isEdge = m_ui->ttsProviderCombo->currentData().toString() ==
+                        QStringLiteral("edge");
+
+    m_ui->ttsVoiceFormLabel->setEnabled(isEdge);
+    m_ui->ttsVoiceCombo->setEnabled(isEdge);
+    m_ui->ttsModelFormLabel->setVisible(!isEdge);
+    m_ui->ttsModelRow->setVisible(!isEdge);
+}
+
+void AsrSettingWidget::refreshTtsModelStatus()
+{
+    const bool installed = MeloTtsEngine::isModelInstalled();
+    m_ui->ttsModelStatusLabel->setText(installed
+                                           ? tr("MeloTTS model installed")
+                                           : tr("MeloTTS model not installed"));
+    m_ui->ttsDownloadButton->setEnabled(!installed);
+}
+
+void AsrSettingWidget::onTtsProviderChanged(int /*index*/)
+{
+    appConfig().settings.ttsProvider =
+        m_ui->ttsProviderCombo->currentData().toString().toStdString();
+    markConfigDirty();
+    updateTtsWidgetStates();
+    refreshTtsModelStatus();
+    STATUSBAR_INFO("{}", tr("TTS provider saved: %1")
+                             .arg(m_ui->ttsProviderCombo->currentText()));
+}
+
+QCoro::Task<void> AsrSettingWidget::downloadTtsModel()
+{
+    if (MeloTtsEngine::isModelInstalled()) {
+        STATUSBAR_INFO("{}", tr("MeloTTS model is already installed."));
+        co_return;
+    }
+
+    const QPointer<AsrSettingWidget> guard(this);
+    auto result = co_await downloadModelArchive(
+        QStringLiteral("MeloTTS"),
+        QString::fromStdString(appConfig().settings.ttsMeloModelUrl),
+        QStringLiteral("TTS"));
+    if (!guard) {
+        co_return;
+    }
+    if (!result.ok) {
+        STATUSBAR_INFO("{}",
+                       tr("TTS model download failed: %1").arg(result.error));
+        co_return;
+    }
+
+    refreshTtsModelStatus();
+    STATUSBAR_INFO("{}", tr("MeloTTS model installed."));
+}
+
+void AsrSettingWidget::onOpenTtsModelUrl()
+{
+    const std::string &url = appConfig().settings.ttsMeloModelUrl;
+    if (url.empty()) {
+        STATUSBAR_INFO("{}", tr("No download URL for this model."));
+        return;
+    }
+    QDesktopServices::openUrl(QUrl(QString::fromStdString(url)));
+}
+
+void AsrSettingWidget::onImportTtsModel()
+{
+    const QString expectedName =
+        QFileInfo(
+            QUrl(QString::fromStdString(appConfig().settings.ttsMeloModelUrl))
+                .path())
+            .fileName();
+    const QString filePath = QFileDialog::getOpenFileName(
+        this, tr("Import Model Archive"),
+        QStandardPaths::writableLocation(QStandardPaths::DownloadLocation),
+        tr("Archives (%1);;All files (*)").arg(expectedName));
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    const QString actualName = QFileInfo(filePath).fileName();
+    if (actualName != expectedName) {
+        QMessageBox::warning(
+            this, tr("Invalid File"),
+            tr("The selected file must be named:\n%1\n\nSelected:\n%2")
+                .arg(expectedName, actualName));
+        return;
+    }
+
+    QDir modelRoot(QDir(appDataDir()).filePath(QStringLiteral("models")));
+    if (!modelRoot.exists() && !modelRoot.mkpath(QStringLiteral("."))) {
+        STATUSBAR_INFO("{}", tr("Failed to create model cache directory."));
+        return;
+    }
+
+    const QString destPath = modelRoot.filePath(expectedName);
+    if (QFile::exists(destPath)) {
+        QFile::remove(destPath);
+    }
+
+    if (!QFile::copy(filePath, destPath)) {
+        STATUSBAR_INFO("{}", tr("Failed to import model archive."));
+        return;
+    }
+
+    STATUSBAR_INFO(
+        "{}", tr("Extracting TTS model: %1").arg(QStringLiteral("MeloTTS")));
+    auto result = extractArchive(destPath, modelRoot.absolutePath());
+    QFile::remove(destPath);
+    if (!result) {
+        STATUSBAR_INFO(
+            "{}", tr("TTS model extraction failed: %1").arg(result.error()));
+        return;
+    }
+
+    refreshTtsModelStatus();
+    STATUSBAR_INFO("{}",
+                   tr("TTS model imported: %1").arg(QStringLiteral("MeloTTS")));
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Icons
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -844,6 +1072,15 @@ void AsrSettingWidget::initIcons()
     setButtonIcon(m_ui->promptEditButton, ":/resources/icons/edit.svg",
                   iconSize);
     m_ui->promptEditButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->ttsBrowserButton, ":/resources/icons/globe.svg",
+                  iconSize);
+    m_ui->ttsBrowserButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->ttsImportButton, ":/resources/icons/import.svg",
+                  iconSize);
+    m_ui->ttsImportButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->ttsDownloadButton, ":/resources/icons/download.svg",
+                  iconSize);
+    m_ui->ttsDownloadButton->setProperty("buttonRole", "icon");
 }
 
 void AsrSettingWidget::initShortcuts()

@@ -39,6 +39,9 @@ private:
     void onUseAsrModel();
     void onOpenModelUrl();
     void onImportModel();
+    void onTtsProviderChanged(int index);
+    void onOpenTtsModelUrl();
+    void onImportTtsModel();
     void onEditHotwords();
     void onEditPrompt();
     void applyLlmProviderToUi(const LlmPreset &provider);
@@ -48,6 +51,10 @@ private:
     void initLlmPrompt();
     void initOcrProvider();
     void initAsrModel();
+    void initTtsSettings();
+    void applyTtsConfigToUi();
+    void updateTtsWidgetStates();
+    void refreshTtsModelStatus();
     void initIcons();
     void initShortcuts();
     void initActiveMode();
@@ -59,6 +66,7 @@ private:
     void refreshAsrModelCombo();
 
     QCoro::Task<bool> downloadAsrModel(const QString &providerId);
+    QCoro::Task<void> downloadTtsModel();
 
     std::unique_ptr<Ui::AsrSettingWidget> m_ui;
 };
