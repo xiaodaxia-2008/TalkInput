@@ -26,6 +26,7 @@
 #include <QIcon>
 #include <QMenu>
 #include <QMessageBox>
+#include <QProxyStyle>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QStatusBar>
@@ -37,6 +38,26 @@
 
 namespace talkinput
 {
+
+namespace
+{
+
+class NavTreeStyle final : public QProxyStyle
+{
+public:
+    NavTreeStyle() = default;
+
+    void drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+                       QPainter *painter, const QWidget *widget) const override
+    {
+        if (element == PE_IndicatorBranch) {
+            return;
+        }
+        QProxyStyle::drawPrimitive(element, option, painter, widget);
+    }
+};
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>())
@@ -80,6 +101,9 @@ void MainWindow::setupUi()
 {
     SPDLOG_DEBUG("setupUi: begin");
     m_ui->setupUi(this);
+    m_ui->mainSplitter->setStretchFactor(0, 0);
+    m_ui->mainSplitter->setStretchFactor(1, 1);
+    m_ui->mainSplitter->setSizes({200, 1000});
     installStatusBarLogger(statusBar());
     SPDLOG_DEBUG("setupUi: ui setup complete");
 
@@ -217,61 +241,88 @@ void MainWindow::setupNavTree()
 {
     SPDLOG_DEBUG("setupNavTree: begin");
     auto *tree = m_ui->navTree;
+    tree->setStyle(new NavTreeStyle);
+    tree->setRootIsDecorated(false);
+    tree->setIndentation(14);
 
-    const auto makeItem = [&](const QString &text, const QString &iconPath,
-                              int page) {
+    const auto makeSection = [&](const QString &text) {
         auto *item = new QTreeWidgetItem(tree);
         item->setText(0, text);
-        item->setIcon(0, themedNavIcon(iconPath, m_dark));
-        item->setData(0, Qt::UserRole, page);
+        item->setData(0, Qt::UserRole, -1);
+        item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
+        QFont font = tree->font();
+        font.setBold(true);
+        item->setFont(0, font);
+        m_sectionItems.append(item);
         m_navItems.append(item);
         return item;
     };
 
-    auto *speechItem =
-        makeItem(tr("Speech Recognition"),
-                 QStringLiteral(":/resources/icons/mic.svg"), -1);
-    auto *modelItem = makeItem(
-        tr("Model and Hot Words"), QStringLiteral(":/resources/icons/cpu.svg"),
-        static_cast<int>(SettingsPage::RecognitionModel));
-    auto *behaviorItem = makeItem(
-        tr("Recognition Behavior"), QStringLiteral(":/resources/icons/zap.svg"),
-        static_cast<int>(SettingsPage::RecognitionBehavior));
-    speechItem->addChild(modelItem);
-    speechItem->addChild(behaviorItem);
+    const auto populateItem = [&](QTreeWidgetItem *item, const QString &text,
+                                  const QString &iconPath, int page) {
+        item->setText(0, text);
+        item->setIcon(0, themedNavIcon(iconPath, m_dark));
+        item->setData(0, Qt::UserRole, page);
+        item->setData(0, Qt::UserRole + 1, iconPath);
+        m_navItems.append(item);
+    };
 
-    auto *serviceItem = makeItem(
-        tr("Services"), QStringLiteral(":/resources/icons/server.svg"), -1);
-    auto *ocrItem =
-        makeItem(tr("OCR"), QStringLiteral(":/resources/icons/camera.svg"),
-                 static_cast<int>(SettingsPage::Ocr));
-    auto *llmItem = makeItem(
-        tr("LLM"), QStringLiteral(":/resources/icons/message-square.svg"),
-        static_cast<int>(SettingsPage::Llm));
-    auto *ttsItem =
-        makeItem(tr("TTS"), QStringLiteral(":/resources/icons/volume-2.svg"),
-                 static_cast<int>(SettingsPage::Tts));
-    auto *apiServerItem =
-        makeItem(tr("API Server"), QStringLiteral(":/resources/icons/link.svg"),
-                 static_cast<int>(SettingsPage::ApiServer));
-    serviceItem->addChild(ocrItem);
-    serviceItem->addChild(llmItem);
-    serviceItem->addChild(ttsItem);
-    serviceItem->addChild(apiServerItem);
+    const auto makeChildItem = [&](QTreeWidgetItem *parent, const QString &text,
+                                   const QString &iconPath, int page) {
+        auto *item = new QTreeWidgetItem(parent);
+        populateItem(item, text, iconPath, page);
+        return item;
+    };
 
-    makeItem(tr("Shortcuts"), QStringLiteral(":/resources/icons/keyboard.svg"),
-             static_cast<int>(SettingsPage::Shortcut));
-    makeItem(tr("Appearance"), QStringLiteral(":/resources/icons/palette.svg"),
-             static_cast<int>(SettingsPage::Appearance));
-    makeItem(tr("History"), QStringLiteral(":/resources/icons/clock.svg"),
-             static_cast<int>(SettingsPage::History));
-    makeItem(tr("Log"), QStringLiteral(":/resources/icons/terminal.svg"),
-             static_cast<int>(SettingsPage::Log));
-    makeItem(tr("General"), QStringLiteral(":/resources/icons/sliders.svg"),
-             static_cast<int>(SettingsPage::General));
+    const auto makeTopItem = [&](const QString &text, const QString &iconPath,
+                                 int page) {
+        auto *item = new QTreeWidgetItem(tree);
+        populateItem(item, text, iconPath, page);
+        QFont font = tree->font();
+        font.setBold(true);
+        item->setFont(0, font);
+        return item;
+    };
+
+    auto *speechItem = makeSection(tr("Speech Recognition"));
+    auto *modelItem =
+        makeChildItem(speechItem, tr("Model and Hot Words"),
+                      QStringLiteral(":/resources/icons/cpu.svg"),
+                      static_cast<int>(SettingsPage::RecognitionModel));
+    makeChildItem(speechItem, tr("Recognition Behavior"),
+                  QStringLiteral(":/resources/icons/zap.svg"),
+                  static_cast<int>(SettingsPage::RecognitionBehavior));
+
+    auto *serviceItem = makeSection(tr("Services"));
+    makeChildItem(serviceItem, tr("OCR"),
+                  QStringLiteral(":/resources/icons/camera.svg"),
+                  static_cast<int>(SettingsPage::Ocr));
+    makeChildItem(serviceItem, tr("LLM"),
+                  QStringLiteral(":/resources/icons/message-square.svg"),
+                  static_cast<int>(SettingsPage::Llm));
+    makeChildItem(serviceItem, tr("TTS"),
+                  QStringLiteral(":/resources/icons/volume-2.svg"),
+                  static_cast<int>(SettingsPage::Tts));
+    makeChildItem(serviceItem, tr("API Server"),
+                  QStringLiteral(":/resources/icons/link.svg"),
+                  static_cast<int>(SettingsPage::ApiServer));
+
+    makeTopItem(tr("Shortcuts"), QStringLiteral(":/resources/icons/keyboard.svg"),
+                static_cast<int>(SettingsPage::Shortcut));
+    makeTopItem(tr("Appearance"),
+                QStringLiteral(":/resources/icons/palette.svg"),
+                static_cast<int>(SettingsPage::Appearance));
+    makeTopItem(tr("History"), QStringLiteral(":/resources/icons/clock.svg"),
+                static_cast<int>(SettingsPage::History));
+    makeTopItem(tr("Log"), QStringLiteral(":/resources/icons/terminal.svg"),
+                static_cast<int>(SettingsPage::Log));
+    makeTopItem(tr("General"), QStringLiteral(":/resources/icons/sliders.svg"),
+                static_cast<int>(SettingsPage::General));
 
     speechItem->setExpanded(true);
     serviceItem->setExpanded(true);
+
+    refreshNavIcons();
 
     connect(tree, &QTreeWidget::itemClicked, this,
             &MainWindow::onNavItemClicked);
@@ -305,23 +356,21 @@ void MainWindow::retranslateNav()
 
 void MainWindow::refreshNavIcons()
 {
-    const QStringList iconPaths = {
-        QStringLiteral(":/resources/icons/mic.svg"),
-        QStringLiteral(":/resources/icons/cpu.svg"),
-        QStringLiteral(":/resources/icons/zap.svg"),
-        QStringLiteral(":/resources/icons/server.svg"),
-        QStringLiteral(":/resources/icons/camera.svg"),
-        QStringLiteral(":/resources/icons/message-square.svg"),
-        QStringLiteral(":/resources/icons/volume-2.svg"),
-        QStringLiteral(":/resources/icons/link.svg"),
-        QStringLiteral(":/resources/icons/keyboard.svg"),
-        QStringLiteral(":/resources/icons/palette.svg"),
-        QStringLiteral(":/resources/icons/clock.svg"),
-        QStringLiteral(":/resources/icons/terminal.svg"),
-        QStringLiteral(":/resources/icons/sliders.svg"),
-    };
-    for (int i = 0; i < m_navItems.size() && i < iconPaths.size(); ++i) {
-        m_navItems.at(i)->setIcon(0, themedNavIcon(iconPaths.at(i), m_dark));
+    const QColor sectionColor = m_dark ? QColor(0x9a, 0x9a, 0x9a)
+                                       : QColor(0x66, 0x66, 0x66);
+    for (auto *section : m_sectionItems) {
+        section->setForeground(0, sectionColor);
+    }
+
+    for (auto *item : m_navItems) {
+        const int page = item->data(0, Qt::UserRole).toInt();
+        if (page < 0) {
+            continue;
+        }
+        const QString iconPath = item->data(0, Qt::UserRole + 1).toString();
+        if (!iconPath.isEmpty()) {
+            item->setIcon(0, themedNavIcon(iconPath, m_dark));
+        }
     }
 }
 

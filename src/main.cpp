@@ -6,6 +6,7 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QFont>
 #include <QIcon>
 #include <QMessageBox>
 
@@ -16,6 +17,9 @@ int main(int argc, char *argv[])
     SPDLOG_DEBUG("starting application");
 
     QApplication app(argc, argv);
+    QFont appFont = app.font();
+    appFont.setPointSizeF(appFont.pointSizeF() + 1.0);
+    app.setFont(appFont);
     SPDLOG_DEBUG("QApplication created");
     QApplication::setApplicationName("TalkInput");
     QApplication::setApplicationDisplayName("TalkInput Voice Input");

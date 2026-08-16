@@ -82,13 +82,6 @@ void RecognitionModelWidget::buildUi()
 
     modelLayout->addLayout(modelRow);
 
-    auto *moreModelsRow = new QHBoxLayout;
-    moreModelsRow->addStretch();
-    m_moreModelsButton = new QPushButton(m_modelGroup);
-    m_moreModelsButton->setFlat(true);
-    moreModelsRow->addWidget(m_moreModelsButton);
-    modelLayout->addLayout(moreModelsRow);
-
     contentLayout->addWidget(m_modelGroup);
 
     // ── Hot words group ────────────────────────────────────────────
@@ -140,8 +133,6 @@ void RecognitionModelWidget::buildUi()
 
     connect(m_hotwordsButton, &QPushButton::clicked, this,
             &RecognitionModelWidget::onEditHotwords);
-    connect(m_moreModelsButton, &QPushButton::clicked, this,
-            &RecognitionModelWidget::onOpenMoreModels);
 }
 
 void RecognitionModelWidget::retranslate()
@@ -150,7 +141,6 @@ void RecognitionModelWidget::retranslate()
     m_hotwordsGroup->setTitle(tr("Hot Words"));
     m_modelLabel->setText(tr("Model:"));
 
-    m_moreModelsButton->setText(tr("More Models…"));
     m_browserButton->setToolTip(tr("Open download page in browser"));
     m_importButton->setToolTip(tr("Import downloaded model archive"));
     m_useButton->setToolTip(tr("Use this model"));
@@ -482,13 +472,6 @@ void RecognitionModelWidget::onEditHotwords()
         "{}", tr("Hot words saved, reloading speech recognition model..."));
     auto task =
         useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
-}
-
-void RecognitionModelWidget::onOpenMoreModels()
-{
-    QDesktopServices::openUrl(
-        QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
-                            "releases/tag/asr-models")));
 }
 
 } // namespace talkinput

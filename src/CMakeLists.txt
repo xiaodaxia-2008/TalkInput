@@ -103,6 +103,8 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/icons/folder.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/folder-plus.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/check.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/chevron-right.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/chevron-down.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/download.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/import.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/globe.svg"

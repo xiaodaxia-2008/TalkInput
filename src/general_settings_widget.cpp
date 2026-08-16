@@ -2,7 +2,7 @@
 
 #include <QEvent>
 #include <QGroupBox>
-#include <QHBoxLayout>
+#include <QGridLayout>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
@@ -31,7 +31,7 @@ void GeneralSettingsWidget::buildUi()
     contentLayout->setSpacing(12);
 
     m_group = new QGroupBox(content);
-    auto *groupLayout = new QVBoxLayout(m_group);
+    auto *groupLayout = new QGridLayout(m_group);
     groupLayout->setContentsMargins(16, 20, 16, 14);
     groupLayout->setSpacing(10);
 
@@ -39,10 +39,20 @@ void GeneralSettingsWidget::buildUi()
     m_dataDirectoryButton = new QPushButton(m_group);
     m_aboutButton = new QPushButton(m_group);
     m_exitButton = new QPushButton(m_group);
-    groupLayout->addWidget(m_resetButton);
-    groupLayout->addWidget(m_dataDirectoryButton);
-    groupLayout->addWidget(m_aboutButton);
-    groupLayout->addWidget(m_exitButton);
+
+    const auto configureButton = [](QPushButton *button) {
+        button->setFixedHeight(32);
+        button->setMaximumWidth(220);
+    };
+    configureButton(m_resetButton);
+    configureButton(m_dataDirectoryButton);
+    configureButton(m_aboutButton);
+    configureButton(m_exitButton);
+
+    groupLayout->addWidget(m_resetButton, 0, 0);
+    groupLayout->addWidget(m_dataDirectoryButton, 0, 1);
+    groupLayout->addWidget(m_aboutButton, 1, 0);
+    groupLayout->addWidget(m_exitButton, 1, 1);
 
     contentLayout->addWidget(m_group);
     contentLayout->addStretch();

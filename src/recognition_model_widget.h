@@ -38,7 +38,6 @@ private:
     void onOpenModelUrl();
     void onImportModel();
     void onEditHotwords();
-    void onOpenMoreModels();
 
     QCoro::Task<void> useAsrModel(const QString &providerId);
     QCoro::Task<bool> downloadAsrModel(const QString &providerId);
@@ -53,7 +52,6 @@ private:
     QPushButton *m_importButton = nullptr;
     QPushButton *m_useButton = nullptr;
     QPushButton *m_hotwordsButton = nullptr;
-    QPushButton *m_moreModelsButton = nullptr;
     QLabel *m_hotwordsHintLabel = nullptr;
 };
 

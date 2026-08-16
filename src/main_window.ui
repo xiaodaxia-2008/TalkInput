@@ -27,39 +27,26 @@
     <property name="rightMargin">0</property>
     <property name="bottomMargin">0</property>
     <item>
-     <layout class="QHBoxLayout" name="bodyLayout">
-      <property name="spacing">0</property>
-      <property name="leftMargin">0</property>
-      <property name="topMargin">0</property>
-      <property name="rightMargin">0</property>
-      <property name="bottomMargin">0</property>
-      <item>
-       <widget class="QWidget" name="navContainer" native="true">
-        <property name="minimumSize">
-         <size>
-          <width>200</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>220</width>
-          <height>16777215</height>
-         </size>
-        </property>
+     <widget class="QSplitter" name="mainSplitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
+      <widget class="QWidget" name="navContainer" native="true">
+       <property name="minimumSize">
+        <size>
+         <width>180</width>
+         <height>0</height>
+        </size>
+       </property>
         <layout class="QVBoxLayout" name="navLayout">
          <property name="spacing">6</property>
          <property name="leftMargin">10</property>
-         <property name="topMargin">12</property>
+         <property name="topMargin">8</property>
          <property name="rightMargin">10</property>
          <property name="bottomMargin">10</property>
-         <item>
-          <widget class="QLabel" name="navAppTitle">
-           <property name="text">
-            <string>TalkInput</string>
-           </property>
-          </widget>
-         </item>
          <item>
           <widget class="QTreeWidget" name="navTree">
            <property name="rootIsDecorated">
@@ -73,11 +60,9 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </widget>
-      </item>
-      <item>
-       <widget class="QStackedWidget" name="contentStack">
+         </layout>
+        </widget>
+        <widget class="QStackedWidget" name="contentStack">
         <property name="currentIndex">
          <number>0</number>
         </property>
@@ -88,26 +73,6 @@
           <property name="topMargin">20</property>
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
-          <item>
-           <widget class="QLabel" name="titleRecognitionModel">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>Model and Hot Words</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleRecognitionModel">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Speech Recognition / Model and Hot Words</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <layout class="QVBoxLayout" name="recognitionModelContentLayout">
             <property name="spacing">0</property>
@@ -123,26 +88,6 @@
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
           <item>
-           <widget class="QLabel" name="titleRecognitionBehavior">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>Recognition Behavior</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleRecognitionBehavior">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Speech Recognition / Recognition Behavior</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QVBoxLayout" name="recognitionBehaviorContentLayout">
             <property name="spacing">0</property>
            </layout>
@@ -156,26 +101,6 @@
           <property name="topMargin">20</property>
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
-          <item>
-           <widget class="QLabel" name="titleOcr">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>OCR</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleOcr">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Services / OCR</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <layout class="QVBoxLayout" name="ocrContentLayout">
             <property name="spacing">0</property>
@@ -191,26 +116,6 @@
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
           <item>
-           <widget class="QLabel" name="titleLlm">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>LLM</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleLlm">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Services / LLM</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QVBoxLayout" name="llmContentLayout">
             <property name="spacing">0</property>
            </layout>
@@ -224,26 +129,6 @@
           <property name="topMargin">20</property>
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
-          <item>
-           <widget class="QLabel" name="titleTts">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>TTS</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleTts">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Services / TTS</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <layout class="QVBoxLayout" name="ttsContentLayout">
             <property name="spacing">0</property>
@@ -259,26 +144,6 @@
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
           <item>
-           <widget class="QLabel" name="titleApiServer">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>API Server</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleApiServer">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Services / API Server</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QVBoxLayout" name="apiServerContentLayout">
             <property name="spacing">0</property>
            </layout>
@@ -293,26 +158,6 @@
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
           <item>
-           <widget class="QLabel" name="titleShortcut">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>Shortcuts</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleShortcut">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Shortcuts</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QVBoxLayout" name="shortcutContentLayout">
             <property name="spacing">0</property>
            </layout>
@@ -326,26 +171,6 @@
           <property name="topMargin">20</property>
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
-          <item>
-           <widget class="QLabel" name="titleAppearance">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>Appearance</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleAppearance">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>Appearance</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <layout class="QVBoxLayout" name="appearanceContentLayout">
             <property name="spacing">0</property>
@@ -379,39 +204,18 @@
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
           <item>
-           <widget class="QLabel" name="titleGeneral">
-            <property name="objectName">
-             <string>settingsPageTitle</string>
-            </property>
-            <property name="text">
-             <string>General</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="subtitleGeneral">
-            <property name="objectName">
-             <string>settingsPageSubtitle</string>
-            </property>
-            <property name="text">
-             <string>General</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QVBoxLayout" name="generalContentLayout">
             <property name="spacing">0</property>
            </layout>
           </item>
          </layout>
         </widget>
+        </widget>
        </widget>
       </item>
      </layout>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QToolBar" name="recognitionToolBar">
+    </widget>
+   <widget class="QToolBar" name="recognitionToolBar">
    <property name="windowTitle">
     <string>Recognition</string>
    </property>

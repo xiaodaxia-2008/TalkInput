@@ -9,40 +9,103 @@ QTreeWidget#navTree {
     background: transparent;
     border: none;
     outline: none;
-    font-size: 13px;
     padding-top: 8px;
 }
 
 QTreeWidget#navTree::item {
-    min-height: 34px;
-    border-radius: 6px;
-    margin: 1px 8px;
+    min-height: 30px;
+    margin: 0;
     padding-left: 8px;
-    color: #cfcfcf;
+    padding-right: 8px;
+    border: none;
 }
 
 QTreeWidget#navTree::item:hover {
-    background: #2a2a2a;
+    background: #1b1b1b;
+    border: none;
 }
 
 QTreeWidget#navTree::item:selected {
     background: #1e5f9e;
     color: #ffffff;
+    border: none;
+}
+
+QTreeWidget#navTree::branch:selected {
+    background: #1e5f9e;
+    border: none;
+    image: none;
+}
+
+QTreeWidget#navTree::branch:hover {
+    background: #1b1b1b;
+    border: none;
 }
 
 QTreeWidget#navTree::branch {
     background: transparent;
+    margin: 0;
+}
+
+QTreeWidget#navTree::branch:has-siblings:!adjoins-item,
+QTreeWidget#navTree::branch:has-siblings:adjoins-item,
+QTreeWidget#navTree::branch:!has-children:!has-siblings:adjoins-item {
+    background: transparent;
+    image: none;
+}
+
+QTreeWidget#navTree::branch:has-siblings:!adjoins-item:selected,
+QTreeWidget#navTree::branch:has-siblings:adjoins-item:selected,
+QTreeWidget#navTree::branch:!has-children:!has-siblings:adjoins-item:selected {
+    background: #1e5f9e;
+    border: none;
+    image: none;
+}
+
+QTreeWidget#navTree::branch:has-siblings:!adjoins-item:hover,
+QTreeWidget#navTree::branch:has-siblings:adjoins-item:hover,
+QTreeWidget#navTree::branch:!has-children:!has-siblings:adjoins-item:hover {
+    background: #1b1b1b;
+    border: none;
+    image: none;
+}
+
+QTreeWidget#navTree::item:selected:hover {
+    background: #1e5f9e;
+}
+
+QTreeWidget#navTree::branch:has-siblings:!adjoins-item:selected:hover,
+QTreeWidget#navTree::branch:has-siblings:adjoins-item:selected:hover,
+QTreeWidget#navTree::branch:!has-children:!has-siblings:adjoins-item:selected:hover {
+    background: #1e5f9e;
+    border: none;
+    image: none;
+}
+
+QTreeWidget#navTree::branch:has-children:closed {
+    image: url(:/resources/icons/chevron-right.svg);
+}
+
+QTreeWidget#navTree::branch:has-children:open {
+    image: url(:/resources/icons/chevron-down.svg);
+}
+
+QSplitter#mainSplitter {
+    background: transparent;
+}
+
+QSplitter#mainSplitter::handle {
+    background: transparent;
+    width: 6px;
+}
+
+QSplitter#mainSplitter::handle:hover,
+QSplitter#mainSplitter::handle:pressed {
+    background: #2b4a6b;
 }
 
 QStackedWidget#contentStack {
     background: #232323;
-}
-
-QLabel#settingsPageTitle {
-    font-size: 20px;
-    font-weight: 600;
-    color: #e6e6e6;
-    padding: 4px 0 8px 0;
 }
 
 QToolBar#recognitionToolBar {
@@ -64,7 +127,6 @@ QGroupBox {
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 8px;
-    font-size: 13px;
 }
 
 QGroupBox::title {
@@ -74,6 +136,22 @@ QGroupBox::title {
     padding: 0 4px;
     color: #c8c8c8;
     font-weight: 600;
+}
+
+QTextEdit,
+QPlainTextEdit {
+    background: #2b2b2b;
+    color: #e6e6e6;
+    border: 1px solid #555555;
+    border-radius: 6px;
+    padding: 6px;
+    selection-background-color: #2b6da8;
+    selection-color: #ffffff;
+}
+
+QTextEdit:focus,
+QPlainTextEdit:focus {
+    border: 1px solid #4da3ff;
 }
 
 /* ── History / log ─────────────────────────────────────────────── */

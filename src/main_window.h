@@ -103,6 +103,7 @@ private:
 
     QTreeWidgetItem *m_activeNavItem = nullptr;
     QVector<QTreeWidgetItem *> m_navItems;
+    QVector<QTreeWidgetItem *> m_sectionItems;
 
     bool m_dark = false;
     bool m_forceQuit = false;
