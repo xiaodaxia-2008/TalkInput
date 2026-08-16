@@ -128,12 +128,17 @@ void TtsSettingsWidget::buildUi()
     m_previewEdit = new QTextEdit(m_group);
     m_previewEdit->setMinimumHeight(110);
     previewRow->addWidget(m_previewEdit, 1);
+
+    auto *previewActions = new QVBoxLayout;
+    previewActions->setSpacing(8);
     m_previewButton = new QPushButton(m_group);
-    previewRow->addWidget(m_previewButton, 0, Qt::AlignTop);
+    previewActions->addWidget(m_previewButton);
     m_playPreviewButton = new QPushButton(m_group);
-    previewRow->addWidget(m_playPreviewButton, 0, Qt::AlignTop);
+    previewActions->addWidget(m_playPreviewButton);
     m_savePreviewButton = new QPushButton(m_group);
-    previewRow->addWidget(m_savePreviewButton, 0, Qt::AlignTop);
+    previewActions->addWidget(m_savePreviewButton);
+    previewActions->addStretch();
+    previewRow->addLayout(previewActions);
     grid->addLayout(previewRow, 3, 1);
 
     contentLayout->addWidget(m_group);
