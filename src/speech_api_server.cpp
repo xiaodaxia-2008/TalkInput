@@ -51,6 +51,8 @@ QString statusText(int code)
         return QStringLiteral("Payload Too Large");
     case 500:
         return QStringLiteral("Internal Server Error");
+    case 501:
+        return QStringLiteral("Not Implemented");
     case 503:
         return QStringLiteral("Service Unavailable");
     default:
@@ -255,12 +257,16 @@ public:
         QTcpSocket *socket = nullptr;
         QByteArray buffer;
         qsizetype headerEnd = 0;
+        qsizetype bodyParsePos = 0;
         qint64 contentLength = 0;
+        qint64 chunkRemaining = 0;
         QString method;
         QString path;
         QMap<QString, QString> headers;
         QByteArray body;
         bool headersParsed = false;
+        bool chunked = false;
+        bool readingChunkData = false;
         bool complete = false;
     };
 
@@ -442,6 +448,19 @@ private:
                                      QStringLiteral("Request body too large"));
                 return;
             }
+            const QString transferEncoding =
+                state.headers.value(QStringLiteral("transfer-encoding"))
+                    .trimmed()
+                    .toLower();
+            if (!transferEncoding.isEmpty()) {
+                if (transferEncoding != QStringLiteral("chunked")) {
+                    respondErrorAndClose(
+                        socket, 501,
+                        QStringLiteral("Unsupported transfer encoding"));
+                    return;
+                }
+                state.chunked = true;
+            }
             if (state.headers.value(QStringLiteral("expect"))
                     .contains(QStringLiteral("100-continue"),
                               Qt::CaseInsensitive))
@@ -449,15 +468,26 @@ private:
                 socket->write("HTTP/1.1 100 Continue\r\n\r\n");
             }
             state.headerEnd = end + 4;
+            state.bodyParsePos = state.headerEnd;
             state.headersParsed = true;
         }
 
-        if (state.buffer.size() < state.headerEnd + state.contentLength) {
-            return;
+        if (state.chunked) {
+            if (!consumeChunkedBody(state)) {
+                return;
+            }
+            if (!state.complete) {
+                return; // an error was already answered and the socket closed
+            }
+        }
+        else {
+            if (state.buffer.size() < state.headerEnd + state.contentLength) {
+                return;
+            }
+            state.body = state.buffer.mid(state.headerEnd, state.contentLength);
+            state.complete = true;
         }
 
-        state.body = state.buffer.mid(state.headerEnd, state.contentLength);
-        state.complete = true;
         if (auto *timer = socket->findChild<QTimer *>()) {
             timer->stop();
         }
@@ -468,6 +498,82 @@ private:
         else {
             m_active = socket;
             processRequest(socket);
+        }
+    }
+
+    bool consumeChunkedBody(ConnectionState &state)
+    {
+        qsizetype &pos = state.bodyParsePos;
+        while (true) {
+            if (!state.readingChunkData) {
+                const qsizetype lineEnd = state.buffer.indexOf("\r\n", pos);
+                if (lineEnd < 0) {
+                    return false;
+                }
+                const QByteArray line = state.buffer.mid(pos, lineEnd - pos);
+                const qsizetype semi = line.indexOf(';');
+                bool ok = false;
+                const qint64 chunkSize = (semi < 0 ? line : line.left(semi))
+                                             .trimmed()
+                                             .toLongLong(&ok, 16);
+                if (!ok || chunkSize < 0) {
+                    respondErrorAndClose(state.socket, 400,
+                                         QStringLiteral("Invalid chunk size"));
+                    return true;
+                }
+                pos = lineEnd + 2;
+                if (chunkSize == 0) {
+                    // trailer-part is zero or more header lines followed by a
+                    // final CRLF. The common case (no trailers) is a bare CRLF
+                    // right after "0\r\n".
+                    if (state.buffer.size() < pos + 2) {
+                        return false;
+                    }
+                    if (state.buffer.at(pos) == '\r' &&
+                        state.buffer.at(pos + 1) == '\n')
+                    {
+                        state.complete = true;
+                        return true;
+                    }
+                    const qsizetype trailerEnd =
+                        state.buffer.indexOf("\r\n\r\n", pos);
+                    if (trailerEnd < 0) {
+                        return false;
+                    }
+                    state.complete = true;
+                    return true;
+                }
+                if (chunkSize > MaxRequestBodyBytes) {
+                    respondErrorAndClose(
+                        state.socket, 413,
+                        QStringLiteral("Request body too large"));
+                    return true;
+                }
+                state.chunkRemaining = chunkSize;
+                state.readingChunkData = true;
+            }
+
+            if (state.buffer.size() < pos + state.chunkRemaining + 2) {
+                return false;
+            }
+            if (state.body.size() + state.chunkRemaining > MaxRequestBodyBytes)
+            {
+                respondErrorAndClose(state.socket, 413,
+                                     QStringLiteral("Request body too large"));
+                return true;
+            }
+            state.body.append(state.buffer.mid(pos, state.chunkRemaining));
+            pos += state.chunkRemaining;
+            if (state.buffer.at(pos) != '\r' ||
+                state.buffer.at(pos + 1) != '\n')
+            {
+                respondErrorAndClose(state.socket, 400,
+                                     QStringLiteral("Malformed chunk data"));
+                return true;
+            }
+            pos += 2;
+            state.readingChunkData = false;
+            state.chunkRemaining = 0;
         }
     }
 
