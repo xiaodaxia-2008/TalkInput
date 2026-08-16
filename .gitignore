@@ -12,6 +12,7 @@ data/
 out/
 cmake-build-*/
 .cache/
+.codegraph/
 .mindfs/
 temp/
 Models/
