@@ -12,6 +12,7 @@
 #include "recognition_behavior_widget.h"
 #include "recognition_model_widget.h"
 #include "shortcut_settings_widget.h"
+#include "speech_api_server.h"
 #include "tts_settings_widget.h"
 #include "ui_main_window.h"
 #include "utils.h"
@@ -141,11 +142,12 @@ void MainWindow::setupUi()
     // resultChanged comes from VoiceInputController → onResult
     connect(m_voiceInputController, &VoiceInputController::finalTextCommitted,
             this, [this](const QString &text) {
-                m_history.addEntry(text);
-                if (m_historyWidget) {
-                    m_historyWidget->refreshHistory();
-                }
+                recordHistoryEntry(text);
             });
+    if (auto *apiServer = SpeechApiServer::instance()) {
+        connect(apiServer, &SpeechApiServer::transcriptionCompleted, this,
+                &MainWindow::recordHistoryEntry);
+    }
     connect(m_voiceInputController, &VoiceInputController::listeningChanged,
             this, [this](bool listening) { updateControls(listening); });
     connect(m_voiceInputController, &VoiceInputController::modeChanged, this,
@@ -410,6 +412,14 @@ void MainWindow::refreshAllSettingsPages()
     m_apiServerSettingsWidget->refreshFromConfig();
     m_shortcutSettingsWidget->refreshFromConfig();
     m_appearanceSettingsWidget->refreshFromConfig();
+    if (m_historyWidget) {
+        m_historyWidget->refreshHistory();
+    }
+}
+
+void MainWindow::recordHistoryEntry(const QString &text)
+{
+    m_history.addEntry(text);
     if (m_historyWidget) {
         m_historyWidget->refreshHistory();
     }

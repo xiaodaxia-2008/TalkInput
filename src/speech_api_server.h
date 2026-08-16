@@ -66,6 +66,7 @@ signals:
     void listeningChanged(bool listening);
     void serverStarted(quint16 port);
     void errorOccurred(const QString &message);
+    void transcriptionCompleted(const QString &text);
 
 private:
     class Core;

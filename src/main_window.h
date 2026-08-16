@@ -69,6 +69,7 @@ private:
     void onNavItemClicked(QTreeWidgetItem *item, int column);
     void restoreNavSelection();
     void refreshAllSettingsPages();
+    void recordHistoryEntry(const QString &text);
     void updateControls(bool listening);
 
     void onThemeChanged(ThemeMode mode);

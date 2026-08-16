@@ -292,6 +292,7 @@ signals:
     void listeningChanged(bool listening);
     void serverStarted(quint16 port);
     void errorOccurred(const QString &message);
+    void transcriptionCompleted(const QString &text);
 
 public slots:
 
@@ -777,6 +778,8 @@ private:
             return;
         }
 
+        emit transcriptionCompleted(result.text);
+
         if (responseFormat == QStringLiteral("text")) {
             respond(state.socket, 200, result.text.toUtf8(),
                     "text/plain; charset=utf-8");
@@ -1058,6 +1061,8 @@ SpeechApiServer::SpeechApiServer(QObject *parent) : QObject(parent)
             &SpeechApiServer::serverStarted);
     connect(m_core, &Core::errorOccurred, this,
             &SpeechApiServer::errorOccurred);
+    connect(m_core, &Core::transcriptionCompleted, this,
+            &SpeechApiServer::transcriptionCompleted);
     connect(m_thread.get(), &QThread::finished, m_core, &QObject::deleteLater);
     m_thread->start();
 }
