@@ -6,6 +6,7 @@
 #include <memory>
 
 class QComboBox;
+class QAction;
 class QEvent;
 class QGroupBox;
 class QLabel;
@@ -25,6 +26,7 @@ public:
 
     /// Re-reads the current config and refreshes every control.
     void refreshFromConfig();
+    void setRecognitionActions(QAction *startAction, QAction *fileAction);
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -52,6 +54,8 @@ private:
     QPushButton *m_importButton = nullptr;
     QPushButton *m_useButton = nullptr;
     QPushButton *m_hotwordsButton = nullptr;
+    QPushButton *m_startRecognitionButton = nullptr;
+    QPushButton *m_recognizeFileButton = nullptr;
     QLabel *m_hotwordsHintLabel = nullptr;
 };
 

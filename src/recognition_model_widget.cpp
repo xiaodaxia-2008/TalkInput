@@ -7,6 +7,7 @@
 #include "voice_input_controller.h"
 
 #include <QComboBox>
+#include <QAction>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -52,6 +53,14 @@ void RecognitionModelWidget::buildUi()
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(12);
+
+    auto *actionsRow = new QHBoxLayout;
+    m_startRecognitionButton = new QPushButton(content);
+    m_recognizeFileButton = new QPushButton(content);
+    actionsRow->addWidget(m_startRecognitionButton);
+    actionsRow->addWidget(m_recognizeFileButton);
+    actionsRow->addStretch();
+    contentLayout->addLayout(actionsRow);
 
     // ── ASR model group ────────────────────────────────────────────
     m_modelGroup = new QGroupBox(content);
@@ -133,6 +142,25 @@ void RecognitionModelWidget::buildUi()
 
     connect(m_hotwordsButton, &QPushButton::clicked, this,
             &RecognitionModelWidget::onEditHotwords);
+}
+
+void RecognitionModelWidget::setRecognitionActions(QAction *startAction,
+                                                   QAction *fileAction)
+{
+    const auto bindAction = [](QPushButton *button, QAction *action) {
+        const auto sync = [button, action]() {
+            button->setText(action->text());
+            button->setIcon(action->icon());
+            button->setToolTip(action->toolTip());
+            button->setEnabled(action->isEnabled());
+        };
+        QObject::connect(button, &QPushButton::clicked, action,
+                         &QAction::trigger);
+        QObject::connect(action, &QAction::changed, button, sync);
+        sync();
+    };
+    bindAction(m_startRecognitionButton, startAction);
+    bindAction(m_recognizeFileButton, fileAction);
 }
 
 void RecognitionModelWidget::retranslate()

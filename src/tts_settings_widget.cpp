@@ -3,9 +3,13 @@
 #include "archive_utils.h"
 #include "logging.h"
 #include "model_download.h"
+#include "tts/edge_tts_engine.h"
 #include "tts/melo_tts_engine.h"
+#include "tts/tts_audio.h"
+#include "tts_engine.h"
 #include "utils.h"
 
+#include <QAudioOutput>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
@@ -19,10 +23,13 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMediaPlayer>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStandardPaths>
+#include <QTemporaryFile>
+#include <QTextEdit>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -114,6 +121,17 @@ void TtsSettingsWidget::buildUi()
 
     grid->addLayout(modelRow, 2, 1);
 
+    m_previewFormLabel = new QLabel(m_group);
+    grid->addWidget(m_previewFormLabel, 3, 0, Qt::AlignTop);
+    auto *previewRow = new QHBoxLayout;
+    previewRow->setSpacing(8);
+    m_previewEdit = new QTextEdit(m_group);
+    m_previewEdit->setMinimumHeight(110);
+    previewRow->addWidget(m_previewEdit, 1);
+    m_previewButton = new QPushButton(m_group);
+    previewRow->addWidget(m_previewButton, 0, Qt::AlignTop);
+    grid->addLayout(previewRow, 3, 1);
+
     contentLayout->addWidget(m_group);
     contentLayout->addStretch();
 
@@ -130,6 +148,10 @@ void TtsSettingsWidget::buildUi()
     m_importButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_downloadButton, ":/resources/icons/download.svg", iconSize);
     m_downloadButton->setProperty("buttonRole", "icon");
+
+    m_audioOutput = new QAudioOutput(this);
+    m_mediaPlayer = new QMediaPlayer(this);
+    m_mediaPlayer->setAudioOutput(m_audioOutput);
 
     auto saveVoice = [this]() {
         appConfig().settings.ttsEdgeVoice =
@@ -151,6 +173,8 @@ void TtsSettingsWidget::buildUi()
             &TtsSettingsWidget::onOpenTtsModelUrl);
     connect(m_importButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::onImportTtsModel);
+    connect(m_previewButton, &QPushButton::clicked, this,
+            &TtsSettingsWidget::synthesizePreview);
 }
 
 void TtsSettingsWidget::retranslate()
@@ -159,8 +183,53 @@ void TtsSettingsWidget::retranslate()
     m_providerFormLabel->setText(tr("Provider"));
     m_voiceFormLabel->setText(tr("Voice"));
     m_modelFormLabel->setText(tr("Model"));
+    m_previewFormLabel->setText(tr("Preview"));
+    m_previewButton->setText(tr("Convert to speech"));
+    m_previewEdit->setPlaceholderText(tr("Enter text to synthesize"));
     m_voiceCombo->lineEdit()->setPlaceholderText(
         tr("Voice name, e.g. zh-CN-XiaoxiaoNeural"));
+}
+
+void TtsSettingsWidget::synthesizePreview()
+{
+    const QString text = m_previewEdit->toPlainText().trimmed();
+    if (text.isEmpty()) {
+        STATUSBAR_INFO("{}", tr("Enter text to synthesize."));
+        return;
+    }
+
+    std::unique_ptr<TtsEngine> engine;
+    if (m_providerCombo->currentData().toString() == QStringLiteral("melo")) {
+        engine = std::make_unique<MeloTtsEngine>();
+    }
+    else {
+        engine = std::make_unique<EdgeTtsEngine>();
+    }
+
+    m_previewButton->setEnabled(false);
+    const TtsSynthesisResult result = engine->synthesize(
+        text, m_voiceCombo->currentText(), 1.0);
+    m_previewButton->setEnabled(true);
+    if (!result.ok()) {
+        STATUSBAR_INFO("{}", tr("Speech conversion failed: %1").arg(result.error));
+        return;
+    }
+
+    m_previewFile = std::make_unique<QTemporaryFile>();
+    m_previewFile->setAutoRemove(true);
+    if (!m_previewFile->open()) {
+        STATUSBAR_INFO("{}", tr("Could not prepare audio playback."));
+        return;
+    }
+    const QByteArray wav = pcm16ToWav(result.pcm24k, 24000);
+    if (m_previewFile->write(wav) != wav.size()) {
+        STATUSBAR_INFO("{}", tr("Could not prepare audio playback."));
+        return;
+    }
+    m_previewFile->flush();
+    m_previewFile->close();
+    m_mediaPlayer->setSource(QUrl::fromLocalFile(m_previewFile->fileName()));
+    m_mediaPlayer->play();
 }
 
 void TtsSettingsWidget::changeEvent(QEvent *event)

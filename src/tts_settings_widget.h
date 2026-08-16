@@ -9,7 +9,11 @@ class QComboBox;
 class QEvent;
 class QGroupBox;
 class QLabel;
+class QAudioOutput;
+class QMediaPlayer;
 class QPushButton;
+class QTextEdit;
+class QTemporaryFile;
 
 namespace talkinput
 {
@@ -35,6 +39,7 @@ private:
     void onTtsProviderChanged(int index);
     void updateTtsWidgetStates();
     void refreshTtsModelStatus();
+    void synthesizePreview();
     void onOpenTtsModelUrl();
     void onImportTtsModel();
 
@@ -50,6 +55,12 @@ private:
     QPushButton *m_browserButton = nullptr;
     QPushButton *m_importButton = nullptr;
     QPushButton *m_downloadButton = nullptr;
+    QLabel *m_previewFormLabel = nullptr;
+    QTextEdit *m_previewEdit = nullptr;
+    QPushButton *m_previewButton = nullptr;
+    QAudioOutput *m_audioOutput = nullptr;
+    QMediaPlayer *m_mediaPlayer = nullptr;
+    std::unique_ptr<QTemporaryFile> m_previewFile;
 };
 
 } // namespace talkinput
