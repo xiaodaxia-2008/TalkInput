@@ -30,6 +30,8 @@ using ApiTranscriber = std::function<TranscriptionResult(
 /// HTTP API:
 ///
 ///   POST /v1/audio/transcriptions  (multipart/form-data: file, model)
+///   POST /v1/audio/speech          (JSON: input, voice, speed,
+///                                   response_format; returns audio)
 ///   GET  /v1/models
 ///   GET  /health
 ///
@@ -37,7 +39,9 @@ using ApiTranscriber = std::function<TranscriptionResult(
 /// processed one at a time. Audio is transcribed by the shared recognizer
 /// owned by VoiceInputController (the same loaded model used for mic input),
 /// so no second copy of a model is ever loaded. Requests are rejected while a
-/// microphone session is running.
+/// microphone session is running. TTS is served by the configured backend
+/// ("edge" = Microsoft Edge online, "melo" = offline MeloTTS); both engines
+/// return 24 kHz 16-bit mono PCM.
 class SpeechApiServer final : public QObject
 {
     Q_OBJECT

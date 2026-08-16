@@ -118,6 +118,13 @@ struct AppSettings
     std::string apiServerHost = "127.0.0.1";
     int apiServerPort = 8766;
     std::string apiServerApiKey;
+    std::string ttsProvider = "edge";
+    std::string ttsEdgeVoice = "zh-CN-XiaoxiaoNeural";
+    std::string ttsMeloModelDirName = "vits-melo-tts-zh_en";
+    std::string ttsMeloModelUrl =
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/"
+        "vits-melo-tts-zh_en.tar.bz2";
+    int64_t ttsMeloModelSize = 167006755;
 };
 
 struct AppConfigData

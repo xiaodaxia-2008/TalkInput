@@ -3,6 +3,10 @@
 #include "app_config.h"
 #include "audio_utils.h"
 #include "logging.h"
+#include "tts/edge_tts_engine.h"
+#include "tts/melo_tts_engine.h"
+#include "tts/tts_audio.h"
+#include "tts_engine.h"
 #include "voice_input_controller.h"
 
 #include <QCoreApplication>
@@ -10,6 +14,8 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QHostAddress>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRegularExpression>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -355,6 +361,7 @@ public slots:
 
     void shutdown()
     {
+        m_ttsEngine.reset();
         if (m_server->isListening()) {
             m_server->close();
         }
@@ -652,6 +659,17 @@ private:
             handleTranscription(state);
             return;
         }
+        if (path == QStringLiteral("/v1/audio/speech")) {
+            if (method != QStringLiteral("POST")) {
+                respondError(socket, 405, QStringLiteral("Method not allowed"));
+                return;
+            }
+            if (!authorize(state)) {
+                return;
+            }
+            handleSpeech(state);
+            return;
+        }
 
         respondError(socket, 404, QStringLiteral("Not found: %1").arg(path));
     }
@@ -783,6 +801,93 @@ private:
                                     .arg(jsonEscape(result.text))
                                     .toUtf8();
         respond(state.socket, 200, body, "application/json; charset=utf-8");
+    }
+
+    void handleSpeech(const ConnectionState &state)
+    {
+        QJsonParseError parseError;
+        const QJsonDocument doc =
+            QJsonDocument::fromJson(state.body, &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+            respondError(state.socket, 400,
+                         QStringLiteral("Invalid JSON request body"));
+            return;
+        }
+        const QJsonObject obj = doc.object();
+
+        const QString input = obj.value(QLatin1String("input")).toString().trimmed();
+        if (input.isEmpty()) {
+            respondError(state.socket, 400,
+                         QStringLiteral("The 'input' field is required."));
+            return;
+        }
+        const QString voice =
+            obj.value(QLatin1String("voice")).toString().trimmed();
+        const QString responseFormat =
+            obj.value(QLatin1String("response_format")).toString().trimmed();
+        double speed = 1.0;
+        if (obj.contains(QLatin1String("speed"))) {
+            speed = obj.value(QLatin1String("speed")).toDouble(1.0);
+        }
+
+        const QString provider =
+            QString::fromStdString(appConfig().settings.ttsProvider);
+        TtsEngine *engine = getTtsEngine(provider);
+        if (!engine) {
+            respondError(state.socket, 503,
+                         QStringLiteral("TTS provider '%1' is unavailable. "
+                                        "Check the TTS settings or install the "
+                                        "offline model.")
+                             .arg(provider));
+            return;
+        }
+
+        const TtsSynthesisResult result = engine->synthesize(input, voice, speed);
+        if (!result.ok()) {
+            respondError(state.socket, 500, result.error);
+            return;
+        }
+
+        const QByteArray format = responseFormat.toLower().toUtf8();
+        if (format.isEmpty() || format == "pcm") {
+            respond(state.socket, 200, result.pcm24k,
+                    "audio/pcm; rate=24000; bits=16; channels=1");
+            return;
+        }
+        if (format == "wav") {
+            respond(state.socket, 200, pcm16ToWav(result.pcm24k, 24000),
+                    "audio/wav");
+            return;
+        }
+        respondError(state.socket, 400,
+                     QStringLiteral("Unsupported response_format '%1'.")
+                         .arg(responseFormat));
+    }
+
+    TtsEngine *getTtsEngine(const QString &provider)
+    {
+        if (m_ttsEngine && m_ttsProvider == provider) {
+            return m_ttsEngine.get();
+        }
+        m_ttsEngine.reset();
+        m_ttsProvider = provider;
+
+        if (provider == QStringLiteral("melo")) {
+            if (!MeloTtsEngine::isModelInstalled()) {
+                SPDLOG_WARN("MeloTTS: model not installed");
+                return nullptr;
+            }
+            m_ttsEngine = std::make_unique<MeloTtsEngine>();
+        }
+        else if (provider == QStringLiteral("edge")) {
+            m_ttsEngine = std::make_unique<EdgeTtsEngine>();
+        }
+        else {
+            SPDLOG_WARN("API server: unknown TTS provider '{}'",
+                        provider.toStdString());
+            return nullptr;
+        }
+        return m_ttsEngine.get();
     }
 
     bool authorize(const ConnectionState &state)
@@ -932,6 +1037,8 @@ private:
     QTcpSocket *m_active = nullptr;
     QHash<QTcpSocket *, ConnectionState> m_connections;
     ApiTranscriber m_transcriber;
+    QString m_ttsProvider;
+    std::unique_ptr<TtsEngine> m_ttsEngine;
     bool m_enabled = false;
     QString m_host;
     quint16 m_port = 0;

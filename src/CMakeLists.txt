@@ -41,6 +41,13 @@ add_executable(TalkInput WIN32
     speech_recognizer.cpp
     speech_api_server.h
     speech_api_server.cpp
+    tts_engine.h
+    tts/edge_tts_engine.cpp
+    tts/edge_tts_engine.h
+    tts/melo_tts_engine.cpp
+    tts/melo_tts_engine.h
+    tts/tts_audio.cpp
+    tts/tts_audio.h
     log_panel.cpp
     log_panel.h
     logging.cpp
@@ -101,6 +108,7 @@ target_link_libraries(TalkInput
     Qt6::Network
     Qt6::Svg
     Qt6::Sql
+    Qt6::WebSockets
     LibArchive::LibArchive
     sherpa-onnx-c-api
     QHotkey::QHotkey

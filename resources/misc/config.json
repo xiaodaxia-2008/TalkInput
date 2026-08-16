@@ -21,7 +21,12 @@
     "apiServerEnabled": false,
     "apiServerHost": "127.0.0.1",
     "apiServerPort": 8766,
-    "apiServerApiKey": ""
+    "apiServerApiKey": "",
+    "ttsProvider": "edge",
+    "ttsEdgeVoice": "zh-CN-XiaoxiaoNeural",
+    "ttsMeloModelDirName": "vits-melo-tts-zh_en",
+    "ttsMeloModelUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+    "ttsMeloModelSize": 167006755
   },
   "asrPresets": {
     "streaming-paraformer-bilingual-zh-en-punct-int8": {

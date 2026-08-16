@@ -15,7 +15,7 @@ set(CMAKE_AUTORCC ON)
 
 project(TalkInput VERSION 0.9.2 DESCRIPTION "Voice input method")
 
-find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql LinguistTools)
+find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql WebSockets LinguistTools)
 find_package(LibArchive REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)

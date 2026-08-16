@@ -45,6 +45,11 @@ int main(int argc, char *argv[])
     SPDLOG_DEBUG("config path {}", talkinput::appConfigPath());
 
     try {
+        // Load the user config eagerly so the queued applySettings() on the API
+        // server thread never reads uninitialized defaults (e.g. an API server
+        // that is silently left disabled at startup).
+        (void)talkinput::appConfig();
+
         // Owned before MainWindow so VoiceInputController (created inside
         // MainWindow) is guaranteed to outlive any in-flight API request.
         talkinput::SpeechApiServer apiServer;
