@@ -1,10 +1,18 @@
 #include "main_window.h"
+#include "api_server_settings_widget.h"
 #include "app_config.h"
-#include "asr_setting_widget.h"
+#include "appearance_settings_widget.h"
 #include "audio_utils.h"
+#include "general_settings_widget.h"
 #include "history_widget.h"
+#include "llm_settings_widget.h"
 #include "log_panel.h"
 #include "logging.h"
+#include "ocr_settings_widget.h"
+#include "recognition_behavior_widget.h"
+#include "recognition_model_widget.h"
+#include "shortcut_settings_widget.h"
+#include "tts_settings_widget.h"
 #include "ui_main_window.h"
 #include "utils.h"
 
@@ -14,13 +22,18 @@
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QMenu>
 #include <QMessageBox>
+#include <QShortcut>
 #include <QSignalBlocker>
 #include <QStatusBar>
+#include <QStyleHints>
 #include <QSystemTrayIcon>
 #include <QTranslator>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
 
 namespace talkinput
 {
@@ -33,7 +46,6 @@ MainWindow::MainWindow(QWidget *parent)
                            m_qtTranslator);
     setupUi();
     SPDLOG_DEBUG("MainWindow: constructor end");
-    setMinimumHeight(620);
 }
 
 MainWindow::~MainWindow() = default;
@@ -59,6 +71,7 @@ void MainWindow::changeEvent(QEvent *event)
     }
 
     m_ui->retranslateUi(this);
+    retranslateNav();
     updateControls(m_voiceInputController &&
                    m_voiceInputController->isListening());
 }
@@ -70,21 +83,27 @@ void MainWindow::setupUi()
     installStatusBarLogger(statusBar());
     SPDLOG_DEBUG("setupUi: ui setup complete");
 
+    m_dark = isDarkTheme(themeModeFromString(appConfig().settings.theme));
+
     // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
     SPDLOG_DEBUG("setupUi: creating VoiceInputController");
     m_voiceInputController = new VoiceInputController(this);
 
-    // ── History tab ────────────────────────────────────────────
-    SPDLOG_DEBUG("setupUi: creating HistoryWidget");
-    m_historyWidget = new HistoryWidget(&m_history, m_ui->historyTab);
-    m_ui->historyLayout->addWidget(m_historyWidget);
-    SPDLOG_DEBUG("setupUi: HistoryWidget added");
-    // ── ASR settings tab ────────────────────────────────────────
-    setupAsrSettingWidget();
+    // ── Navigation sidebar ─────────────────────────────────────────
+    setupNavTree();
 
-    // ── Log panel tab ───────────────────────────────────────────
-    m_logPanel = new LogPanel(m_ui->logTab);
-    m_ui->logLayout->addWidget(m_logPanel);
+    // ── Settings pages ─────────────────────────────────────────────
+    setupSettingsPages();
+
+    // ── History page ───────────────────────────────────────────────
+    SPDLOG_DEBUG("setupUi: creating HistoryWidget");
+    m_historyWidget = new HistoryWidget(&m_history, m_ui->pageHistory);
+    m_ui->pageHistoryLayout->addWidget(m_historyWidget);
+    SPDLOG_DEBUG("setupUi: HistoryWidget added");
+
+    // ── Log page ───────────────────────────────────────────────────
+    m_logPanel = new LogPanel(m_ui->pageLog);
+    m_ui->pageLogLayout->addWidget(m_logPanel);
     installLogPanelSink(m_logPanel->textEdit());
 
     connect(m_ui->actionStartRecognition, &QAction::triggered, this,
@@ -107,56 +126,244 @@ void MainWindow::setupUi()
             this, [this](bool listening) { updateControls(listening); });
     connect(m_voiceInputController, &VoiceInputController::modeChanged, this,
             [this](PipelineMode) {
-                if (m_asrSettingWidget) {
-                    m_asrSettingWidget->updateActiveModeDisplay();
+                if (m_shortcutSettingsWidget) {
+                    m_shortcutSettingsWidget->updateActiveModeDisplay();
                 }
             });
 
-    // ── System tray ────────────────────────────────────────────
+    // ── System tray ────────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: setting up tray icon");
     setupTrayIcon();
 
-    if (currentAppLanguage() == QStringLiteral("en")) {
-        m_ui->actionEnglish->setChecked(true);
-    }
-    else {
-        m_ui->actionChinese->setChecked(true);
-    }
+    connect(m_appearanceSettingsWidget, &AppearanceSettingsWidget::themeChanged,
+            this, &MainWindow::onThemeChanged);
+    connect(m_appearanceSettingsWidget,
+            &AppearanceSettingsWidget::languageChanged, this,
+            &MainWindow::onLanguageChanged);
 
-    connect(m_ui->actionChinese, &QAction::triggered, this,
-            &MainWindow::onSwitchLanguage);
-    connect(m_ui->actionEnglish, &QAction::triggered, this,
-            &MainWindow::onSwitchLanguage);
-
-    const bool startHidden = appConfig().settings.startMinimized;
-    m_ui->actionStartMinimized->setChecked(startHidden);
-
-    connect(m_ui->actionStartMinimized, &QAction::toggled, this,
-            &MainWindow::onStartMinimizedToggled);
-
-    connect(m_ui->actionResetSettings, &QAction::triggered, this,
+    connect(m_generalSettingsWidget,
+            &GeneralSettingsWidget::resetSettingsRequested, this,
             &MainWindow::onResetSettings);
-
-    connect(m_ui->actionOpenDataDirectory, &QAction::triggered, this,
+    connect(m_generalSettingsWidget,
+            &GeneralSettingsWidget::openDataDirectoryRequested, this,
             &MainWindow::onOpenDataDirectory);
+    connect(m_generalSettingsWidget, &GeneralSettingsWidget::aboutRequested,
+            this, &MainWindow::onShowAboutDialog);
+    connect(m_generalSettingsWidget, &GeneralSettingsWidget::exitRequested,
+            this, &MainWindow::onQuitApplication);
 
-    connect(m_ui->actionMoreModels, &QAction::triggered, this,
-            &MainWindow::onOpenMoreAsrModels);
-    connect(m_ui->actionAbout, &QAction::triggered, this,
-            &MainWindow::onShowAboutDialog);
-
-    connect(m_ui->actionExit, &QAction::triggered, this,
+    // Quit shortcut (menu bar was removed in favour of the sidebar).
+    auto *quitShortcut = new QShortcut(QKeySequence::Quit, this);
+    connect(quitShortcut, &QShortcut::activated, this,
             &MainWindow::onQuitApplication);
+
+    // Re-apply the "follow system" theme when the OS switches color scheme.
+    connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged,
+            this, [this](Qt::ColorScheme) {
+                if (themeModeFromString(appConfig().settings.theme) ==
+                    ThemeMode::System)
+                {
+                    m_dark = applyTheme(ThemeMode::System);
+                    refreshNavIcons();
+                }
+            });
+
+    // Ensure the palette / icons match the configured theme.
+    onThemeChanged(themeModeFromString(appConfig().settings.theme));
 
     SPDLOG_DEBUG("setupUi: end");
 }
 
-void MainWindow::setupAsrSettingWidget()
+void MainWindow::setupSettingsPages()
 {
-    SPDLOG_DEBUG("setupAsrSettingWidget: creating widget");
-    m_asrSettingWidget = new AsrSettingWidget(m_ui->asrSettingsTab);
-    m_ui->asrSettingsLayout->addWidget(m_asrSettingWidget);
-    SPDLOG_DEBUG("setupAsrSettingWidget: widget added");
+    SPDLOG_DEBUG("setupSettingsPages: begin");
+
+    m_recognitionModelWidget =
+        new RecognitionModelWidget(m_ui->pageRecognitionModel);
+    m_ui->recognitionModelContentLayout->addWidget(m_recognitionModelWidget);
+
+    m_recognitionBehaviorWidget =
+        new RecognitionBehaviorWidget(m_ui->pageRecognitionBehavior);
+    m_ui->recognitionBehaviorContentLayout->addWidget(
+        m_recognitionBehaviorWidget);
+
+    m_ocrSettingsWidget = new OcrSettingsWidget(m_ui->pageOcr);
+    m_ui->ocrContentLayout->addWidget(m_ocrSettingsWidget);
+
+    m_llmSettingsWidget = new LlmSettingsWidget(m_ui->pageLlm);
+    m_ui->llmContentLayout->addWidget(m_llmSettingsWidget);
+
+    m_ttsSettingsWidget = new TtsSettingsWidget(m_ui->pageTts);
+    m_ui->ttsContentLayout->addWidget(m_ttsSettingsWidget);
+
+    m_apiServerSettingsWidget =
+        new ApiServerSettingsWidget(m_ui->pageApiServer);
+    m_ui->apiServerContentLayout->addWidget(m_apiServerSettingsWidget);
+
+    m_shortcutSettingsWidget = new ShortcutSettingsWidget(m_ui->pageShortcut);
+    m_ui->shortcutContentLayout->addWidget(m_shortcutSettingsWidget);
+
+    m_appearanceSettingsWidget =
+        new AppearanceSettingsWidget(m_ui->pageAppearance);
+    m_ui->appearanceContentLayout->addWidget(m_appearanceSettingsWidget);
+
+    m_generalSettingsWidget = new GeneralSettingsWidget(m_ui->pageGeneral);
+    m_ui->generalContentLayout->addWidget(m_generalSettingsWidget);
+
+    SPDLOG_DEBUG("setupSettingsPages: end");
+}
+
+void MainWindow::setupNavTree()
+{
+    SPDLOG_DEBUG("setupNavTree: begin");
+    auto *tree = m_ui->navTree;
+
+    const auto makeItem = [&](const QString &text, const QString &iconPath,
+                              int page) {
+        auto *item = new QTreeWidgetItem(tree);
+        item->setText(0, text);
+        item->setIcon(0, themedNavIcon(iconPath, m_dark));
+        item->setData(0, Qt::UserRole, page);
+        m_navItems.append(item);
+        return item;
+    };
+
+    auto *speechItem =
+        makeItem(tr("Speech Recognition"),
+                 QStringLiteral(":/resources/icons/mic.svg"), -1);
+    auto *modelItem = makeItem(
+        tr("Model and Hot Words"), QStringLiteral(":/resources/icons/cpu.svg"),
+        static_cast<int>(SettingsPage::RecognitionModel));
+    auto *behaviorItem = makeItem(
+        tr("Recognition Behavior"), QStringLiteral(":/resources/icons/zap.svg"),
+        static_cast<int>(SettingsPage::RecognitionBehavior));
+    speechItem->addChild(modelItem);
+    speechItem->addChild(behaviorItem);
+
+    auto *serviceItem = makeItem(
+        tr("Services"), QStringLiteral(":/resources/icons/server.svg"), -1);
+    auto *ocrItem =
+        makeItem(tr("OCR"), QStringLiteral(":/resources/icons/camera.svg"),
+                 static_cast<int>(SettingsPage::Ocr));
+    auto *llmItem = makeItem(
+        tr("LLM"), QStringLiteral(":/resources/icons/message-square.svg"),
+        static_cast<int>(SettingsPage::Llm));
+    auto *ttsItem =
+        makeItem(tr("TTS"), QStringLiteral(":/resources/icons/volume-2.svg"),
+                 static_cast<int>(SettingsPage::Tts));
+    auto *apiServerItem =
+        makeItem(tr("API Server"), QStringLiteral(":/resources/icons/link.svg"),
+                 static_cast<int>(SettingsPage::ApiServer));
+    serviceItem->addChild(ocrItem);
+    serviceItem->addChild(llmItem);
+    serviceItem->addChild(ttsItem);
+    serviceItem->addChild(apiServerItem);
+
+    makeItem(tr("Shortcuts"), QStringLiteral(":/resources/icons/keyboard.svg"),
+             static_cast<int>(SettingsPage::Shortcut));
+    makeItem(tr("Appearance"), QStringLiteral(":/resources/icons/palette.svg"),
+             static_cast<int>(SettingsPage::Appearance));
+    makeItem(tr("History"), QStringLiteral(":/resources/icons/clock.svg"),
+             static_cast<int>(SettingsPage::History));
+    makeItem(tr("Log"), QStringLiteral(":/resources/icons/terminal.svg"),
+             static_cast<int>(SettingsPage::Log));
+    makeItem(tr("General"), QStringLiteral(":/resources/icons/sliders.svg"),
+             static_cast<int>(SettingsPage::General));
+
+    speechItem->setExpanded(true);
+    serviceItem->setExpanded(true);
+
+    connect(tree, &QTreeWidget::itemClicked, this,
+            &MainWindow::onNavItemClicked);
+
+    m_activeNavItem = modelItem;
+    tree->setCurrentItem(m_activeNavItem);
+    m_ui->contentStack->setCurrentIndex(
+        static_cast<int>(SettingsPage::RecognitionModel));
+    SPDLOG_DEBUG("setupNavTree: end");
+}
+
+void MainWindow::retranslateNav()
+{
+    const QStringList labels = {tr("Speech Recognition"),
+                                tr("Model and Hot Words"),
+                                tr("Recognition Behavior"),
+                                tr("Services"),
+                                tr("OCR"),
+                                tr("LLM"),
+                                tr("TTS"),
+                                tr("API Server"),
+                                tr("Shortcuts"),
+                                tr("Appearance"),
+                                tr("History"),
+                                tr("Log"),
+                                tr("General")};
+    for (int i = 0; i < m_navItems.size() && i < labels.size(); ++i) {
+        m_navItems.at(i)->setText(0, labels.at(i));
+    }
+}
+
+void MainWindow::refreshNavIcons()
+{
+    const QStringList iconPaths = {
+        QStringLiteral(":/resources/icons/mic.svg"),
+        QStringLiteral(":/resources/icons/cpu.svg"),
+        QStringLiteral(":/resources/icons/zap.svg"),
+        QStringLiteral(":/resources/icons/server.svg"),
+        QStringLiteral(":/resources/icons/camera.svg"),
+        QStringLiteral(":/resources/icons/message-square.svg"),
+        QStringLiteral(":/resources/icons/volume-2.svg"),
+        QStringLiteral(":/resources/icons/link.svg"),
+        QStringLiteral(":/resources/icons/keyboard.svg"),
+        QStringLiteral(":/resources/icons/palette.svg"),
+        QStringLiteral(":/resources/icons/clock.svg"),
+        QStringLiteral(":/resources/icons/terminal.svg"),
+        QStringLiteral(":/resources/icons/sliders.svg"),
+    };
+    for (int i = 0; i < m_navItems.size() && i < iconPaths.size(); ++i) {
+        m_navItems.at(i)->setIcon(0, themedNavIcon(iconPaths.at(i), m_dark));
+    }
+}
+
+void MainWindow::onNavItemClicked(QTreeWidgetItem *item, int /*column*/)
+{
+    if (!item) {
+        return;
+    }
+
+    const int page = item->data(0, Qt::UserRole).toInt();
+    if (page < 0) {
+        item->setExpanded(!item->isExpanded());
+        restoreNavSelection();
+        return;
+    }
+
+    m_activeNavItem = item;
+    m_ui->contentStack->setCurrentIndex(page);
+}
+
+void MainWindow::restoreNavSelection()
+{
+    if (!m_activeNavItem) {
+        return;
+    }
+    const QSignalBlocker blocker(m_ui->navTree);
+    m_ui->navTree->setCurrentItem(m_activeNavItem);
+}
+
+void MainWindow::refreshAllSettingsPages()
+{
+    m_recognitionModelWidget->refreshFromConfig();
+    m_recognitionBehaviorWidget->refreshFromConfig();
+    m_ocrSettingsWidget->refreshFromConfig();
+    m_llmSettingsWidget->refreshFromConfig();
+    m_ttsSettingsWidget->refreshFromConfig();
+    m_apiServerSettingsWidget->refreshFromConfig();
+    m_shortcutSettingsWidget->refreshFromConfig();
+    m_appearanceSettingsWidget->refreshFromConfig();
+    if (m_historyWidget) {
+        m_historyWidget->refreshHistory();
+    }
 }
 
 void MainWindow::setupTrayIcon()
@@ -210,6 +417,24 @@ void MainWindow::updateControls(bool listening)
                                      .arg(QString::fromStdString(preset.name)));
         }
     }
+}
+
+void MainWindow::onThemeChanged(ThemeMode mode)
+{
+    appConfig().settings.theme = themeModeToString(mode);
+    markConfigDirty();
+    m_dark = applyTheme(mode);
+    refreshNavIcons();
+    if (m_appearanceSettingsWidget) {
+        m_appearanceSettingsWidget->refreshFromConfig();
+    }
+}
+
+void MainWindow::onLanguageChanged(const QString &language)
+{
+    appConfig().settings.language = language.toStdString();
+    markConfigDirty();
+    installAppTranslations(language, this, m_appTranslator, m_qtTranslator);
 }
 
 void MainWindow::onToggleSpeechRecognition()
@@ -280,30 +505,6 @@ void MainWindow::onQuitApplication()
     qApp->quit();
 }
 
-void MainWindow::onSwitchLanguage()
-{
-    const auto *action = qobject_cast<const QAction *>(sender());
-    if (!action) {
-        return;
-    }
-
-    const bool useEnglish = (action == m_ui->actionEnglish);
-    m_ui->actionEnglish->setChecked(useEnglish);
-    m_ui->actionChinese->setChecked(!useEnglish);
-
-    const QString lang =
-        useEnglish ? QStringLiteral("en") : QStringLiteral("zh");
-    appConfig().settings.language = lang.toStdString();
-    markConfigDirty();
-    installAppTranslations(lang, this, m_appTranslator, m_qtTranslator);
-}
-
-void MainWindow::onStartMinimizedToggled(bool checked)
-{
-    appConfig().settings.startMinimized = checked;
-    markConfigDirty();
-}
-
 void MainWindow::onResetSettings()
 {
     const QString configPath = QDir::toNativeSeparators(appConfigPath());
@@ -330,28 +531,15 @@ void MainWindow::onResetSettings()
                                m_qtTranslator);
     }
 
-    {
-        const QSignalBlocker zhBlocker(m_ui->actionChinese);
-        const QSignalBlocker enBlocker(m_ui->actionEnglish);
-        const QSignalBlocker startHiddenBlocker(m_ui->actionStartMinimized);
-        m_ui->actionChinese->setChecked(resetLanguage != QStringLiteral("en"));
-        m_ui->actionEnglish->setChecked(resetLanguage == QStringLiteral("en"));
-        m_ui->actionStartMinimized->setChecked(
-            appConfig().settings.startMinimized);
-    }
+    refreshAllSettingsPages();
 
-    if (m_asrSettingWidget) {
-        m_asrSettingWidget->updateUiFromConfig();
+    m_dark = applyTheme(themeModeFromString(appConfig().settings.theme));
+    refreshNavIcons();
+    if (m_appearanceSettingsWidget) {
+        m_appearanceSettingsWidget->refreshFromConfig();
     }
 
     STATUSBAR_INFO("{}", tr("Settings reset to defaults"));
-}
-
-void MainWindow::onOpenMoreAsrModels()
-{
-    QDesktopServices::openUrl(
-        QUrl(QStringLiteral("https://github.com/k2-fsa/sherpa-onnx/"
-                            "releases/tag/asr-models")));
 }
 
 void MainWindow::onShowAboutDialog()

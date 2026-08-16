@@ -1,8 +1,8 @@
-/* ── Fluent-style navigation shell ─────────────────────────────── */
+/* ── Fluent-style navigation shell (dark) ──────────────────────── */
 
 QWidget#navContainer {
-    background: #f5f5f5;
-    border-right: 1px solid #e0e0e0;
+    background: #1b1b1b;
+    border-right: 1px solid #2e2e2e;
 }
 
 QTreeWidget#navTree {
@@ -18,16 +18,16 @@ QTreeWidget#navTree::item {
     border-radius: 6px;
     margin: 1px 8px;
     padding-left: 8px;
-    color: #333;
+    color: #cfcfcf;
 }
 
 QTreeWidget#navTree::item:hover {
-    background: #eaeaea;
+    background: #2a2a2a;
 }
 
 QTreeWidget#navTree::item:selected {
-    background: #e3f0fd;
-    color: #1a1a1a;
+    background: #1e5f9e;
+    color: #ffffff;
 }
 
 QTreeWidget#navTree::branch {
@@ -35,20 +35,20 @@ QTreeWidget#navTree::branch {
 }
 
 QStackedWidget#contentStack {
-    background: #ffffff;
+    background: #232323;
 }
 
 QLabel#settingsPageTitle {
     font-size: 20px;
     font-weight: 600;
-    color: #1f1f1f;
+    color: #e6e6e6;
     padding: 4px 0 8px 0;
 }
 
 QToolBar#recognitionToolBar {
-    background: #fafafa;
+    background: #1f1f1f;
     border: none;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #2e2e2e;
     spacing: 4px;
     padding: 2px 6px;
 }
@@ -59,8 +59,8 @@ QScrollArea#settingsScroll {
 }
 
 QGroupBox {
-    background: #fafafa;
-    border: 1px solid #e4e4e4;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 8px;
@@ -72,29 +72,29 @@ QGroupBox::title {
     subcontrol-position: top left;
     left: 12px;
     padding: 0 4px;
-    color: #444;
+    color: #c8c8c8;
     font-weight: 600;
 }
 
 /* ── History / log ─────────────────────────────────────────────── */
 
 QLabel#historyRealtimeLabel {
-    background: #f5f5f5;
-    border: 1px solid #ddd;
+    background: #2d2d2d;
+    border: 1px solid #3a3a3a;
     border-radius: 6px;
     padding: 8px 12px;
-    color: #333;
+    color: #e0e0e0;
     font-size: 13px;
 }
 
 QLabel#historyTitleLabel {
     font-size: 13px;
     font-weight: bold;
-    color: #444;
+    color: #cfcfcf;
 }
 
 QPushButton#historyClearButton {
-    color: #c0392b;
+    color: #ff6b5e;
     font-size: 12px;
 }
 
@@ -113,22 +113,22 @@ QPushButton[buttonRole="icon"]:disabled {
 }
 
 QPushButton[buttonRole="icon"]:hover {
-    background: #f0f0f0;
+    background: #363636;
 }
 
 QPushButton[actionRole="use"]:hover {
-    background: #e8f5e9;
-    border-color: #2e7d32;
+    background: #1f3a28;
+    border-color: #4caf50;
 }
 
 QPushButton[actionRole="download"]:hover {
-    background: #e3f2fd;
-    border-color: #1565c0;
+    background: #16324f;
+    border-color: #42a5f5;
 }
 
 QPushButton[actionRole="delete"]:hover {
-    background: #ffebee;
-    border-color: #c62828;
+    background: #3a1f22;
+    border-color: #ef5350;
 }
 
 QLabel#hotwordsHintIcon {
@@ -136,7 +136,7 @@ QLabel#hotwordsHintIcon {
 }
 
 QLabel#hotwordsHintLabel {
-    color: #555;
+    color: #a5a5a5;
 }
 
 /* ── Voice overlay ─────────────────────────────────────────────── */

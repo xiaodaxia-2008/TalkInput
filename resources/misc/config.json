@@ -1,6 +1,7 @@
 {
   "settings": {
     "language": "system",
+    "theme": "system",
     "startMinimized": false,
     "hotwords": ["C++", "头文件", "源文件", "CMake", "FiberArt", "自动铺丝", "预浸带"],
     "asrProviderId": "sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",

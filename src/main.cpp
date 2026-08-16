@@ -3,9 +3,9 @@
 #include "main_window.h"
 #include "single_instance.h"
 #include "speech_api_server.h"
+#include "theme.h"
 
 #include <QApplication>
-#include <QFile>
 #include <QIcon>
 #include <QMessageBox>
 
@@ -34,14 +34,6 @@ int main(int argc, char *argv[])
     talkinput::initLogger();
     SPDLOG_DEBUG("file logger initialized");
 
-    QFile styleFile(":/resources/misc/app.qss");
-    if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));
-    }
-    else {
-        SPDLOG_WARN("failed to load application stylesheet");
-    }
-
     SPDLOG_DEBUG("config path {}", talkinput::appConfigPath());
 
     try {
@@ -49,6 +41,10 @@ int main(int argc, char *argv[])
         // server thread never reads uninitialized defaults (e.g. an API server
         // that is silently left disabled at startup).
         (void)talkinput::appConfig();
+
+        // Apply the configured theme before any window is shown.
+        talkinput::applyTheme(talkinput::themeModeFromString(
+            talkinput::appConfig().settings.theme));
 
         // Owned before MainWindow so VoiceInputController (created inside
         // MainWindow) is guaranteed to outlive any in-flight API request.

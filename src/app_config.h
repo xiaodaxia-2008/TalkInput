@@ -97,6 +97,7 @@ struct OcrPreset
 struct AppSettings
 {
     std::string language = "system";
+    std::string theme = "system";
     bool startMinimized = false;
     std::vector<std::string> hotwords;
     std::string asrProviderId;

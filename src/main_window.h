@@ -1,6 +1,7 @@
 #pragma once
 
 #include "recognition_history.h"
+#include "theme.h"
 #include "voice_input_controller.h"
 
 #include <QCloseEvent>
@@ -9,6 +10,7 @@
 #include <memory>
 
 class QSystemTrayIcon;
+class QTreeWidgetItem;
 
 namespace Ui
 {
@@ -18,9 +20,32 @@ class MainWindow;
 namespace talkinput
 {
 
-class AsrSettingWidget;
+enum class SettingsPage : int
+{
+    RecognitionModel = 0,
+    RecognitionBehavior,
+    Ocr,
+    Llm,
+    Tts,
+    ApiServer,
+    Shortcut,
+    Appearance,
+    History,
+    Log,
+    General,
+};
+
+class ApiServerSettingsWidget;
+class AppearanceSettingsWidget;
+class GeneralSettingsWidget;
 class HistoryWidget;
+class LlmSettingsWidget;
 class LogPanel;
+class OcrSettingsWidget;
+class RecognitionBehaviorWidget;
+class RecognitionModelWidget;
+class ShortcutSettingsWidget;
+class TtsSettingsWidget;
 
 class MainWindow final : public QMainWindow
 {
@@ -36,23 +61,37 @@ protected:
 
 private:
     void setupUi();
-    void setupAsrSettingWidget();
+    void setupSettingsPages();
     void setupTrayIcon();
+    void setupNavTree();
+    void retranslateNav();
+    void refreshNavIcons();
+    void onNavItemClicked(QTreeWidgetItem *item, int column);
+    void restoreNavSelection();
+    void refreshAllSettingsPages();
     void updateControls(bool listening);
+
+    void onThemeChanged(ThemeMode mode);
+    void onLanguageChanged(const QString &language);
 
     void onToggleSpeechRecognition();
     void onRecognizeAudioFile();
     void onShowMainWindow();
     void onQuitApplication();
-    void onSwitchLanguage();
-    void onStartMinimizedToggled(bool checked);
     void onResetSettings();
-    void onOpenMoreAsrModels();
     void onShowAboutDialog();
     void onOpenDataDirectory();
 
     std::unique_ptr<Ui::MainWindow> m_ui;
-    AsrSettingWidget *m_asrSettingWidget = nullptr;
+    RecognitionModelWidget *m_recognitionModelWidget = nullptr;
+    RecognitionBehaviorWidget *m_recognitionBehaviorWidget = nullptr;
+    OcrSettingsWidget *m_ocrSettingsWidget = nullptr;
+    LlmSettingsWidget *m_llmSettingsWidget = nullptr;
+    TtsSettingsWidget *m_ttsSettingsWidget = nullptr;
+    ApiServerSettingsWidget *m_apiServerSettingsWidget = nullptr;
+    ShortcutSettingsWidget *m_shortcutSettingsWidget = nullptr;
+    AppearanceSettingsWidget *m_appearanceSettingsWidget = nullptr;
+    GeneralSettingsWidget *m_generalSettingsWidget = nullptr;
     HistoryWidget *m_historyWidget = nullptr;
     LogPanel *m_logPanel = nullptr;
     VoiceInputController *m_voiceInputController = nullptr;
@@ -62,6 +101,10 @@ private:
     QTranslator *m_appTranslator = nullptr;
     QTranslator *m_qtTranslator = nullptr;
 
+    QTreeWidgetItem *m_activeNavItem = nullptr;
+    QVector<QTreeWidgetItem *> m_navItems;
+
+    bool m_dark = false;
     bool m_forceQuit = false;
 };
 

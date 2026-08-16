@@ -22,9 +22,28 @@ add_executable(TalkInput WIN32
     archive_utils.h
     audio_utils.cpp
     audio_utils.h
-    asr_setting_widget.cpp
-    asr_setting_widget.h
-    asr_setting_widget.ui
+    model_download.cpp
+    model_download.h
+    theme.cpp
+    theme.h
+    recognition_model_widget.cpp
+    recognition_model_widget.h
+    recognition_behavior_widget.cpp
+    recognition_behavior_widget.h
+    ocr_settings_widget.cpp
+    ocr_settings_widget.h
+    llm_settings_widget.cpp
+    llm_settings_widget.h
+    tts_settings_widget.cpp
+    tts_settings_widget.h
+    api_server_settings_widget.cpp
+    api_server_settings_widget.h
+    shortcut_settings_widget.cpp
+    shortcut_settings_widget.h
+    appearance_settings_widget.cpp
+    appearance_settings_widget.h
+    general_settings_widget.cpp
+    general_settings_widget.h
     history_widget.cpp
     history_widget.h
     history_widget.ui
@@ -76,6 +95,7 @@ qt_add_resources(TalkInput resources
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
     "${PROJECT_SOURCE_DIR}/resources/misc/app.qss"
+    "${PROJECT_SOURCE_DIR}/resources/misc/app-dark.qss"
     "${PROJECT_SOURCE_DIR}/resources/icons/icon.png"
     "${PROJECT_SOURCE_DIR}/resources/icons/icon.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/mic.svg"
@@ -90,6 +110,18 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/copy.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/edit.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/cpu.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/zap.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/server.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/camera.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/message-square.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/volume-2.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/link.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/keyboard.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/palette.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/clock.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/terminal.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/sliders.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/zh.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/en.svg"
     "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
