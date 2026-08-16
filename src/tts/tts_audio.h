@@ -14,4 +14,7 @@ QByteArray resampleFloatToInt16(const float *samples, qsizetype n,
 /// Wraps 16-bit mono PCM in a WAV (RIFF) container.
 QByteArray pcm16ToWav(const QByteArray &pcm16, int sampleRate);
 
+QByteArray pcm16ToMp3(const QByteArray &pcm16, int sampleRate,
+                      QString *error);
+
 } // namespace talkinput

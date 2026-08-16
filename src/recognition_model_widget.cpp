@@ -21,6 +21,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QTextEdit>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStandardPaths>
@@ -53,14 +54,6 @@ void RecognitionModelWidget::buildUi()
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(12);
-
-    auto *actionsRow = new QHBoxLayout;
-    m_startRecognitionButton = new QPushButton(content);
-    m_recognizeFileButton = new QPushButton(content);
-    actionsRow->addWidget(m_startRecognitionButton);
-    actionsRow->addWidget(m_recognizeFileButton);
-    actionsRow->addStretch();
-    contentLayout->addLayout(actionsRow);
 
     // ── ASR model group ────────────────────────────────────────────
     m_modelGroup = new QGroupBox(content);
@@ -122,6 +115,21 @@ void RecognitionModelWidget::buildUi()
     hotwordsLayout->addLayout(hotwordsButtonRow);
 
     contentLayout->addWidget(m_hotwordsGroup);
+
+    auto *actionsRow = new QHBoxLayout;
+    m_startRecognitionButton = new QPushButton(content);
+    m_recognizeFileButton = new QPushButton(content);
+    actionsRow->addWidget(m_startRecognitionButton);
+    actionsRow->addWidget(m_recognizeFileButton);
+    actionsRow->addStretch();
+    contentLayout->addLayout(actionsRow);
+
+    m_resultLabel = new QLabel(content);
+    m_resultEdit = new QTextEdit(content);
+    m_resultEdit->setReadOnly(true);
+    m_resultEdit->setMinimumHeight(120);
+    contentLayout->addWidget(m_resultLabel);
+    contentLayout->addWidget(m_resultEdit);
     contentLayout->addStretch();
 
     scroll->setWidget(content);
@@ -163,11 +171,17 @@ void RecognitionModelWidget::setRecognitionActions(QAction *startAction,
     bindAction(m_recognizeFileButton, fileAction);
 }
 
+void RecognitionModelWidget::setRecognitionResult(const QString &text)
+{
+    m_resultEdit->setPlainText(text);
+}
+
 void RecognitionModelWidget::retranslate()
 {
     m_modelGroup->setTitle(tr("Speech Recognition Model"));
     m_hotwordsGroup->setTitle(tr("Hot Words"));
     m_modelLabel->setText(tr("Model:"));
+    m_resultLabel->setText(tr("Recognition Result"));
 
     m_browserButton->setToolTip(tr("Open download page in browser"));
     m_importButton->setToolTip(tr("Import downloaded model archive"));

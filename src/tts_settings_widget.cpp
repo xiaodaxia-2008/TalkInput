@@ -130,6 +130,10 @@ void TtsSettingsWidget::buildUi()
     previewRow->addWidget(m_previewEdit, 1);
     m_previewButton = new QPushButton(m_group);
     previewRow->addWidget(m_previewButton, 0, Qt::AlignTop);
+    m_playPreviewButton = new QPushButton(m_group);
+    previewRow->addWidget(m_playPreviewButton, 0, Qt::AlignTop);
+    m_savePreviewButton = new QPushButton(m_group);
+    previewRow->addWidget(m_savePreviewButton, 0, Qt::AlignTop);
     grid->addLayout(previewRow, 3, 1);
 
     contentLayout->addWidget(m_group);
@@ -175,6 +179,12 @@ void TtsSettingsWidget::buildUi()
             &TtsSettingsWidget::onImportTtsModel);
     connect(m_previewButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::synthesizePreview);
+    connect(m_playPreviewButton, &QPushButton::clicked, this,
+            &TtsSettingsWidget::playPreview);
+    connect(m_savePreviewButton, &QPushButton::clicked, this,
+            &TtsSettingsWidget::savePreview);
+    m_playPreviewButton->setEnabled(false);
+    m_savePreviewButton->setEnabled(false);
 }
 
 void TtsSettingsWidget::retranslate()
@@ -185,6 +195,8 @@ void TtsSettingsWidget::retranslate()
     m_modelFormLabel->setText(tr("Model"));
     m_previewFormLabel->setText(tr("Preview"));
     m_previewButton->setText(tr("Convert to speech"));
+    m_playPreviewButton->setText(tr("Play"));
+    m_savePreviewButton->setText(tr("Save MP3"));
     m_previewEdit->setPlaceholderText(tr("Enter text to synthesize"));
     m_voiceCombo->lineEdit()->setPlaceholderText(
         tr("Voice name, e.g. zh-CN-XiaoxiaoNeural"));
@@ -215,6 +227,10 @@ void TtsSettingsWidget::synthesizePreview()
         return;
     }
 
+    m_previewPcm = result.pcm24k;
+    m_playPreviewButton->setEnabled(true);
+    m_savePreviewButton->setEnabled(true);
+
     m_previewFile = std::make_unique<QTemporaryFile>();
     m_previewFile->setAutoRemove(true);
     if (!m_previewFile->open()) {
@@ -230,6 +246,41 @@ void TtsSettingsWidget::synthesizePreview()
     m_previewFile->close();
     m_mediaPlayer->setSource(QUrl::fromLocalFile(m_previewFile->fileName()));
     m_mediaPlayer->play();
+}
+
+void TtsSettingsWidget::playPreview()
+{
+    if (m_previewFile) {
+        m_mediaPlayer->setSource(QUrl::fromLocalFile(m_previewFile->fileName()));
+        m_mediaPlayer->play();
+    }
+}
+
+void TtsSettingsWidget::savePreview()
+{
+    if (m_previewPcm.isEmpty()) {
+        return;
+    }
+
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Save speech"), QString(), tr("MP3 audio (*.mp3)"));
+    if (path.isEmpty()) {
+        return;
+    }
+
+    QString error;
+    const QByteArray mp3 = pcm16ToMp3(m_previewPcm, 24000, &error);
+    if (mp3.isEmpty()) {
+        STATUSBAR_INFO("{}", tr("Failed to save MP3: %1").arg(error));
+        return;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(mp3) != mp3.size()) {
+        STATUSBAR_INFO("{}", tr("Failed to save MP3 file."));
+        return;
+    }
+    STATUSBAR_INFO("{}", tr("MP3 saved."));
 }
 
 void TtsSettingsWidget::changeEvent(QEvent *event)

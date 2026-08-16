@@ -146,6 +146,7 @@ void MainWindow::setupUi()
     connect(m_voiceInputController, &VoiceInputController::finalTextCommitted,
             this, [this](const QString &text) {
                 recordHistoryEntry(text);
+                m_recognitionModelWidget->setRecognitionResult(text);
             });
     if (auto *apiServer = SpeechApiServer::instance()) {
         connect(apiServer, &SpeechApiServer::transcriptionCompleted, this,

@@ -3,6 +3,7 @@
 #include <QCoro/QCoroTask>
 
 #include <QWidget>
+#include <QByteArray>
 #include <memory>
 
 class QComboBox;
@@ -40,6 +41,8 @@ private:
     void updateTtsWidgetStates();
     void refreshTtsModelStatus();
     void synthesizePreview();
+    void playPreview();
+    void savePreview();
     void onOpenTtsModelUrl();
     void onImportTtsModel();
 
@@ -58,9 +61,12 @@ private:
     QLabel *m_previewFormLabel = nullptr;
     QTextEdit *m_previewEdit = nullptr;
     QPushButton *m_previewButton = nullptr;
+    QPushButton *m_playPreviewButton = nullptr;
+    QPushButton *m_savePreviewButton = nullptr;
     QAudioOutput *m_audioOutput = nullptr;
     QMediaPlayer *m_mediaPlayer = nullptr;
     std::unique_ptr<QTemporaryFile> m_previewFile;
+    QByteArray m_previewPcm;
 };
 
 } // namespace talkinput

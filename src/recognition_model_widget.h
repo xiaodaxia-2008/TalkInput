@@ -11,6 +11,7 @@ class QEvent;
 class QGroupBox;
 class QLabel;
 class QPushButton;
+class QTextEdit;
 
 namespace talkinput
 {
@@ -27,6 +28,7 @@ public:
     /// Re-reads the current config and refreshes every control.
     void refreshFromConfig();
     void setRecognitionActions(QAction *startAction, QAction *fileAction);
+    void setRecognitionResult(const QString &text);
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -57,6 +59,8 @@ private:
     QPushButton *m_startRecognitionButton = nullptr;
     QPushButton *m_recognizeFileButton = nullptr;
     QLabel *m_hotwordsHintLabel = nullptr;
+    QLabel *m_resultLabel = nullptr;
+    QTextEdit *m_resultEdit = nullptr;
 };
 
 } // namespace talkinput

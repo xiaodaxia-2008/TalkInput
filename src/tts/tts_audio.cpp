@@ -1,5 +1,7 @@
 #include "tts_audio.h"
 
+#include <QProcess>
+
 namespace talkinput
 {
 
@@ -68,6 +70,37 @@ QByteArray pcm16ToWav(const QByteArray &pcm16, int sampleRate)
     wav.append(reinterpret_cast<const char *>(&dataSize), 4);
     wav.append(pcm16);
     return wav;
+}
+
+QByteArray pcm16ToMp3(const QByteArray &pcm16, int sampleRate, QString *error)
+{
+    QProcess ffmpeg;
+    ffmpeg.setProgram(QStringLiteral("ffmpeg"));
+    ffmpeg.setArguments({QStringLiteral("-v"), QStringLiteral("error"),
+                         QStringLiteral("-f"), QStringLiteral("s16le"),
+                         QStringLiteral("-ar"), QString::number(sampleRate),
+                         QStringLiteral("-ac"), QStringLiteral("1"),
+                         QStringLiteral("-i"), QStringLiteral("pipe:0"),
+                         QStringLiteral("-codec:a"), QStringLiteral("libmp3lame"),
+                         QStringLiteral("-b:a"), QStringLiteral("128k"),
+                         QStringLiteral("-f"), QStringLiteral("mp3"),
+                         QStringLiteral("pipe:1")});
+    ffmpeg.setProcessChannelMode(QProcess::SeparateChannels);
+    ffmpeg.start();
+    if (!ffmpeg.waitForStarted()) {
+        *error = ffmpeg.errorString();
+        return {};
+    }
+    ffmpeg.write(pcm16);
+    ffmpeg.closeWriteChannel();
+    if (!ffmpeg.waitForFinished(-1) || ffmpeg.exitCode() != 0) {
+        *error = QString::fromUtf8(ffmpeg.readAllStandardError()).trimmed();
+        if (error->isEmpty()) {
+            *error = ffmpeg.errorString();
+        }
+        return {};
+    }
+    return ffmpeg.readAllStandardOutput();
 }
 
 } // namespace talkinput
