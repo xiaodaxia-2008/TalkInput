@@ -312,6 +312,51 @@ int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
     return best.midpoint;
 }
 
+int findNearestSilenceSplit(std::span<const float> samples, int sampleRate,
+                            int targetSample, int minSample, int maxSample,
+                            int frameMs, int minSilenceMs, float silenceThresh)
+{
+    const int sampleCount = samples.size() > static_cast<size_t>(INT_MAX)
+                                ? INT_MAX
+                                : static_cast<int>(samples.size());
+    minSample = std::clamp(minSample, 0, sampleCount);
+    maxSample = std::clamp(maxSample, minSample, sampleCount);
+    targetSample = std::clamp(targetSample, minSample, maxSample);
+
+    bool found = false;
+    int bestMidpoint = 0;
+    int bestDistance = INT_MAX;
+    int bestRunLength = -1;
+
+    for (const auto &run :
+         findSilenceRuns(samples.first(maxSample), sampleRate, frameMs,
+                         minSilenceMs, silenceThresh))
+    {
+        if (run.midpoint < minSample) {
+            continue;
+        }
+
+        const int distance = std::abs(run.midpoint - targetSample);
+        if (!found || distance < bestDistance ||
+            (distance == bestDistance && run.sampleCount > bestRunLength) ||
+            (distance == bestDistance && run.sampleCount == bestRunLength &&
+             run.midpoint > bestMidpoint))
+        {
+            found = true;
+            bestMidpoint = run.midpoint;
+            bestDistance = distance;
+            bestRunLength = run.sampleCount;
+        }
+    }
+
+    if (found) {
+        return bestMidpoint;
+    }
+
+    return findBestSilenceSplit(samples, sampleRate, minSample, maxSample,
+                                frameMs, minSilenceMs, silenceThresh);
+}
+
 std::vector<AudioSegment>
 segmentAudioBySilence(std::span<const float> samples, int sampleRate,
                       int maxChunkSeconds, int targetChunkSeconds, int frameMs,
@@ -340,9 +385,9 @@ segmentAudioBySilence(std::span<const float> samples, int sampleRate,
     int start = 0;
     while (totalSamples - start > maxSamples) {
         const auto remaining = samples.subspan(static_cast<size_t>(start));
-        int split = findBestSilenceSplit(remaining, sampleRate, targetSamples,
-                                         maxSamples, frameMs, minSilenceMs,
-                                         silenceThresh);
+        int split = findNearestSilenceSplit(
+            remaining, sampleRate, targetSamples, targetSamples, maxSamples,
+            frameMs, minSilenceMs, silenceThresh);
         if (split == 0) {
             split = maxSamples;
         }

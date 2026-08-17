@@ -50,6 +50,14 @@ int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
                          int minSample, int maxSample, int frameMs = 30,
                          int minSilenceMs = 300, float silenceThresh = 0.02f);
 
+/// Choose the silence split nearest to @p targetSample inside
+/// [@p minSample, @p maxSample]. Falls back to the longest silence in range.
+/// Returns 0 when no suitable silence exists.
+int findNearestSilenceSplit(std::span<const float> samples, int sampleRate,
+                            int targetSample, int minSample, int maxSample,
+                            int frameMs = 30, int minSilenceMs = 300,
+                            float silenceThresh = 0.02f);
+
 /// Keep audio intact up to @p maxChunkSeconds. Longer audio is split at the
 /// longest available silence after @p targetChunkSeconds, or at the hard
 /// limit when no suitable silence exists.
