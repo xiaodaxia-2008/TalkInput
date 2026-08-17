@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════
-# ModelDownload.cmake — auto-download and extract ASR models
+# ModelDownload.cmake — auto-download and extract runtime models
 #
 # Bundles the default SenseVoice model with the build/install so
 # users don't need to download it manually after installation.
@@ -26,6 +26,37 @@ if(NOT EXISTS "${TALKINPUT_SENSEVOICE_MODEL_ARCHIVE}")
          "${TALKINPUT_SENSEVOICE_MODEL_ARCHIVE}"
          SHOW_PROGRESS)
     message(STATUS "Downloaded to ${TALKINPUT_SENSEVOICE_MODEL_ARCHIVE}")
+endif()
+
+# ── Silero VAD ────────────────────────────────────────────────────
+set(TALKINPUT_SILERO_VAD_MODEL_NAME
+    "sherpa-onnx-silero-vad")
+
+set(TALKINPUT_SILERO_VAD_MODEL_DIR
+    "${PROJECT_SOURCE_DIR}/models/${TALKINPUT_SILERO_VAD_MODEL_NAME}")
+
+set(TALKINPUT_SILERO_VAD_MODEL_FILE
+    "${TALKINPUT_SILERO_VAD_MODEL_DIR}/silero_vad.onnx")
+
+if(NOT EXISTS "${TALKINPUT_SILERO_VAD_MODEL_FILE}")
+    set(TALKINPUT_SILERO_VAD_MODEL_URL
+        "https://api.github.com/repos/snakers4/silero-vad/contents/files/silero_vad.onnx?ref=v4.0")
+    message(STATUS
+        "Downloading Silero VAD model from ${TALKINPUT_SILERO_VAD_MODEL_URL}")
+    file(MAKE_DIRECTORY "${TALKINPUT_SILERO_VAD_MODEL_DIR}")
+    file(DOWNLOAD "${TALKINPUT_SILERO_VAD_MODEL_URL}"
+         "${TALKINPUT_SILERO_VAD_MODEL_FILE}"
+         EXPECTED_HASH
+         "SHA256=A35EBF52FD3CE5F1469B2A36158DBA761BC47B973EA3382B3186CA15B1F5AF28"
+         HTTPHEADER "Accept: application/vnd.github.raw"
+                   "User-Agent: TalkInput"
+         SHOW_PROGRESS)
+    message(STATUS "Downloaded to ${TALKINPUT_SILERO_VAD_MODEL_FILE}")
+endif()
+
+if(NOT EXISTS "${TALKINPUT_SILERO_VAD_MODEL_FILE}")
+    message(FATAL_ERROR
+        "Missing Silero VAD model file: ${TALKINPUT_SILERO_VAD_MODEL_FILE}")
 endif()
 
 if(NOT EXISTS "${TALKINPUT_SENSEVOICE_MODEL_DIR}")

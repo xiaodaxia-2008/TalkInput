@@ -1,12 +1,15 @@
 #include "offline_speech_recognizer.h"
 
 #include "audio_utils.h"
+#include "logging.h"
 #include "utils.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QFileInfo>
 
 #include <algorithm>
 #include <climits>
@@ -15,6 +18,8 @@
 
 namespace
 {
+
+constexpr int minSegmentSeconds = 5;
 
 std::vector<float> resampleFloats(const std::vector<float> &input,
                                   int inputRate, int outputRate)
@@ -50,15 +55,13 @@ namespace talkinput
 // ── OfflineSpeechRecognizer ──────────────────────────────────────
 
 OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent)
-    : OfflineSpeechRecognizer(parent, 10, 15)
+    : OfflineSpeechRecognizer(parent, 15)
 {
 }
 
 OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent,
-                                                 int chunkSeconds,
                                                  int maxChunkSeconds)
-    : SpeechRecognizer(parent), m_chunkSeconds(chunkSeconds),
-      m_maxChunkSeconds(maxChunkSeconds)
+    : SpeechRecognizer(parent), m_maxChunkSeconds(maxChunkSeconds)
 {
 }
 
@@ -106,6 +109,48 @@ std::expected<void, QString> OfflineSpeechRecognizer::start()
 
     m_modelSampleRate = params.sampleRate;
 
+    const QString vadModelName = QStringLiteral("sherpa-onnx-silero-vad");
+    const QString vadFileName = QStringLiteral("silero_vad.onnx");
+    const QString executableVadPath =
+        QDir(QCoreApplication::applicationDirPath())
+            .filePath(
+                QStringLiteral("models/%1/%2").arg(vadModelName, vadFileName));
+    const QString dataVadPath =
+        QDir(appDataDir())
+            .filePath(
+                QStringLiteral("models/%1/%2").arg(vadModelName, vadFileName));
+    const QString vadPath =
+        QFileInfo::exists(executableVadPath) ? executableVadPath : dataVadPath;
+
+    if (m_modelSampleRate == 16000 && QFileInfo::exists(vadPath)) {
+        m_vadModelPath = vadPath.toStdString();
+
+        SherpaOnnxVadModelConfig vadConfig;
+        std::memset(&vadConfig, 0, sizeof(vadConfig));
+        vadConfig.silero_vad.model = m_vadModelPath.c_str();
+        vadConfig.silero_vad.threshold = 0.5F;
+        vadConfig.silero_vad.min_silence_duration = 0.3F;
+        vadConfig.silero_vad.min_speech_duration = 0.1F;
+        vadConfig.silero_vad.window_size = 512;
+        vadConfig.silero_vad.max_speech_duration =
+            static_cast<float>(m_maxChunkSeconds * 2);
+        vadConfig.sample_rate = m_modelSampleRate;
+        vadConfig.num_threads = std::max(1, params.numThreads);
+        vadConfig.provider = "cpu";
+
+        m_vad = SherpaOnnxCreateVoiceActivityDetector(&vadConfig, 30.0F);
+        if (!m_vad) {
+            SPDLOG_WARN("Failed to create Silero VAD; using RMS segmentation");
+            m_vadModelPath.clear();
+        }
+        else {
+            SPDLOG_INFO("Silero VAD loaded: {}", m_vadModelPath);
+        }
+    }
+    else {
+        SPDLOG_WARN("Silero VAD model not found; using RMS segmentation");
+    }
+
     return {};
 }
 
@@ -115,6 +160,11 @@ void OfflineSpeechRecognizer::stop()
         SherpaOnnxDestroyOfflineRecognizer(m_recognizer);
         m_recognizer = nullptr;
     }
+    if (m_vad) {
+        SherpaOnnxDestroyVoiceActivityDetector(m_vad);
+        m_vad = nullptr;
+    }
+    m_vadModelPath.clear();
 
     m_samples.clear();
     m_transcript.clear();
@@ -164,7 +214,7 @@ void OfflineSpeechRecognizer::finish()
 
     if (!m_samples.empty()) {
         auto segs = segmentAudioBySilence(m_samples, m_modelSampleRate,
-                                          m_maxChunkSeconds, m_chunkSeconds);
+                                          m_maxChunkSeconds);
         for (const auto &seg : segs) {
             decodeBlock(seg.startSample, seg.sampleCount);
         }
@@ -196,6 +246,58 @@ QString OfflineSpeechRecognizer::normalizeResultText(const QString &text) const
 
 int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
 {
+    if (m_vad) {
+        constexpr int vadWindowSamples = 512;
+        SherpaOnnxVoiceActivityDetectorReset(m_vad);
+
+        int latestSpeechEnd = 0;
+        const int sampleCount =
+            std::min(maxPos, m_samples.size() > static_cast<size_t>(INT_MAX)
+                                 ? INT_MAX
+                                 : static_cast<int>(m_samples.size()));
+        const int latestUsableEnd = sampleCount - vadWindowSamples;
+
+        for (int offset = 0; offset < sampleCount; offset += vadWindowSamples) {
+            const int count = std::min(vadWindowSamples, sampleCount - offset);
+            SherpaOnnxVoiceActivityDetectorAcceptWaveform(
+                m_vad, m_samples.data() + offset, count);
+
+            while (!SherpaOnnxVoiceActivityDetectorEmpty(m_vad)) {
+                const SherpaOnnxSpeechSegment *segment =
+                    SherpaOnnxVoiceActivityDetectorFront(m_vad);
+                if (segment) {
+                    const int end =
+                        std::clamp(segment->start + segment->n, 0, sampleCount);
+                    if (end >= minPos && end <= latestUsableEnd) {
+                        latestSpeechEnd = std::max(latestSpeechEnd, end);
+                    }
+                    SherpaOnnxDestroySpeechSegment(segment);
+                }
+                SherpaOnnxVoiceActivityDetectorPop(m_vad);
+            }
+        }
+
+        SherpaOnnxVoiceActivityDetectorFlush(m_vad);
+        while (!SherpaOnnxVoiceActivityDetectorEmpty(m_vad)) {
+            const SherpaOnnxSpeechSegment *segment =
+                SherpaOnnxVoiceActivityDetectorFront(m_vad);
+            if (segment) {
+                const int end =
+                    std::clamp(segment->start + segment->n, 0, sampleCount);
+                if (end >= minPos && end <= latestUsableEnd) {
+                    latestSpeechEnd = std::max(latestSpeechEnd, end);
+                }
+                SherpaOnnxDestroySpeechSegment(segment);
+            }
+            SherpaOnnxVoiceActivityDetectorPop(m_vad);
+        }
+        SherpaOnnxVoiceActivityDetectorReset(m_vad);
+
+        if (latestSpeechEnd > 0) {
+            return latestSpeechEnd;
+        }
+    }
+
     return talkinput::findBestSilenceSplit(
         {m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate,
         minPos, maxPos);
@@ -262,22 +364,19 @@ void OfflineSpeechRecognizer::flushCompletedChunks()
     }
     m_processing = true;
 
-    const qint64 targetSamples64 =
-        static_cast<qint64>(m_chunkSeconds) * m_modelSampleRate;
     const qint64 maxSamples64 =
         static_cast<qint64>(m_maxChunkSeconds) * m_modelSampleRate;
-    if (targetSamples64 <= 0 || maxSamples64 <= 0) {
+    if (maxSamples64 <= 0) {
         m_processing = false;
         return;
     }
-    const int targetSamples =
-        targetSamples64 > INT_MAX ? INT_MAX : static_cast<int>(targetSamples64);
     const int maxSamples =
         maxSamples64 > INT_MAX ? INT_MAX : static_cast<int>(maxSamples64);
-
+    const int minSplitSamples =
+        std::min(maxSamples, minSegmentSeconds * m_modelSampleRate);
     while (m_samples.size() > static_cast<size_t>(maxSamples)) {
         const int searchEnd = maxSamples;
-        int split = findSplitBefore(targetSamples, searchEnd);
+        int split = findSplitBefore(minSplitSamples, searchEnd);
 
         if (split == 0) {
             split = searchEnd;

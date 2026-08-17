@@ -9,6 +9,7 @@
 
 struct SherpaOnnxOfflineRecognizer;
 struct SherpaOnnxOfflineRecognizerConfig;
+struct SherpaOnnxVoiceActivityDetector;
 
 namespace talkinput
 {
@@ -29,19 +30,13 @@ public:
     void finish() final;
     void resetStream() final;
 
-    int chunkSeconds() const
-    {
-        return m_chunkSeconds;
-    }
-
     int maxChunkSeconds() const
     {
         return m_maxChunkSeconds;
     }
 
 protected:
-    OfflineSpeechRecognizer(QObject *parent, int chunkSeconds,
-                            int maxChunkSeconds);
+    OfflineSpeechRecognizer(QObject *parent, int maxChunkSeconds);
 
     virtual std::expected<void, QString>
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) = 0;
@@ -54,10 +49,11 @@ private:
     void flushCompletedChunks();
 
     const SherpaOnnxOfflineRecognizer *m_recognizer = nullptr;
+    const SherpaOnnxVoiceActivityDetector *m_vad = nullptr;
+    std::string m_vadModelPath;
     std::vector<float> m_samples;
     QStringList m_transcript;
     int m_modelSampleRate = 16000;
-    int m_chunkSeconds = 10;
     int m_maxChunkSeconds = 15;
     bool m_processing = false;
     int m_segmentIndex = 0;

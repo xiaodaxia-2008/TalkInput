@@ -16,7 +16,7 @@ bool expectSegments(std::string_view name, const std::vector<float> &samples,
                     int maxSeconds, const std::vector<int> &expectedSeconds)
 {
     const auto segments = talkinput::segmentAudioBySilence(
-        samples, sampleRate, maxSeconds, 10, 10, 100, 0.1F);
+        samples, sampleRate, maxSeconds, 10, 100, 0.1F);
     if (segments.size() != expectedSeconds.size()) {
         std::cerr << name << ": expected " << expectedSeconds.size()
                   << " segments, got " << segments.size() << '\n';

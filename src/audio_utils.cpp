@@ -210,6 +210,8 @@ bool savePcm16ToWav(const QByteArray &pcm16, int sampleRate, int channels,
 namespace
 {
 
+constexpr int minSegmentSeconds = 5;
+
 struct SilenceRun
 {
     int midpoint = 0;
@@ -312,22 +314,16 @@ int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
     return best.midpoint;
 }
 
-int findNearestSilenceSplit(std::span<const float> samples, int sampleRate,
-                            int targetSample, int minSample, int maxSample,
-                            int frameMs, int minSilenceMs, float silenceThresh)
+int findLatestSilenceSplit(std::span<const float> samples, int sampleRate,
+                           int minSample, int maxSample, int frameMs,
+                           int minSilenceMs, float silenceThresh)
 {
     const int sampleCount = samples.size() > static_cast<size_t>(INT_MAX)
                                 ? INT_MAX
                                 : static_cast<int>(samples.size());
     minSample = std::clamp(minSample, 0, sampleCount);
     maxSample = std::clamp(maxSample, minSample, sampleCount);
-    targetSample = std::clamp(targetSample, minSample, maxSample);
-
-    bool found = false;
-    int bestMidpoint = 0;
-    int bestDistance = INT_MAX;
-    int bestRunLength = -1;
-
+    int latest = 0;
     for (const auto &run :
          findSilenceRuns(samples.first(maxSample), sampleRate, frameMs,
                          minSilenceMs, silenceThresh))
@@ -335,37 +331,20 @@ int findNearestSilenceSplit(std::span<const float> samples, int sampleRate,
         if (run.midpoint < minSample) {
             continue;
         }
-
-        const int distance = std::abs(run.midpoint - targetSample);
-        if (!found || distance < bestDistance ||
-            (distance == bestDistance && run.sampleCount > bestRunLength) ||
-            (distance == bestDistance && run.sampleCount == bestRunLength &&
-             run.midpoint > bestMidpoint))
-        {
-            found = true;
-            bestMidpoint = run.midpoint;
-            bestDistance = distance;
-            bestRunLength = run.sampleCount;
-        }
+        latest = run.midpoint;
     }
 
-    if (found) {
-        return bestMidpoint;
-    }
-
-    return findBestSilenceSplit(samples, sampleRate, minSample, maxSample,
-                                frameMs, minSilenceMs, silenceThresh);
+    return latest;
 }
 
-std::vector<AudioSegment>
-segmentAudioBySilence(std::span<const float> samples, int sampleRate,
-                      int maxChunkSeconds, int targetChunkSeconds, int frameMs,
-                      int minSilenceMs, float silenceThresh)
+std::vector<AudioSegment> segmentAudioBySilence(std::span<const float> samples,
+                                                int sampleRate,
+                                                int maxChunkSeconds,
+                                                int frameMs, int minSilenceMs,
+                                                float silenceThresh)
 {
     std::vector<AudioSegment> blocks;
-    if (samples.empty() || sampleRate <= 0 || maxChunkSeconds <= 0 ||
-        targetChunkSeconds <= 0)
-    {
+    if (samples.empty() || sampleRate <= 0 || maxChunkSeconds <= 0) {
         return blocks;
     }
 
@@ -377,17 +356,14 @@ segmentAudioBySilence(std::span<const float> samples, int sampleRate,
     }
 
     const int maxSamples = static_cast<int>(maxSamples64);
-    const qint64 targetSamples64 =
-        static_cast<qint64>(targetChunkSeconds) * sampleRate;
-    const int targetSamples =
-        static_cast<int>(std::min(maxSamples64, targetSamples64));
-
     int start = 0;
     while (totalSamples - start > maxSamples) {
         const auto remaining = samples.subspan(static_cast<size_t>(start));
-        int split = findNearestSilenceSplit(
-            remaining, sampleRate, targetSamples, targetSamples, maxSamples,
-            frameMs, minSilenceMs, silenceThresh);
+        const int minSplitSamples =
+            std::min(maxSamples, minSegmentSeconds * sampleRate);
+        int split = findBestSilenceSplit(remaining, sampleRate, minSplitSamples,
+                                         maxSamples, frameMs, minSilenceMs,
+                                         silenceThresh);
         if (split == 0) {
             split = maxSamples;
         }

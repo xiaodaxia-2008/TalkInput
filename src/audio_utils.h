@@ -50,21 +50,18 @@ int findBestSilenceSplit(std::span<const float> samples, int sampleRate,
                          int minSample, int maxSample, int frameMs = 30,
                          int minSilenceMs = 300, float silenceThresh = 0.02f);
 
-/// Choose the silence split nearest to @p targetSample inside
-/// [@p minSample, @p maxSample]. Falls back to the longest silence in range.
+/// Find the latest suitable silence between @p minSample and @p maxSample.
 /// Returns 0 when no suitable silence exists.
-int findNearestSilenceSplit(std::span<const float> samples, int sampleRate,
-                            int targetSample, int minSample, int maxSample,
-                            int frameMs = 30, int minSilenceMs = 300,
-                            float silenceThresh = 0.02f);
+int findLatestSilenceSplit(std::span<const float> samples, int sampleRate,
+                           int minSample, int maxSample, int frameMs = 30,
+                           int minSilenceMs = 300, float silenceThresh = 0.02f);
 
-/// Keep audio intact up to @p maxChunkSeconds. Longer audio is split at the
-/// longest available silence after @p targetChunkSeconds, or at the hard
-/// limit when no suitable silence exists.
+/// Pack natural speech segments greedily without exceeding
+/// @p maxChunkSeconds. If no silence is available before the limit, split at
+/// the hard limit.
 std::vector<AudioSegment>
 segmentAudioBySilence(std::span<const float> samples, int sampleRate,
-                      int maxChunkSeconds = 15, int targetChunkSeconds = 10,
-                      int frameMs = 30, int minSilenceMs = 300,
-                      float silenceThresh = 0.02f);
+                      int maxChunkSeconds = 15, int frameMs = 30,
+                      int minSilenceMs = 300, float silenceThresh = 0.02f);
 
 } // namespace talkinput
