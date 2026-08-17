@@ -862,6 +862,19 @@ private:
                     "audio/wav");
             return;
         }
+        if (format == "mp3") {
+            QString mp3Error;
+            const QByteArray mp3 =
+                pcm16ToMp3(result.pcm24k, 24000, &mp3Error);
+            if (mp3.isEmpty()) {
+                respondError(state.socket, 500,
+                             QStringLiteral("MP3 encoding failed: %1")
+                                 .arg(mp3Error));
+                return;
+            }
+            respond(state.socket, 200, mp3, "audio/mpeg");
+            return;
+        }
         respondError(state.socket, 400,
                      QStringLiteral("Unsupported response_format '%1'.")
                          .arg(responseFormat));
