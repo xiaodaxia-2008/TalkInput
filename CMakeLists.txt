@@ -13,7 +13,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-project(TalkInput VERSION 0.12.1 DESCRIPTION "Voice input method")
+project(TalkInput VERSION 0.12.2 DESCRIPTION "Voice input method")
 
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql WebSockets LinguistTools)
 find_package(LibArchive REQUIRED)
@@ -68,20 +68,20 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
 set(CPACK_STRIP_FILES TRUE)
 
 set(CPACK_NSIS_LANGUAGE "SimpChinese")
-set(CPACK_NSIS_DISPLAY_NAME "TalkInput 语音输入法")
-set(CPACK_NSIS_PACKAGE_NAME "TalkInput 语音输入法")
+set(CPACK_NSIS_DISPLAY_NAME "TalkInput")
+set(CPACK_NSIS_PACKAGE_NAME "TalkInput")
 set(CPACK_NSIS_CONTACT "support@talkinput.local")
 set(CPACK_NSIS_MODIFY_PATH ON)
 
 set(CPACK_NSIS_MENU_LINKS
-    "bin/TalkInput.exe" "TalkInput 语音输入法"
+    "bin/TalkInput.exe" "TalkInput"
 )
 
 set(CPACK_NSIS_CREATE_ICONS_EXTRA
-    "CreateShortCut '$DESKTOP\\\\TalkInput 语音输入法.lnk' '$INSTDIR\\\\bin\\\\TalkInput.exe'"
+    "CreateShortCut '$DESKTOP\\\\TalkInput.lnk' '$INSTDIR\\\\bin\\\\TalkInput.exe'"
 )
 set(CPACK_NSIS_DELETE_ICONS_EXTRA
-    "Delete '$DESKTOP\\\\TalkInput 语音输入法.lnk'"
+    "Delete '$DESKTOP\\\\TalkInput.lnk'"
 )
 
 set(CPACK_COMPONENTS_ALL Runtime)
