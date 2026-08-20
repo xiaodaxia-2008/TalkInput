@@ -6,7 +6,9 @@
 #include <QByteArray>
 #include <QCoro/QCoroTask>
 #include <QElapsedTimer>
+#include <QImage>
 #include <QObject>
+#include <QPointer>
 
 #include <expected>
 #include <functional>
@@ -54,6 +56,14 @@ struct ApiTranscriptionResult
     double duration = 0.0;
 };
 
+/// Result of an OCR request submitted through the shared OCR recognizer.
+/// `error` is non-empty on failure.
+struct ApiOcrResult
+{
+    QString text;
+    QString error;
+};
+
 PipelineMode pipelineModeFromString(const std::string &s);
 std::string pipelineModeToString(PipelineMode mode);
 QString pipelineModeDisplayName(PipelineMode mode);
@@ -97,6 +107,11 @@ public:
         const QByteArray &pcm16, int sampleRate, int channels,
         std::function<void(const ApiTranscriptionResult &)> callback);
 
+    /// Recognizes @p image with the configured OCR provider. Runs on the GUI
+    /// thread and rejects the request when another input pipeline is active.
+    void submitApiOcr(const QImage &image,
+                      std::function<void(const ApiOcrResult &)> callback);
+
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);
@@ -118,6 +133,9 @@ public slots:
 
 private:
     QCoro::Task<void> executePipeline();
+    QCoro::Task<void>
+    executeApiOcr(QImage image, QPointer<OcrRecognizer> recognizer,
+                  std::function<void(const ApiOcrResult &)> callback);
     void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
     std::expected<void, QString> startAudioCapture();

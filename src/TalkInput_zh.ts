@@ -179,21 +179,22 @@ Reset configuration to defaults?</source>
     </message>
     <message>
         <location filename="api_server_settings_widget.cpp" line="114"/>
-        <source>Expose the loaded ASR model through an OpenAI-compatible HTTP API</source>
-        <translation>通过 OpenAI 兼容的 HTTP API 提供已加载的语音识别模型</translation>
+        <source>Expose the loaded ASR and OCR providers through an OpenAI-compatible HTTP API</source>
+        <oldsource>Expose the loaded ASR model through an OpenAI-compatible HTTP API</oldsource>
+        <translation>通过 OpenAI 兼容的 HTTP API 提供已加载的语音和 OCR 服务</translation>
     </message>
     <message>
-        <location filename="api_server_settings_widget.cpp" line="116"/>
+        <location filename="api_server_settings_widget.cpp" line="117"/>
         <source>Host</source>
         <translation>主机</translation>
     </message>
     <message>
-        <location filename="api_server_settings_widget.cpp" line="117"/>
+        <location filename="api_server_settings_widget.cpp" line="118"/>
         <source>Port</source>
         <translation>端口</translation>
     </message>
     <message>
-        <location filename="api_server_settings_widget.cpp" line="118"/>
+        <location filename="api_server_settings_widget.cpp" line="119"/>
         <source>API Key</source>
         <translation>API 密钥</translation>
     </message>
@@ -976,153 +977,153 @@ Selected:
         <translation>下载 MeloTTS 模型</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="164"/>
+        <location filename="tts_settings_widget.cpp" line="169"/>
         <source>TTS voice saved</source>
         <translation>TTS 音色已保存</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="192"/>
+        <location filename="tts_settings_widget.cpp" line="197"/>
         <source>TTS Service</source>
         <translation>TTS 服务</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="193"/>
+        <location filename="tts_settings_widget.cpp" line="198"/>
         <source>Provider</source>
         <translation>服务商</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="194"/>
+        <location filename="tts_settings_widget.cpp" line="199"/>
         <source>Voice</source>
         <translation>音色</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="195"/>
+        <location filename="tts_settings_widget.cpp" line="200"/>
         <source>Model</source>
         <translation>模型</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="196"/>
+        <location filename="tts_settings_widget.cpp" line="201"/>
         <source>Preview</source>
         <translation>试听</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="197"/>
+        <location filename="tts_settings_widget.cpp" line="202"/>
         <source>Convert to speech</source>
         <translation>转换为语音</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="198"/>
+        <location filename="tts_settings_widget.cpp" line="203"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="199"/>
+        <location filename="tts_settings_widget.cpp" line="204"/>
         <source>Save MP3</source>
         <translation>保存 MP3</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="200"/>
+        <location filename="tts_settings_widget.cpp" line="205"/>
         <source>Enter text to synthesize</source>
         <translation>输入要转换的文本</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="202"/>
+        <location filename="tts_settings_widget.cpp" line="207"/>
         <source>Voice name, e.g. zh-CN-XiaoxiaoNeural</source>
         <translation>音色名称，例如 zh-CN-XiaoxiaoNeural</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="209"/>
+        <location filename="tts_settings_widget.cpp" line="214"/>
         <source>Enter text to synthesize.</source>
         <translation>请输入要转换的文本。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="226"/>
+        <location filename="tts_settings_widget.cpp" line="231"/>
         <source>Speech conversion failed: %1</source>
         <translation>语音转换失败：%1</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="237"/>
         <location filename="tts_settings_widget.cpp" line="242"/>
+        <location filename="tts_settings_widget.cpp" line="247"/>
         <source>Could not prepare audio playback.</source>
         <translation>无法准备音频播放。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="266"/>
+        <location filename="tts_settings_widget.cpp" line="271"/>
         <source>Save speech</source>
         <translation>保存语音</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="266"/>
+        <location filename="tts_settings_widget.cpp" line="271"/>
         <source>MP3 audio (*.mp3)</source>
         <translation>MP3 音频 (*.mp3)</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="274"/>
+        <location filename="tts_settings_widget.cpp" line="279"/>
         <source>Failed to save MP3: %1</source>
         <translation>保存 MP3 失败：%1</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="280"/>
+        <location filename="tts_settings_widget.cpp" line="285"/>
         <source>Failed to save MP3 file.</source>
         <translation>保存 MP3 文件失败。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="283"/>
+        <location filename="tts_settings_widget.cpp" line="288"/>
         <source>MP3 saved.</source>
         <translation>MP3 已保存。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="333"/>
+        <location filename="tts_settings_widget.cpp" line="338"/>
         <source>MeloTTS model installed</source>
         <translation>MeloTTS 模型已安装</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="334"/>
+        <location filename="tts_settings_widget.cpp" line="339"/>
         <source>MeloTTS model not installed</source>
         <translation>MeloTTS 模型未安装</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="346"/>
+        <location filename="tts_settings_widget.cpp" line="351"/>
         <source>TTS provider saved: %1</source>
         <translation>TTS 服务商已保存：%1</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="352"/>
+        <location filename="tts_settings_widget.cpp" line="357"/>
         <source>MeloTTS model is already installed.</source>
         <translation>MeloTTS 模型已安装。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="366"/>
+        <location filename="tts_settings_widget.cpp" line="371"/>
         <source>TTS model download failed: %1</source>
         <translation>TTS 模型下载失败：%1</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="371"/>
+        <location filename="tts_settings_widget.cpp" line="376"/>
         <source>MeloTTS model installed.</source>
         <translation>MeloTTS 模型已安装。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="378"/>
+        <location filename="tts_settings_widget.cpp" line="383"/>
         <source>No download URL for this model.</source>
         <translation>该模型没有可用的下载地址。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="392"/>
+        <location filename="tts_settings_widget.cpp" line="397"/>
         <source>Import Model Archive</source>
         <translation>导入模型压缩包</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="394"/>
+        <location filename="tts_settings_widget.cpp" line="399"/>
         <source>Archives (%1);;All files (*)</source>
         <translation>压缩包 (%1);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="403"/>
+        <location filename="tts_settings_widget.cpp" line="408"/>
         <source>Invalid File</source>
         <translation>无效文件</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="404"/>
+        <location filename="tts_settings_widget.cpp" line="409"/>
         <source>The selected file must be named:
 %1
 
@@ -1135,27 +1136,27 @@ Selected:
 %2</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="411"/>
+        <location filename="tts_settings_widget.cpp" line="416"/>
         <source>Failed to create model cache directory.</source>
         <translation>无法创建模型缓存目录。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="421"/>
+        <location filename="tts_settings_widget.cpp" line="426"/>
         <source>Failed to import model archive.</source>
         <translation>模型压缩包导入失败。</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="426"/>
+        <location filename="tts_settings_widget.cpp" line="431"/>
         <source>Extracting TTS model: %1</source>
         <translation>正在解压 TTS 模型：%1</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="431"/>
+        <location filename="tts_settings_widget.cpp" line="436"/>
         <source>TTS model extraction failed: %1</source>
         <translation>TTS 模型解压失败：%1</translation>
     </message>
     <message>
-        <location filename="tts_settings_widget.cpp" line="437"/>
+        <location filename="tts_settings_widget.cpp" line="442"/>
         <source>TTS model imported: %1</source>
         <translation>TTS 模型已导入：%1</translation>
     </message>
@@ -1226,6 +1227,26 @@ Selected:
         <location filename="voice_input_controller.cpp" line="746"/>
         <source>Speech recognition model was unloaded.</source>
         <translation>语音识别模型已被卸载。</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="791"/>
+        <source>OCR provider was unloaded.</source>
+        <translation>OCR 服务已卸载。</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="811"/>
+        <source>OCR engine is busy.</source>
+        <translation>OCR 引擎正忙。</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="815"/>
+        <source>OCR provider is not available.</source>
+        <translation>OCR 服务不可用。</translation>
+    </message>
+    <message>
+        <location filename="voice_input_controller.cpp" line="819"/>
+        <source>The image is empty.</source>
+        <translation>图片为空。</translation>
     </message>
     <message>
         <location filename="voice_input_controller.cpp" line="367"/>

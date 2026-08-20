@@ -472,7 +472,7 @@
        <item row="0" column="0" colspan="2">
         <widget class="QCheckBox" name="apiServerEnableCheck">
          <property name="toolTip">
-          <string>Expose the loaded ASR model through an OpenAI-compatible HTTP API</string>
+          <string>Expose the loaded ASR and OCR providers through an OpenAI-compatible HTTP API</string>
          </property>
          <property name="text">
           <string>Enable local API server</string>

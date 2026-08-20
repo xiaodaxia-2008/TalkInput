@@ -9,11 +9,13 @@
 #include "tts_engine.h"
 #include "voice_input_controller.h"
 
+#include <QBuffer>
 #include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QHostAddress>
+#include <QImageReader>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -24,6 +26,9 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -37,6 +42,8 @@ constexpr qint64 MaxRequestBodyBytes = 64LL * 1024 * 1024;
 constexpr qint64 MaxHeaderBytes = 16 * 1024;
 constexpr int ConnectionTimeoutMs = 30000;
 constexpr int TranscriptionTimeoutMs = 300000;
+constexpr int OcrTimeoutMs = 120000;
+constexpr qint64 MaxOcrImagePixels = 100000000;
 
 QString statusText(int code)
 {
@@ -232,6 +239,33 @@ QString safeAudioSuffix(const QString &fileName)
     return clean.isEmpty() ? QStringLiteral("audio") : clean;
 }
 
+std::optional<QImage> decodeOcrImage(const QByteArray &data)
+{
+    QBuffer buffer;
+    buffer.setData(data);
+    if (!buffer.open(QIODevice::ReadOnly)) {
+        return std::nullopt;
+    }
+
+    QImageReader reader(&buffer);
+    const QSize imageSize = reader.size();
+    if (imageSize.isValid() &&
+        (imageSize.width() <= 0 || imageSize.height() <= 0 ||
+         static_cast<qint64>(imageSize.width()) * imageSize.height() >
+             MaxOcrImagePixels))
+    {
+        return std::nullopt;
+    }
+
+    const QImage image = reader.read();
+    if (image.isNull() ||
+        static_cast<qint64>(image.width()) * image.height() > MaxOcrImagePixels)
+    {
+        return std::nullopt;
+    }
+    return image;
+}
+
 QString errorTypeForCode(int code)
 {
     if (code == 401) {
@@ -356,7 +390,7 @@ public slots:
         emit serverStarted(m_server->serverPort());
         emit listeningChanged(true);
         SPDLOG_INFO("API server: listening on http://{}:{} "
-                    "(OpenAI-compatible /v1/audio/transcriptions)",
+                    "(OpenAI-compatible /v1/audio/transcriptions and /v1/ocr)",
                     m_host, m_server->serverPort());
     }
 
@@ -660,6 +694,19 @@ private:
             handleTranscription(state);
             return;
         }
+        if (path == QStringLiteral("/v1/ocr") ||
+            path == QStringLiteral("/v1/images/ocr"))
+        {
+            if (method != QStringLiteral("POST")) {
+                respondError(socket, 405, QStringLiteral("Method not allowed"));
+                return;
+            }
+            if (!authorize(state)) {
+                return;
+            }
+            handleOcr(state);
+            return;
+        }
         if (path == QStringLiteral("/v1/audio/speech")) {
             if (method != QStringLiteral("POST")) {
                 respondError(socket, 405, QStringLiteral("Method not allowed"));
@@ -806,6 +853,98 @@ private:
         respond(state.socket, 200, body, "application/json; charset=utf-8");
     }
 
+    void handleOcr(const ConnectionState &state)
+    {
+        const QString contentType =
+            state.headers.value(QStringLiteral("content-type"));
+        const qsizetype boundaryPos = contentType.indexOf(
+            QStringLiteral("boundary="), 0, Qt::CaseInsensitive);
+        if (boundaryPos < 0) {
+            respondError(state.socket, 400,
+                         QStringLiteral("Expected multipart/form-data"));
+            return;
+        }
+
+        QByteArray boundary =
+            contentType.mid(boundaryPos + 9).trimmed().toLatin1();
+        if (boundary.size() >= 2 && boundary.startsWith('"') &&
+            boundary.endsWith('"'))
+        {
+            boundary = boundary.mid(1, boundary.size() - 2);
+        }
+
+        auto fields = parseMultipart(state.body, boundary);
+        if (!fields) {
+            respondError(state.socket, 400,
+                         QStringLiteral("Invalid multipart body"));
+            return;
+        }
+
+        const MultipartField *file = nullptr;
+        QString responseFormat = QStringLiteral("json");
+        for (const auto &field : *fields) {
+            if (field.name == QStringLiteral("file")) {
+                file = &field;
+            }
+            else if (field.name == QStringLiteral("response_format")) {
+                responseFormat =
+                    QString::fromUtf8(field.data).trimmed().toLower();
+            }
+        }
+        if (!file) {
+            respondError(state.socket, 400,
+                         QStringLiteral("Missing 'file' field"));
+            return;
+        }
+        if (file->data.isEmpty()) {
+            respondError(state.socket, 400, QStringLiteral("Empty image file"));
+            return;
+        }
+        if (responseFormat != QStringLiteral("json") &&
+            responseFormat != QStringLiteral("text") &&
+            responseFormat != QStringLiteral("verbose_json"))
+        {
+            respondError(state.socket, 400,
+                         QStringLiteral("Unsupported response_format '%1'.")
+                             .arg(responseFormat));
+            return;
+        }
+
+        const auto image = decodeOcrImage(file->data);
+        if (!image) {
+            respondError(state.socket, 400,
+                         QStringLiteral("Invalid or oversized image file"));
+            return;
+        }
+
+        QString error;
+        const QString text = recognizeOcr(*image, &error);
+        if (!error.isEmpty()) {
+            respondError(state.socket, 500, error);
+            return;
+        }
+
+        if (responseFormat == QStringLiteral("text")) {
+            respond(state.socket, 200, text.toUtf8(),
+                    "text/plain; charset=utf-8");
+            return;
+        }
+        if (responseFormat == QStringLiteral("verbose_json")) {
+            const QByteArray body =
+                QStringLiteral("{\"text\":\"%1\",\"width\":%2,\"height\":%3}")
+                    .arg(jsonEscape(text))
+                    .arg(image->width())
+                    .arg(image->height())
+                    .toUtf8();
+            respond(state.socket, 200, body, "application/json; charset=utf-8");
+            return;
+        }
+
+        const QByteArray body =
+            QStringLiteral("{\"text\":\"%1\"}").arg(jsonEscape(text)).toUtf8();
+        respond(state.socket, 200, body, "application/json; charset=utf-8");
+    }
+
     void handleSpeech(const ConnectionState &state)
     {
         QJsonParseError parseError;
@@ -818,7 +957,8 @@ private:
         }
         const QJsonObject obj = doc.object();
 
-        const QString input = obj.value(QLatin1String("input")).toString().trimmed();
+        const QString input =
+            obj.value(QLatin1String("input")).toString().trimmed();
         if (input.isEmpty()) {
             respondError(state.socket, 400,
                          QStringLiteral("The 'input' field is required."));
@@ -845,7 +985,8 @@ private:
             return;
         }
 
-        const TtsSynthesisResult result = engine->synthesize(input, voice, speed);
+        const TtsSynthesisResult result =
+            engine->synthesize(input, voice, speed);
         if (!result.ok()) {
             respondError(state.socket, 500, result.error);
             return;
@@ -864,12 +1005,11 @@ private:
         }
         if (format == "mp3") {
             QString mp3Error;
-            const QByteArray mp3 =
-                pcm16ToMp3(result.pcm24k, 24000, &mp3Error);
+            const QByteArray mp3 = pcm16ToMp3(result.pcm24k, 24000, &mp3Error);
             if (mp3.isEmpty()) {
-                respondError(state.socket, 500,
-                             QStringLiteral("MP3 encoding failed: %1")
-                                 .arg(mp3Error));
+                respondError(
+                    state.socket, 500,
+                    QStringLiteral("MP3 encoding failed: %1").arg(mp3Error));
                 return;
             }
             respond(state.socket, 200, mp3, "audio/mpeg");
@@ -1005,6 +1145,71 @@ private:
             result.language = QString::fromStdString(it->second.languages);
         }
         return result;
+    }
+
+    QString recognizeOcr(const QImage &image, QString *error)
+    {
+        auto *controller = VoiceInputController::instance();
+        if (!controller) {
+            *error = QStringLiteral("Voice input controller unavailable.");
+            return {};
+        }
+
+        struct OcrRequestState
+        {
+            std::mutex mutex;
+            std::condition_variable condition;
+            bool complete = false;
+            QString text;
+            QString error;
+        };
+
+        const auto state = std::make_shared<OcrRequestState>();
+
+        const QMetaObject::Connection shutdownConnection = connect(
+            qApp, &QCoreApplication::aboutToQuit, qApp, [state]() {
+                {
+                    std::lock_guard lock(state->mutex);
+                    if (state->complete) {
+                        return;
+                    }
+                    state->error = QStringLiteral("Application is shutting down.");
+                    state->complete = true;
+                }
+                state->condition.notify_one();
+            });
+
+        QMetaObject::invokeMethod(
+            controller,
+            [controller, state, image]() {
+                controller->submitApiOcr(
+                    image, [state](const ApiOcrResult &ocrResult) {
+                        {
+                            std::lock_guard lock(state->mutex);
+                            state->text = ocrResult.text;
+                            state->error = ocrResult.error;
+                            state->complete = true;
+                        }
+                        state->condition.notify_one();
+                    });
+            },
+            Qt::QueuedConnection);
+
+        std::unique_lock lock(state->mutex);
+        const bool completed = state->condition.wait_for(
+            lock, std::chrono::milliseconds(OcrTimeoutMs),
+            [&state]() { return state->complete; });
+        QObject::disconnect(shutdownConnection);
+        if (!completed) {
+            *error = QStringLiteral("OCR request timed out.");
+            return {};
+        }
+
+        if (!state->error.isEmpty()) {
+            *error = state->error;
+            return {};
+        }
+        return state->text;
     }
 
     void respond(QTcpSocket *socket, int code, const QByteArray &body,

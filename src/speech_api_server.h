@@ -30,6 +30,8 @@ using ApiTranscriber = std::function<TranscriptionResult(
 /// HTTP API:
 ///
 ///   POST /v1/audio/transcriptions  (multipart/form-data: file, model)
+///   POST /v1/ocr                    (multipart/form-data: file)
+///   POST /v1/images/ocr             (alias for /v1/ocr)
 ///   POST /v1/audio/speech          (JSON: input, voice, speed,
 ///                                   response_format; returns audio)
 ///   GET  /v1/models

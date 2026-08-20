@@ -112,7 +112,8 @@ void ApiServerSettingsWidget::retranslate()
     m_group->setTitle(tr("API Server"));
     m_enableCheck->setText(tr("Enable local API server"));
     m_enableCheck->setToolTip(tr(
-        "Expose the loaded ASR model through an OpenAI-compatible HTTP API"));
+        "Expose the loaded ASR and OCR providers through an OpenAI-compatible "
+        "HTTP API"));
     m_hostLabel->setText(tr("Host"));
     m_portLabel->setText(tr("Port"));
     m_keyLabel->setText(tr("API Key"));
