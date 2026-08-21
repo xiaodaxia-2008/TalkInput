@@ -12,12 +12,37 @@ add_executable(TalkInputBenchmark
 
 add_executable(TalkInputOcrCaptureTest
     ocr_capture_test.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils.cpp
 )
 
 add_executable(TalkInputOcrRecognitionTest
     ocr_recognition_test.cpp
 )
+
+add_executable(TalkInputRapidOcrTest
+    rapid_ocr_test.cpp
+)
+
+target_link_libraries(TalkInputRapidOcrTest
+    PRIVATE
+    rapidocr-onnx-c-api
+)
+target_compile_definitions(TalkInputRapidOcrTest PRIVATE
+    TALKINPUT_RAPID_OCR_MODEL_DIR="${TALKINPUT_RAPID_OCR_MODEL_DIR}"
+    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
+)
+target_include_directories(TalkInputRapidOcrTest PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+)
+if(WIN32)
+    add_custom_command(TARGET TalkInputRapidOcrTest
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_RUNTIME_DLLS:TalkInputRapidOcrTest>
+        $<TARGET_FILE_DIR:TalkInputRapidOcrTest>
+        COMMAND_EXPAND_LISTS
+    )
+endif()
 
 target_link_libraries(TalkInputAsrTest
     PRIVATE
@@ -59,23 +84,23 @@ target_link_libraries(TalkInputOcrRecognitionTest
 target_compile_definitions(TalkInputOcrRecognitionTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 target_include_directories(TalkInputAsrTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputSenseVoiceTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputBenchmark PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputOcrCaptureTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 target_include_directories(TalkInputOcrRecognitionTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 add_executable(TalkInputWinRTSpeechTest
@@ -89,12 +114,12 @@ target_link_libraries(TalkInputWinRTSpeechTest
 
 add_executable(TalkInputSegmentTest
     segment_test.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../audio_utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
 )
 
 add_executable(TalkInputAudioUtilsTest
     audio_utils_test.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../audio_utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
 )
 target_link_libraries(TalkInputSegmentTest
     PRIVATE
@@ -104,7 +129,7 @@ target_link_libraries(TalkInputSegmentTest
 )
 target_compile_definitions(TalkInputSegmentTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 target_include_directories(TalkInputSegmentTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
@@ -116,6 +141,6 @@ target_link_libraries(TalkInputAudioUtilsTest
 )
 target_compile_definitions(TalkInputAudioUtilsTest PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 target_include_directories(TalkInputAudioUtilsTest PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )

@@ -232,7 +232,3 @@ if(WIN32)
         COMMAND_EXPAND_LISTS
     )
 endif()
-
-
-
-add_subdirectory(tests)

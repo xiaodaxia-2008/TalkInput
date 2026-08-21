@@ -9,6 +9,7 @@ data/
 *.bz2
 *.tar
 *.lib
+third_parties/rapid-ocr/
 out/
 cmake-build-*/
 .cache/
