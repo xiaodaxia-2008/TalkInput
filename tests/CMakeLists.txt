@@ -103,6 +103,37 @@ target_include_directories(TalkInputOcrRecognitionTest PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 
+add_executable(TalkInputOcrCompareTest
+    ocr_compare_test.cpp
+)
+target_link_libraries(TalkInputOcrCompareTest
+    PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Tesseract::libtesseract
+    rapidocr-onnx-c-api
+    windowsapp
+    spdlog::spdlog_header_only
+)
+target_compile_definitions(TalkInputOcrCompareTest PRIVATE
+    TALKINPUT_RAPID_OCR_MODEL_DIR="${TALKINPUT_RAPID_OCR_MODEL_DIR}"
+    TALKINPUT_TESSERACT_TRAIN_DATA_DIR="${TALKINPUT_TESSERACT_TRAIN_DATA_DIR}"
+    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
+)
+target_include_directories(TalkInputOcrCompareTest PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
+)
+if(WIN32)
+    add_custom_command(TARGET TalkInputOcrCompareTest
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_RUNTIME_DLLS:TalkInputOcrCompareTest>
+        $<TARGET_FILE_DIR:TalkInputOcrCompareTest>
+        COMMAND_EXPAND_LISTS
+    )
+endif()
+
 add_executable(TalkInputWinRTSpeechTest
     winrt_speech_test.cpp
 )
