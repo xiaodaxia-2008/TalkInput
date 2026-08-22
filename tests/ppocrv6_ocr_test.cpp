@@ -22,12 +22,14 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <optional>
 #include <queue>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #ifdef HAVE_OPENCV
+#include <clipper2/clipper.h>
 #include <opencv2/core.hpp>
 #include <opencv2/geometry/2d.hpp>
 #include <opencv2/imgproc.hpp>
@@ -234,6 +236,51 @@ std::array<cv::Point2f, 4> orderedQuad(const cv::RotatedRect &rect)
     return result;
 }
 
+double clipperPathArea(const Clipper2Lib::PathD &path)
+{
+    double area = 0.0;
+    for (size_t i = 0; i < path.size(); ++i) {
+        const auto &current = path[i];
+        const auto &next = path[(i + 1) % path.size()];
+        area += current.x * next.y - next.x * current.y;
+    }
+    return std::abs(area) * 0.5;
+}
+
+std::optional<cv::RotatedRect>
+unclipContour(const std::vector<cv::Point> &contour, double distance)
+{
+    Clipper2Lib::PathD path;
+    path.reserve(contour.size());
+    for (const auto &point : contour) {
+        path.emplace_back(static_cast<double>(point.x),
+                          static_cast<double>(point.y));
+    }
+
+    const auto expandedPaths = Clipper2Lib::InflatePaths(
+        {path}, distance, Clipper2Lib::JoinType::Round,
+        Clipper2Lib::EndType::Polygon);
+    if (expandedPaths.empty()) {
+        return std::nullopt;
+    }
+
+    const auto largest = std::max_element(
+        expandedPaths.begin(), expandedPaths.end(),
+        [](const Clipper2Lib::PathD &left, const Clipper2Lib::PathD &right) {
+            return clipperPathArea(left) < clipperPathArea(right);
+        });
+    std::vector<cv::Point2f> points;
+    points.reserve(largest->size());
+    for (const auto &point : *largest) {
+        points.emplace_back(static_cast<float>(point.x),
+                            static_cast<float>(point.y));
+    }
+    if (points.size() < 3) {
+        return std::nullopt;
+    }
+    return cv::minAreaRect(points);
+}
+
 cv::Mat perspectiveTextCrop(const cv::Mat &image,
                             const std::array<cv::Point2f, 4> &quad)
 {
@@ -362,14 +409,16 @@ std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
             continue;
         }
 
-        // Approximate DB unclip around the contour before mapping to the image.
+        // DB unclip expands the original contour by area / perimeter. Clipper2
+        // performs the geometric offset without rasterizing the polygon.
         const double perimeter = cv::arcLength(contour, true);
         const double unclipDistance =
             perimeter > 0.0 ? 1.5 * cv::contourArea(contour) / perimeter : 0.0;
-        cv::RotatedRect expanded = originalRect;
-        expanded.size.width += static_cast<float>(2.0 * unclipDistance);
-        expanded.size.height += static_cast<float>(2.0 * unclipDistance);
-        const auto mapQuad = orderedQuad(expanded);
+        const auto expanded = unclipContour(contour, unclipDistance);
+        if (!expanded) {
+            continue;
+        }
+        const auto mapQuad = orderedQuad(*expanded);
 
         TextBox box;
         for (size_t i = 0; i < box.quad.size(); ++i) {
@@ -569,7 +618,7 @@ int main(int argc, char *argv[])
         std::printf("[ONNX Runtime] rec 48x320: %.1f ms/iter\n",
                     benchmark(recSession, recInput, {1, 3, 48, 320}));
 #ifdef HAVE_OPENCV
-        std::printf("[OpenCV] DB contour + score + unclip approximation + "
+        std::printf("[OpenCV] DB contour + score + Clipper2 unclip + "
                     "perspective crop enabled\n");
 #endif
 

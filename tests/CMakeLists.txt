@@ -136,6 +136,7 @@ endif()
 
 # OpenVINO OCR test — optional, builds as stub if OpenVINO not found
 find_package(OpenVINO QUIET)
+find_package(Clipper2 CONFIG REQUIRED)
 add_executable(TalkInputOpenVinoOcrTest
     openvino_ocr_test.cpp
 )
@@ -171,7 +172,9 @@ if(TARGET onnxruntime)
 endif()
 if(TALKINPUT_OPENCV_FOUND)
     target_compile_definitions(TalkInputPpOcrV6Test PRIVATE HAVE_OPENCV)
-    target_link_libraries(TalkInputPpOcrV6Test PRIVATE talkinput_opencv_world)
+    target_link_libraries(TalkInputPpOcrV6Test PRIVATE
+        talkinput_opencv_world
+        Clipper2::Clipper2)
     if(WIN32)
         add_custom_command(TARGET TalkInputPpOcrV6Test POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
