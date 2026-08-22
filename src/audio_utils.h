@@ -29,6 +29,9 @@ decodeAudioFileToPcm16(const QString &path, int timeoutMs = 30000);
 bool savePcm16ToWav(const QByteArray &pcm16, int sampleRate, int channels,
                     const QString &filePath);
 
+bool savePcm16ToM4a(const QByteArray &pcm16, int sampleRate, int channels,
+                    const QString &filePath);
+
 // ── Silence-based audio segmentation ──────────────────────────────
 
 struct AudioSegment

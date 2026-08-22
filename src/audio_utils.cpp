@@ -6,6 +6,8 @@
 #include <QAudioFormat>
 #include <QEventLoop>
 #include <QFile>
+#include <QFileInfo>
+#include <QProcess>
 #include <QTimer>
 #include <QUrl>
 #include <QtEndian>
@@ -202,6 +204,75 @@ bool savePcm16ToWav(const QByteArray &pcm16, int sampleRate, int channels,
     file.write(pcm16);
 
     SPDLOG_INFO("WAV saved: {}", filePath);
+    return true;
+}
+
+bool savePcm16ToM4a(const QByteArray &pcm16, int sampleRate, int channels,
+                    const QString &filePath)
+{
+    if (pcm16.isEmpty() || sampleRate <= 0 || channels <= 0) {
+        return false;
+    }
+
+    QProcess ffmpeg;
+    ffmpeg.setProgram(QStringLiteral("ffmpeg"));
+    ffmpeg.setArguments(
+        {QStringLiteral("-v"), QStringLiteral("error"), QStringLiteral("-f"),
+         QStringLiteral("s16le"), QStringLiteral("-ar"),
+         QString::number(sampleRate), QStringLiteral("-ac"),
+         QString::number(channels), QStringLiteral("-i"),
+         QStringLiteral("pipe:0"), QStringLiteral("-codec:a"),
+         QStringLiteral("aac"), QStringLiteral("-b:a"), QStringLiteral("128k"),
+         QStringLiteral("-movflags"), QStringLiteral("+faststart"),
+         QStringLiteral("-y"), filePath});
+    ffmpeg.setProcessChannelMode(QProcess::SeparateChannels);
+    ffmpeg.start();
+    if (!ffmpeg.waitForStarted()) {
+        SPDLOG_WARN("Failed to start ffmpeg for M4A: {}", ffmpeg.errorString());
+        return false;
+    }
+
+    qint64 offset = 0;
+    while (offset < pcm16.size()) {
+        const qint64 written =
+            ffmpeg.write(pcm16.constData() + offset, pcm16.size() - offset);
+        if (written <= 0) {
+            SPDLOG_WARN("Failed to write PCM to ffmpeg for M4A: {}",
+                        ffmpeg.errorString());
+            ffmpeg.kill();
+            ffmpeg.waitForFinished();
+            QFile::remove(filePath);
+            return false;
+        }
+        offset += written;
+        if (!ffmpeg.waitForBytesWritten(-1) && offset < pcm16.size()) {
+            SPDLOG_WARN("Failed to flush PCM to ffmpeg for M4A: {}",
+                        ffmpeg.errorString());
+            ffmpeg.kill();
+            ffmpeg.waitForFinished();
+            QFile::remove(filePath);
+            return false;
+        }
+    }
+    ffmpeg.closeWriteChannel();
+
+    if (!ffmpeg.waitForFinished(-1) ||
+        ffmpeg.exitStatus() != QProcess::NormalExit || ffmpeg.exitCode() != 0)
+    {
+        const QString error =
+            QString::fromUtf8(ffmpeg.readAllStandardError()).trimmed();
+        SPDLOG_WARN("Failed to save M4A {}: {}", filePath,
+                    error.isEmpty() ? ffmpeg.errorString() : error);
+        QFile::remove(filePath);
+        return false;
+    }
+
+    if (!QFileInfo::exists(filePath) || QFileInfo(filePath).size() <= 0) {
+        SPDLOG_WARN("ffmpeg produced no M4A file: {}", filePath);
+        return false;
+    }
+
+    SPDLOG_INFO("M4A saved: {}", filePath);
     return true;
 }
 

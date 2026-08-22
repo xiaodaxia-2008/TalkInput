@@ -43,9 +43,7 @@ int main(int argc, char *argv[])
 
     const QString audioPath =
         (argc > 1) ? QString::fromLocal8Bit(argv[1])
-                   : QStringLiteral(
-                         "C:/Users/xiaoz/AppData/Roaming/ZenShawn/TalkInput/"
-                         "asr_audios/asr-20260627-233933-140.wav");
+                   : QDir::current().filePath("tests/test_data/meeting.m4a");
 
     SPDLOG_INFO("Loading: {}", audioPath);
 
@@ -108,11 +106,11 @@ int main(int argc, char *argv[])
         const QByteArray pcm16seg = floatsToPcm16(span);
 
         const QString path = QDir(outDir).filePath(
-            QString("seg-%1-%2.wav")
+            QString("seg-%1-%2.m4a")
                 .arg(ts)
                 .arg(static_cast<int>(i), 3, 10, QLatin1Char('0')));
 
-        talkinput::savePcm16ToWav(pcm16seg, sampleRate, 1, path);
+        talkinput::savePcm16ToM4a(pcm16seg, sampleRate, 1, path);
     }
 
     SPDLOG_INFO("Segments saved to: {}", outDir);

@@ -68,9 +68,9 @@ void saveAsrAudio(const QByteArray &pcm16, int sampleRate, int channels)
     const QString timestamp =
         QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
     const QString path =
-        QDir(dir).filePath(QString("asr-%1.wav").arg(timestamp));
+        QDir(dir).filePath(QString("asr-%1.m4a").arg(timestamp));
 
-    talkinput::savePcm16ToWav(pcm16, sampleRate, channels, path);
+    talkinput::savePcm16ToM4a(pcm16, sampleRate, channels, path);
 }
 
 } // namespace

@@ -1,5 +1,8 @@
 #include "audio_utils.h"
 
+#include <QFileInfo>
+#include <QTemporaryDir>
+
 #include <algorithm>
 #include <climits>
 #include <iostream>
@@ -45,11 +48,34 @@ void addSilence(std::vector<float> &samples, int startSecond, int endSecond)
               samples.begin() + endSecond * sampleRate, 0.0F);
 }
 
+bool expectM4aSave()
+{
+    QTemporaryDir tempDir;
+    if (!tempDir.isValid()) {
+        std::cerr << "m4a save: failed to create temporary directory\n";
+        return false;
+    }
+
+    const QString path = tempDir.filePath("audio.m4a");
+    const QByteArray pcm16(16000 * 2, '\0');
+    if (!talkinput::savePcm16ToM4a(pcm16, 16000, 1, path)) {
+        std::cerr << "m4a save: encoder failed\n";
+        return false;
+    }
+    if (!QFileInfo::exists(path) || QFileInfo(path).size() <= 0) {
+        std::cerr << "m4a save: output file is empty\n";
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int main()
 {
     bool passed = true;
+
+    passed &= expectM4aSave();
 
     const std::vector<float> shortAudio(25 * sampleRate, 1.0F);
     passed &= expectSegments("short audio", shortAudio, 30, {25});
