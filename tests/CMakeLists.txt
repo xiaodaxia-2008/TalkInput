@@ -134,6 +134,56 @@ if(WIN32)
     )
 endif()
 
+# OpenVINO OCR test — optional, builds as stub if OpenVINO not found
+find_package(OpenVINO QUIET)
+add_executable(TalkInputOpenVinoOcrTest
+    openvino_ocr_test.cpp
+)
+if(OpenVINO_FOUND)
+    target_compile_definitions(TalkInputOpenVinoOcrTest PRIVATE HAVE_OPENVINO)
+    target_link_libraries(TalkInputOpenVinoOcrTest PRIVATE openvino::runtime)
+    find_package(OpenCV QUIET)
+    if(OpenCV_FOUND)
+        target_link_libraries(TalkInputOpenVinoOcrTest PRIVATE opencv_core opencv_imgproc opencv_imgcodecs)
+    endif()
+endif()
+# Python benchmark: tests/openvino_benchmark.py (run with .venv python)
+#   uv pip install --python .venv/Scripts/python.exe openvino onnxruntime opencv-python
+#   .venv/Scripts/python.exe tests/openvino_benchmark.py
+
+add_executable(TalkInputPpOcrV6Test
+    ppocrv6_ocr_test.cpp
+)
+target_link_libraries(TalkInputPpOcrV6Test PRIVATE Qt6::Core Qt6::Gui)
+target_include_directories(TalkInputPpOcrV6Test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_compile_definitions(TalkInputPpOcrV6Test PRIVATE
+    TALKINPUT_PPOCRV6_MODEL_DIR="C:/Users/xiaoz/AppData/Local/Temp/opencode/ppocrv6_medium"
+)
+if(TARGET onnxruntime)
+    target_compile_definitions(TalkInputPpOcrV6Test PRIVATE HAVE_ONNXRUNTIME)
+    target_link_libraries(TalkInputPpOcrV6Test PRIVATE onnxruntime)
+    add_custom_command(TARGET TalkInputPpOcrV6Test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_RUNTIME_DLLS:TalkInputPpOcrV6Test>
+        $<TARGET_FILE_DIR:TalkInputPpOcrV6Test>
+        COMMAND_EXPAND_LISTS
+    )
+endif()
+if(TALKINPUT_OPENCV_FOUND)
+    target_compile_definitions(TalkInputPpOcrV6Test PRIVATE HAVE_OPENCV)
+    target_link_libraries(TalkInputPpOcrV6Test PRIVATE talkinput_opencv_world)
+    if(WIN32)
+        add_custom_command(TARGET TalkInputPpOcrV6Test POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${TALKINPUT_OPENCV_WORLD_DLL}"
+            $<TARGET_FILE_DIR:TalkInputPpOcrV6Test>)
+    endif()
+endif()
+if(OpenVINO_FOUND)
+    target_compile_definitions(TalkInputPpOcrV6Test PRIVATE HAVE_OPENVINO)
+    target_link_libraries(TalkInputPpOcrV6Test PRIVATE openvino::runtime)
+endif()
+
 add_executable(TalkInputWinRTSpeechTest
     winrt_speech_test.cpp
 )

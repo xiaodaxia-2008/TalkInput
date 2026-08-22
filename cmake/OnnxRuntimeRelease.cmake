@@ -1,0 +1,41 @@
+# Prebuilt ONNX Runtime for PP-OCRv6 C++ test (no vcpkg, no sherpa coupling)
+# Downloads the official Windows x64 release package from GitHub.
+# and exposes imported target `onnxruntime` (dll + lib + headers)
+
+set(TALKINPUT_ONNXRUNTIME_VERSION "1.29.0")
+set(TALKINPUT_ONNXRUNTIME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_parties/onnxruntime")
+set(TALKINPUT_ONNXRUNTIME_ZIP "${TALKINPUT_ONNXRUNTIME_DIR}/onnxruntime-win-x64-${TALKINPUT_ONNXRUNTIME_VERSION}.zip")
+set(TALKINPUT_ONNXRUNTIME_EXTRACT "${CMAKE_BINARY_DIR}/third_parties/onnxruntime")
+set(TALKINPUT_ONNXRUNTIME_ROOT "${TALKINPUT_ONNXRUNTIME_EXTRACT}/onnxruntime-win-x64-${TALKINPUT_ONNXRUNTIME_VERSION}")
+
+if(NOT EXISTS "${TALKINPUT_ONNXRUNTIME_ZIP}")
+    file(MAKE_DIRECTORY "${TALKINPUT_ONNXRUNTIME_DIR}")
+    set(TALKINPUT_ONNXRUNTIME_URL "https://github.com/microsoft/onnxruntime/releases/download/v${TALKINPUT_ONNXRUNTIME_VERSION}/onnxruntime-win-x64-${TALKINPUT_ONNXRUNTIME_VERSION}.zip")
+    message(STATUS "Downloading ONNX Runtime ${TALKINPUT_ONNXRUNTIME_VERSION} from ${TALKINPUT_ONNXRUNTIME_URL}")
+    file(DOWNLOAD "${TALKINPUT_ONNXRUNTIME_URL}" "${TALKINPUT_ONNXRUNTIME_ZIP}" SHOW_PROGRESS)
+endif()
+
+if(NOT EXISTS "${TALKINPUT_ONNXRUNTIME_ROOT}/include/onnxruntime_cxx_api.h")
+    file(MAKE_DIRECTORY "${TALKINPUT_ONNXRUNTIME_EXTRACT}")
+    file(ARCHIVE_EXTRACT INPUT "${TALKINPUT_ONNXRUNTIME_ZIP}" DESTINATION "${TALKINPUT_ONNXRUNTIME_EXTRACT}")
+endif()
+
+set(TALKINPUT_ONNXRUNTIME_INCLUDE "${TALKINPUT_ONNXRUNTIME_ROOT}/include")
+set(TALKINPUT_ONNXRUNTIME_LIB "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime.lib")
+set(TALKINPUT_ONNXRUNTIME_DLL "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime.dll")
+# Some releases put dll next to lib, others in same lib dir — handle both
+if(NOT EXISTS "${TALKINPUT_ONNXRUNTIME_DLL}" AND EXISTS "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime_providers_shared.dll")
+    set(TALKINPUT_ONNXRUNTIME_DLL "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime_providers_shared.dll")
+endif()
+
+if(NOT EXISTS "${TALKINPUT_ONNXRUNTIME_LIB}" OR NOT EXISTS "${TALKINPUT_ONNXRUNTIME_DLL}")
+    message(WARNING "ONNX Runtime prebuilt not found at ${TALKINPUT_ONNXRUNTIME_ROOT} — PP-OCRv6 ONNX test will be stub")
+else()
+    add_library(onnxruntime SHARED IMPORTED GLOBAL)
+    set_target_properties(onnxruntime PROPERTIES
+        IMPORTED_LOCATION "${TALKINPUT_ONNXRUNTIME_DLL}"
+        IMPORTED_IMPLIB "${TALKINPUT_ONNXRUNTIME_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${TALKINPUT_ONNXRUNTIME_INCLUDE}"
+    )
+    message(STATUS "ONNX Runtime ${TALKINPUT_ONNXRUNTIME_VERSION} ready: ${TALKINPUT_ONNXRUNTIME_ROOT}")
+endif()

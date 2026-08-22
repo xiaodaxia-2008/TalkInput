@@ -10,6 +10,7 @@ data/
 *.tar
 *.lib
 third_parties/rapid-ocr/
+third_parties/opencv/
 out/
 cmake-build-*/
 .cache/
