@@ -1,5 +1,8 @@
 #include "ocr_recognizer.h"
 #include "platform_utils.h"
+#ifdef TALKINPUT_HAS_PPOCRV6
+#include "ppocrv6_ocr_recognizer.h"
+#endif
 #include "system_ocr_recognizer.h"
 #include "tesseract_ocr_recognizer.h"
 
@@ -58,6 +61,11 @@ OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
     if (preset.type == "Tesseract") {
         return std::make_unique<TesseractOcrRecognizer>(parent);
     }
+#ifdef TALKINPUT_HAS_PPOCRV6
+    if (preset.type == "PpOcrV6") {
+        return std::make_unique<PpOcrV6OcrRecognizer>(parent);
+    }
+#endif
 
     return std::unexpected(QStringLiteral("Unsupported OCR type: %1")
                                .arg(QString::fromStdString(preset.type)));

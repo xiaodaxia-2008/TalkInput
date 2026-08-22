@@ -1,31 +1,36 @@
-/// PP-OCRv6 medium end-to-end OCR test using the prebuilt ONNX Runtime.
+/// PP-OCRv6 small end-to-end OCR test using the prebuilt ONNX Runtime.
 ///
 /// The test runs DB text detection, crops the detected text lines, runs the
 /// CTC recognition model, decodes the PP-OCRv6 dictionary, and prints the
 /// final text. It also keeps model-only timings for comparison.
 ///
 /// Usage:
-///   TalkInputPpOcrV6Test [image] [det.onnx] [rec.onnx] [keys.txt]
+///   TalkInputPpOcrV6Test [image] [det.onnx] [rec.onnx] [keys.txt] [cls.onnx]
 
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QImage>
 
+#ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include <windows.h>
+#endif
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
+#include <memory>
 #include <optional>
 #include <queue>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #ifdef HAVE_OPENCV
@@ -36,8 +41,7 @@
 #endif
 
 #ifndef TALKINPUT_PPOCRV6_MODEL_DIR
-#define TALKINPUT_PPOCRV6_MODEL_DIR                                            \
-    "C:/Users/xiaoz/AppData/Local/Temp/opencode/ppocrv6_medium"
+#define TALKINPUT_PPOCRV6_MODEL_DIR "models/ppocrv6_small"
 #endif
 
 static std::string findModel(const std::string &hint,
@@ -78,16 +82,33 @@ struct RecognitionResult
     float score = 0.0F;
 };
 
-std::wstring toWstring(const std::string &value)
+struct DetectorInput
 {
-    const int length =
-        MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, nullptr, 0);
-    std::wstring result(static_cast<size_t>(length), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, result.data(), length);
-    if (!result.empty() && result.back() == L'\0') {
-        result.pop_back();
+    std::vector<float> values;
+    int contentWidth = 0;
+    int contentHeight = 0;
+};
+
+struct RecognitionInput
+{
+    std::vector<float> values;
+    int width = 0;
+};
+
+struct AngleResult
+{
+    bool rotate180 = false;
+    float score = 0.0F;
+};
+
+std::basic_string<ORTCHAR_T> toOrtPath(const std::string &value)
+{
+    if constexpr (std::is_same_v<ORTCHAR_T, wchar_t>) {
+        return QString::fromUtf8(value.c_str()).toStdWString();
     }
-    return result;
+    else {
+        return value;
+    }
 }
 
 Ort::SessionOptions sessionOptions()
@@ -116,21 +137,39 @@ Ort::Value runModel(Ort::Session &session, const std::vector<float> &input,
     return std::move(output.front());
 }
 
-std::vector<float> detectorInput(const QImage &source, int height, int width)
+DetectorInput detectorInput(const QImage &source, int height, int width)
 {
-    const QImage image = source.convertToFormat(QImage::Format_RGB888)
-                             .scaled(width, height, Qt::IgnoreAspectRatio,
-                                     Qt::SmoothTransformation);
-    std::vector<float> result(static_cast<size_t>(3) * height * width);
+    const QImage rgb = source.convertToFormat(QImage::Format_RGB888);
+    const double scale =
+        std::min(width / static_cast<double>(std::max(1, rgb.width())),
+                 height / static_cast<double>(std::max(1, rgb.height())));
+    const int contentWidth =
+        std::clamp(static_cast<int>(std::round(rgb.width() * scale)), 1, width);
+    const int contentHeight = std::clamp(
+        static_cast<int>(std::round(rgb.height() * scale)), 1, height);
+    const QImage resized =
+        rgb.scaled(contentWidth, contentHeight, Qt::IgnoreAspectRatio,
+                   Qt::SmoothTransformation);
+    QImage image(width, height, QImage::Format_RGB888);
+    image.fill(Qt::black);
+    for (int y = 0; y < contentHeight; ++y) {
+        std::memcpy(image.scanLine(y), resized.constScanLine(y),
+                    static_cast<size_t>(contentWidth) * 3);
+    }
+
+    DetectorInput result;
+    result.values.resize(static_cast<size_t>(3) * height * width);
+    result.contentWidth = contentWidth;
+    result.contentHeight = contentHeight;
     for (int y = 0; y < height; ++y) {
         const uchar *line = image.constScanLine(y);
         for (int x = 0; x < width; ++x) {
             const size_t offset = static_cast<size_t>(y) * width + x;
             // PP-OCRv6 det uses BGR data with mean=0.5 and std=0.5.
-            result[offset] = line[x * 3 + 2] / 127.5F - 1.0F;
-            result[static_cast<size_t>(height) * width + offset] =
+            result.values[offset] = line[x * 3 + 2] / 127.5F - 1.0F;
+            result.values[static_cast<size_t>(height) * width + offset] =
                 line[x * 3 + 1] / 127.5F - 1.0F;
-            result[static_cast<size_t>(2) * height * width + offset] =
+            result.values[static_cast<size_t>(2) * height * width + offset] =
                 line[x * 3] / 127.5F - 1.0F;
         }
     }
@@ -175,12 +214,48 @@ cv::Mat qimageToRgbMat(const QImage &source)
         .clone();
 }
 
-std::vector<float> recognizerInput(const cv::Mat &source)
+RecognitionInput recognizerInput(const cv::Mat &source)
 {
     constexpr int height = 48;
-    constexpr int width = 320;
+    constexpr int maxWidth = 1600;
     if (source.empty() || source.channels() != 3) {
         throw std::runtime_error("invalid OpenCV recognition crop");
+    }
+
+    int resizedWidth =
+        std::clamp(static_cast<int>(std::ceil(
+                       source.cols * height /
+                       static_cast<double>(std::max(1, source.rows)))),
+                   1, maxWidth);
+    resizedWidth = std::min(maxWidth, (resizedWidth + 3) / 4 * 4);
+    cv::Mat image;
+    cv::resize(source, image, cv::Size(resizedWidth, height), 0.0, 0.0,
+               cv::INTER_LINEAR);
+
+    RecognitionInput result;
+    result.values.assign(static_cast<size_t>(3) * height * resizedWidth, 0.0F);
+    result.width = resizedWidth;
+    for (int y = 0; y < height; ++y) {
+        const auto *line = image.ptr<cv::Vec3b>(y);
+        for (int x = 0; x < resizedWidth; ++x) {
+            const size_t offset = static_cast<size_t>(y) * resizedWidth + x;
+            // OpenCV mat is RGB, while PP-OCR rec expects BGR planes.
+            result.values[offset] = line[x][2] / 127.5F - 1.0F;
+            result.values[static_cast<size_t>(height) * resizedWidth + offset] =
+                line[x][1] / 127.5F - 1.0F;
+            result.values[static_cast<size_t>(2) * height * resizedWidth +
+                          offset] = line[x][0] / 127.5F - 1.0F;
+        }
+    }
+    return result;
+}
+
+std::vector<float> classifierInput(const cv::Mat &source)
+{
+    constexpr int height = 48;
+    constexpr int width = 192;
+    if (source.empty() || source.channels() != 3) {
+        throw std::runtime_error("invalid OpenCV angle crop");
     }
 
     const int resizedWidth =
@@ -188,16 +263,17 @@ std::vector<float> recognizerInput(const cv::Mat &source)
                        source.cols * height /
                        static_cast<double>(std::max(1, source.rows)))),
                    1, width);
-    cv::Mat image;
-    cv::resize(source, image, cv::Size(resizedWidth, height), 0.0, 0.0,
+    cv::Mat resized;
+    cv::resize(source, resized, cv::Size(resizedWidth, height), 0.0, 0.0,
                cv::INTER_LINEAR);
+    cv::Mat image = cv::Mat::zeros(height, width, CV_8UC3);
+    resized.copyTo(image(cv::Rect(0, 0, resizedWidth, height)));
 
     std::vector<float> result(static_cast<size_t>(3) * height * width, 0.0F);
     for (int y = 0; y < height; ++y) {
         const auto *line = image.ptr<cv::Vec3b>(y);
-        for (int x = 0; x < resizedWidth; ++x) {
+        for (int x = 0; x < width; ++x) {
             const size_t offset = static_cast<size_t>(y) * width + x;
-            // OpenCV mat is RGB, while PP-OCR rec expects BGR planes.
             result[offset] = line[x][2] / 127.5F - 1.0F;
             result[static_cast<size_t>(height) * width + offset] =
                 line[x][1] / 127.5F - 1.0F;
@@ -208,32 +284,48 @@ std::vector<float> recognizerInput(const cv::Mat &source)
     return result;
 }
 
+std::optional<AngleResult> classifyAngle(Ort::Session &session,
+                                         const cv::Mat &crop)
+{
+    const auto input = classifierInput(crop);
+    const auto output = runModel(session, input, {1, 3, 48, 192});
+    const auto shape = output.GetTensorTypeAndShapeInfo().GetShape();
+    if (shape.size() != 2 || shape[0] != 1 || shape[1] < 2) {
+        return std::nullopt;
+    }
+
+    const float *values = output.GetTensorData<float>();
+    const float maxValue = std::max(values[0], values[1]);
+    const float exp0 = std::exp(values[0] - maxValue);
+    const float exp1 = std::exp(values[1] - maxValue);
+    const float confidence = exp1 / (exp0 + exp1);
+    return AngleResult{confidence >= 0.9F && values[1] > values[0], confidence};
+}
+
 std::array<cv::Point2f, 4> orderedQuad(const cv::RotatedRect &rect)
 {
     cv::Point2f points[4];
     rect.points(points);
-    std::sort(std::begin(points), std::end(points),
-              [](const cv::Point2f &a, const cv::Point2f &b) {
-                  return a.y < b.y || (a.y == b.y && a.x < b.x);
-              });
-    std::array<cv::Point2f, 4> result;
-    if (points[0].x <= points[1].x) {
-        result[0] = points[0];
-        result[1] = points[1];
-    }
-    else {
-        result[0] = points[1];
-        result[1] = points[0];
-    }
-    if (points[2].x >= points[3].x) {
-        result[2] = points[2];
-        result[3] = points[3];
-    }
-    else {
-        result[2] = points[3];
-        result[3] = points[2];
-    }
-    return result;
+    const auto sum = [](const cv::Point2f &point) { return point.x + point.y; };
+    const auto difference = [](const cv::Point2f &point) {
+        return point.x - point.y;
+    };
+    const auto bySum = [&](const cv::Point2f &left, const cv::Point2f &right) {
+        return sum(left) < sum(right);
+    };
+    const auto byDifference = [&](const cv::Point2f &left,
+                                  const cv::Point2f &right) {
+        return difference(left) < difference(right);
+    };
+    const auto topLeft =
+        std::min_element(std::begin(points), std::end(points), bySum);
+    const auto bottomRight =
+        std::max_element(std::begin(points), std::end(points), bySum);
+    const auto bottomLeft =
+        std::min_element(std::begin(points), std::end(points), byDifference);
+    const auto topRight =
+        std::max_element(std::begin(points), std::end(points), byDifference);
+    return {*topLeft, *topRight, *bottomRight, *bottomLeft};
 }
 
 double clipperPathArea(const Clipper2Lib::PathD &path)
@@ -292,7 +384,7 @@ cv::Mat perspectiveTextCrop(const cv::Mat &image,
         std::clamp(static_cast<int>(std::round(
                        std::max(topWidth, bottomWidth) * 48.0F /
                        std::max(1.0F, std::max(leftHeight, rightHeight)))),
-                   8, 320);
+                   8, 1600);
     const std::array<cv::Point2f, 4> destination = {
         cv::Point2f(0.0F, 0.0F),
         cv::Point2f(static_cast<float>(width - 1), 0.0F),
@@ -363,12 +455,25 @@ RecognitionResult decodeRecognition(const Ort::Value &output,
     return result;
 }
 
+void applyRecognition(TextBox &box, const RecognitionResult &result)
+{
+    box.text = result.text;
+    while (!box.text.empty() && box.text.back() == ' ') {
+        box.text.pop_back();
+    }
+    const auto first = box.text.find_first_not_of(' ');
+    if (first != std::string::npos && first > 0) {
+        box.text.erase(0, first);
+    }
+    box.recognitionScore = result.score;
+}
+
 std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
                                 int inputHeight, int inputWidth)
 {
     const auto input = detectorInput(image, inputHeight, inputWidth);
     const Ort::Value output =
-        runModel(session, input, {1, 3, inputHeight, inputWidth});
+        runModel(session, input.values, {1, 3, inputHeight, inputWidth});
     const auto shape = output.GetTensorTypeAndShapeInfo().GetShape();
     if (shape.size() != 4 || shape[0] != 1 || shape[1] != 1) {
         throw std::runtime_error("unexpected detector output shape");
@@ -377,6 +482,12 @@ std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
     const int mapHeight = static_cast<int>(shape[2]);
     const int mapWidth = static_cast<int>(shape[3]);
     const float *probability = output.GetTensorData<float>();
+    const double scaleX = image.width() /
+                          static_cast<double>(input.contentWidth) * inputWidth /
+                          static_cast<double>(mapWidth);
+    const double scaleY = image.height() /
+                          static_cast<double>(input.contentHeight) *
+                          inputHeight / static_cast<double>(mapHeight);
 #ifdef HAVE_OPENCV
     const cv::Mat probabilityMap(mapHeight, mapWidth, CV_32FC1,
                                  const_cast<float *>(probability));
@@ -387,8 +498,6 @@ std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(bitmap, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
     std::vector<TextBox> boxes;
-    const double scaleX = image.width() / static_cast<double>(mapWidth);
-    const double scaleY = image.height() / static_cast<double>(mapHeight);
     for (const auto &contour : contours) {
         // Keep the old connected-component floor as a noise guard. Without
         // it, glyph-like UI icons become independent OCR candidates.
@@ -412,8 +521,10 @@ std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
         // DB unclip expands the original contour by area / perimeter. Clipper2
         // performs the geometric offset without rasterizing the polygon.
         const double perimeter = cv::arcLength(contour, true);
+        constexpr double unclipRatio = 1.4;
         const double unclipDistance =
-            perimeter > 0.0 ? 1.5 * cv::contourArea(contour) / perimeter : 0.0;
+            perimeter > 0.0 ? unclipRatio * cv::contourArea(contour) / perimeter
+                            : 0.0;
         const auto expanded = unclipContour(contour, unclipDistance);
         if (!expanded) {
             continue;
@@ -452,8 +563,6 @@ std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
         static_cast<size_t>(mapHeight) * mapWidth, 0);
     std::vector<TextBox> boxes;
     constexpr float threshold = 0.3F;
-    const double scaleX = image.width() / static_cast<double>(mapWidth);
-    const double scaleY = image.height() / static_cast<double>(mapHeight);
 
     for (int y = 0; y < mapHeight; ++y) {
         for (int x = 0; x < mapWidth; ++x) {
@@ -558,8 +667,10 @@ double benchmark(Ort::Session &session, const std::vector<float> &input,
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
+#endif
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     QCoreApplication app(argc, argv);
 
@@ -573,10 +684,15 @@ int main(int argc, char *argv[])
         argc >= 4 ? argv[3]
                   : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/rec.onnx",
         "third_parties/rapid-ocr/models/ch_PP-OCRv3_rec_infer.onnx");
+    const std::string clsPath =
+        argc >= 6 ? argv[5]
+                  : findModel("third_parties/rapid-ocr/models/"
+                              "ch_ppocr_mobile_v2.0_cls_infer.onnx",
+                              "");
     const std::string keysPath =
         argc >= 5
             ? argv[4]
-            : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/ppocrv6_keys.txt";
+            : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/ppocrv6_keys2.txt";
 
     QFileInfo imageInfo(QString::fromStdString(imagePath));
     if (!imageInfo.exists()) {
@@ -592,8 +708,8 @@ int main(int argc, char *argv[])
     std::printf("Image: %s (%dx%d) %.1f KB\n",
                 imageInfo.absoluteFilePath().toUtf8().constData(),
                 image.width(), image.height(), imageInfo.size() / 1024.0);
-    std::printf("Det: %s\nRec: %s\nKeys: %s\n\n", detPath.c_str(),
-                recPath.c_str(), keysPath.c_str());
+    std::printf("Det: %s\nRec: %s\nKeys: %s\nCls: %s\n\n", detPath.c_str(),
+                recPath.c_str(), keysPath.c_str(), clsPath.c_str());
 
 #ifndef HAVE_ONNXRUNTIME
     std::printf("ONNX Runtime is not enabled at configure time.\n");
@@ -601,57 +717,108 @@ int main(int argc, char *argv[])
 #else
     try {
         Ort::Env environment(ORT_LOGGING_LEVEL_WARNING, "ppocrv6");
-        Ort::Session detSession(environment, toWstring(detPath).c_str(),
+        Ort::Session detSession(environment, toOrtPath(detPath).c_str(),
                                 sessionOptions());
-        Ort::Session recSession(environment, toWstring(recPath).c_str(),
+        Ort::Session recSession(environment, toOrtPath(recPath).c_str(),
                                 sessionOptions());
+        std::unique_ptr<Ort::Session> clsSession;
+#ifdef HAVE_OPENCV
+        if (QFileInfo::exists(QString::fromStdString(clsPath))) {
+            clsSession = std::make_unique<Ort::Session>(
+                environment, toOrtPath(clsPath).c_str(), sessionOptions());
+        }
+#endif
         const auto dictionary = loadDictionary(keysPath);
         if (dictionary.size() != 18708) {
             std::printf("Warning: dictionary has %zu entries, expected 18708\n",
                         dictionary.size());
         }
 
-        const auto detInput = detectorInput(image, 672, 960);
-        const auto recInput = recognizerInput(image);
-        std::printf("[ONNX Runtime] det 672x960: %.1f ms/iter\n",
-                    benchmark(detSession, detInput, {1, 3, 672, 960}));
+        constexpr int detInputHeight = 672;
+        constexpr int detInputWidth = 960;
+        const auto detInput =
+            detectorInput(image, detInputHeight, detInputWidth);
+        std::printf("[ONNX Runtime] det 672x960 (letterbox): %.1f ms/iter\n",
+                    benchmark(detSession, detInput.values,
+                              {1, 3, detInputHeight, detInputWidth}));
+#ifdef HAVE_OPENCV
+        const auto recBenchmarkInput = recognizerInput(image);
         std::printf("[ONNX Runtime] rec 48x320: %.1f ms/iter\n",
-                    benchmark(recSession, recInput, {1, 3, 48, 320}));
+                    benchmark(recSession, recBenchmarkInput, {1, 3, 48, 320}));
+#else
+        const auto recBenchmarkInput = recognizerInput(image);
+        std::printf("[ONNX Runtime] rec 48x320: %.1f ms/iter\n",
+                    benchmark(recSession, recBenchmarkInput, {1, 3, 48, 320}));
+#endif
 #ifdef HAVE_OPENCV
         std::printf("[OpenCV] DB contour + score + Clipper2 unclip + "
                     "perspective crop enabled\n");
+        std::printf("[OpenCV] angle classification: %s\n",
+                    clsSession ? "enabled" : "unavailable");
 #endif
 
         const auto started = std::chrono::steady_clock::now();
-        auto boxes = detectText(detSession, image, 672, 960);
+        const auto detectStarted = std::chrono::steady_clock::now();
+        auto boxes =
+            detectText(detSession, image, detInputHeight, detInputWidth);
+        const auto detectElapsed =
+            std::chrono::steady_clock::now() - detectStarted;
+        const auto detectMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(detectElapsed)
+                .count();
 #ifdef HAVE_OPENCV
         const cv::Mat rgbImage = qimageToRgbMat(image);
-#endif
+        size_t recognitionCallCount = 0;
+        const auto recognitionStarted = std::chrono::steady_clock::now();
         for (auto &box : boxes) {
-#ifdef HAVE_OPENCV
             const auto crop = perspectiveTextCrop(rgbImage, box.quad);
-            const auto input = recognizerInput(crop);
+            cv::Mat orientedCrop = crop;
+            if (clsSession) {
+                const auto angle = classifyAngle(*clsSession, crop);
+                if (angle && angle->rotate180) {
+                    cv::rotate(crop, orientedCrop, cv::ROTATE_180);
+                }
+            }
+            const auto input = recognizerInput(orientedCrop);
+            const auto output =
+                runModel(recSession, input.values, {1, 3, 48, input.width});
+            applyRecognition(box, decodeRecognition(output, dictionary));
+            ++recognitionCallCount;
+        }
+        const auto recognitionElapsed =
+            std::chrono::steady_clock::now() - recognitionStarted;
+        const auto recognitionMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                recognitionElapsed)
+                .count();
 #else
+        size_t recognitionCallCount = 0;
+        const auto recognitionStarted = std::chrono::steady_clock::now();
+        for (auto &box : boxes) {
             const QRect rect(box.left, box.top, box.right - box.left,
                              box.bottom - box.top);
             const auto input = recognizerInput(image.copy(rect));
-#endif
             const auto output = runModel(recSession, input, {1, 3, 48, 320});
-            const auto result = decodeRecognition(output, dictionary);
-            box.text = result.text;
-            while (!box.text.empty() && box.text.back() == ' ') {
-                box.text.pop_back();
-            }
-            const auto first = box.text.find_first_not_of(' ');
-            if (first != std::string::npos && first > 0) {
-                box.text.erase(0, first);
-            }
-            box.recognitionScore = result.score;
+            applyRecognition(box, decodeRecognition(output, dictionary));
+            ++recognitionCallCount;
         }
+        const auto recognitionElapsed =
+            std::chrono::steady_clock::now() - recognitionStarted;
+        const auto recognitionMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                recognitionElapsed)
+                .count();
+#endif
         const auto elapsed = std::chrono::steady_clock::now() - started;
         const auto totalMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
                 .count();
+
+        std::printf("[PP-OCRv6] detection: %lld ms, recognition: %lld ms, "
+                    "%zu recognition call(s) for %zu box(es)\n",
+                    static_cast<long long>(detectMs),
+                    static_cast<long long>(recognitionMs), recognitionCallCount,
+                    boxes.size());
 
         std::string fullText;
         std::printf("\n=== PP-OCRv6 Result (%zu text lines) ===\n",

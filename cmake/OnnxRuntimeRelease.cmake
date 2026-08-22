@@ -23,6 +23,8 @@ endif()
 set(TALKINPUT_ONNXRUNTIME_INCLUDE "${TALKINPUT_ONNXRUNTIME_ROOT}/include")
 set(TALKINPUT_ONNXRUNTIME_LIB "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime.lib")
 set(TALKINPUT_ONNXRUNTIME_DLL "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime.dll")
+set(TALKINPUT_ONNXRUNTIME_PROVIDERS_SHARED_DLL
+    "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime_providers_shared.dll")
 # Some releases put dll next to lib, others in same lib dir — handle both
 if(NOT EXISTS "${TALKINPUT_ONNXRUNTIME_DLL}" AND EXISTS "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime_providers_shared.dll")
     set(TALKINPUT_ONNXRUNTIME_DLL "${TALKINPUT_ONNXRUNTIME_ROOT}/lib/onnxruntime_providers_shared.dll")

@@ -158,22 +158,25 @@ add_executable(TalkInputPpOcrV6Test
 target_link_libraries(TalkInputPpOcrV6Test PRIVATE Qt6::Core Qt6::Gui)
 target_include_directories(TalkInputPpOcrV6Test PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_compile_definitions(TalkInputPpOcrV6Test PRIVATE
-    TALKINPUT_PPOCRV6_MODEL_DIR="C:/Users/xiaoz/AppData/Local/Temp/opencode/ppocrv6_medium"
+    TALKINPUT_PPOCRV6_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/ppocrv6_small"
 )
-if(TARGET onnxruntime)
+if(TALKINPUT_PPOCRV6_ORT_TARGET)
     target_compile_definitions(TalkInputPpOcrV6Test PRIVATE HAVE_ONNXRUNTIME)
-    target_link_libraries(TalkInputPpOcrV6Test PRIVATE onnxruntime)
-    add_custom_command(TARGET TalkInputPpOcrV6Test POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_RUNTIME_DLLS:TalkInputPpOcrV6Test>
-        $<TARGET_FILE_DIR:TalkInputPpOcrV6Test>
-        COMMAND_EXPAND_LISTS
-    )
+    target_link_libraries(TalkInputPpOcrV6Test PRIVATE
+        ${TALKINPUT_PPOCRV6_ORT_TARGET})
+    if(WIN32)
+        add_custom_command(TARGET TalkInputPpOcrV6Test POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:TalkInputPpOcrV6Test>
+            $<TARGET_FILE_DIR:TalkInputPpOcrV6Test>
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
 endif()
-if(TALKINPUT_OPENCV_FOUND)
+if(TALKINPUT_PPOCRV6_OPENCV_TARGETS)
     target_compile_definitions(TalkInputPpOcrV6Test PRIVATE HAVE_OPENCV)
     target_link_libraries(TalkInputPpOcrV6Test PRIVATE
-        talkinput_opencv_world
+        ${TALKINPUT_PPOCRV6_OPENCV_TARGETS}
         Clipper2::Clipper2)
     if(WIN32)
         add_custom_command(TARGET TalkInputPpOcrV6Test POST_BUILD

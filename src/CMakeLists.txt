@@ -53,6 +53,7 @@ add_executable(TalkInput WIN32
     clean_text.h
     ocr_recognizer.cpp
     ocr_recognizer.h
+    ppocrv6_ocr_recognizer.h
     system_ocr_recognizer.h
     tesseract_ocr_recognizer.cpp
     tesseract_ocr_recognizer.h
@@ -156,6 +157,17 @@ target_link_libraries(TalkInput
 
 qcoro_enable_coroutines(TalkInput)
 
+if(TALKINPUT_PPOCRV6_ORT_TARGET AND TALKINPUT_PPOCRV6_OPENCV_TARGETS)
+    set(TALKINPUT_PPOCRV6_ENABLED TRUE)
+    target_sources(TalkInput PRIVATE ppocrv6_ocr_recognizer.cpp)
+    target_link_libraries(TalkInput PRIVATE
+        ${TALKINPUT_PPOCRV6_ORT_TARGET}
+        ${TALKINPUT_PPOCRV6_OPENCV_TARGETS}
+        Clipper2::Clipper2
+    )
+    target_compile_definitions(TalkInput PRIVATE TALKINPUT_HAS_PPOCRV6)
+endif()
+
 if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore imm32)
     target_sources(TalkInput PRIVATE
@@ -217,6 +229,32 @@ install(DIRECTORY ${TALKINPUT_SENSEVOICE_MODEL_DIR}/
     DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_SENSEVOICE_MODEL_NAME}
     COMPONENT Runtime
 )
+
+install(FILES
+    ${TALKINPUT_PPOCRV6_DET_MODEL}
+    ${TALKINPUT_PPOCRV6_REC_MODEL}
+    ${TALKINPUT_PPOCRV6_CLS_MODEL}
+    ${TALKINPUT_PPOCRV6_KEYS}
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/ppocrv6_small
+    COMPONENT Runtime
+)
+
+if(TALKINPUT_PPOCRV6_ENABLED AND WIN32)
+    install(FILES ${TALKINPUT_ONNXRUNTIME_DLL}
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT Runtime
+    )
+    if(EXISTS "${TALKINPUT_ONNXRUNTIME_PROVIDERS_SHARED_DLL}")
+        install(FILES ${TALKINPUT_ONNXRUNTIME_PROVIDERS_SHARED_DLL}
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+            COMPONENT Runtime
+        )
+    endif()
+    install(FILES ${TALKINPUT_OPENCV_WORLD_DLL}
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT Runtime
+    )
+endif()
 
 install(FILES ${TALKINPUT_SILERO_VAD_MODEL_FILE}
     DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_SILERO_VAD_MODEL_NAME}

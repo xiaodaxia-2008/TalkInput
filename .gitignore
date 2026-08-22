@@ -11,13 +11,15 @@ data/
 *.lib
 third_parties/rapid-ocr/
 third_parties/opencv/
+third_parties/onnxruntime/
 out/
 cmake-build-*/
 .cache/
 .codegraph/
 .mindfs/
-temp/
 Models/
+models/ppocrv6_small/
+temp/
 CMakeUserPresets.json
 teact/train_data/
 
