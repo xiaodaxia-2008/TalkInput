@@ -19,7 +19,8 @@
 namespace
 {
 
-constexpr int minSegmentSeconds = 5;
+constexpr int minSegmentSeconds = 10;
+constexpr int vadPaddingMs = 100;
 
 std::vector<float> resampleFloats(const std::vector<float> &input,
                                   int inputRate, int outputRate)
@@ -55,7 +56,7 @@ namespace talkinput
 // ── OfflineSpeechRecognizer ──────────────────────────────────────
 
 OfflineSpeechRecognizer::OfflineSpeechRecognizer(QObject *parent)
-    : OfflineSpeechRecognizer(parent, 15)
+    : OfflineSpeechRecognizer(parent, 18)
 {
 }
 
@@ -213,10 +214,38 @@ void OfflineSpeechRecognizer::finish()
     flushCompletedChunks();
 
     if (!m_samples.empty()) {
-        auto segs = segmentAudioBySilence(m_samples, m_modelSampleRate,
-                                          m_maxChunkSeconds);
-        for (const auto &seg : segs) {
-            decodeBlock(seg.startSample, seg.sampleCount);
+        const int totalSamples = static_cast<int>(m_samples.size());
+        const int padSamples = m_modelSampleRate * vadPaddingMs / 1000;
+        const int minSplitSamples =
+            std::min(totalSamples, minSegmentSeconds * m_modelSampleRate);
+        const int maxSamples = m_maxChunkSeconds * m_modelSampleRate;
+
+        bool vadDecoded = false;
+        if (m_vad) {
+            const auto rawSegs =
+                extractVadSegments({m_samples.data(), m_samples.size()});
+            if (!rawSegs.empty()) {
+                const auto merged =
+                    mergeVadSegments(rawSegs, minSplitSamples, maxSamples);
+                for (const auto &chunk : merged) {
+                    const int paddedStart =
+                        std::max(0, chunk.startSample - padSamples);
+                    const int paddedEnd =
+                        std::min(totalSamples, chunk.startSample +
+                                                   chunk.sampleCount +
+                                                   padSamples);
+                    decodeBlock(paddedStart, paddedEnd - paddedStart);
+                }
+                vadDecoded = true;
+            }
+        }
+
+        if (!vadDecoded) {
+            const auto segs = segmentAudioBySilence(
+                m_samples, m_modelSampleRate, m_maxChunkSeconds);
+            for (const auto &seg : segs) {
+                decodeBlock(seg.startSample, seg.sampleCount);
+            }
         }
     }
 
@@ -244,57 +273,105 @@ QString OfflineSpeechRecognizer::normalizeResultText(const QString &text) const
 
 // ── Pseudo-online helpers ─────────────────────────────────────
 
-int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
+std::vector<OfflineSpeechRecognizer::VadSegment>
+OfflineSpeechRecognizer::extractVadSegments(
+    std::span<const float> samples) const
 {
-    if (m_vad) {
-        constexpr int vadWindowSamples = 512;
-        SherpaOnnxVoiceActivityDetectorReset(m_vad);
+    if (!m_vad || samples.empty()) {
+        return {};
+    }
 
-        int latestSpeechEnd = 0;
-        const int sampleCount =
-            std::min(maxPos, m_samples.size() > static_cast<size_t>(INT_MAX)
-                                 ? INT_MAX
-                                 : static_cast<int>(m_samples.size()));
-        const int latestUsableEnd = sampleCount - vadWindowSamples;
+    constexpr int vadWindowSamples = 512;
+    SherpaOnnxVoiceActivityDetectorReset(m_vad);
 
-        for (int offset = 0; offset < sampleCount; offset += vadWindowSamples) {
-            const int count = std::min(vadWindowSamples, sampleCount - offset);
-            SherpaOnnxVoiceActivityDetectorAcceptWaveform(
-                m_vad, m_samples.data() + offset, count);
+    std::vector<VadSegment> segments;
+    const int totalSamples = static_cast<int>(samples.size());
 
-            while (!SherpaOnnxVoiceActivityDetectorEmpty(m_vad)) {
-                const SherpaOnnxSpeechSegment *segment =
-                    SherpaOnnxVoiceActivityDetectorFront(m_vad);
-                if (segment) {
-                    const int end =
-                        std::clamp(segment->start + segment->n, 0, sampleCount);
-                    if (end >= minPos && end <= latestUsableEnd) {
-                        latestSpeechEnd = std::max(latestSpeechEnd, end);
-                    }
-                    SherpaOnnxDestroySpeechSegment(segment);
-                }
-                SherpaOnnxVoiceActivityDetectorPop(m_vad);
-            }
-        }
+    for (int offset = 0; offset < totalSamples; offset += vadWindowSamples) {
+        const int count = std::min(vadWindowSamples, totalSamples - offset);
+        SherpaOnnxVoiceActivityDetectorAcceptWaveform(
+            m_vad, samples.data() + offset, count);
 
-        SherpaOnnxVoiceActivityDetectorFlush(m_vad);
         while (!SherpaOnnxVoiceActivityDetectorEmpty(m_vad)) {
-            const SherpaOnnxSpeechSegment *segment =
+            const SherpaOnnxSpeechSegment *seg =
                 SherpaOnnxVoiceActivityDetectorFront(m_vad);
-            if (segment) {
-                const int end =
-                    std::clamp(segment->start + segment->n, 0, sampleCount);
-                if (end >= minPos && end <= latestUsableEnd) {
-                    latestSpeechEnd = std::max(latestSpeechEnd, end);
-                }
-                SherpaOnnxDestroySpeechSegment(segment);
+            if (seg) {
+                segments.push_back({seg->start, seg->n});
+                SherpaOnnxDestroySpeechSegment(seg);
             }
             SherpaOnnxVoiceActivityDetectorPop(m_vad);
         }
-        SherpaOnnxVoiceActivityDetectorReset(m_vad);
+    }
+
+    SherpaOnnxVoiceActivityDetectorFlush(m_vad);
+    while (!SherpaOnnxVoiceActivityDetectorEmpty(m_vad)) {
+        const SherpaOnnxSpeechSegment *seg =
+            SherpaOnnxVoiceActivityDetectorFront(m_vad);
+        if (seg) {
+            segments.push_back({seg->start, seg->n});
+            SherpaOnnxDestroySpeechSegment(seg);
+        }
+        SherpaOnnxVoiceActivityDetectorPop(m_vad);
+    }
+    SherpaOnnxVoiceActivityDetectorReset(m_vad);
+
+    return segments;
+}
+
+std::vector<AudioSegment> OfflineSpeechRecognizer::mergeVadSegments(
+    const std::vector<VadSegment> &rawSegs, int minSamples,
+    int maxSamples) const
+{
+    std::vector<AudioSegment> chunks;
+    if (rawSegs.empty()) {
+        return chunks;
+    }
+
+    int curStart = rawSegs.front().start;
+    int curEnd = rawSegs.front().start + rawSegs.front().count;
+
+    for (size_t i = 1; i < rawSegs.size(); ++i) {
+        const auto &seg = rawSegs[i];
+        const int nextEnd = seg.start + seg.count;
+        const int combinedLength = nextEnd - curStart;
+
+        if ((curEnd - curStart >= minSamples) && (combinedLength > maxSamples)) {
+            chunks.push_back({curStart, curEnd - curStart});
+            curStart = seg.start;
+            curEnd = nextEnd;
+        }
+        else {
+            curEnd = nextEnd;
+        }
+    }
+    if (curEnd > curStart) {
+        chunks.push_back({curStart, curEnd - curStart});
+    }
+
+    return chunks;
+}
+
+int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
+{
+    const int sampleCount =
+        std::min(maxPos, m_samples.size() > static_cast<size_t>(INT_MAX)
+                             ? INT_MAX
+                             : static_cast<int>(m_samples.size()));
+    const int padSamples = m_modelSampleRate * vadPaddingMs / 1000;
+
+    if (m_vad) {
+        const auto segments = extractVadSegments(
+            {m_samples.data(), static_cast<size_t>(sampleCount)});
+        int latestSpeechEnd = 0;
+        for (const auto &seg : segments) {
+            const int speechEnd = seg.start + seg.count;
+            if (speechEnd >= minPos && speechEnd + padSamples <= sampleCount) {
+                latestSpeechEnd = std::max(latestSpeechEnd, speechEnd);
+            }
+        }
 
         if (latestSpeechEnd > 0) {
-            return latestSpeechEnd;
+            return std::min(sampleCount, latestSpeechEnd + padSamples);
         }
     }
 

@@ -4,6 +4,7 @@
 
 #include <QStringList>
 
+#include <span>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,8 @@ struct SherpaOnnxVoiceActivityDetector;
 
 namespace talkinput
 {
+
+struct AudioSegment;
 
 class OfflineSpeechRecognizer : public SpeechRecognizer
 {
@@ -43,6 +46,18 @@ protected:
     virtual QString normalizeResultText(const QString &text) const;
 
 private:
+    struct VadSegment
+    {
+        int start;
+        int count;
+    };
+
+    std::vector<VadSegment>
+    extractVadSegments(std::span<const float> samples) const;
+    std::vector<AudioSegment>
+    mergeVadSegments(const std::vector<VadSegment> &rawSegs, int minSamples,
+                     int maxSamples) const;
+
     int findSplitBefore(int minPos, int maxPos) const;
     void decodeBlock(int start, int size);
     void saveSegment(int start, int size);
@@ -54,7 +69,7 @@ private:
     std::vector<float> m_samples;
     QStringList m_transcript;
     int m_modelSampleRate = 16000;
-    int m_maxChunkSeconds = 15;
+    int m_maxChunkSeconds = 18;
     bool m_processing = false;
     int m_segmentIndex = 0;
 };

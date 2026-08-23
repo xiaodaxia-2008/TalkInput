@@ -9,7 +9,7 @@ class SenseVoiceSpeechRecognizer final : public OfflineSpeechRecognizer
 {
 public:
     explicit SenseVoiceSpeechRecognizer(QObject *parent = nullptr)
-        : OfflineSpeechRecognizer(parent, 30)
+        : OfflineSpeechRecognizer(parent, 18)
     {
     }
 
