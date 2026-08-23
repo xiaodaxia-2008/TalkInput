@@ -29,6 +29,26 @@ add_executable(TalkInputAudioSegmentExample
     audio_segment_example.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
 )
+add_executable(TalkInputLongAudioExample
+    long_audio_example.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/app_config.cpp
+    ${PROJECT_SOURCE_DIR}/src/json_utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/offline_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/online_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/sense_voice_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/funasr_nano_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/streaming_paraformer_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/resources/misc/config.json
+)
+qt_add_resources(TalkInputLongAudioExample "long_audio_resources"
+    PREFIX "/"
+    BASE "${PROJECT_SOURCE_DIR}"
+    FILES
+    "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
+)
 
 target_link_libraries(TalkInputAsrExample
     PRIVATE
@@ -141,6 +161,22 @@ target_link_libraries(TalkInputAudioSegmentExample
 )
 target_compile_definitions(TalkInputAudioSegmentExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 target_include_directories(TalkInputAudioSegmentExample PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
+)
+
+target_link_libraries(TalkInputLongAudioExample
+    PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Multimedia
+    sherpa-onnx-c-api
+    nlohmann_json::nlohmann_json
+    spdlog::spdlog_header_only
+)
+target_compile_definitions(TalkInputLongAudioExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(TalkInputLongAudioExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
