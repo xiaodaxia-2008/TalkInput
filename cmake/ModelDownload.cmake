@@ -145,3 +145,30 @@ if(NOT EXISTS "${TALKINPUT_SENSEVOICE_MODEL_DIR}/model.int8.onnx")
     message(FATAL_ERROR
         "Missing SenseVoice model files under ${TALKINPUT_SENSEVOICE_MODEL_DIR}")
 endif()
+
+# ── Speaker Recognition (CAM++) ──────────────────────────────────
+set(TALKINPUT_CAMPLUS_MODEL_NAME
+    "sherpa-onnx-campplus-zh-cn-16k-common")
+
+set(TALKINPUT_CAMPLUS_MODEL_DIR
+    "${PROJECT_SOURCE_DIR}/models/${TALKINPUT_CAMPLUS_MODEL_NAME}")
+
+set(TALKINPUT_CAMPLUS_MODEL_FILE
+    "${TALKINPUT_CAMPLUS_MODEL_DIR}/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx")
+
+if(NOT EXISTS "${TALKINPUT_CAMPLUS_MODEL_FILE}")
+    set(TALKINPUT_CAMPLUS_MODEL_URL
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx")
+    message(STATUS
+        "Downloading CAM++ speaker recognition model from ${TALKINPUT_CAMPLUS_MODEL_URL}")
+    file(MAKE_DIRECTORY "${TALKINPUT_CAMPLUS_MODEL_DIR}")
+    file(DOWNLOAD "${TALKINPUT_CAMPLUS_MODEL_URL}"
+         "${TALKINPUT_CAMPLUS_MODEL_FILE}"
+         SHOW_PROGRESS)
+    message(STATUS "Downloaded to ${TALKINPUT_CAMPLUS_MODEL_FILE}")
+endif()
+
+if(NOT EXISTS "${TALKINPUT_CAMPLUS_MODEL_FILE}")
+    message(FATAL_ERROR
+        "Missing CAM++ speaker model file: ${TALKINPUT_CAMPLUS_MODEL_FILE}")
+endif()

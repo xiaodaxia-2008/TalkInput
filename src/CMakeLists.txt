@@ -74,6 +74,8 @@ add_executable(TalkInput WIN32
     logging.h
     recognition_history.cpp
     recognition_history.h
+    speaker_recognizer.cpp
+    speaker_recognizer.h
     recognizers/online_speech_recognizer.cpp
     recognizers/online_speech_recognizer.h
     recognizers/offline_speech_recognizer.cpp
@@ -263,6 +265,11 @@ endif()
 
 install(FILES ${TALKINPUT_SILERO_VAD_MODEL_FILE}
     DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_SILERO_VAD_MODEL_NAME}
+    COMPONENT Runtime
+)
+
+install(FILES ${TALKINPUT_CAMPLUS_MODEL_FILE}
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_CAMPLUS_MODEL_NAME}
     COMPONENT Runtime
 )
 

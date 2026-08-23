@@ -71,6 +71,28 @@ qt_add_resources(TalkInputLongAudioBenchmark "long_audio_benchmark_resources"
     "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
+add_executable(TalkInputMeetingDiarizationExample
+    meeting_diarization_example.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/app_config.cpp
+    ${PROJECT_SOURCE_DIR}/src/json_utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/speaker_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/offline_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/online_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/sense_voice_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/funasr_nano_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/recognizers/streaming_paraformer_speech_recognizer.cpp
+    ${PROJECT_SOURCE_DIR}/resources/misc/config.json
+)
+qt_add_resources(TalkInputMeetingDiarizationExample "meeting_diarization_resources"
+    PREFIX "/"
+    BASE "${PROJECT_SOURCE_DIR}"
+    FILES
+    "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
+)
+
 target_link_libraries(TalkInputAsrExample
     PRIVATE
     Qt6::Core
@@ -214,6 +236,22 @@ target_link_libraries(TalkInputLongAudioBenchmark
 )
 target_compile_definitions(TalkInputLongAudioBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 target_include_directories(TalkInputLongAudioBenchmark PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
+)
+
+target_link_libraries(TalkInputMeetingDiarizationExample
+    PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Multimedia
+    sherpa-onnx-c-api
+    nlohmann_json::nlohmann_json
+    spdlog::spdlog_header_only
+)
+target_compile_definitions(TalkInputMeetingDiarizationExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(TalkInputMeetingDiarizationExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
