@@ -1,5 +1,5 @@
 param(
-    [string]$AudioPath = (Join-Path $PSScriptRoot 'test_data/fiberart.m4a'),
+    [string]$AudioPath = (Join-Path $PSScriptRoot '..\data\audio\fiberart.m4a'),
     [string]$Endpoint = 'http://127.0.0.1:8766/v1/audio/transcriptions'
 )
 

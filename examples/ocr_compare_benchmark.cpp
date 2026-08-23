@@ -1,13 +1,11 @@
-/// OCR comparison: System (WinRT) vs Tesseract vs RapidOCR on the same image.
+/// OCR comparison: System (WinRT) vs Tesseract on the same image.
 ///
 /// Usage:
-///   TalkInputOcrCompareTest <image-file> [rapid-models-dir] [tessdata-dir]
+///   TalkInputOcrCompareTest <image-file> [tessdata-dir]
 ///
-/// All three engines are timed end-to-end (init + infer) and their text
-/// outputs are printed. The image defaults to tests/test_data/paseo_sreenshot.png
+/// Both engines are timed end-to-end (init + infer) and their text
+/// outputs are printed. The image defaults to data/images/paseo_sreenshot.png
 /// when no argument is given.
-
-#include "OcrLiteCApi.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -19,7 +17,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
-#include <thread>
 #include <vector>
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -40,9 +37,6 @@
 #include <winrt/Windows.Storage.h>
 #include <winrt/base.h>
 
-#ifndef TALKINPUT_RAPID_OCR_MODEL_DIR
-#define TALKINPUT_RAPID_OCR_MODEL_DIR "third_parties/rapid-ocr/models"
-#endif
 #ifndef TALKINPUT_TESSERACT_TRAIN_DATA_DIR
 #define TALKINPUT_TESSERACT_TRAIN_DATA_DIR "teact/train_data"
 #endif
@@ -233,64 +227,6 @@ BenchResult benchTesseract(const std::string &imagePath, const std::string &tess
 }
 
 // ---------------------------------------------------------------------------
-// RapidOCR
-// ---------------------------------------------------------------------------
-BenchResult benchRapidOcr(const std::string &imagePath, const std::string &modelsDir)
-{
-    BenchResult r;
-    r.engine = "RapidOCR";
-
-    std::string det = joinPath(modelsDir, "ch_PP-OCRv3_det_infer.onnx");
-    std::string cls = joinPath(modelsDir, "ch_ppocr_mobile_v2.0_cls_infer.onnx");
-    std::string rec = joinPath(modelsDir, "ch_PP-OCRv3_rec_infer.onnx");
-    std::string keys = joinPath(modelsDir, "ppocr_keys_v1.txt");
-
-    for (auto &f : {det, cls, rec, keys}) {
-        if (FILE *fp = fopen(f.c_str(), "rb")) fclose(fp);
-        else { r.error = "model not found: " + f; return r; }
-    }
-
-    auto t0 = std::chrono::steady_clock::now();
-    int threads = static_cast<int>(std::thread::hardware_concurrency());
-    OCR_HANDLE h = OcrInit(det.c_str(), cls.c_str(), rec.c_str(), keys.c_str(), threads);
-    auto t1 = std::chrono::steady_clock::now();
-    r.initMs = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-    if (!h) { r.error = "OcrInit returned null"; return r; }
-
-    OCR_PARAM param = {};
-    param.padding = 50;
-    param.maxSideLen = 1024;
-    param.boxScoreThresh = 0.6f;
-    param.boxThresh = 0.3f;
-    param.unClipRatio = 2.0f;
-    param.doAngle = 1;
-    param.mostAngle = 1;
-
-    auto t2 = std::chrono::steady_clock::now();
-    BOOL ok = OcrDetect(h, "", imagePath.c_str(), &param);
-    auto t3 = std::chrono::steady_clock::now();
-    r.inferMs = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count();
-
-    if (ok == FALSE) {
-        r.error = "OcrDetect failed";
-        OcrDestroy(h);
-        return r;
-    }
-    int len = OcrGetLen(h);
-    std::vector<char> buf(len > 0 ? len : 1, '\0');
-    OcrGetResult(h, buf.data(), len);
-    OcrDestroy(h);
-
-    r.text = std::string(buf.data());
-    while (!r.text.empty() && (r.text.back() == '\n' || r.text.back() == '\r' || r.text.back() == ' ')) r.text.pop_back();
-    size_t s = 0;
-    while (s < r.text.size() && (r.text[s] == '\n' || r.text[s] == '\r' || r.text[s] == ' ')) ++s;
-    if (s) r.text = r.text.substr(s);
-    r.ok = true;
-    return r;
-}
-
-// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -301,13 +237,11 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    std::string imagePath = "tests/test_data/paseo_sreenshot.png";
-    std::string rapidModelsDir = TALKINPUT_RAPID_OCR_MODEL_DIR;
+    std::string imagePath = "data/images/paseo_sreenshot.png";
     std::string tessdataDir = TALKINPUT_TESSERACT_TRAIN_DATA_DIR;
 
     if (argc >= 2) imagePath = argv[1];
-    if (argc >= 3) rapidModelsDir = argv[2];
-    if (argc >= 4) tessdataDir = argv[3];
+    if (argc >= 3) tessdataDir = argv[2];
 
     // Resolve image to absolute for WinRT StorageFile
     QFileInfo fi(QString::fromStdString(imagePath));
@@ -316,7 +250,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     std::string absImage = QDir::toNativeSeparators(fi.absoluteFilePath()).toStdString();
-    // For Tesseract/RapidOCR, keep native separators (both ok); use absolute for consistency
+    // For Tesseract, keep native separators; use absolute for consistency
     std::string absImageNorm = fi.absoluteFilePath().toStdString();
 
     // WinRT apartment (needed for System OCR)
@@ -328,13 +262,11 @@ int main(int argc, char *argv[])
 
     QImage qimg(QString::fromStdString(absImageNorm));
     printf("Image: %s  (%dx%d)  %.1f KB\n", absImage.c_str(), qimg.width(), qimg.height(), fi.size() / 1024.0);
-    printf("Rapid models: %s\n", rapidModelsDir.c_str());
     printf("Tessdata: %s\n\n", tessdataDir.c_str());
 
     std::vector<BenchResult> results;
     results.push_back(benchSystemOcr(absImage));
     results.push_back(benchTesseract(absImageNorm, tessdataDir));
-    results.push_back(benchRapidOcr(absImageNorm, rapidModelsDir));
 
     // Print table
     printf("\n%-18s | %8s | %8s | %8s | %6s | %s\n", "Engine", "init ms", "infer ms", "total ms", "chars", "status");

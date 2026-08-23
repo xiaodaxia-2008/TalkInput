@@ -675,19 +675,18 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
 
     const std::string imagePath =
-        argc >= 2 ? argv[1] : "tests/test_data/paseo_sreenshot.png";
+        argc >= 2 ? argv[1] : "data/images/paseo_sreenshot.png";
     const std::string detPath = findModel(
         argc >= 3 ? argv[2]
                   : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/det.onnx",
-        "third_parties/rapid-ocr/models/ch_PP-OCRv3_det_infer.onnx");
+        std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/det.onnx");
     const std::string recPath = findModel(
         argc >= 4 ? argv[3]
                   : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/rec.onnx",
-        "third_parties/rapid-ocr/models/ch_PP-OCRv3_rec_infer.onnx");
+        std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/rec.onnx");
     const std::string clsPath =
         argc >= 6 ? argv[5]
-                  : findModel("third_parties/rapid-ocr/models/"
-                              "ch_ppocr_mobile_v2.0_cls_infer.onnx",
+                  : findModel(std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/cls.onnx",
                               "");
     const std::string keysPath =
         argc >= 5

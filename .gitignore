@@ -5,11 +5,9 @@ build-release/
 _CPack_Packages/
 TalkInput-*.exe
 vcpkg_installed/
-data/
 *.bz2
 *.tar
 *.lib
-third_parties/rapid-ocr/
 third_parties/opencv/
 third_parties/onnxruntime/
 out/

@@ -30,7 +30,7 @@ QString defaultModelDir()
 
 QString defaultAudioPath()
 {
-    return QDir::current().filePath("tests/test_data/meeting.m4a");
+    return QDir::current().filePath("data/audio/meeting.m4a");
 }
 
 QString modelFile(const QString &modelDir, const QString &name)

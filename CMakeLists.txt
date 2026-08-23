@@ -94,7 +94,6 @@ FetchContent_MakeAvailable(QCoro)
 
 include(cmake/QtDeploy.cmake)
 include(cmake/SherpaOnnxRelease.cmake)
-include(cmake/RapidOcrOnnx.cmake)
 include(cmake/GitInfo.cmake)
 include(cmake/TesseractTrainData.cmake)
 include(cmake/ModelDownload.cmake)
@@ -105,6 +104,7 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(tests)
+add_subdirectory(examples)
 
 include(InstallRequiredSystemLibraries)
 

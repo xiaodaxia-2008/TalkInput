@@ -29,7 +29,7 @@ QString defaultModelDir()
 
 QString defaultAudioPath()
 {
-    return QDir::current().filePath("tests/test_data/fiberart.m4a");
+    return QDir::current().filePath("data/audio/fiberart.m4a");
 }
 
 QString defaultHotwordsPath()

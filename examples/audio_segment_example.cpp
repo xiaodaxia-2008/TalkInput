@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 
     const QString audioPath =
         (argc > 1) ? QString::fromLocal8Bit(argv[1])
-                   : QDir::current().filePath("tests/test_data/meeting.m4a");
+                   : QDir::current().filePath("data/audio/meeting.m4a");
 
     SPDLOG_INFO("Loading: {}", audioPath);
 
