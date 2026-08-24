@@ -2,6 +2,7 @@
 #include "app_config.h"
 #include "logging.h"
 #include "utils.h"
+#include "ui_llm_settings_widget.h"
 
 #include <nlohmann/json.hpp>
 
@@ -60,82 +61,17 @@ LlmSettingsWidget::~LlmSettingsWidget() = default;
 
 void LlmSettingsWidget::buildUi()
 {
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setObjectName(QStringLiteral("settingsScroll"));
-
-    auto *content = new QWidget(scroll);
-    auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(12);
-
-    auto *grid = new QGridLayout();
-    grid->setHorizontalSpacing(12);
-    grid->setVerticalSpacing(10);
-
-    // One setting per row
-    m_providerFormLabel = new QLabel(content);
-    grid->addWidget(m_providerFormLabel, 0, 0);
-
-    m_providerCombo = new QComboBox(content);
-    m_providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    grid->addWidget(m_providerCombo, 0, 1);
-
-    m_endpointFormLabel = new QLabel(content);
-    grid->addWidget(m_endpointFormLabel, 1, 0);
-
-    m_endpointEdit = new QLineEdit(content);
-    m_endpointEdit->setPlaceholderText(
-        QStringLiteral("https://api.openai.com"));
-    grid->addWidget(m_endpointEdit, 1, 1);
-
-    m_apiKeyFormLabel = new QLabel(content);
-    grid->addWidget(m_apiKeyFormLabel, 2, 0);
-
-    m_apiKeyEdit = new QLineEdit(content);
-    m_apiKeyEdit->setEchoMode(QLineEdit::Password);
-    m_apiKeyEdit->setPlaceholderText(QStringLiteral("sk-..."));
-    grid->addWidget(m_apiKeyEdit, 2, 1);
-
-    m_llmModelFormLabel = new QLabel(content);
-    grid->addWidget(m_llmModelFormLabel, 3, 0);
-
-    m_llmModelCombo = new QComboBox(content);
-    m_llmModelCombo->setEditable(true);
-    m_llmModelCombo->setInsertPolicy(QComboBox::NoInsert);
-    m_llmModelCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_llmModelCombo->lineEdit()->setPlaceholderText(
+    m_ui = std::make_unique<Ui::LlmSettingsWidget>();
+    m_ui->setupUi(this);
+    m_ui->providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_ui->llmModelCombo->setInsertPolicy(QComboBox::NoInsert);
+    m_ui->llmModelCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_ui->llmModelCombo->lineEdit()->setPlaceholderText(
         tr("Model name sent to the LLM service"));
-    auto *modelRow = new QHBoxLayout;
-    modelRow->setSpacing(8);
-    modelRow->addWidget(m_llmModelCombo, 1);
-    m_refreshModelsButton = new QPushButton(content);
-    m_refreshModelsButton->setFlat(true);
-    modelRow->addWidget(m_refreshModelsButton);
-    grid->addLayout(modelRow, 3, 1);
-
-    // Multi-line prompt editor
-    m_promptFormLabel = new QLabel(content);
-    m_promptFormLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    grid->addWidget(m_promptFormLabel, 4, 0, 1, 2);
-
-    m_promptEdit = new QTextEdit(content);
-    m_promptEdit->setAcceptRichText(false);
-    m_promptEdit->setFixedHeight(140);
-    grid->addWidget(m_promptEdit, 5, 0, 1, 2);
-
-    contentLayout->addLayout(grid);
-    contentLayout->addStretch();
-
-    scroll->setWidget(content);
-
-    auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
+    m_ui->promptFormLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
     const int iconSize = fontMetrics().height();
-    setButtonIcon(m_refreshModelsButton, ":/resources/icons/refresh.svg",
+    setButtonIcon(m_ui->refreshModelsButton, ":/resources/icons/refresh.svg",
                   iconSize);
     m_network = new QNetworkAccessManager(this);
 
@@ -143,16 +79,16 @@ void LlmSettingsWidget::buildUi()
     for (const auto &[key, preset] : appConfig().llmPresets) {
         const QString name = QString::fromStdString(preset.name);
         if (!name.isEmpty()) {
-            m_providerCombo->addItem(name, QString::fromStdString(key));
+            m_ui->providerCombo->addItem(name, QString::fromStdString(key));
         }
     }
 
     // Endpoint edited
-    connect(m_endpointEdit, &QLineEdit::editingFinished, this, [this]() {
+    connect(m_ui->endpointEdit, &QLineEdit::editingFinished, this, [this]() {
         auto &preset =
             appConfig().llmPresets
-                [m_providerCombo->currentData().toString().toStdString()];
-        preset.endpoint = m_endpointEdit->text().trimmed().toStdString();
+                [m_ui->providerCombo->currentData().toString().toStdString()];
+        preset.endpoint = m_ui->endpointEdit->text().trimmed().toStdString();
         markConfigDirty();
         STATUSBAR_INFO("{}", tr("LLM endpoint saved"));
     });
@@ -161,47 +97,47 @@ void LlmSettingsWidget::buildUi()
     auto saveModel = [this]() {
         auto &preset =
             appConfig().llmPresets
-                [m_providerCombo->currentData().toString().toStdString()];
+                [m_ui->providerCombo->currentData().toString().toStdString()];
         preset.currentModel =
-            m_llmModelCombo->currentText().trimmed().toStdString();
+            m_ui->llmModelCombo->currentText().trimmed().toStdString();
         markConfigDirty();
         STATUSBAR_INFO("{}", tr("LLM model saved"));
     };
-    connect(m_llmModelCombo->lineEdit(), &QLineEdit::editingFinished, this,
+    connect(m_ui->llmModelCombo->lineEdit(), &QLineEdit::editingFinished, this,
             saveModel);
-    connect(m_llmModelCombo, &QComboBox::activated, this,
+    connect(m_ui->llmModelCombo, &QComboBox::activated, this,
             [saveModel](int) { saveModel(); });
 
     // API key edited
-    connect(m_apiKeyEdit, &QLineEdit::editingFinished, this, [this]() {
+    connect(m_ui->apiKeyEdit, &QLineEdit::editingFinished, this, [this]() {
         auto &preset =
             appConfig().llmPresets
-                [m_providerCombo->currentData().toString().toStdString()];
-        preset.apiKey = m_apiKeyEdit->text().trimmed().toStdString();
+                [m_ui->providerCombo->currentData().toString().toStdString()];
+        preset.apiKey = m_ui->apiKeyEdit->text().trimmed().toStdString();
         markConfigDirty();
         STATUSBAR_INFO("{}", tr("LLM API key saved"));
     });
 
-    connect(m_providerCombo, &QComboBox::currentIndexChanged, this,
+    connect(m_ui->providerCombo, &QComboBox::currentIndexChanged, this,
             &LlmSettingsWidget::onLlmProviderChanged);
-    connect(m_refreshModelsButton, &QPushButton::clicked, this,
+    connect(m_ui->refreshModelsButton, &QPushButton::clicked, this,
             &LlmSettingsWidget::refreshModels);
 
     // Prompt edited — commit on every change
-    connect(m_promptEdit, &QTextEdit::textChanged, this,
+    connect(m_ui->promptEdit, &QTextEdit::textChanged, this,
             &LlmSettingsWidget::onPromptChanged);
 }
 
 void LlmSettingsWidget::retranslate()
 {
-    m_providerFormLabel->setText(tr("Provider"));
-    m_endpointFormLabel->setText(tr("Endpoint"));
-    m_llmModelFormLabel->setText(tr("Model"));
-    m_apiKeyFormLabel->setText(tr("API Key"));
-    m_refreshModelsButton->setText(tr("Refresh models"));
-    m_refreshModelsButton->setToolTip(
+    m_ui->providerFormLabel->setText(tr("Provider"));
+    m_ui->endpointFormLabel->setText(tr("Endpoint"));
+    m_ui->llmModelFormLabel->setText(tr("Model"));
+    m_ui->apiKeyFormLabel->setText(tr("API Key"));
+    m_ui->refreshModelsButton->setText(tr("Refresh models"));
+    m_ui->refreshModelsButton->setToolTip(
         tr("Fetch models from the configured endpoint"));
-    m_promptFormLabel->setText(
+    m_ui->promptFormLabel->setText(
         QStringLiteral("<b>%1</b><br><small>%2</small>")
             .arg(tr("Prompt"),
                  tr("Available variables: {{input}}, {{context}}, "
@@ -220,25 +156,25 @@ void LlmSettingsWidget::refreshFromConfig()
 {
     const QString savedLlmProviderId =
         QString::fromStdString(appConfig().settings.llmProviderId);
-    const int llmProviderIndex = m_providerCombo->findData(savedLlmProviderId);
+    const int llmProviderIndex = m_ui->providerCombo->findData(savedLlmProviderId);
     {
-        const QSignalBlocker blocker(m_providerCombo);
+        const QSignalBlocker blocker(m_ui->providerCombo);
         if (llmProviderIndex >= 0) {
-            m_providerCombo->setCurrentIndex(llmProviderIndex);
+            m_ui->providerCombo->setCurrentIndex(llmProviderIndex);
         }
     }
 
     {
         const auto &llmPresets = appConfig().llmPresets;
         auto llmIt = llmPresets.find(
-            m_providerCombo->currentData().toString().toStdString());
+            m_ui->providerCombo->currentData().toString().toStdString());
         if (llmIt != llmPresets.end()) {
             applyLlmProviderToUi(llmIt->second);
         }
     }
 
-    const QSignalBlocker promptBlocker(m_promptEdit);
-    m_promptEdit->setPlainText(
+    const QSignalBlocker promptBlocker(m_ui->promptEdit);
+    m_ui->promptEdit->setPlainText(
         QString::fromStdString(appConfig().settings.llmUserPrompt));
 }
 
@@ -246,7 +182,7 @@ void LlmSettingsWidget::onLlmProviderChanged(int /*index*/)
 {
     const auto &llmPresets = appConfig().llmPresets;
     auto it = llmPresets.find(
-        m_providerCombo->currentData().toString().toStdString());
+        m_ui->providerCombo->currentData().toString().toStdString());
     if (it == llmPresets.end()) {
         return;
     }
@@ -254,53 +190,53 @@ void LlmSettingsWidget::onLlmProviderChanged(int /*index*/)
 
     applyLlmProviderToUi(preset);
     appConfig().settings.llmProviderId =
-        m_providerCombo->currentData().toString().toStdString();
+        m_ui->providerCombo->currentData().toString().toStdString();
     markConfigDirty();
     STATUSBAR_INFO(
-        "{}", tr("LLM provider saved: %1").arg(m_providerCombo->currentText()));
+        "{}", tr("LLM provider saved: %1").arg(m_ui->providerCombo->currentText()));
 }
 
 void LlmSettingsWidget::applyLlmProviderToUi(const LlmPreset &provider)
 {
-    const QSignalBlocker epBlocker(m_endpointEdit);
-    const QSignalBlocker mBlocker(m_llmModelCombo);
-    const QSignalBlocker akBlocker(m_apiKeyEdit);
+    const QSignalBlocker epBlocker(m_ui->endpointEdit);
+    const QSignalBlocker mBlocker(m_ui->llmModelCombo);
+    const QSignalBlocker akBlocker(m_ui->apiKeyEdit);
 
-    m_endpointEdit->setText(QString::fromStdString(provider.endpoint));
+    m_ui->endpointEdit->setText(QString::fromStdString(provider.endpoint));
 
     const QString currentModel = QString::fromStdString(provider.currentModel);
-    m_llmModelCombo->clear();
+    m_ui->llmModelCombo->clear();
     for (const auto &[key, info] : provider.models) {
-        m_llmModelCombo->addItem(QString::fromStdString(key),
+        m_ui->llmModelCombo->addItem(QString::fromStdString(key),
                                  QString::fromStdString(key));
     }
-    if (!currentModel.isEmpty() && m_llmModelCombo->findText(currentModel) < 0)
+    if (!currentModel.isEmpty() && m_ui->llmModelCombo->findText(currentModel) < 0)
     {
-        m_llmModelCombo->addItem(currentModel, currentModel);
+        m_ui->llmModelCombo->addItem(currentModel, currentModel);
     }
-    m_llmModelCombo->setEditText(currentModel);
+    m_ui->llmModelCombo->setEditText(currentModel);
 
-    m_apiKeyEdit->setText(QString::fromStdString(provider.apiKey));
+    m_ui->apiKeyEdit->setText(QString::fromStdString(provider.apiKey));
 }
 
 void LlmSettingsWidget::onPromptChanged()
 {
     appConfig().settings.llmUserPrompt =
-        m_promptEdit->toPlainText().toStdString();
+        m_ui->promptEdit->toPlainText().toStdString();
     markConfigDirty();
 }
 
 void LlmSettingsWidget::refreshModels()
 {
-    const QString providerId = m_providerCombo->currentData().toString();
+    const QString providerId = m_ui->providerCombo->currentData().toString();
     auto it = appConfig().llmPresets.find(providerId.toStdString());
     if (it == appConfig().llmPresets.end()) {
         return;
     }
 
     auto &preset = it->second;
-    preset.endpoint = m_endpointEdit->text().trimmed().toStdString();
-    preset.apiKey = m_apiKeyEdit->text().trimmed().toStdString();
+    preset.endpoint = m_ui->endpointEdit->text().trimmed().toStdString();
+    preset.apiKey = m_ui->apiKeyEdit->text().trimmed().toStdString();
     markConfigDirty();
 
     const QUrl url = modelsUrl(QString::fromStdString(preset.endpoint));
@@ -318,10 +254,10 @@ void LlmSettingsWidget::refreshModels()
                              QStringLiteral("Bearer %1").arg(apiKey).toUtf8());
     }
 
-    m_refreshModelsButton->setEnabled(false);
+    m_ui->refreshModelsButton->setEnabled(false);
     QNetworkReply *reply = m_network->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply, providerId]() {
-        m_refreshModelsButton->setEnabled(true);
+        m_ui->refreshModelsButton->setEnabled(true);
         const auto replyGuard =
             qScopeGuard([reply]() { reply->deleteLater(); });
 

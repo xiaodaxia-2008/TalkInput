@@ -7,6 +7,11 @@ class QEvent;
 class QGroupBox;
 class QPushButton;
 
+namespace Ui
+{
+class GeneralSettingsWidget;
+}
+
 namespace talkinput
 {
 
@@ -32,11 +37,7 @@ private:
     void buildUi();
     void retranslate();
 
-    QGroupBox *m_group = nullptr;
-    QPushButton *m_resetButton = nullptr;
-    QPushButton *m_dataDirectoryButton = nullptr;
-    QPushButton *m_aboutButton = nullptr;
-    QPushButton *m_exitButton = nullptr;
+    std::unique_ptr<Ui::GeneralSettingsWidget> m_ui;
 };
 
 } // namespace talkinput

@@ -6,6 +6,11 @@
 class QCheckBox;
 class QEvent;
 
+namespace Ui
+{
+class RecognitionBehaviorWidget;
+}
+
 namespace talkinput
 {
 
@@ -28,11 +33,7 @@ private:
     void buildUi();
     void retranslate();
 
-    QCheckBox *m_useClipboardCheck = nullptr;
-    QCheckBox *m_copyToClipboardCheck = nullptr;
-    QCheckBox *m_restoreClipboardCheck = nullptr;
-    QCheckBox *m_saveOcrScreenshotCheck = nullptr;
-    QCheckBox *m_saveAsrAudioCheck = nullptr;
+    std::unique_ptr<Ui::RecognitionBehaviorWidget> m_ui;
 };
 
 } // namespace talkinput

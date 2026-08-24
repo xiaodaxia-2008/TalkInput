@@ -1,11 +1,8 @@
 #include "general_settings_widget.h"
+#include "ui_general_settings_widget.h"
 
 #include <QEvent>
-#include <QGroupBox>
-#include <QGridLayout>
 #include <QPushButton>
-#include <QScrollArea>
-#include <QVBoxLayout>
 
 namespace talkinput
 {
@@ -20,66 +17,25 @@ GeneralSettingsWidget::~GeneralSettingsWidget() = default;
 
 void GeneralSettingsWidget::buildUi()
 {
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setObjectName(QStringLiteral("settingsScroll"));
-
-    auto *content = new QWidget(scroll);
-    auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(12);
-
-    m_group = new QGroupBox(content);
-    auto *groupLayout = new QGridLayout(m_group);
-    groupLayout->setContentsMargins(16, 20, 16, 14);
-    groupLayout->setSpacing(10);
-
-    m_resetButton = new QPushButton(m_group);
-    m_dataDirectoryButton = new QPushButton(m_group);
-    m_aboutButton = new QPushButton(m_group);
-    m_exitButton = new QPushButton(m_group);
-
-    const auto configureButton = [](QPushButton *button) {
-        button->setFixedHeight(32);
-        button->setMaximumWidth(220);
-    };
-    configureButton(m_resetButton);
-    configureButton(m_dataDirectoryButton);
-    configureButton(m_aboutButton);
-    configureButton(m_exitButton);
-
-    groupLayout->addWidget(m_resetButton, 0, 0);
-    groupLayout->addWidget(m_dataDirectoryButton, 0, 1);
-    groupLayout->addWidget(m_aboutButton, 1, 0);
-    groupLayout->addWidget(m_exitButton, 1, 1);
-
-    contentLayout->addWidget(m_group);
-    contentLayout->addStretch();
-
-    scroll->setWidget(content);
-
-    auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
-
-    connect(m_resetButton, &QPushButton::clicked, this,
+    m_ui = std::make_unique<Ui::GeneralSettingsWidget>();
+    m_ui->setupUi(this);
+    connect(m_ui->resetButton, &QPushButton::clicked, this,
             &GeneralSettingsWidget::resetSettingsRequested);
-    connect(m_dataDirectoryButton, &QPushButton::clicked, this,
+    connect(m_ui->dataDirectoryButton, &QPushButton::clicked, this,
             &GeneralSettingsWidget::openDataDirectoryRequested);
-    connect(m_aboutButton, &QPushButton::clicked, this,
+    connect(m_ui->aboutButton, &QPushButton::clicked, this,
             &GeneralSettingsWidget::aboutRequested);
-    connect(m_exitButton, &QPushButton::clicked, this,
+    connect(m_ui->exitButton, &QPushButton::clicked, this,
             &GeneralSettingsWidget::exitRequested);
 }
 
 void GeneralSettingsWidget::retranslate()
 {
-    m_group->setTitle(tr("General"));
-    m_resetButton->setText(tr("Reset Settings"));
-    m_dataDirectoryButton->setText(tr("Open Data Directory"));
-    m_aboutButton->setText(tr("About"));
-    m_exitButton->setText(tr("Exit"));
+    m_ui->group->setTitle(tr("General"));
+    m_ui->resetButton->setText(tr("Reset Settings"));
+    m_ui->dataDirectoryButton->setText(tr("Open Data Directory"));
+    m_ui->aboutButton->setText(tr("About"));
+    m_ui->exitButton->setText(tr("Exit"));
 }
 
 void GeneralSettingsWidget::changeEvent(QEvent *event)

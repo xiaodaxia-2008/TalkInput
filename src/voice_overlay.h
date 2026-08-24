@@ -2,6 +2,12 @@
 
 #include <QString>
 #include <QWidget>
+#include <memory>
+
+namespace Ui
+{
+class VoiceOverlay;
+}
 
 class QGraphicsOpacityEffect;
 class QLabel;
@@ -15,6 +21,7 @@ class VoiceOverlay final : public QWidget
 {
 public:
     explicit VoiceOverlay(QWidget *parent = nullptr);
+    ~VoiceOverlay() override;
 
     void startAnimation();
     void stopAnimation();
@@ -25,9 +32,8 @@ public:
 private:
     void positionOnActiveScreen();
 
-    QLabel *m_modeLabel = nullptr;
+    std::unique_ptr<Ui::VoiceOverlay> m_ui;
     QPropertyAnimation *m_blinkAnimation = nullptr;
-    ScrollTextDisplay *m_scrollText = nullptr;
 };
 
 } // namespace talkinput

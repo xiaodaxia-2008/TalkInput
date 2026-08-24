@@ -1,6 +1,7 @@
 #include "voice_overlay.h"
 #include "app_config.h"
 #include "scroll_text_display.h"
+#include "ui_voice_overlay.h"
 
 #include <QCursor>
 #include <QEasingCurve>
@@ -26,20 +27,12 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     setWindowOpacity(appConfig().settings.overlayOpacity);
     setFixedHeight(72);
 
-    auto *container = new QWidget(this);
-    container->setObjectName("voiceOverlayContainer");
+    m_ui = std::make_unique<Ui::VoiceOverlay>();
+    m_ui->setupUi(this);
+    m_ui->modeLabel->setText(QStringLiteral("🎙"));
 
-    auto *layout = new QHBoxLayout(container);
-    layout->setContentsMargins(14, 6, 8, 6);
-    layout->setSpacing(4);
-
-    auto *modeLabel = new QLabel(QStringLiteral("🎙"), container);
-    modeLabel->setObjectName("voiceOverlayModeLabel");
-    m_modeLabel = modeLabel;
-    layout->addWidget(m_modeLabel);
-
-    auto *effect = new QGraphicsOpacityEffect(m_modeLabel);
-    m_modeLabel->setGraphicsEffect(effect);
+    auto *effect = new QGraphicsOpacityEffect(m_ui->modeLabel);
+    m_ui->modeLabel->setGraphicsEffect(effect);
     m_blinkAnimation = new QPropertyAnimation(effect, "opacity", this);
     m_blinkAnimation->setDuration(1200);
     m_blinkAnimation->setStartValue(1.0);
@@ -47,15 +40,10 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     m_blinkAnimation->setLoopCount(-1);
     m_blinkAnimation->setEasingCurve(QEasingCurve::InOutSine);
 
-    m_scrollText = new ScrollTextDisplay(container);
-    layout->addWidget(m_scrollText, 1);
-
-    auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->addWidget(container);
-
     setMinimumWidth(320);
 }
+
+VoiceOverlay::~VoiceOverlay() = default;
 
 void VoiceOverlay::startAnimation()
 {
@@ -80,12 +68,12 @@ void VoiceOverlay::stopBlinking()
 
 void VoiceOverlay::setPreviewText(const QString &text)
 {
-    m_scrollText->setText(text);
+    m_ui->scrollText->setText(text);
 }
 
 void VoiceOverlay::setModeText(const QString &text)
 {
-    m_modeLabel->setText(text);
+    m_ui->modeLabel->setText(text);
 }
 
 void VoiceOverlay::positionOnActiveScreen()

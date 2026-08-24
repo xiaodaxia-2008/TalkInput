@@ -1,4 +1,5 @@
 #include "log_panel.h"
+#include "ui_log_panel.h"
 
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -9,38 +10,23 @@ namespace talkinput
 
 LogPanel::LogPanel(QWidget *parent) : QWidget(parent)
 {
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
-
-    // ── Toolbar ──────────────────────────────────────────────
-    auto *toolbar = new QHBoxLayout;
-    toolbar->setContentsMargins(4, 4, 4, 2);
-
-    auto *clearBtn = new QPushButton(tr("Clear"), this);
-    clearBtn->setFixedHeight(24);
-    connect(clearBtn, &QPushButton::clicked, this, &LogPanel::onClear);
-    toolbar->addWidget(clearBtn);
-    toolbar->addStretch();
-
-    layout->addLayout(toolbar);
-
-    // ── Log text area ────────────────────────────────────────
-    m_textEdit = new QPlainTextEdit(this);
-    m_textEdit->setReadOnly(true);
-    m_textEdit->setFrameShape(QFrame::NoFrame);
-    m_textEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
-    m_textEdit->setMaximumBlockCount(kMaxLines);
-    m_textEdit->setObjectName("logPanelTextEdit");
-
-    layout->addWidget(m_textEdit);
+    m_ui = std::make_unique<Ui::LogPanel>();
+    m_ui->setupUi(this);
+    m_ui->logPanelTextEdit->setMaximumBlockCount(kMaxLines);
+    connect(m_ui->clearButton, &QPushButton::clicked, this,
+            &LogPanel::onClear);
 }
 
 LogPanel::~LogPanel() = default;
 
 void LogPanel::onClear()
 {
-    m_textEdit->clear();
+    m_ui->logPanelTextEdit->clear();
+}
+
+QPlainTextEdit *LogPanel::textEdit() const
+{
+    return m_ui->logPanelTextEdit;
 }
 
 } // namespace talkinput

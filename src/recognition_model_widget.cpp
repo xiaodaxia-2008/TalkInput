@@ -5,6 +5,7 @@
 #include "model_download.h"
 #include "utils.h"
 #include "voice_input_controller.h"
+#include "ui_recognition_model_widget.h"
 
 #include <QComboBox>
 #include <QAction>
@@ -45,117 +46,22 @@ RecognitionModelWidget::~RecognitionModelWidget() = default;
 
 void RecognitionModelWidget::buildUi()
 {
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setObjectName(QStringLiteral("settingsScroll"));
-
-    auto *content = new QWidget(scroll);
-    auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(12);
-
-    // ── ASR model group ────────────────────────────────────────────
-    auto *modelLayout = new QVBoxLayout;
-    modelLayout->setSpacing(10);
-
-    auto *modelRow = new QHBoxLayout;
-    modelRow->setSpacing(8);
-    m_modelLabel = new QLabel(content);
-    modelRow->addWidget(m_modelLabel);
-
-    m_modelCombo = new QComboBox(content);
-    m_modelCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    modelRow->addWidget(m_modelCombo, 1);
-
-    m_browserButton = new QPushButton(content);
-    m_browserButton->setFlat(true);
-    modelRow->addWidget(m_browserButton);
-
-    m_importButton = new QPushButton(content);
-    m_importButton->setFlat(true);
-    modelRow->addWidget(m_importButton);
-
-    m_useButton = new QPushButton(content);
-    m_useButton->setFlat(true);
-    modelRow->addWidget(m_useButton);
-
-    modelLayout->addLayout(modelRow);
-
-    m_modeLabel = new QLabel(content);
-    m_modeLabel->setToolTip(
-        tr("Default pipeline mode for the trigger hotkey"));
-    m_modeCombo = new QComboBox(content);
-    m_modeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    auto *modeRow = new QHBoxLayout;
-    modeRow->setSpacing(8);
-    modeRow->addWidget(m_modeLabel);
-    modeRow->addWidget(m_modeCombo, 1);
-    modelLayout->addLayout(modeRow);
-
-    contentLayout->addLayout(modelLayout);
-
-    // ── Hot words group ────────────────────────────────────────────
-    auto *hintRow = new QHBoxLayout;
-    hintRow->setSpacing(8);
-    auto *hintIcon = new QLabel(content);
-    hintIcon->setObjectName(QStringLiteral("hotwordsHintIcon"));
-    hintIcon->setText(QStringLiteral("💡"));
-    hintIcon->setAlignment(Qt::AlignCenter);
-    hintIcon->setFixedSize(20, 20);
-    hintRow->addWidget(hintIcon);
-
-    m_hotwordsHintLabel = new QLabel(content);
-    m_hotwordsHintLabel->setObjectName(QStringLiteral("hotwordsHintLabel"));
-    m_hotwordsHintLabel->setWordWrap(true);
-    hintRow->addWidget(m_hotwordsHintLabel, 1);
-
-    m_hotwordsSaveButton = new QPushButton(content);
-    m_hotwordsSaveButton->setFlat(true);
-    hintRow->addWidget(m_hotwordsSaveButton);
-    contentLayout->addLayout(hintRow);
-
-    m_hotwordsEdit = new QTextEdit(content);
-    m_hotwordsEdit->setAcceptRichText(false);
-    m_hotwordsEdit->setMinimumHeight(100);
-    contentLayout->addWidget(m_hotwordsEdit);
-
-    auto *actionsRow = new QHBoxLayout;
-    actionsRow->setSpacing(8);
-    m_startRecognitionButton = new QPushButton(content);
-    m_recognizeFileButton = new QPushButton(content);
-    actionsRow->addWidget(m_startRecognitionButton);
-    actionsRow->addWidget(m_recognizeFileButton);
-    actionsRow->addStretch();
-    contentLayout->addLayout(actionsRow);
-
-    // ── Recognition result ─────────────────────────────────────
-    m_resultEdit = new QTextEdit(content);
-    m_resultEdit->setReadOnly(true);
-    m_resultEdit->setMinimumHeight(120);
-    contentLayout->addWidget(m_resultEdit);
-
-    contentLayout->addStretch();
-
-    scroll->setWidget(content);
-
-    auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
+    m_ui = std::make_unique<Ui::RecognitionModelWidget>();
+    m_ui->setupUi(this);
 
     const int iconSize = fontMetrics().height();
-    setButtonIcon(m_useButton, ":/resources/icons/check.svg", iconSize);
-    m_useButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_browserButton, ":/resources/icons/globe.svg", iconSize);
-    m_browserButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_importButton, ":/resources/icons/import.svg", iconSize);
-    m_importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_hotwordsSaveButton, ":/resources/icons/save.svg", iconSize);
-    m_hotwordsSaveButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->useButton, ":/resources/icons/check.svg", iconSize);
+    m_ui->useButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", iconSize);
+    m_ui->browserButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
+    m_ui->importButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->hotwordsSaveButton, ":/resources/icons/save.svg", iconSize);
+    m_ui->hotwordsSaveButton->setProperty("buttonRole", "icon");
 
-    connect(m_hotwordsEdit, &QTextEdit::textChanged, this,
+    connect(m_ui->hotwordsEdit, &QTextEdit::textChanged, this,
             &RecognitionModelWidget::onHotwordsChanged);
-    connect(m_hotwordsSaveButton, &QPushButton::clicked, this,
+    connect(m_ui->hotwordsSaveButton, &QPushButton::clicked, this,
             [this]() { saveHotwords(true); });
 }
 
@@ -174,40 +80,40 @@ void RecognitionModelWidget::setRecognitionActions(QAction *startAction,
         QObject::connect(action, &QAction::changed, button, sync);
         sync();
     };
-    bindAction(m_startRecognitionButton, startAction);
-    bindAction(m_recognizeFileButton, fileAction);
+    bindAction(m_ui->startRecognitionButton, startAction);
+    bindAction(m_ui->recognizeFileButton, fileAction);
 }
 
 void RecognitionModelWidget::setRecognitionResult(const QString &text)
 {
-    m_resultEdit->setPlainText(text);
+    m_ui->resultEdit->setPlainText(text);
 }
 
 void RecognitionModelWidget::retranslate()
 {
-    m_modelLabel->setText(tr("Model:"));
-    m_modeLabel->setText(tr("Mode:"));
+    m_ui->modelLabel->setText(tr("Model:"));
+    m_ui->modeLabel->setText(tr("Mode:"));
 
     {
-        const QSignalBlocker blocker(m_modeCombo);
-        const QString current = m_modeCombo->currentData().toString();
-        m_modeCombo->clear();
-        m_modeCombo->addItem(tr("ASR only"), QStringLiteral("asr_only"));
-        m_modeCombo->addItem(tr("ASR + AI Polish"),
+        const QSignalBlocker blocker(m_ui->modeCombo);
+        const QString current = m_ui->modeCombo->currentData().toString();
+        m_ui->modeCombo->clear();
+        m_ui->modeCombo->addItem(tr("ASR only"), QStringLiteral("asr_only"));
+        m_ui->modeCombo->addItem(tr("ASR + AI Polish"),
                              QStringLiteral("asr_llm"));
-        m_modeCombo->addItem(tr("ASR + OCR context + AI Polish"),
+        m_ui->modeCombo->addItem(tr("ASR + OCR context + AI Polish"),
                              QStringLiteral("asr_llm_ocr"));
-        const int idx = m_modeCombo->findData(current);
+        const int idx = m_ui->modeCombo->findData(current);
         if (idx >= 0) {
-            m_modeCombo->setCurrentIndex(idx);
+            m_ui->modeCombo->setCurrentIndex(idx);
         }
     }
 
-    m_browserButton->setToolTip(tr("Open download page in browser"));
-    m_importButton->setToolTip(tr("Import downloaded model archive"));
-    m_useButton->setToolTip(tr("Use this model"));
-    m_hotwordsSaveButton->setToolTip(tr("Save hot words and reload model"));
-    m_hotwordsHintLabel->setText(
+    m_ui->browserButton->setToolTip(tr("Open download page in browser"));
+    m_ui->importButton->setToolTip(tr("Import downloaded model archive"));
+    m_ui->useButton->setToolTip(tr("Use this model"));
+    m_ui->hotwordsSaveButton->setToolTip(tr("Save hot words and reload model"));
+    m_ui->hotwordsHintLabel->setText(
         tr("<b>Hot Words</b> — one per line. Saved hot words are applied by "
            "reloading the speech recognition model."));
 
@@ -235,18 +141,18 @@ void RecognitionModelWidget::refreshFromConfig()
             lines.append(s);
         }
     }
-    const QSignalBlocker blocker(m_hotwordsEdit);
-    m_hotwordsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+    const QSignalBlocker blocker(m_ui->hotwordsEdit);
+    m_ui->hotwordsEdit->setPlainText(lines.join(QLatin1Char('\n')));
 }
 
 void RecognitionModelWidget::initActiveMode()
 {
-    connect(m_modeCombo, &QComboBox::currentIndexChanged, this, [this]() {
-        const QString mode = m_modeCombo->currentData().toString();
+    connect(m_ui->modeCombo, &QComboBox::currentIndexChanged, this, [this]() {
+        const QString mode = m_ui->modeCombo->currentData().toString();
         appConfig().settings.activeMode = mode.toStdString();
         markConfigDirty();
         STATUSBAR_INFO("{}",
-                       tr("Active mode changed to %1").arg(m_modeCombo->currentText()));
+                       tr("Active mode changed to %1").arg(m_ui->modeCombo->currentText()));
     });
 }
 
@@ -254,20 +160,20 @@ void RecognitionModelWidget::updateActiveModeDisplay()
 {
     const QString activeMode =
         QString::fromStdString(appConfig().settings.activeMode);
-    const int idx = m_modeCombo->findData(activeMode);
+    const int idx = m_ui->modeCombo->findData(activeMode);
     if (idx >= 0) {
-        const QSignalBlocker blocker(m_modeCombo);
-        m_modeCombo->setCurrentIndex(idx);
+        const QSignalBlocker blocker(m_ui->modeCombo);
+        m_ui->modeCombo->setCurrentIndex(idx);
     }
 }
 
 void RecognitionModelWidget::initAsrModel()
 {
-    connect(m_useButton, &QPushButton::clicked, this,
+    connect(m_ui->useButton, &QPushButton::clicked, this,
             &RecognitionModelWidget::onUseAsrModel);
-    connect(m_browserButton, &QPushButton::clicked, this,
+    connect(m_ui->browserButton, &QPushButton::clicked, this,
             &RecognitionModelWidget::onOpenModelUrl);
-    connect(m_importButton, &QPushButton::clicked, this,
+    connect(m_ui->importButton, &QPushButton::clicked, this,
             &RecognitionModelWidget::onImportModel);
     refreshAsrModelCombo();
 }
@@ -310,7 +216,7 @@ void RecognitionModelWidget::refreshAsrModelCombo()
         QString::fromStdString(appConfig().settings.asrProviderId);
     const auto &presets = appConfig().asrPresets;
 
-    m_modelCombo->clear();
+    m_ui->modelCombo->clear();
 
     int foundIndex = -1;
     int i = 0;
@@ -327,13 +233,13 @@ void RecognitionModelWidget::refreshAsrModelCombo()
         else {
             label += tr(" (Not Installed)");
         }
-        m_modelCombo->addItem(label, providerId);
+        m_ui->modelCombo->addItem(label, providerId);
         ++i;
     }
 
     if (foundIndex >= 0) {
-        const QSignalBlocker blocker(m_modelCombo);
-        m_modelCombo->setCurrentIndex(foundIndex);
+        const QSignalBlocker blocker(m_ui->modelCombo);
+        m_ui->modelCombo->setCurrentIndex(foundIndex);
     }
 }
 
@@ -370,12 +276,12 @@ RecognitionModelWidget::downloadAsrModel(const QString &providerId)
 
 void RecognitionModelWidget::onUseAsrModel()
 {
-    const int index = m_modelCombo->currentIndex();
-    if (index < 0 || index >= m_modelCombo->count()) {
+    const int index = m_ui->modelCombo->currentIndex();
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
         return;
     }
 
-    const QString providerId = m_modelCombo->itemData(index).toString();
+    const QString providerId = m_ui->modelCombo->itemData(index).toString();
     if (providerId.isEmpty()) {
         return;
     }
@@ -412,12 +318,12 @@ QCoro::Task<void> RecognitionModelWidget::useAsrModel(const QString &providerId)
 
 void RecognitionModelWidget::onOpenModelUrl()
 {
-    const int index = m_modelCombo->currentIndex();
-    if (index < 0 || index >= m_modelCombo->count()) {
+    const int index = m_ui->modelCombo->currentIndex();
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
         return;
     }
 
-    const QString providerId = m_modelCombo->itemData(index).toString();
+    const QString providerId = m_ui->modelCombo->itemData(index).toString();
     if (providerId.isEmpty()) {
         return;
     }
@@ -434,12 +340,12 @@ void RecognitionModelWidget::onOpenModelUrl()
 
 void RecognitionModelWidget::onImportModel()
 {
-    const int index = m_modelCombo->currentIndex();
-    if (index < 0 || index >= m_modelCombo->count()) {
+    const int index = m_ui->modelCombo->currentIndex();
+    if (index < 0 || index >= m_ui->modelCombo->count()) {
         return;
     }
 
-    const QString providerId = m_modelCombo->itemData(index).toString();
+    const QString providerId = m_ui->modelCombo->itemData(index).toString();
     if (providerId.isEmpty()) {
         return;
     }
@@ -511,7 +417,7 @@ void RecognitionModelWidget::saveHotwords(bool reloadModel)
 {
     std::vector<std::string> hwList;
     const QStringList lines =
-        m_hotwordsEdit->toPlainText().split(QLatin1Char('\n'));
+        m_ui->hotwordsEdit->toPlainText().split(QLatin1Char('\n'));
     for (const QString &line : lines) {
         const QString trimmed = line.trimmed();
         if (!trimmed.isEmpty()) {

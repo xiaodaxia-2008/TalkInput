@@ -10,6 +10,11 @@ class QLineEdit;
 class QSpinBox;
 class QTextEdit;
 
+namespace Ui
+{
+class ApiServerSettingsWidget;
+}
+
 namespace talkinput
 {
 
@@ -33,14 +38,7 @@ private:
     void retranslate();
     void applyApiServerSettings();
 
-    QCheckBox *m_enableCheck = nullptr;
-    QLabel *m_hostLabel = nullptr;
-    QLineEdit *m_hostEdit = nullptr;
-    QLabel *m_portLabel = nullptr;
-    QSpinBox *m_portSpin = nullptr;
-    QLabel *m_keyLabel = nullptr;
-    QLineEdit *m_keyEdit = nullptr;
-    QTextEdit *m_apiInfoEdit = nullptr;
+    std::unique_ptr<Ui::ApiServerSettingsWidget> m_ui;
 };
 
 } // namespace talkinput

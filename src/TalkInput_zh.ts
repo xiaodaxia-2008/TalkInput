@@ -633,68 +633,70 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::OcrSettingsWidget</name>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="90"/>
-        <location filename="ocr_settings_widget.cpp" line="124"/>
+        <location filename="ocr_settings_widget.cpp" line="222"/>
+        <location filename="ocr_settings_widget.cpp" line="262"/>
+        <location filename="ocr_settings_widget.cpp" line="371"/>
         <source>OCR image preview will appear here</source>
         <translation>OCR 图片预览将显示在这里</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="118"/>
+        <location filename="ocr_settings_widget.cpp" line="255"/>
         <source>Provider:</source>
         <translation>服务商：</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="119"/>
+        <location filename="ocr_settings_widget.cpp" line="256"/>
         <source>Recognize clipboard image</source>
         <translation>识别剪贴板图像</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="120"/>
+        <location filename="ocr_settings_widget.cpp" line="257"/>
         <source>Open image and recognize</source>
         <translation>打开图片并识别</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="121"/>
-        <source>OCR Result</source>
-        <translation>OCR 识别结果</translation>
+        <location filename="ocr_settings_widget.cpp" line="216"/>
+        <location filename="ocr_settings_widget.cpp" line="265"/>
+        <source>OCR result will appear here</source>
+        <translation>OCR 识别结果将显示在这里</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="122"/>
+        <location filename="ocr_settings_widget.cpp" line="258"/>
         <source>Copy result</source>
         <translation>复制结果</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="123"/>
+        <location filename="ocr_settings_widget.cpp" line="259"/>
         <source>Copy OCR result to clipboard</source>
         <translation>复制 OCR 识别结果到剪贴板</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="160"/>
+        <location filename="ocr_settings_widget.cpp" line="301"/>
         <source>The clipboard does not contain an image.</source>
         <translation>剪贴板中没有图像</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="169"/>
+        <location filename="ocr_settings_widget.cpp" line="310"/>
         <source>Open image</source>
         <translation>打开图片</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="170"/>
+        <location filename="ocr_settings_widget.cpp" line="311"/>
         <source>Images (*.png *.jpg *.jpeg *.bmp *.webp *.gif);;All files (*)</source>
         <translation>图像 (*.png *.jpg *.jpeg *.bmp *.webp *.gif);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="177"/>
+        <location filename="ocr_settings_widget.cpp" line="318"/>
         <source>Failed to open image.</source>
         <translation>打开图片失败</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="187"/>
+        <location filename="ocr_settings_widget.cpp" line="328"/>
         <source>OCR provider is not available.</source>
         <translation>OCR 服务不可用。</translation>
     </message>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="222"/>
+        <location filename="ocr_settings_widget.cpp" line="363"/>
         <source>OCR result copied</source>
         <translation>OCR 结果已复制</translation>
     </message>

@@ -11,10 +11,16 @@ class QLabel;
 class QPushButton;
 class QTextEdit;
 
+class OcrImagePreview;
+
+namespace Ui
+{
+class OcrSettingsWidget;
+}
+
 namespace talkinput
 {
 
-class OcrImagePreview;
 struct OcrTextBlock;
 
 /// OCR provider selection ("OCR").
@@ -42,14 +48,7 @@ private:
     void copyResult();
     void showPreview(const QImage &image, const QVector<OcrTextBlock> &blocks);
 
-    QLabel *m_providerLabel = nullptr;
-    QComboBox *m_ocrCombo = nullptr;
-    QPushButton *m_clipboardButton = nullptr;
-    QPushButton *m_openImageButton = nullptr;
-    QLabel *m_resultLabel = nullptr;
-    QPushButton *m_copyResultButton = nullptr;
-    QTextEdit *m_resultEdit = nullptr;
-    OcrImagePreview *m_previewLabel = nullptr;
+    std::unique_ptr<Ui::OcrSettingsWidget> m_ui;
 };
 
 } // namespace talkinput

@@ -13,6 +13,11 @@ class QNetworkAccessManager;
 class QPushButton;
 class QTextEdit;
 
+namespace Ui
+{
+class LlmSettingsWidget;
+}
+
 namespace talkinput
 {
 
@@ -39,17 +44,7 @@ private:
     void onPromptChanged();
     void refreshModels();
 
-    QLabel *m_providerFormLabel = nullptr;
-    QComboBox *m_providerCombo = nullptr;
-    QLabel *m_endpointFormLabel = nullptr;
-    QLineEdit *m_endpointEdit = nullptr;
-    QLabel *m_llmModelFormLabel = nullptr;
-    QComboBox *m_llmModelCombo = nullptr;
-    QLabel *m_apiKeyFormLabel = nullptr;
-    QLineEdit *m_apiKeyEdit = nullptr;
-    QLabel *m_promptFormLabel = nullptr;
-    QTextEdit *m_promptEdit = nullptr;
-    QPushButton *m_refreshModelsButton = nullptr;
+    std::unique_ptr<Ui::LlmSettingsWidget> m_ui;
     QNetworkAccessManager *m_network = nullptr;
 };
 

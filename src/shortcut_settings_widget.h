@@ -4,10 +4,10 @@
 #include <memory>
 
 class QEvent;
-class QGroupBox;
-class QKeySequenceEdit;
-class QLabel;
-class QPushButton;
+namespace Ui
+{
+class ShortcutSettingsWidget;
+}
 
 namespace talkinput
 {
@@ -32,13 +32,7 @@ private:
     void retranslate();
     void initShortcuts();
 
-    QGroupBox *m_group = nullptr;
-    QLabel *m_triggerLabel = nullptr;
-    QKeySequenceEdit *m_triggerEdit = nullptr;
-    QPushButton *m_triggerApplyBtn = nullptr;
-    QLabel *m_modeSwitchLabel = nullptr;
-    QKeySequenceEdit *m_modeSwitchEdit = nullptr;
-    QPushButton *m_modeSwitchApplyBtn = nullptr;
+    std::unique_ptr<Ui::ShortcutSettingsWidget> m_ui;
 };
 
 } // namespace talkinput

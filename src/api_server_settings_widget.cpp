@@ -1,13 +1,12 @@
 #include "api_server_settings_widget.h"
 #include "app_config.h"
 #include "speech_api_server.h"
+#include "ui_api_server_settings_widget.h"
 
 #include <QCheckBox>
 #include <QEvent>
-#include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QSpinBox>
 #include <QTextEdit>
@@ -28,84 +27,28 @@ ApiServerSettingsWidget::~ApiServerSettingsWidget() = default;
 
 void ApiServerSettingsWidget::buildUi()
 {
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setObjectName(QStringLiteral("settingsScroll"));
+    m_ui = std::make_unique<Ui::ApiServerSettingsWidget>();
+    m_ui->setupUi(this);
 
-    auto *content = new QWidget(scroll);
-    auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(12);
-
-    auto *grid = new QGridLayout();
-    grid->setHorizontalSpacing(8);
-    grid->setVerticalSpacing(10);
-
-    m_enableCheck = new QCheckBox(content);
-    grid->addWidget(m_enableCheck, 0, 0, 1, 2);
-
-    m_hostLabel = new QLabel(content);
-    grid->addWidget(m_hostLabel, 1, 0);
-
-    m_hostEdit = new QLineEdit(content);
-    m_hostEdit->setPlaceholderText(QStringLiteral("127.0.0.1"));
-    m_hostEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    grid->addWidget(m_hostEdit, 1, 1);
-
-    m_portLabel = new QLabel(content);
-    grid->addWidget(m_portLabel, 2, 0);
-
-    m_portSpin = new QSpinBox(content);
-    m_portSpin->setRange(1, 65535);
-    m_portSpin->setValue(8766);
-    m_portSpin->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    grid->addWidget(m_portSpin, 2, 1);
-
-    m_keyLabel = new QLabel(content);
-    m_keyLabel->setToolTip(
-        tr("Leave empty to allow requests without authentication"));
-    grid->addWidget(m_keyLabel, 3, 0);
-
-    m_keyEdit = new QLineEdit(content);
-    m_keyEdit->setEchoMode(QLineEdit::Password);
-    m_keyEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    grid->addWidget(m_keyEdit, 3, 1);
-
-    contentLayout->addLayout(grid);
-
-    m_apiInfoEdit = new QTextEdit(content);
-    m_apiInfoEdit->setReadOnly(true);
-    m_apiInfoEdit->setAcceptRichText(false);
-    m_apiInfoEdit->setMinimumHeight(220);
-    contentLayout->addWidget(m_apiInfoEdit);
-    contentLayout->addStretch();
-
-    scroll->setWidget(content);
-
-    auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
-
-    connect(m_enableCheck, &QCheckBox::toggled, this, [this]() {
-        appConfig().settings.apiServerEnabled = m_enableCheck->isChecked();
+    connect(m_ui->enableCheck, &QCheckBox::toggled, this, [this]() {
+        appConfig().settings.apiServerEnabled = m_ui->enableCheck->isChecked();
         markConfigDirty();
         applyApiServerSettings();
     });
-    connect(m_hostEdit, &QLineEdit::editingFinished, this, [this]() {
+    connect(m_ui->hostEdit, &QLineEdit::editingFinished, this, [this]() {
         appConfig().settings.apiServerHost =
-            m_hostEdit->text().trimmed().toStdString();
+            m_ui->hostEdit->text().trimmed().toStdString();
         markConfigDirty();
         applyApiServerSettings();
     });
-    connect(m_portSpin, &QSpinBox::valueChanged, this, [this](int value) {
+    connect(m_ui->portSpin, &QSpinBox::valueChanged, this, [this](int value) {
         appConfig().settings.apiServerPort = value;
         markConfigDirty();
         applyApiServerSettings();
     });
-    connect(m_keyEdit, &QLineEdit::editingFinished, this, [this]() {
+    connect(m_ui->keyEdit, &QLineEdit::editingFinished, this, [this]() {
         appConfig().settings.apiServerApiKey =
-            m_keyEdit->text().trimmed().toStdString();
+            m_ui->keyEdit->text().trimmed().toStdString();
         markConfigDirty();
         applyApiServerSettings();
     });
@@ -113,14 +56,16 @@ void ApiServerSettingsWidget::buildUi()
 
 void ApiServerSettingsWidget::retranslate()
 {
-    m_enableCheck->setText(tr("Enable local API server"));
-    m_enableCheck->setToolTip(tr(
+    m_ui->enableCheck->setText(tr("Enable local API server"));
+    m_ui->enableCheck->setToolTip(tr(
         "Expose the loaded ASR and OCR providers through an OpenAI-compatible "
         "HTTP API"));
-    m_hostLabel->setText(tr("Host"));
-    m_portLabel->setText(tr("Port"));
-    m_keyLabel->setText(tr("API Key"));
-    m_apiInfoEdit->setPlainText(
+    m_ui->hostLabel->setText(tr("Host"));
+    m_ui->portLabel->setText(tr("Port"));
+    m_ui->keyLabel->setText(tr("API Key"));
+    m_ui->keyLabel->setToolTip(
+        tr("Leave empty to allow requests without authentication"));
+    m_ui->apiInfoEdit->setPlainText(
         tr("Local API endpoints:\n"
            "GET /, /health, /healthz — health check\n"
            "GET /v1/models — list the currently loaded recognition model\n"
@@ -142,15 +87,15 @@ void ApiServerSettingsWidget::changeEvent(QEvent *event)
 
 void ApiServerSettingsWidget::refreshFromConfig()
 {
-    const QSignalBlocker bc1(m_enableCheck);
-    const QSignalBlocker bc2(m_hostEdit);
-    const QSignalBlocker bc3(m_portSpin);
-    const QSignalBlocker bc4(m_keyEdit);
-    m_enableCheck->setChecked(appConfig().settings.apiServerEnabled);
-    m_hostEdit->setText(
+    const QSignalBlocker bc1(m_ui->enableCheck);
+    const QSignalBlocker bc2(m_ui->hostEdit);
+    const QSignalBlocker bc3(m_ui->portSpin);
+    const QSignalBlocker bc4(m_ui->keyEdit);
+    m_ui->enableCheck->setChecked(appConfig().settings.apiServerEnabled);
+    m_ui->hostEdit->setText(
         QString::fromStdString(appConfig().settings.apiServerHost));
-    m_portSpin->setValue(appConfig().settings.apiServerPort);
-    m_keyEdit->setText(
+    m_ui->portSpin->setValue(appConfig().settings.apiServerPort);
+    m_ui->keyEdit->setText(
         QString::fromStdString(appConfig().settings.apiServerApiKey));
 }
 

@@ -14,6 +14,7 @@ add_executable(TalkInput WIN32
     voice_input_controller.h
     voice_overlay.cpp
     voice_overlay.h
+    voice_overlay.ui
     app_config.cpp
     app_config.h
     json_utils.cpp
@@ -28,25 +29,35 @@ add_executable(TalkInput WIN32
     theme.h
     recognition_model_widget.cpp
     recognition_model_widget.h
+    recognition_model_widget.ui
     recognition_behavior_widget.cpp
     recognition_behavior_widget.h
+    recognition_behavior_widget.ui
     ocr_settings_widget.cpp
     ocr_settings_widget.h
+    ocr_settings_widget.ui
     llm_settings_widget.cpp
     llm_settings_widget.h
+    llm_settings_widget.ui
     tts_settings_widget.cpp
     tts_settings_widget.h
+    tts_settings_widget.ui
     api_server_settings_widget.cpp
     api_server_settings_widget.h
+    api_server_settings_widget.ui
     shortcut_settings_widget.cpp
     shortcut_settings_widget.h
+    shortcut_settings_widget.ui
     appearance_settings_widget.cpp
     appearance_settings_widget.h
+    appearance_settings_widget.ui
     general_settings_widget.cpp
     general_settings_widget.h
+    general_settings_widget.ui
     history_widget.cpp
     history_widget.h
     history_widget.ui
+    history_edit_dialog.ui
     llm_post_processor.cpp
     llm_post_processor.h
     clean_text.cpp
@@ -67,6 +78,7 @@ add_executable(TalkInput WIN32
     tts/tts_audio.h
     log_panel.cpp
     log_panel.h
+    log_panel.ui
     logging.cpp
     logging.h
     recognition_history.cpp
@@ -85,6 +97,7 @@ add_executable(TalkInput WIN32
     recognizers/funasr_nano_speech_recognizer.h
     platform_utils.h
     scroll_text_display.h
+    scroll_text_display.ui
     scroll_text_display.cpp
     utils.h
     utils.cpp
@@ -111,6 +124,7 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/icons/hotwords.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/copy.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/clipboard.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/edit.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/save.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/refresh.svg"

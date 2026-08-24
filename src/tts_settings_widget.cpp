@@ -8,6 +8,7 @@
 #include "tts/tts_audio.h"
 #include "tts_engine.h"
 #include "utils.h"
+#include "ui_tts_settings_widget.h"
 
 #include <QAudioOutput>
 #include <QComboBox>
@@ -46,38 +47,15 @@ TtsSettingsWidget::~TtsSettingsWidget() = default;
 
 void TtsSettingsWidget::buildUi()
 {
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setObjectName(QStringLiteral("settingsScroll"));
-
-    auto *content = new QWidget(scroll);
-    auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(12);
-
-    auto *grid = new QGridLayout();
-    grid->setHorizontalSpacing(8);
-    grid->setVerticalSpacing(10);
-
-    m_providerFormLabel = new QLabel(content);
-    grid->addWidget(m_providerFormLabel, 0, 0);
-
-    m_providerCombo = new QComboBox(content);
-    m_providerCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_providerCombo->addItem(tr("Edge (Online)"), QStringLiteral("edge"));
-    m_providerCombo->addItem(tr("MeloTTS (Offline)"), QStringLiteral("melo"));
-    grid->addWidget(m_providerCombo, 0, 1);
-
-    m_voiceFormLabel = new QLabel(content);
-    grid->addWidget(m_voiceFormLabel, 1, 0);
-
-    m_voiceCombo = new QComboBox(content);
-    m_voiceCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_voiceCombo->setEditable(true);
-    m_voiceCombo->setInsertPolicy(QComboBox::NoInsert);
-    m_voiceCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_ui = std::make_unique<Ui::TtsSettingsWidget>();
+    m_ui->setupUi(this);
+    m_ui->providerCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_ui->providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_ui->providerCombo->addItem(tr("Edge (Online)"), QStringLiteral("edge"));
+    m_ui->providerCombo->addItem(tr("MeloTTS (Offline)"), QStringLiteral("melo"));
+    m_ui->voiceCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_ui->voiceCombo->setInsertPolicy(QComboBox::NoInsert);
+    m_ui->voiceCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     const char *voices[] = {
         "zh-CN-XiaoxiaoNeural", "zh-CN-XiaoyiNeural",  "zh-CN-YunxiNeural",
         "zh-CN-YunjianNeural",  "zh-CN-YunyangNeural", "en-US-AriaNeural",
@@ -85,152 +63,96 @@ void TtsSettingsWidget::buildUi()
         "ko-KR-SunHiNeural",
     };
     for (const char *voice : voices) {
-        m_voiceCombo->addItem(QString::fromLatin1(voice));
+        m_ui->voiceCombo->addItem(QString::fromLatin1(voice));
     }
-    grid->addWidget(m_voiceCombo, 1, 1);
-
-    m_modelFormLabel = new QLabel(content);
-    grid->addWidget(m_modelFormLabel, 2, 0);
-
-    auto *modelRow = new QHBoxLayout;
-    modelRow->setSpacing(8);
-
-    m_modelStatusLabel = new QLabel(content);
-    m_modelStatusLabel->setSizePolicy(QSizePolicy::Expanding,
-                                      QSizePolicy::Preferred);
-    m_modelStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    modelRow->addWidget(m_modelStatusLabel, 1);
-
-    m_browserButton = new QPushButton(content);
-    m_browserButton->setToolTip(tr("Open download page in browser"));
-    m_browserButton->setFlat(true);
-    modelRow->addWidget(m_browserButton);
-
-    m_importButton = new QPushButton(content);
-    m_importButton->setToolTip(tr("Import downloaded model archive"));
-    m_importButton->setFlat(true);
-    modelRow->addWidget(m_importButton);
-
-    m_downloadButton = new QPushButton(content);
-    m_downloadButton->setToolTip(tr("Download MeloTTS model"));
-    m_downloadButton->setFlat(true);
-    modelRow->addWidget(m_downloadButton);
-
-    grid->addLayout(modelRow, 2, 1);
-
-    m_previewFormLabel = new QLabel(content);
-    grid->addWidget(m_previewFormLabel, 3, 0, Qt::AlignTop);
-    auto *previewRow = new QHBoxLayout;
-    previewRow->setSpacing(8);
-    m_previewEdit = new QTextEdit(content);
-    m_previewEdit->setMinimumHeight(110);
-    previewRow->addWidget(m_previewEdit, 1);
-
-    auto *previewActions = new QVBoxLayout;
-    previewActions->setSpacing(8);
-    m_previewButton = new QPushButton(content);
-    previewActions->addWidget(m_previewButton);
-    m_playPreviewButton = new QPushButton(content);
-    previewActions->addWidget(m_playPreviewButton);
-    m_savePreviewButton = new QPushButton(content);
-    previewActions->addWidget(m_savePreviewButton);
-    previewActions->addStretch();
-    previewRow->addLayout(previewActions);
-    grid->addLayout(previewRow, 3, 1);
-
-    contentLayout->addLayout(grid);
-    contentLayout->addStretch();
-
-    scroll->setWidget(content);
-
-    auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
+    m_ui->modelStatusLabel->setSizePolicy(QSizePolicy::Expanding,
+                                          QSizePolicy::Preferred);
+    m_ui->modelStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
     const int iconSize = fontMetrics().height();
-    setButtonIcon(m_browserButton, ":/resources/icons/globe.svg", iconSize);
-    m_browserButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_importButton, ":/resources/icons/import.svg", iconSize);
-    m_importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_downloadButton, ":/resources/icons/download.svg", iconSize);
-    m_downloadButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", iconSize);
+    m_ui->browserButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
+    m_ui->importButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_ui->downloadButton, ":/resources/icons/download.svg", iconSize);
+    m_ui->downloadButton->setProperty("buttonRole", "icon");
 
     m_audioOutput = new QAudioOutput(this);
     m_mediaPlayer = new QMediaPlayer(this);
+    m_ui->playPreviewButton->setEnabled(false);
+    m_ui->savePreviewButton->setEnabled(false);
     m_mediaPlayer->setAudioOutput(m_audioOutput);
 
     auto saveVoice = [this]() {
         appConfig().settings.ttsEdgeVoice =
-            m_voiceCombo->currentText().trimmed().toStdString();
+            m_ui->voiceCombo->currentText().trimmed().toStdString();
         markConfigDirty();
         STATUSBAR_INFO("{}", tr("TTS voice saved"));
     };
-    connect(m_voiceCombo->lineEdit(), &QLineEdit::editingFinished, this,
+    connect(m_ui->voiceCombo->lineEdit(), &QLineEdit::editingFinished, this,
             saveVoice);
-    connect(m_voiceCombo, &QComboBox::activated, this,
+    connect(m_ui->voiceCombo, &QComboBox::activated, this,
             [saveVoice](int) { saveVoice(); });
 
-    connect(m_providerCombo, &QComboBox::currentIndexChanged, this,
+    connect(m_ui->providerCombo, &QComboBox::currentIndexChanged, this,
             &TtsSettingsWidget::onTtsProviderChanged);
 
-    connect(m_downloadButton, &QPushButton::clicked, this,
+    connect(m_ui->downloadButton, &QPushButton::clicked, this,
             [this]() { auto task = downloadTtsModel(); });
-    connect(m_browserButton, &QPushButton::clicked, this,
+    connect(m_ui->browserButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::onOpenTtsModelUrl);
-    connect(m_importButton, &QPushButton::clicked, this,
+    connect(m_ui->importButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::onImportTtsModel);
-    connect(m_previewButton, &QPushButton::clicked, this,
+    connect(m_ui->previewButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::synthesizePreview);
-    connect(m_playPreviewButton, &QPushButton::clicked, this,
+    connect(m_ui->playPreviewButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::playPreview);
-    connect(m_savePreviewButton, &QPushButton::clicked, this,
+    connect(m_ui->savePreviewButton, &QPushButton::clicked, this,
             &TtsSettingsWidget::savePreview);
-    m_playPreviewButton->setEnabled(false);
-    m_savePreviewButton->setEnabled(false);
 }
 
 void TtsSettingsWidget::retranslate()
 {
-    m_providerFormLabel->setText(tr("Provider"));
-    m_voiceFormLabel->setText(tr("Voice"));
-    m_modelFormLabel->setText(tr("Model"));
-    m_previewFormLabel->setText(tr("Preview"));
-    m_previewButton->setText(tr("Convert to speech"));
-    m_playPreviewButton->setText(tr("Play"));
-    m_savePreviewButton->setText(tr("Save MP3"));
-    m_previewEdit->setPlaceholderText(tr("Enter text to synthesize"));
-    m_voiceCombo->lineEdit()->setPlaceholderText(
+    m_ui->providerFormLabel->setText(tr("Provider"));
+    m_ui->voiceFormLabel->setText(tr("Voice"));
+    m_ui->modelFormLabel->setText(tr("Model"));
+    m_ui->previewFormLabel->setText(tr("Preview"));
+    m_ui->previewButton->setText(tr("Convert to speech"));
+    m_ui->playPreviewButton->setText(tr("Play"));
+    m_ui->savePreviewButton->setText(tr("Save MP3"));
+    m_ui->previewEdit->setPlaceholderText(tr("Enter text to synthesize"));
+    m_ui->voiceCombo->lineEdit()->setPlaceholderText(
         tr("Voice name, e.g. zh-CN-XiaoxiaoNeural"));
 }
 
 void TtsSettingsWidget::synthesizePreview()
 {
-    const QString text = m_previewEdit->toPlainText().trimmed();
+    const QString text = m_ui->previewEdit->toPlainText().trimmed();
     if (text.isEmpty()) {
         STATUSBAR_INFO("{}", tr("Enter text to synthesize."));
         return;
     }
 
     std::unique_ptr<TtsEngine> engine;
-    if (m_providerCombo->currentData().toString() == QStringLiteral("melo")) {
+    if (m_ui->providerCombo->currentData().toString() == QStringLiteral("melo")) {
         engine = std::make_unique<MeloTtsEngine>();
     }
     else {
         engine = std::make_unique<EdgeTtsEngine>();
     }
 
-    m_previewButton->setEnabled(false);
+    m_ui->previewButton->setEnabled(false);
     const TtsSynthesisResult result = engine->synthesize(
-        text, m_voiceCombo->currentText(), 1.0);
-    m_previewButton->setEnabled(true);
+        text, m_ui->voiceCombo->currentText(), 1.0);
+    m_ui->previewButton->setEnabled(true);
     if (!result.ok()) {
         STATUSBAR_INFO("{}", tr("Speech conversion failed: %1").arg(result.error));
         return;
     }
 
     m_previewPcm = result.pcm24k;
-    m_playPreviewButton->setEnabled(true);
-    m_savePreviewButton->setEnabled(true);
+    m_ui->playPreviewButton->setEnabled(true);
+    m_ui->savePreviewButton->setEnabled(true);
 
     m_previewFile = std::make_unique<QTemporaryFile>();
     m_previewFile->setAutoRemove(true);
@@ -296,17 +218,17 @@ void TtsSettingsWidget::refreshFromConfig()
 {
     const QString provider =
         QString::fromStdString(appConfig().settings.ttsProvider);
-    const int providerIndex = m_providerCombo->findData(provider);
+    const int providerIndex = m_ui->providerCombo->findData(provider);
     {
-        const QSignalBlocker blocker(m_providerCombo);
+        const QSignalBlocker blocker(m_ui->providerCombo);
         if (providerIndex >= 0) {
-            m_providerCombo->setCurrentIndex(providerIndex);
+            m_ui->providerCombo->setCurrentIndex(providerIndex);
         }
     }
 
     {
-        const QSignalBlocker blocker(m_voiceCombo);
-        m_voiceCombo->setEditText(
+        const QSignalBlocker blocker(m_ui->voiceCombo);
+        m_ui->voiceCombo->setEditText(
             QString::fromStdString(appConfig().settings.ttsEdgeVoice));
     }
 
@@ -317,34 +239,34 @@ void TtsSettingsWidget::refreshFromConfig()
 void TtsSettingsWidget::updateTtsWidgetStates()
 {
     const bool isEdge =
-        m_providerCombo->currentData().toString() == QStringLiteral("edge");
+        m_ui->providerCombo->currentData().toString() == QStringLiteral("edge");
 
-    m_voiceFormLabel->setEnabled(isEdge);
-    m_voiceCombo->setEnabled(isEdge);
-    m_modelFormLabel->setVisible(!isEdge);
-    m_modelStatusLabel->setVisible(!isEdge);
-    m_browserButton->setVisible(!isEdge);
-    m_importButton->setVisible(!isEdge);
-    m_downloadButton->setVisible(!isEdge);
+    m_ui->voiceFormLabel->setEnabled(isEdge);
+    m_ui->voiceCombo->setEnabled(isEdge);
+    m_ui->modelFormLabel->setVisible(!isEdge);
+    m_ui->modelStatusLabel->setVisible(!isEdge);
+    m_ui->browserButton->setVisible(!isEdge);
+    m_ui->importButton->setVisible(!isEdge);
+    m_ui->downloadButton->setVisible(!isEdge);
 }
 
 void TtsSettingsWidget::refreshTtsModelStatus()
 {
     const bool installed = MeloTtsEngine::isModelInstalled();
-    m_modelStatusLabel->setText(installed ? tr("MeloTTS model installed")
+    m_ui->modelStatusLabel->setText(installed ? tr("MeloTTS model installed")
                                           : tr("MeloTTS model not installed"));
-    m_downloadButton->setEnabled(!installed);
+    m_ui->downloadButton->setEnabled(!installed);
 }
 
 void TtsSettingsWidget::onTtsProviderChanged(int /*index*/)
 {
     appConfig().settings.ttsProvider =
-        m_providerCombo->currentData().toString().toStdString();
+        m_ui->providerCombo->currentData().toString().toStdString();
     markConfigDirty();
     updateTtsWidgetStates();
     refreshTtsModelStatus();
     STATUSBAR_INFO(
-        "{}", tr("TTS provider saved: %1").arg(m_providerCombo->currentText()));
+        "{}", tr("TTS provider saved: %1").arg(m_ui->providerCombo->currentText()));
 }
 
 QCoro::Task<void> TtsSettingsWidget::downloadTtsModel()

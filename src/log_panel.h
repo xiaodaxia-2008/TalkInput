@@ -2,6 +2,12 @@
 
 #include <QPlainTextEdit>
 #include <QWidget>
+#include <memory>
+
+namespace Ui
+{
+class LogPanel;
+}
 
 namespace talkinput
 {
@@ -14,15 +20,12 @@ public:
     explicit LogPanel(QWidget *parent = nullptr);
     ~LogPanel() override;
 
-    QPlainTextEdit *textEdit() const
-    {
-        return m_textEdit;
-    }
+    QPlainTextEdit *textEdit() const;
 
 private:
     void onClear();
 
-    QPlainTextEdit *m_textEdit = nullptr;
+    std::unique_ptr<Ui::LogPanel> m_ui;
     static constexpr int kMaxLines = 10000;
 };
 

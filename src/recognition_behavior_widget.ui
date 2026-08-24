@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RecognitionBehaviorWidget</class>
+ <widget class="QWidget" name="RecognitionBehaviorWidget">
+  <layout class="QHBoxLayout" name="rootLayout">
+   <property name="leftMargin"><number>0</number></property>
+   <property name="topMargin"><number>0</number></property>
+   <property name="rightMargin"><number>0</number></property>
+   <property name="bottomMargin"><number>0</number></property>
+   <property name="spacing"><number>16</number></property>
+   <item><widget class="QCheckBox" name="useClipboardCheck"/></item>
+   <item><widget class="QCheckBox" name="copyToClipboardCheck"/></item>
+   <item><widget class="QCheckBox" name="restoreClipboardCheck"/></item>
+   <item><widget class="QCheckBox" name="saveOcrScreenshotCheck"/></item>
+   <item><widget class="QCheckBox" name="saveAsrAudioCheck"/></item>
+   <item>
+    <spacer name="horizontalSpacer">
+     <property name="orientation"><enum>Qt::Horizontal</enum></property>
+     <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

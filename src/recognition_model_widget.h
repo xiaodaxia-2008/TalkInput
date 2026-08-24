@@ -12,6 +12,11 @@ class QLabel;
 class QPushButton;
 class QTextEdit;
 
+namespace Ui
+{
+class RecognitionModelWidget;
+}
+
 namespace talkinput
 {
 
@@ -52,20 +57,7 @@ private:
     void loadInstalledAsrModel(const QString &providerId);
     void refreshAsrModelCombo();
 
-    QLabel *m_modeLabel = nullptr;
-    QComboBox *m_modeCombo = nullptr;
-    QLabel *m_modelLabel = nullptr;
-    QComboBox *m_modelCombo = nullptr;
-    QPushButton *m_browserButton = nullptr;
-    QPushButton *m_importButton = nullptr;
-    QPushButton *m_useButton = nullptr;
-    QPushButton *m_hotwordsButton = nullptr;
-    QPushButton *m_startRecognitionButton = nullptr;
-    QPushButton *m_recognizeFileButton = nullptr;
-    QLabel *m_hotwordsHintLabel = nullptr;
-    QTextEdit *m_hotwordsEdit = nullptr;
-    QPushButton *m_hotwordsSaveButton = nullptr;
-    QTextEdit *m_resultEdit = nullptr;
+    std::unique_ptr<Ui::RecognitionModelWidget> m_ui;
 };
 
 } // namespace talkinput

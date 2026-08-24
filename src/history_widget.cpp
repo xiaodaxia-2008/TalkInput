@@ -1,4 +1,5 @@
 #include "history_widget.h"
+#include "ui_history_edit_dialog.h"
 #include "logging.h"
 #include "recognition_history.h"
 #include "ui_history_widget.h"
@@ -204,25 +205,17 @@ void HistoryWidget::editEntry()
     dialog.setWindowTitle(tr("Edit Recognition Text"));
     dialog.setMinimumSize(480, 260);
 
-    auto *layout = new QVBoxLayout(&dialog);
-
-    auto *editor = new QTextEdit(&dialog);
-    editor->setPlainText(entry->text);
-    editor->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-    editor->selectAll();
-    layout->addWidget(editor);
-
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
+    auto m_ui = std::make_unique<Ui::HistoryEditDialog>();
+    m_ui->setupUi(&dialog);
+    m_ui->editor->setPlainText(entry->text);
+    m_ui->editor->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    m_ui->editor->selectAll();
 
     if (dialog.exec() != QDialog::Accepted) {
         return;
     }
 
-    const QString newText = editor->toPlainText().trimmed();
+    const QString newText = m_ui->editor->toPlainText().trimmed();
     if (newText.isEmpty() || newText == entry->text) {
         return;
     }

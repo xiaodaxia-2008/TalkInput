@@ -15,6 +15,11 @@ class QPushButton;
 class QTextEdit;
 class QTemporaryFile;
 
+namespace Ui
+{
+class TtsSettingsWidget;
+}
+
 namespace talkinput
 {
 
@@ -47,20 +52,7 @@ private:
 
     QCoro::Task<void> downloadTtsModel();
 
-    QLabel *m_providerFormLabel = nullptr;
-    QComboBox *m_providerCombo = nullptr;
-    QLabel *m_voiceFormLabel = nullptr;
-    QComboBox *m_voiceCombo = nullptr;
-    QLabel *m_modelFormLabel = nullptr;
-    QLabel *m_modelStatusLabel = nullptr;
-    QPushButton *m_browserButton = nullptr;
-    QPushButton *m_importButton = nullptr;
-    QPushButton *m_downloadButton = nullptr;
-    QLabel *m_previewFormLabel = nullptr;
-    QTextEdit *m_previewEdit = nullptr;
-    QPushButton *m_previewButton = nullptr;
-    QPushButton *m_playPreviewButton = nullptr;
-    QPushButton *m_savePreviewButton = nullptr;
+    std::unique_ptr<Ui::TtsSettingsWidget> m_ui;
     QAudioOutput *m_audioOutput = nullptr;
     QMediaPlayer *m_mediaPlayer = nullptr;
     std::unique_ptr<QTemporaryFile> m_previewFile;

@@ -10,6 +10,11 @@ class QEvent;
 class QGroupBox;
 class QRadioButton;
 
+namespace Ui
+{
+class AppearanceSettingsWidget;
+}
+
 namespace talkinput
 {
 
@@ -36,15 +41,7 @@ private:
     void buildUi();
     void retranslate();
 
-    QGroupBox *m_themeGroup = nullptr;
-    QRadioButton *m_themeSystemRadio = nullptr;
-    QRadioButton *m_themeLightRadio = nullptr;
-    QRadioButton *m_themeDarkRadio = nullptr;
-    QGroupBox *m_languageGroup = nullptr;
-    QRadioButton *m_languageChineseRadio = nullptr;
-    QRadioButton *m_languageEnglishRadio = nullptr;
-    QGroupBox *m_startupGroup = nullptr;
-    QCheckBox *m_startMinimizedCheck = nullptr;
+    std::unique_ptr<Ui::AppearanceSettingsWidget> m_ui;
 };
 
 } // namespace talkinput
