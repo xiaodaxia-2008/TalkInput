@@ -7,10 +7,11 @@
 
 class QComboBox;
 class QEvent;
-class QGroupBox;
 class QLabel;
 class QLineEdit;
+class QNetworkAccessManager;
 class QPushButton;
+class QTextEdit;
 
 namespace talkinput
 {
@@ -35,10 +36,9 @@ private:
     void retranslate();
     void onLlmProviderChanged(int index);
     void applyLlmProviderToUi(const LlmPreset &provider);
-    void refreshPromptLabel();
-    void onEditPrompt();
+    void onPromptChanged();
+    void refreshModels();
 
-    QGroupBox *m_group = nullptr;
     QLabel *m_providerFormLabel = nullptr;
     QComboBox *m_providerCombo = nullptr;
     QLabel *m_endpointFormLabel = nullptr;
@@ -48,8 +48,9 @@ private:
     QLabel *m_apiKeyFormLabel = nullptr;
     QLineEdit *m_apiKeyEdit = nullptr;
     QLabel *m_promptFormLabel = nullptr;
-    QLabel *m_promptLabel = nullptr;
-    QPushButton *m_promptEditButton = nullptr;
+    QTextEdit *m_promptEdit = nullptr;
+    QPushButton *m_refreshModelsButton = nullptr;
+    QNetworkAccessManager *m_network = nullptr;
 };
 
 } // namespace talkinput

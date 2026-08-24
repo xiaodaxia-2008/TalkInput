@@ -8,7 +8,6 @@
 class QComboBox;
 class QAction;
 class QEvent;
-class QGroupBox;
 class QLabel;
 class QPushButton;
 class QTextEdit;
@@ -30,6 +29,9 @@ public:
     void setRecognitionActions(QAction *startAction, QAction *fileAction);
     void setRecognitionResult(const QString &text);
 
+    /// Synchronizes the active-mode combo with the current config.
+    void updateActiveModeDisplay();
+
 protected:
     void changeEvent(QEvent *event) override;
 
@@ -37,19 +39,21 @@ private:
     void buildUi();
     void retranslate();
     void initAsrModel();
+    void initActiveMode();
 
     void onUseAsrModel();
     void onOpenModelUrl();
     void onImportModel();
-    void onEditHotwords();
+    void onHotwordsChanged();
+    void saveHotwords(bool reloadModel);
 
     QCoro::Task<void> useAsrModel(const QString &providerId);
     QCoro::Task<bool> downloadAsrModel(const QString &providerId);
     void loadInstalledAsrModel(const QString &providerId);
     void refreshAsrModelCombo();
 
-    QGroupBox *m_modelGroup = nullptr;
-    QGroupBox *m_hotwordsGroup = nullptr;
+    QLabel *m_modeLabel = nullptr;
+    QComboBox *m_modeCombo = nullptr;
     QLabel *m_modelLabel = nullptr;
     QComboBox *m_modelCombo = nullptr;
     QPushButton *m_browserButton = nullptr;
@@ -59,7 +63,8 @@ private:
     QPushButton *m_startRecognitionButton = nullptr;
     QPushButton *m_recognizeFileButton = nullptr;
     QLabel *m_hotwordsHintLabel = nullptr;
-    QLabel *m_resultLabel = nullptr;
+    QTextEdit *m_hotwordsEdit = nullptr;
+    QPushButton *m_hotwordsSaveButton = nullptr;
     QTextEdit *m_resultEdit = nullptr;
 };
 

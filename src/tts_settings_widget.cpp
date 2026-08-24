@@ -18,7 +18,6 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGridLayout>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -57,26 +56,24 @@ void TtsSettingsWidget::buildUi()
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(12);
 
-    m_group = new QGroupBox(content);
-    auto *grid = new QGridLayout(m_group);
-    grid->setContentsMargins(16, 20, 16, 14);
+    auto *grid = new QGridLayout();
     grid->setHorizontalSpacing(8);
     grid->setVerticalSpacing(10);
 
-    m_providerFormLabel = new QLabel(m_group);
+    m_providerFormLabel = new QLabel(content);
     grid->addWidget(m_providerFormLabel, 0, 0);
 
-    m_providerCombo = new QComboBox(m_group);
+    m_providerCombo = new QComboBox(content);
     m_providerCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_providerCombo->addItem(tr("Edge (Online)"), QStringLiteral("edge"));
     m_providerCombo->addItem(tr("MeloTTS (Offline)"), QStringLiteral("melo"));
     grid->addWidget(m_providerCombo, 0, 1);
 
-    m_voiceFormLabel = new QLabel(m_group);
+    m_voiceFormLabel = new QLabel(content);
     grid->addWidget(m_voiceFormLabel, 1, 0);
 
-    m_voiceCombo = new QComboBox(m_group);
+    m_voiceCombo = new QComboBox(content);
     m_voiceCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_voiceCombo->setEditable(true);
     m_voiceCombo->setInsertPolicy(QComboBox::NoInsert);
@@ -92,56 +89,56 @@ void TtsSettingsWidget::buildUi()
     }
     grid->addWidget(m_voiceCombo, 1, 1);
 
-    m_modelFormLabel = new QLabel(m_group);
+    m_modelFormLabel = new QLabel(content);
     grid->addWidget(m_modelFormLabel, 2, 0);
 
     auto *modelRow = new QHBoxLayout;
     modelRow->setSpacing(8);
 
-    m_modelStatusLabel = new QLabel(m_group);
+    m_modelStatusLabel = new QLabel(content);
     m_modelStatusLabel->setSizePolicy(QSizePolicy::Expanding,
                                       QSizePolicy::Preferred);
     m_modelStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     modelRow->addWidget(m_modelStatusLabel, 1);
 
-    m_browserButton = new QPushButton(m_group);
+    m_browserButton = new QPushButton(content);
     m_browserButton->setToolTip(tr("Open download page in browser"));
     m_browserButton->setFlat(true);
     modelRow->addWidget(m_browserButton);
 
-    m_importButton = new QPushButton(m_group);
+    m_importButton = new QPushButton(content);
     m_importButton->setToolTip(tr("Import downloaded model archive"));
     m_importButton->setFlat(true);
     modelRow->addWidget(m_importButton);
 
-    m_downloadButton = new QPushButton(m_group);
+    m_downloadButton = new QPushButton(content);
     m_downloadButton->setToolTip(tr("Download MeloTTS model"));
     m_downloadButton->setFlat(true);
     modelRow->addWidget(m_downloadButton);
 
     grid->addLayout(modelRow, 2, 1);
 
-    m_previewFormLabel = new QLabel(m_group);
+    m_previewFormLabel = new QLabel(content);
     grid->addWidget(m_previewFormLabel, 3, 0, Qt::AlignTop);
     auto *previewRow = new QHBoxLayout;
     previewRow->setSpacing(8);
-    m_previewEdit = new QTextEdit(m_group);
+    m_previewEdit = new QTextEdit(content);
     m_previewEdit->setMinimumHeight(110);
     previewRow->addWidget(m_previewEdit, 1);
 
     auto *previewActions = new QVBoxLayout;
     previewActions->setSpacing(8);
-    m_previewButton = new QPushButton(m_group);
+    m_previewButton = new QPushButton(content);
     previewActions->addWidget(m_previewButton);
-    m_playPreviewButton = new QPushButton(m_group);
+    m_playPreviewButton = new QPushButton(content);
     previewActions->addWidget(m_playPreviewButton);
-    m_savePreviewButton = new QPushButton(m_group);
+    m_savePreviewButton = new QPushButton(content);
     previewActions->addWidget(m_savePreviewButton);
     previewActions->addStretch();
     previewRow->addLayout(previewActions);
     grid->addLayout(previewRow, 3, 1);
 
-    contentLayout->addWidget(m_group);
+    contentLayout->addLayout(grid);
     contentLayout->addStretch();
 
     scroll->setWidget(content);
@@ -194,7 +191,6 @@ void TtsSettingsWidget::buildUi()
 
 void TtsSettingsWidget::retranslate()
 {
-    m_group->setTitle(tr("TTS Service"));
     m_providerFormLabel->setText(tr("Provider"));
     m_voiceFormLabel->setText(tr("Voice"));
     m_modelFormLabel->setText(tr("Model"));

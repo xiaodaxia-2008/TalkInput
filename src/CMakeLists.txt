@@ -115,6 +115,8 @@ qt_add_resources(TalkInput resources
     "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/copy.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/edit.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/save.svg"
+    "${PROJECT_SOURCE_DIR}/resources/icons/refresh.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/cpu.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/zap.svg"
     "${PROJECT_SOURCE_DIR}/resources/icons/server.svg"

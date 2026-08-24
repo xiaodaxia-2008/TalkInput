@@ -8,7 +8,6 @@
 
 class QComboBox;
 class QEvent;
-class QGroupBox;
 class QLabel;
 class QAudioOutput;
 class QMediaPlayer;
@@ -48,7 +47,6 @@ private:
 
     QCoro::Task<void> downloadTtsModel();
 
-    QGroupBox *m_group = nullptr;
     QLabel *m_providerFormLabel = nullptr;
     QComboBox *m_providerCombo = nullptr;
     QLabel *m_voiceFormLabel = nullptr;

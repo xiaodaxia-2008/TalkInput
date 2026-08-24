@@ -16,7 +16,6 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -37,6 +36,7 @@ RecognitionModelWidget::RecognitionModelWidget(QWidget *parent)
 {
     buildUi();
     initAsrModel();
+    initActiveMode();
     retranslate();
     refreshFromConfig();
 }
@@ -56,67 +56,72 @@ void RecognitionModelWidget::buildUi()
     contentLayout->setSpacing(12);
 
     // ── ASR model group ────────────────────────────────────────────
-    m_modelGroup = new QGroupBox(content);
-    auto *modelLayout = new QVBoxLayout(m_modelGroup);
-    modelLayout->setContentsMargins(16, 20, 16, 14);
+    auto *modelLayout = new QVBoxLayout;
     modelLayout->setSpacing(10);
 
     auto *modelRow = new QHBoxLayout;
     modelRow->setSpacing(8);
-    m_modelLabel = new QLabel(m_modelGroup);
+    m_modelLabel = new QLabel(content);
     modelRow->addWidget(m_modelLabel);
 
-    m_modelCombo = new QComboBox(m_modelGroup);
+    m_modelCombo = new QComboBox(content);
     m_modelCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     modelRow->addWidget(m_modelCombo, 1);
 
-    m_browserButton = new QPushButton(m_modelGroup);
+    m_browserButton = new QPushButton(content);
     m_browserButton->setFlat(true);
     modelRow->addWidget(m_browserButton);
 
-    m_importButton = new QPushButton(m_modelGroup);
+    m_importButton = new QPushButton(content);
     m_importButton->setFlat(true);
     modelRow->addWidget(m_importButton);
 
-    m_useButton = new QPushButton(m_modelGroup);
+    m_useButton = new QPushButton(content);
     m_useButton->setFlat(true);
     modelRow->addWidget(m_useButton);
 
     modelLayout->addLayout(modelRow);
 
-    contentLayout->addWidget(m_modelGroup);
+    m_modeLabel = new QLabel(content);
+    m_modeLabel->setToolTip(
+        tr("Default pipeline mode for the trigger hotkey"));
+    m_modeCombo = new QComboBox(content);
+    m_modeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    auto *modeRow = new QHBoxLayout;
+    modeRow->setSpacing(8);
+    modeRow->addWidget(m_modeLabel);
+    modeRow->addWidget(m_modeCombo, 1);
+    modelLayout->addLayout(modeRow);
+
+    contentLayout->addLayout(modelLayout);
 
     // ── Hot words group ────────────────────────────────────────────
-    m_hotwordsGroup = new QGroupBox(content);
-    auto *hotwordsLayout = new QVBoxLayout(m_hotwordsGroup);
-    hotwordsLayout->setContentsMargins(16, 20, 16, 14);
-    hotwordsLayout->setSpacing(10);
-
     auto *hintRow = new QHBoxLayout;
     hintRow->setSpacing(8);
-    auto *hintIcon = new QLabel(m_hotwordsGroup);
+    auto *hintIcon = new QLabel(content);
     hintIcon->setObjectName(QStringLiteral("hotwordsHintIcon"));
     hintIcon->setText(QStringLiteral("💡"));
     hintIcon->setAlignment(Qt::AlignCenter);
     hintIcon->setFixedSize(20, 20);
     hintRow->addWidget(hintIcon);
 
-    m_hotwordsHintLabel = new QLabel(m_hotwordsGroup);
+    m_hotwordsHintLabel = new QLabel(content);
     m_hotwordsHintLabel->setObjectName(QStringLiteral("hotwordsHintLabel"));
     m_hotwordsHintLabel->setWordWrap(true);
     hintRow->addWidget(m_hotwordsHintLabel, 1);
-    hotwordsLayout->addLayout(hintRow);
 
-    auto *hotwordsButtonRow = new QHBoxLayout;
-    m_hotwordsButton = new QPushButton(m_hotwordsGroup);
-    m_hotwordsButton->setFlat(true);
-    hotwordsButtonRow->addWidget(m_hotwordsButton);
-    hotwordsButtonRow->addStretch();
-    hotwordsLayout->addLayout(hotwordsButtonRow);
+    m_hotwordsSaveButton = new QPushButton(content);
+    m_hotwordsSaveButton->setFlat(true);
+    hintRow->addWidget(m_hotwordsSaveButton);
+    contentLayout->addLayout(hintRow);
 
-    contentLayout->addWidget(m_hotwordsGroup);
+    m_hotwordsEdit = new QTextEdit(content);
+    m_hotwordsEdit->setAcceptRichText(false);
+    m_hotwordsEdit->setMinimumHeight(100);
+    contentLayout->addWidget(m_hotwordsEdit);
 
     auto *actionsRow = new QHBoxLayout;
+    actionsRow->setSpacing(8);
     m_startRecognitionButton = new QPushButton(content);
     m_recognizeFileButton = new QPushButton(content);
     actionsRow->addWidget(m_startRecognitionButton);
@@ -124,12 +129,12 @@ void RecognitionModelWidget::buildUi()
     actionsRow->addStretch();
     contentLayout->addLayout(actionsRow);
 
-    m_resultLabel = new QLabel(content);
+    // ── Recognition result ─────────────────────────────────────
     m_resultEdit = new QTextEdit(content);
     m_resultEdit->setReadOnly(true);
     m_resultEdit->setMinimumHeight(120);
-    contentLayout->addWidget(m_resultLabel);
     contentLayout->addWidget(m_resultEdit);
+
     contentLayout->addStretch();
 
     scroll->setWidget(content);
@@ -145,11 +150,13 @@ void RecognitionModelWidget::buildUi()
     m_browserButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_importButton, ":/resources/icons/import.svg", iconSize);
     m_importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_hotwordsButton, ":/resources/icons/hotwords.svg", iconSize);
-    m_hotwordsButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_hotwordsSaveButton, ":/resources/icons/save.svg", iconSize);
+    m_hotwordsSaveButton->setProperty("buttonRole", "icon");
 
-    connect(m_hotwordsButton, &QPushButton::clicked, this,
-            &RecognitionModelWidget::onEditHotwords);
+    connect(m_hotwordsEdit, &QTextEdit::textChanged, this,
+            &RecognitionModelWidget::onHotwordsChanged);
+    connect(m_hotwordsSaveButton, &QPushButton::clicked, this,
+            [this]() { saveHotwords(true); });
 }
 
 void RecognitionModelWidget::setRecognitionActions(QAction *startAction,
@@ -178,19 +185,31 @@ void RecognitionModelWidget::setRecognitionResult(const QString &text)
 
 void RecognitionModelWidget::retranslate()
 {
-    m_modelGroup->setTitle(tr("Speech Recognition Model"));
-    m_hotwordsGroup->setTitle(tr("Hot Words"));
     m_modelLabel->setText(tr("Model:"));
-    m_resultLabel->setText(tr("Recognition Result"));
+    m_modeLabel->setText(tr("Mode:"));
+
+    {
+        const QSignalBlocker blocker(m_modeCombo);
+        const QString current = m_modeCombo->currentData().toString();
+        m_modeCombo->clear();
+        m_modeCombo->addItem(tr("ASR only"), QStringLiteral("asr_only"));
+        m_modeCombo->addItem(tr("ASR + AI Polish"),
+                             QStringLiteral("asr_llm"));
+        m_modeCombo->addItem(tr("ASR + OCR context + AI Polish"),
+                             QStringLiteral("asr_llm_ocr"));
+        const int idx = m_modeCombo->findData(current);
+        if (idx >= 0) {
+            m_modeCombo->setCurrentIndex(idx);
+        }
+    }
 
     m_browserButton->setToolTip(tr("Open download page in browser"));
     m_importButton->setToolTip(tr("Import downloaded model archive"));
     m_useButton->setToolTip(tr("Use this model"));
-    m_hotwordsButton->setText(tr("Edit Hot Words…"));
-    m_hotwordsButton->setToolTip(tr("Edit hot words"));
+    m_hotwordsSaveButton->setToolTip(tr("Save hot words and reload model"));
     m_hotwordsHintLabel->setText(
-        tr("One hot word per line. Saved hot words are applied by reloading "
-           "the speech recognition model."));
+        tr("<b>Hot Words</b> — one per line. Saved hot words are applied by "
+           "reloading the speech recognition model."));
 
     refreshAsrModelCombo();
 }
@@ -207,6 +226,39 @@ void RecognitionModelWidget::refreshFromConfig()
 {
     auto task =
         useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
+    updateActiveModeDisplay();
+
+    QStringList lines;
+    for (const auto &hw : appConfig().settings.hotwords) {
+        const QString s = QString::fromStdString(hw).trimmed();
+        if (!s.isEmpty()) {
+            lines.append(s);
+        }
+    }
+    const QSignalBlocker blocker(m_hotwordsEdit);
+    m_hotwordsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+}
+
+void RecognitionModelWidget::initActiveMode()
+{
+    connect(m_modeCombo, &QComboBox::currentIndexChanged, this, [this]() {
+        const QString mode = m_modeCombo->currentData().toString();
+        appConfig().settings.activeMode = mode.toStdString();
+        markConfigDirty();
+        STATUSBAR_INFO("{}",
+                       tr("Active mode changed to %1").arg(m_modeCombo->currentText()));
+    });
+}
+
+void RecognitionModelWidget::updateActiveModeDisplay()
+{
+    const QString activeMode =
+        QString::fromStdString(appConfig().settings.activeMode);
+    const int idx = m_modeCombo->findData(activeMode);
+    if (idx >= 0) {
+        const QSignalBlocker blocker(m_modeCombo);
+        m_modeCombo->setCurrentIndex(idx);
+    }
 }
 
 void RecognitionModelWidget::initAsrModel()
@@ -450,58 +502,16 @@ void RecognitionModelWidget::onImportModel()
     auto task = useAsrModel(providerId);
 }
 
-void RecognitionModelWidget::onEditHotwords()
+void RecognitionModelWidget::onHotwordsChanged()
 {
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Hot Words"));
-    dialog.resize(420, 320);
+    saveHotwords(false);
+}
 
-    auto *layout = new QVBoxLayout(&dialog);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(10);
-
-    auto *hintRow = new QHBoxLayout;
-    hintRow->setSpacing(8);
-    auto *iconLabel = new QLabel(QStringLiteral("💡"), &dialog);
-    iconLabel->setObjectName(QStringLiteral("hotwordsHintIcon"));
-    iconLabel->setAlignment(Qt::AlignCenter);
-    iconLabel->setFixedSize(20, 20);
-    auto *hintLabel = new QLabel(tr("One hot word per line."), &dialog);
-    hintLabel->setObjectName(QStringLiteral("hotwordsHintLabel"));
-    hintLabel->setWordWrap(true);
-    hintRow->addWidget(iconLabel);
-    hintRow->addWidget(hintLabel, 1);
-    layout->addLayout(hintRow);
-
-    auto *editor = new QTextEdit(&dialog);
-    editor->setAcceptRichText(false);
-    editor->setPlaceholderText(tr("Enter hot words, one per line"));
-
-    {
-        QStringList lines;
-        for (const auto &hw : appConfig().settings.hotwords) {
-            const QString s = QString::fromStdString(hw).trimmed();
-            if (!s.isEmpty()) {
-                lines.append(s);
-            }
-        }
-        editor->setPlainText(lines.join(QLatin1Char('\n')));
-    }
-    layout->addWidget(editor, 1);
-
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-
+void RecognitionModelWidget::saveHotwords(bool reloadModel)
+{
     std::vector<std::string> hwList;
     const QStringList lines =
-        editor->toPlainText().trimmed().split(QLatin1Char('\n'));
+        m_hotwordsEdit->toPlainText().split(QLatin1Char('\n'));
     for (const QString &line : lines) {
         const QString trimmed = line.trimmed();
         if (!trimmed.isEmpty()) {
@@ -510,10 +520,13 @@ void RecognitionModelWidget::onEditHotwords()
     }
     appConfig().settings.hotwords = std::move(hwList);
     markConfigDirty();
-    STATUSBAR_INFO(
-        "{}", tr("Hot words saved, reloading speech recognition model..."));
-    auto task =
-        useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
+
+    if (reloadModel) {
+        STATUSBAR_INFO(
+            "{}", tr("Hot words saved, reloading speech recognition model..."));
+        auto task = useAsrModel(
+            QString::fromStdString(appConfig().settings.asrProviderId));
+    }
 }
 
 } // namespace talkinput

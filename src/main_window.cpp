@@ -156,8 +156,8 @@ void MainWindow::setupUi()
             this, [this](bool listening) { updateControls(listening); });
     connect(m_voiceInputController, &VoiceInputController::modeChanged, this,
             [this](PipelineMode) {
-                if (m_shortcutSettingsWidget) {
-                    m_shortcutSettingsWidget->updateActiveModeDisplay();
+                if (m_recognitionModelWidget) {
+                    m_recognitionModelWidget->updateActiveModeDisplay();
                 }
             });
 
@@ -208,14 +208,12 @@ void MainWindow::setupSettingsPages()
 {
     SPDLOG_DEBUG("setupSettingsPages: begin");
 
-    m_recognitionModelWidget =
-        new RecognitionModelWidget(m_ui->pageRecognitionModel);
-    m_ui->recognitionModelContentLayout->addWidget(m_recognitionModelWidget);
+    m_recognitionModelWidget = new RecognitionModelWidget(m_ui->pageStt);
+    m_ui->sttContentLayout->addWidget(m_recognitionModelWidget);
 
     m_recognitionBehaviorWidget =
-        new RecognitionBehaviorWidget(m_ui->pageRecognitionBehavior);
-    m_ui->recognitionBehaviorContentLayout->addWidget(
-        m_recognitionBehaviorWidget);
+        new RecognitionBehaviorWidget(m_ui->pageStt);
+    m_ui->sttContentLayout->addWidget(m_recognitionBehaviorWidget);
 
     m_ocrSettingsWidget = new OcrSettingsWidget(m_ui->pageOcr);
     m_ui->ocrContentLayout->addWidget(m_ocrSettingsWidget);
@@ -290,23 +288,18 @@ void MainWindow::setupNavTree()
         return item;
     };
 
-    auto *speechItem = makeSection(tr("Speech Recognition"));
-    auto *modelItem =
-        makeChildItem(speechItem, tr("Model and Hot Words"),
-                      QStringLiteral(":/resources/icons/cpu.svg"),
-                      static_cast<int>(SettingsPage::RecognitionModel));
-    makeChildItem(speechItem, tr("Recognition Behavior"),
-                  QStringLiteral(":/resources/icons/zap.svg"),
-                  static_cast<int>(SettingsPage::RecognitionBehavior));
-
     auto *serviceItem = makeSection(tr("Services"));
-    makeChildItem(serviceItem, tr("OCR"),
+    auto *sttItem =
+        makeChildItem(serviceItem, tr("Speech Recognition (STT)"),
+                      QStringLiteral(":/resources/icons/cpu.svg"),
+                      static_cast<int>(SettingsPage::Stt));
+    makeChildItem(serviceItem, tr("Text Recognition (OCR)"),
                   QStringLiteral(":/resources/icons/camera.svg"),
                   static_cast<int>(SettingsPage::Ocr));
-    makeChildItem(serviceItem, tr("LLM"),
+    makeChildItem(serviceItem, tr("LLM Configuration"),
                   QStringLiteral(":/resources/icons/message-square.svg"),
                   static_cast<int>(SettingsPage::Llm));
-    makeChildItem(serviceItem, tr("TTS"),
+    makeChildItem(serviceItem, tr("Speech Synthesis (TTS)"),
                   QStringLiteral(":/resources/icons/volume-2.svg"),
                   static_cast<int>(SettingsPage::Tts));
     makeChildItem(serviceItem, tr("API Server"),
@@ -325,7 +318,6 @@ void MainWindow::setupNavTree()
     makeTopItem(tr("General"), QStringLiteral(":/resources/icons/sliders.svg"),
                 static_cast<int>(SettingsPage::General));
 
-    speechItem->setExpanded(true);
     serviceItem->setExpanded(true);
 
     refreshNavIcons();
@@ -333,22 +325,19 @@ void MainWindow::setupNavTree()
     connect(tree, &QTreeWidget::itemClicked, this,
             &MainWindow::onNavItemClicked);
 
-    m_activeNavItem = modelItem;
+    m_activeNavItem = sttItem;
     tree->setCurrentItem(m_activeNavItem);
-    m_ui->contentStack->setCurrentIndex(
-        static_cast<int>(SettingsPage::RecognitionModel));
+    m_ui->contentStack->setCurrentIndex(static_cast<int>(SettingsPage::Stt));
     SPDLOG_DEBUG("setupNavTree: end");
 }
 
 void MainWindow::retranslateNav()
 {
-    const QStringList labels = {tr("Speech Recognition"),
-                                tr("Model and Hot Words"),
-                                tr("Recognition Behavior"),
-                                tr("Services"),
-                                tr("OCR"),
-                                tr("LLM"),
-                                tr("TTS"),
+    const QStringList labels = {tr("Services"),
+                                tr("Speech Recognition (STT)"),
+                                tr("Text Recognition (OCR)"),
+                                tr("LLM Configuration"),
+                                tr("Speech Synthesis (TTS)"),
                                 tr("API Server"),
                                 tr("Shortcuts"),
                                 tr("Appearance"),

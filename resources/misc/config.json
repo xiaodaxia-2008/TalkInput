@@ -93,7 +93,7 @@
       "params": {
         "sampleRate": 16000,
         "featureDim": 80,
-        "numThreads": 2,
+        "numThreads": 6,
         "language": "zh",
         "funasrSystemPrompt": "You are a helpful assistant.",
         "funasrUserPrompt": "语音转写：",
@@ -160,6 +160,100 @@
           }
         }
       }
+    },
+    "openai": {
+      "id": "openai",
+      "name": "OpenAI",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "currentModel": "gpt-4o-mini",
+      "models": {
+        "gpt-4o-mini": { "name": "GPT-4o mini" },
+        "gpt-4o": { "name": "GPT-4o" },
+        "gpt-4.1-mini": { "name": "GPT-4.1 mini" }
+      }
+    },
+    "openrouter": {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "currentModel": "openai/gpt-4o-mini",
+      "models": {
+        "openai/gpt-4o-mini": { "name": "OpenAI GPT-4o mini" },
+        "google/gemini-2.0-flash-001": { "name": "Google Gemini 2.0 Flash" },
+        "deepseek/deepseek-chat": { "name": "DeepSeek Chat" }
+      }
+    },
+    "gemini": {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      "currentModel": "gemini-2.0-flash",
+      "models": {
+        "gemini-2.0-flash": { "name": "Gemini 2.0 Flash" },
+        "gemini-2.5-flash": { "name": "Gemini 2.5 Flash" }
+      }
+    },
+    "qwen": {
+      "id": "qwen",
+      "name": "Alibaba Cloud Qwen",
+      "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      "currentModel": "qwen-plus",
+      "models": {
+        "qwen-plus": { "name": "Qwen Plus" },
+        "qwen-turbo": { "name": "Qwen Turbo" },
+        "qwen-max": { "name": "Qwen Max" }
+      }
+    },
+    "moonshot": {
+      "id": "moonshot",
+      "name": "Moonshot AI",
+      "endpoint": "https://api.moonshot.cn/v1/chat/completions",
+      "currentModel": "moonshot-v1-8k",
+      "models": {
+        "moonshot-v1-8k": { "name": "Moonshot v1 8K" },
+        "moonshot-v1-32k": { "name": "Moonshot v1 32K" }
+      }
+    },
+    "siliconflow": {
+      "id": "siliconflow",
+      "name": "SiliconFlow",
+      "endpoint": "https://api.siliconflow.cn/v1/chat/completions",
+      "currentModel": "deepseek-ai/DeepSeek-V3",
+      "models": {
+        "deepseek-ai/DeepSeek-V3": { "name": "DeepSeek V3" },
+        "Qwen/Qwen2.5-72B-Instruct": { "name": "Qwen 2.5 72B Instruct" }
+      }
+    },
+    "groq": {
+      "id": "groq",
+      "name": "Groq",
+      "endpoint": "https://api.groq.com/openai/v1/chat/completions",
+      "currentModel": "llama-3.3-70b-versatile",
+      "models": {
+        "llama-3.3-70b-versatile": { "name": "Llama 3.3 70B Versatile" },
+        "openai/gpt-oss-120b": { "name": "GPT-OSS 120B" }
+      }
+    },
+    "ollama": {
+      "id": "ollama",
+      "name": "Ollama (Local)",
+      "endpoint": "http://127.0.0.1:11434/v1/chat/completions",
+      "currentModel": "",
+      "models": {}
+    },
+    "opencode-go": {
+      "id": "opencode-go",
+      "name": "OpenCode Go",
+      "endpoint": "https://opencode.ai/zen/go/v1/chat/completions",
+      "currentModel": "",
+      "models": {}
+    },
+    "opencode-zen": {
+      "id": "opencode-zen",
+      "name": "OpenCode Zen",
+      "endpoint": "https://opencode.ai/zen/v1/chat/completions",
+      "currentModel": "",
+      "models": {}
     },
     "custom": {
       "id": "custom",

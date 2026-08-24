@@ -3,12 +3,8 @@
 
 #include <QCheckBox>
 #include <QEvent>
-#include <QGroupBox>
 #include <QHBoxLayout>
-#include <QLabel>
-#include <QScrollArea>
 #include <QSignalBlocker>
-#include <QVBoxLayout>
 
 namespace talkinput
 {
@@ -25,44 +21,21 @@ RecognitionBehaviorWidget::~RecognitionBehaviorWidget() = default;
 
 void RecognitionBehaviorWidget::buildUi()
 {
-    auto *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setObjectName(QStringLiteral("settingsScroll"));
+    auto *layout = new QHBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(16);
 
-    auto *content = new QWidget(scroll);
-    auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(12);
-
-    m_group = new QGroupBox(content);
-    auto *groupLayout = new QVBoxLayout(m_group);
-    groupLayout->setContentsMargins(16, 20, 16, 14);
-    groupLayout->setSpacing(10);
-
-    m_hintLabel = new QLabel(m_group);
-    m_hintLabel->setWordWrap(true);
-    groupLayout->addWidget(m_hintLabel);
-
-    m_useClipboardCheck = new QCheckBox(m_group);
-    m_copyToClipboardCheck = new QCheckBox(m_group);
-    m_restoreClipboardCheck = new QCheckBox(m_group);
-    m_saveOcrScreenshotCheck = new QCheckBox(m_group);
-    m_saveAsrAudioCheck = new QCheckBox(m_group);
-    groupLayout->addWidget(m_useClipboardCheck);
-    groupLayout->addWidget(m_copyToClipboardCheck);
-    groupLayout->addWidget(m_restoreClipboardCheck);
-    groupLayout->addWidget(m_saveOcrScreenshotCheck);
-    groupLayout->addWidget(m_saveAsrAudioCheck);
-
-    contentLayout->addWidget(m_group);
-    contentLayout->addStretch();
-
-    scroll->setWidget(content);
-
-    auto *outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
+    m_useClipboardCheck = new QCheckBox(this);
+    m_copyToClipboardCheck = new QCheckBox(this);
+    m_restoreClipboardCheck = new QCheckBox(this);
+    m_saveOcrScreenshotCheck = new QCheckBox(this);
+    m_saveAsrAudioCheck = new QCheckBox(this);
+    layout->addWidget(m_useClipboardCheck);
+    layout->addWidget(m_copyToClipboardCheck);
+    layout->addWidget(m_restoreClipboardCheck);
+    layout->addWidget(m_saveOcrScreenshotCheck);
+    layout->addWidget(m_saveAsrAudioCheck);
+    layout->addStretch();
 
     connect(m_useClipboardCheck, &QCheckBox::toggled, this, [](bool checked) {
         appConfig().settings.useClipboard = checked;
@@ -91,9 +64,6 @@ void RecognitionBehaviorWidget::buildUi()
 
 void RecognitionBehaviorWidget::retranslate()
 {
-    m_group->setTitle(tr("Recognition Behavior"));
-    m_hintLabel->setText(
-        tr("These options control how recognition results are delivered."));
     m_useClipboardCheck->setText(tr("Use Clipboard"));
     m_useClipboardCheck->setToolTip(tr("Use clipboard to paste text"));
     m_copyToClipboardCheck->setText(tr("Copy to Clipboard"));

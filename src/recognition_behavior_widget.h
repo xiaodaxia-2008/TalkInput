@@ -5,8 +5,6 @@
 
 class QCheckBox;
 class QEvent;
-class QGroupBox;
-class QLabel;
 
 namespace talkinput
 {
@@ -30,8 +28,6 @@ private:
     void buildUi();
     void retranslate();
 
-    QGroupBox *m_group = nullptr;
-    QLabel *m_hintLabel = nullptr;
     QCheckBox *m_useClipboardCheck = nullptr;
     QCheckBox *m_copyToClipboardCheck = nullptr;
     QCheckBox *m_restoreClipboardCheck = nullptr;

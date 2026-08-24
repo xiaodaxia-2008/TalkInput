@@ -5,7 +5,6 @@
 
 class QComboBox;
 class QEvent;
-class QGroupBox;
 class QLabel;
 
 namespace talkinput
@@ -31,7 +30,6 @@ private:
     void retranslate();
     void onOcrProviderChanged(int index);
 
-    QGroupBox *m_group = nullptr;
     QLabel *m_providerLabel = nullptr;
     QComboBox *m_ocrCombo = nullptr;
 };

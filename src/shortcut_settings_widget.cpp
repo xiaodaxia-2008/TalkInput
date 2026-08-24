@@ -3,7 +3,6 @@
 #include "logging.h"
 #include "voice_input_controller.h"
 
-#include <QComboBox>
 #include <QCoreApplication>
 #include <QEvent>
 #include <QFormLayout>
@@ -24,7 +23,6 @@ ShortcutSettingsWidget::ShortcutSettingsWidget(QWidget *parent)
 {
     buildUi();
     retranslate();
-    initActiveMode();
     initShortcuts();
     refreshFromConfig();
 }
@@ -48,14 +46,6 @@ void ShortcutSettingsWidget::buildUi()
     form->setContentsMargins(16, 20, 16, 14);
     form->setHorizontalSpacing(8);
     form->setVerticalSpacing(10);
-
-    m_activeModeLabel = new QLabel(m_group);
-    m_activeModeLabel->setToolTip(
-        tr("Default pipeline mode for the trigger hotkey"));
-    m_activeModeCombo = new QComboBox(m_group);
-    m_activeModeCombo->setSizePolicy(QSizePolicy::Expanding,
-                                     QSizePolicy::Fixed);
-    form->addRow(m_activeModeLabel, m_activeModeCombo);
 
     m_triggerLabel = new QLabel(m_group);
     m_triggerLabel->setToolTip(
@@ -98,24 +88,10 @@ void ShortcutSettingsWidget::buildUi()
 void ShortcutSettingsWidget::retranslate()
 {
     m_group->setTitle(tr("Shortcuts"));
-    m_activeModeLabel->setText(tr("Active Mode"));
-    m_triggerLabel->setText(tr("Trigger"));
-    m_modeSwitchLabel->setText(tr("Mode Switch"));
+    m_triggerLabel->setText(tr("Global Speech Recognition Trigger"));
+    m_modeSwitchLabel->setText(tr("Speech Recognition Mode Switch"));
     m_triggerApplyBtn->setToolTip(tr("Apply shortcut"));
     m_modeSwitchApplyBtn->setToolTip(tr("Apply shortcut"));
-
-    const QSignalBlocker blocker(m_activeModeCombo);
-    const QString current = m_activeModeCombo->currentData().toString();
-    m_activeModeCombo->clear();
-    m_activeModeCombo->addItem(tr("ASR only"), QStringLiteral("asr_only"));
-    m_activeModeCombo->addItem(tr("ASR + AI Polish"),
-                               QStringLiteral("asr_llm"));
-    m_activeModeCombo->addItem(tr("ASR + OCR context + AI Polish"),
-                               QStringLiteral("asr_llm_ocr"));
-    const int idx = m_activeModeCombo->findData(current);
-    if (idx >= 0) {
-        m_activeModeCombo->setCurrentIndex(idx);
-    }
 }
 
 void ShortcutSettingsWidget::changeEvent(QEvent *event)
@@ -124,24 +100,6 @@ void ShortcutSettingsWidget::changeEvent(QEvent *event)
     if (event->type() == QEvent::LanguageChange) {
         retranslate();
     }
-}
-
-void ShortcutSettingsWidget::initActiveMode()
-{
-    const QString activeMode =
-        QString::fromStdString(appConfig().settings.activeMode);
-    const int idx = m_activeModeCombo->findData(activeMode);
-    if (idx >= 0) {
-        m_activeModeCombo->setCurrentIndex(idx);
-    }
-
-    connect(m_activeModeCombo, &QComboBox::currentIndexChanged, this, [this]() {
-        const QString mode = m_activeModeCombo->currentData().toString();
-        appConfig().settings.activeMode = mode.toStdString();
-        markConfigDirty();
-        STATUSBAR_INFO("{}", tr("Active mode changed to %1")
-                                 .arg(m_activeModeCombo->currentText()));
-    });
 }
 
 void ShortcutSettingsWidget::initShortcuts()
@@ -171,16 +129,6 @@ void ShortcutSettingsWidget::initShortcuts()
     connect(m_modeSwitchApplyBtn, &QPushButton::clicked, this, applyModeSwitch);
 }
 
-void ShortcutSettingsWidget::updateActiveModeDisplay()
-{
-    const QString activeMode =
-        QString::fromStdString(appConfig().settings.activeMode);
-    const int idx = m_activeModeCombo->findData(activeMode);
-    if (idx >= 0) {
-        m_activeModeCombo->setCurrentIndex(idx);
-    }
-}
-
 void ShortcutSettingsWidget::refreshFromConfig()
 {
     {
@@ -191,7 +139,6 @@ void ShortcutSettingsWidget::refreshFromConfig()
         m_modeSwitchEdit->setKeySequence(QKeySequence(
             QString::fromStdString(appConfig().settings.modeSwitchHotkey)));
     }
-    updateActiveModeDisplay();
 }
 
 } // namespace talkinput

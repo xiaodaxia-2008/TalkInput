@@ -3,7 +3,6 @@
 #include <QWidget>
 #include <memory>
 
-class QComboBox;
 class QEvent;
 class QGroupBox;
 class QKeySequenceEdit;
@@ -22,9 +21,6 @@ public:
     explicit ShortcutSettingsWidget(QWidget *parent = nullptr);
     ~ShortcutSettingsWidget() override;
 
-    /// Synchronizes the active-mode combo with the current config.
-    void updateActiveModeDisplay();
-
     /// Re-reads the current config and refreshes every control.
     void refreshFromConfig();
 
@@ -34,12 +30,9 @@ protected:
 private:
     void buildUi();
     void retranslate();
-    void initActiveMode();
     void initShortcuts();
 
     QGroupBox *m_group = nullptr;
-    QLabel *m_activeModeLabel = nullptr;
-    QComboBox *m_activeModeCombo = nullptr;
     QLabel *m_triggerLabel = nullptr;
     QKeySequenceEdit *m_triggerEdit = nullptr;
     QPushButton *m_triggerApplyBtn = nullptr;

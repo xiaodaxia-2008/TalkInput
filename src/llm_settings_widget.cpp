@@ -3,23 +3,51 @@
 #include "logging.h"
 #include "utils.h"
 
+#include <nlohmann/json.hpp>
+
 #include <QComboBox>
-#include <QDialog>
-#include <QDialogButtonBox>
 #include <QEvent>
 #include <QGridLayout>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QTextEdit>
+#include <QUrl>
 #include <QVBoxLayout>
 
 namespace talkinput
 {
+
+namespace
+{
+QUrl modelsUrl(const QString &endpoint)
+{
+    QUrl url(endpoint);
+    QString path = url.path();
+    while (path.endsWith(QLatin1Char('/')) && path.size() > 1) {
+        path.chop(1);
+    }
+    if (path.endsWith(QStringLiteral("/chat/completions"), Qt::CaseInsensitive))
+    {
+        path.chop(QStringLiteral("/chat/completions").size());
+    }
+    if (!path.endsWith(QStringLiteral("/models"), Qt::CaseInsensitive)) {
+        if (!path.endsWith(QLatin1Char('/'))) {
+            path += QLatin1Char('/');
+        }
+        path += QStringLiteral("models");
+    }
+    url.setPath(path);
+    return url;
+}
+} // namespace
 
 LlmSettingsWidget::LlmSettingsWidget(QWidget *parent) : QWidget(parent)
 {
@@ -42,70 +70,62 @@ void LlmSettingsWidget::buildUi()
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(12);
 
-    m_group = new QGroupBox(content);
-    auto *grid = new QGridLayout(m_group);
-    grid->setContentsMargins(16, 20, 16, 14);
-    grid->setHorizontalSpacing(8);
+    auto *grid = new QGridLayout();
+    grid->setHorizontalSpacing(12);
     grid->setVerticalSpacing(10);
 
-    m_providerFormLabel = new QLabel(m_group);
+    // One setting per row
+    m_providerFormLabel = new QLabel(content);
     grid->addWidget(m_providerFormLabel, 0, 0);
 
-    m_providerCombo = new QComboBox(m_group);
+    m_providerCombo = new QComboBox(content);
     m_providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     grid->addWidget(m_providerCombo, 0, 1);
 
-    m_endpointFormLabel = new QLabel(m_group);
-    m_endpointFormLabel->setSizePolicy(QSizePolicy::Maximum,
-                                       QSizePolicy::Preferred);
-    grid->addWidget(m_endpointFormLabel, 0, 2);
+    m_endpointFormLabel = new QLabel(content);
+    grid->addWidget(m_endpointFormLabel, 1, 0);
 
-    m_endpointEdit = new QLineEdit(m_group);
-    m_endpointEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_endpointEdit = new QLineEdit(content);
     m_endpointEdit->setPlaceholderText(
         QStringLiteral("https://api.openai.com"));
-    grid->addWidget(m_endpointEdit, 0, 3);
+    grid->addWidget(m_endpointEdit, 1, 1);
 
-    m_llmModelFormLabel = new QLabel(m_group);
-    grid->addWidget(m_llmModelFormLabel, 1, 0);
+    m_apiKeyFormLabel = new QLabel(content);
+    grid->addWidget(m_apiKeyFormLabel, 2, 0);
 
-    m_llmModelCombo = new QComboBox(m_group);
+    m_apiKeyEdit = new QLineEdit(content);
+    m_apiKeyEdit->setEchoMode(QLineEdit::Password);
+    m_apiKeyEdit->setPlaceholderText(QStringLiteral("sk-..."));
+    grid->addWidget(m_apiKeyEdit, 2, 1);
+
+    m_llmModelFormLabel = new QLabel(content);
+    grid->addWidget(m_llmModelFormLabel, 3, 0);
+
+    m_llmModelCombo = new QComboBox(content);
     m_llmModelCombo->setEditable(true);
     m_llmModelCombo->setInsertPolicy(QComboBox::NoInsert);
     m_llmModelCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_llmModelCombo->lineEdit()->setPlaceholderText(
         tr("Model name sent to the LLM service"));
-    grid->addWidget(m_llmModelCombo, 1, 1);
+    auto *modelRow = new QHBoxLayout;
+    modelRow->setSpacing(8);
+    modelRow->addWidget(m_llmModelCombo, 1);
+    m_refreshModelsButton = new QPushButton(content);
+    m_refreshModelsButton->setFlat(true);
+    modelRow->addWidget(m_refreshModelsButton);
+    grid->addLayout(modelRow, 3, 1);
 
-    m_apiKeyFormLabel = new QLabel(m_group);
-    m_apiKeyFormLabel->setSizePolicy(QSizePolicy::Maximum,
-                                     QSizePolicy::Preferred);
-    grid->addWidget(m_apiKeyFormLabel, 1, 2);
+    // Multi-line prompt editor
+    m_promptFormLabel = new QLabel(content);
+    m_promptFormLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    grid->addWidget(m_promptFormLabel, 4, 0, 1, 2);
 
-    m_apiKeyEdit = new QLineEdit(m_group);
-    m_apiKeyEdit->setEchoMode(QLineEdit::Password);
-    m_apiKeyEdit->setPlaceholderText(QStringLiteral("sk-..."));
-    m_apiKeyEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    grid->addWidget(m_apiKeyEdit, 1, 3);
+    m_promptEdit = new QTextEdit(content);
+    m_promptEdit->setAcceptRichText(false);
+    m_promptEdit->setFixedHeight(140);
+    grid->addWidget(m_promptEdit, 5, 0, 1, 2);
 
-    m_promptFormLabel = new QLabel(m_group);
-    grid->addWidget(m_promptFormLabel, 2, 0);
-
-    auto *promptRow = new QHBoxLayout;
-    promptRow->setSpacing(8);
-    m_promptLabel = new QLabel(m_group);
-    m_promptLabel->setSizePolicy(QSizePolicy::Expanding,
-                                 QSizePolicy::Preferred);
-    m_promptLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    promptRow->addWidget(m_promptLabel, 1);
-
-    m_promptEditButton = new QPushButton(m_group);
-    m_promptEditButton->setToolTip(tr("Edit user prompt"));
-    m_promptEditButton->setFlat(true);
-    promptRow->addWidget(m_promptEditButton);
-    grid->addLayout(promptRow, 2, 1, 1, 3);
-
-    contentLayout->addWidget(m_group);
+    contentLayout->addLayout(grid);
     contentLayout->addStretch();
 
     scroll->setWidget(content);
@@ -115,8 +135,9 @@ void LlmSettingsWidget::buildUi()
     outerLayout->addWidget(scroll);
 
     const int iconSize = fontMetrics().height();
-    setButtonIcon(m_promptEditButton, ":/resources/icons/edit.svg", iconSize);
-    m_promptEditButton->setProperty("buttonRole", "icon");
+    setButtonIcon(m_refreshModelsButton, ":/resources/icons/refresh.svg",
+                  iconSize);
+    m_network = new QNetworkAccessManager(this);
 
     // Populate — store only the provider ID
     for (const auto &[key, preset] : appConfig().llmPresets) {
@@ -163,20 +184,28 @@ void LlmSettingsWidget::buildUi()
 
     connect(m_providerCombo, &QComboBox::currentIndexChanged, this,
             &LlmSettingsWidget::onLlmProviderChanged);
+    connect(m_refreshModelsButton, &QPushButton::clicked, this,
+            &LlmSettingsWidget::refreshModels);
 
-    connect(m_promptEditButton, &QPushButton::clicked, this,
-            &LlmSettingsWidget::onEditPrompt);
+    // Prompt edited — commit on every change
+    connect(m_promptEdit, &QTextEdit::textChanged, this,
+            &LlmSettingsWidget::onPromptChanged);
 }
 
 void LlmSettingsWidget::retranslate()
 {
-    m_group->setTitle(tr("LLM Service"));
     m_providerFormLabel->setText(tr("Provider"));
     m_endpointFormLabel->setText(tr("Endpoint"));
     m_llmModelFormLabel->setText(tr("Model"));
     m_apiKeyFormLabel->setText(tr("API Key"));
-    m_promptFormLabel->setText(tr("Prompt"));
-    refreshPromptLabel();
+    m_refreshModelsButton->setText(tr("Refresh models"));
+    m_refreshModelsButton->setToolTip(
+        tr("Fetch models from the configured endpoint"));
+    m_promptFormLabel->setText(
+        QStringLiteral("<b>%1</b><br><small>%2</small>")
+            .arg(tr("Prompt"),
+                 tr("Available variables: {{input}}, {{context}}, "
+                    "{{hotwords}}")));
 }
 
 void LlmSettingsWidget::changeEvent(QEvent *event)
@@ -208,7 +237,9 @@ void LlmSettingsWidget::refreshFromConfig()
         }
     }
 
-    refreshPromptLabel();
+    const QSignalBlocker promptBlocker(m_promptEdit);
+    m_promptEdit->setPlainText(
+        QString::fromStdString(appConfig().settings.llmUserPrompt));
 }
 
 void LlmSettingsWidget::onLlmProviderChanged(int /*index*/)
@@ -252,56 +283,100 @@ void LlmSettingsWidget::applyLlmProviderToUi(const LlmPreset &provider)
     m_apiKeyEdit->setText(QString::fromStdString(provider.apiKey));
 }
 
-void LlmSettingsWidget::refreshPromptLabel()
+void LlmSettingsWidget::onPromptChanged()
 {
-    const QString text =
-        QString::fromStdString(appConfig().settings.llmUserPrompt);
-    m_promptLabel->setText(
-        QStringLiteral("%1 …").arg(text.simplified().left(50)));
-    m_promptLabel->setToolTip(text);
+    appConfig().settings.llmUserPrompt =
+        m_promptEdit->toPlainText().toStdString();
+    markConfigDirty();
 }
 
-void LlmSettingsWidget::onEditPrompt()
+void LlmSettingsWidget::refreshModels()
 {
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("User Prompt"));
-    dialog.resize(580, 360);
-
-    auto *layout = new QVBoxLayout(&dialog);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(10);
-
-    const QString hint =
-        tr("Available variables: {{input}}, {{context}}, {{hotwords}}");
-    auto *label = new QLabel(QStringLiteral("<b>%1</b><br><small>%2</small>")
-                                 .arg(tr("User Prompt"), hint),
-                             &dialog);
-    label->setWordWrap(true);
-    layout->addWidget(label);
-
-    auto *editor = new QTextEdit(&dialog);
-    editor->setAcceptRichText(false);
-    editor->setPlaceholderText(
-        tr("Use {{input}}, {{context}}, and {{hotwords}} as needed"));
-    editor->setPlainText(
-        QString::fromStdString(appConfig().settings.llmUserPrompt));
-    layout->addWidget(editor, 1);
-
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-
-    if (dialog.exec() != QDialog::Accepted) {
+    const QString providerId = m_providerCombo->currentData().toString();
+    auto it = appConfig().llmPresets.find(providerId.toStdString());
+    if (it == appConfig().llmPresets.end()) {
         return;
     }
 
-    const QString text = editor->toPlainText().trimmed();
-    appConfig().settings.llmUserPrompt = text.toStdString();
+    auto &preset = it->second;
+    preset.endpoint = m_endpointEdit->text().trimmed().toStdString();
+    preset.apiKey = m_apiKeyEdit->text().trimmed().toStdString();
     markConfigDirty();
-    refreshPromptLabel();
-    STATUSBAR_INFO("{}", tr("LLM prompt saved"));
+
+    const QUrl url = modelsUrl(QString::fromStdString(preset.endpoint));
+    if (!url.isValid() || url.scheme().isEmpty() || url.host().isEmpty()) {
+        STATUSBAR_INFO("{}", tr("Invalid LLM endpoint"));
+        return;
+    }
+
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    const QString apiKey = QString::fromStdString(preset.apiKey);
+    if (!apiKey.isEmpty()) {
+        request.setRawHeader("Authorization",
+                             QStringLiteral("Bearer %1").arg(apiKey).toUtf8());
+    }
+
+    m_refreshModelsButton->setEnabled(false);
+    QNetworkReply *reply = m_network->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, providerId]() {
+        m_refreshModelsButton->setEnabled(true);
+        const auto replyGuard =
+            qScopeGuard([reply]() { reply->deleteLater(); });
+
+        if (reply->error() != QNetworkReply::NoError) {
+            STATUSBAR_INFO(
+                "{}",
+                tr("Failed to refresh models: %1").arg(reply->errorString()));
+            return;
+        }
+
+        try {
+            const QByteArray body = reply->readAll();
+            const auto document = nlohmann::json::parse(
+                body.constData(), body.constData() + body.size());
+            if (!document.contains("data") || !document["data"].is_array()) {
+                STATUSBAR_INFO("{}", tr("Model list response is invalid"));
+                return;
+            }
+
+            std::map<std::string, LlmModel> models;
+            for (const auto &item : document["data"]) {
+                if (!item.is_object() || !item.contains("id") ||
+                    !item["id"].is_string())
+                {
+                    continue;
+                }
+                const std::string id = item["id"].get<std::string>();
+                if (id.empty()) {
+                    continue;
+                }
+                LlmModel model;
+                model.name = item.value("name", id);
+                models.emplace(id, std::move(model));
+            }
+            if (models.empty()) {
+                STATUSBAR_INFO("{}", tr("No models returned by endpoint"));
+                return;
+            }
+
+            auto presetIt =
+                appConfig().llmPresets.find(providerId.toStdString());
+            if (presetIt == appConfig().llmPresets.end()) {
+                return;
+            }
+            presetIt->second.models = std::move(models);
+            markConfigDirty();
+            applyLlmProviderToUi(presetIt->second);
+            STATUSBAR_INFO(
+                "{}",
+                tr("Models refreshed: %1").arg(presetIt->second.models.size()));
+        }
+        catch (const nlohmann::json::exception &) {
+            STATUSBAR_INFO("{}", tr("Model list response is invalid"));
+        }
+    });
 }
 
 } // namespace talkinput

@@ -5,10 +5,10 @@
 
 class QCheckBox;
 class QEvent;
-class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QSpinBox;
+class QTextEdit;
 
 namespace talkinput
 {
@@ -33,7 +33,6 @@ private:
     void retranslate();
     void applyApiServerSettings();
 
-    QGroupBox *m_group = nullptr;
     QCheckBox *m_enableCheck = nullptr;
     QLabel *m_hostLabel = nullptr;
     QLineEdit *m_hostEdit = nullptr;
@@ -41,6 +40,7 @@ private:
     QSpinBox *m_portSpin = nullptr;
     QLabel *m_keyLabel = nullptr;
     QLineEdit *m_keyEdit = nullptr;
+    QTextEdit *m_apiInfoEdit = nullptr;
 };
 
 } // namespace talkinput

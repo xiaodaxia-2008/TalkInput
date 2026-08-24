@@ -5,7 +5,6 @@
 
 #include <QComboBox>
 #include <QEvent>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QScrollArea>
@@ -36,19 +35,17 @@ void OcrSettingsWidget::buildUi()
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(12);
 
-    m_group = new QGroupBox(content);
-    auto *groupLayout = new QHBoxLayout(m_group);
-    groupLayout->setContentsMargins(16, 20, 16, 14);
+    auto *groupLayout = new QHBoxLayout();
     groupLayout->setSpacing(8);
 
-    m_providerLabel = new QLabel(m_group);
+    m_providerLabel = new QLabel(content);
     groupLayout->addWidget(m_providerLabel);
 
-    m_ocrCombo = new QComboBox(m_group);
+    m_ocrCombo = new QComboBox(content);
     m_ocrCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     groupLayout->addWidget(m_ocrCombo, 1);
 
-    contentLayout->addWidget(m_group);
+    contentLayout->addLayout(groupLayout);
     contentLayout->addStretch();
 
     scroll->setWidget(content);
@@ -68,7 +65,6 @@ void OcrSettingsWidget::buildUi()
 
 void OcrSettingsWidget::retranslate()
 {
-    m_group->setTitle(tr("OCR Service"));
     m_providerLabel->setText(tr("Provider:"));
 }
 

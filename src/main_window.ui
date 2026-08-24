@@ -66,30 +66,16 @@
         <property name="currentIndex">
          <number>0</number>
         </property>
-        <widget class="QWidget" name="pageRecognitionModel">
-         <layout class="QVBoxLayout" name="pageRecognitionModelLayout">
+        <widget class="QWidget" name="pageStt">
+         <layout class="QVBoxLayout" name="pageSttLayout">
           <property name="spacing">10</property>
           <property name="leftMargin">24</property>
           <property name="topMargin">20</property>
           <property name="rightMargin">24</property>
           <property name="bottomMargin">16</property>
           <item>
-           <layout class="QVBoxLayout" name="recognitionModelContentLayout">
-            <property name="spacing">0</property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageRecognitionBehavior">
-         <layout class="QVBoxLayout" name="pageRecognitionBehaviorLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
-          <item>
-           <layout class="QVBoxLayout" name="recognitionBehaviorContentLayout">
-            <property name="spacing">0</property>
+           <layout class="QVBoxLayout" name="sttContentLayout">
+            <property name="spacing">12</property>
            </layout>
           </item>
          </layout>

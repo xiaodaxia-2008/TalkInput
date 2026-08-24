@@ -22,8 +22,7 @@ namespace talkinput
 
 enum class SettingsPage : int
 {
-    RecognitionModel = 0,
-    RecognitionBehavior,
+    Stt = 0,
     Ocr,
     Llm,
     Tts,
