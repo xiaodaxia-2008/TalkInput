@@ -12,11 +12,14 @@
 #include <QDialogButtonBox>
 #include <QEvent>
 #include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableView>
 #include <QTextEdit>
 #include <QTextOption>
+#include <QStringList>
+#include <QVector>
 #include <QVBoxLayout>
 
 namespace talkinput
@@ -132,12 +135,18 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
             &HistoryWidget::copyEntry);
     connect(m_ui->deleteButton, &QPushButton::clicked, this,
             &HistoryWidget::deleteEntry);
-    connect(m_ui->table->selectionModel(), &QItemSelectionModel::currentChanged,
-            this, [this](const QModelIndex &, const QModelIndex &) {
-                const bool enabled = selectedRow() >= 0;
-                m_ui->editButton->setEnabled(enabled);
-                m_ui->copyButton->setEnabled(enabled);
-                m_ui->deleteButton->setEnabled(enabled);
+    const auto updateActionButtons = [this]() {
+        const QModelIndexList selectedRows =
+            m_ui->table->selectionModel()->selectedRows();
+        m_ui->editButton->setEnabled(selectedRows.size() == 1);
+        m_ui->copyButton->setEnabled(!selectedRows.isEmpty());
+        m_ui->deleteButton->setEnabled(!selectedRows.isEmpty());
+    };
+    connect(m_ui->table->selectionModel(),
+            &QItemSelectionModel::selectionChanged, this,
+            [updateActionButtons](const QItemSelection &,
+                                  const QItemSelection &) {
+                updateActionButtons();
             });
 
     m_ui->table->horizontalHeader()->hide();
@@ -146,6 +155,7 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
     m_ui->table->verticalHeader()->hide();
     m_ui->table->verticalHeader()->setDefaultSectionSize(30);
     m_ui->table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_ui->table->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_ui->editButton->setEnabled(false);
     m_ui->copyButton->setEnabled(false);
@@ -224,23 +234,45 @@ void HistoryWidget::editEntry()
 
 void HistoryWidget::copyEntry()
 {
-    const auto *entry = m_model->entryAt(selectedRow());
-    if (!m_history || !entry) {
+    if (!m_history) {
         return;
     }
 
-    QApplication::clipboard()->setText(entry->text);
+    QStringList texts;
+    const QModelIndexList rows = m_ui->table->selectionModel()->selectedRows();
+    for (const QModelIndex &index : rows) {
+        if (const auto *entry = m_model->entryAt(index.row())) {
+            texts.append(entry->text);
+        }
+    }
+    if (texts.isEmpty()) {
+        return;
+    }
+
+    QApplication::clipboard()->setText(texts.join(QLatin1Char('\n')));
     STATUSBAR_INFO("{}", tr("Copied"));
 }
 
 void HistoryWidget::deleteEntry()
 {
-    const auto *entry = m_model->entryAt(selectedRow());
-    if (!m_history || !entry) {
+    if (!m_history) {
         return;
     }
 
-    m_history->deleteEntry(entry->id);
+    const QModelIndexList rows = m_ui->table->selectionModel()->selectedRows();
+    QVector<qint64> ids;
+    for (const QModelIndex &index : rows) {
+        if (const auto *entry = m_model->entryAt(index.row())) {
+            ids.append(entry->id);
+        }
+    }
+    if (ids.isEmpty()) {
+        return;
+    }
+
+    for (const qint64 id : ids) {
+        m_history->deleteEntry(id);
+    }
     refreshHistory();
     STATUSBAR_INFO("{}", tr("Deleted"));
 }

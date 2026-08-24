@@ -9,15 +9,15 @@ add_executable(TalkInputSenseVoiceExample
 add_executable(TalkInputAsrBenchmark
     asr_benchmark.cpp
 )
+add_executable(TalkInputFunAsrParallelBenchmark
+    funasr_parallel_benchmark.cpp
+)
 add_executable(TalkInputOcrCaptureExample
     ocr_capture_example.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
 )
 add_executable(TalkInputOcrWinRtExample
     ocr_winrt_example.cpp
-)
-add_executable(TalkInputOcrCompareBenchmark
-    ocr_compare_benchmark.cpp
 )
 add_executable(TalkInputPpOcrV6Example
     ppocrv6_ocr_example.cpp
@@ -117,6 +117,16 @@ target_link_libraries(TalkInputAsrBenchmark
 )
 target_compile_definitions(TalkInputAsrBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
+target_link_libraries(TalkInputFunAsrParallelBenchmark
+    PRIVATE
+    Qt6::Core
+    sherpa-onnx-c-api
+    spdlog::spdlog_header_only
+)
+target_compile_definitions(TalkInputFunAsrParallelBenchmark PRIVATE
+    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
+)
+
 target_link_libraries(TalkInputOcrCaptureExample
     PRIVATE
     Qt6::Core
@@ -131,32 +141,6 @@ target_link_libraries(TalkInputOcrWinRtExample
     windowsapp
 )
 target_compile_definitions(TalkInputOcrWinRtExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-
-target_link_libraries(TalkInputOcrCompareBenchmark
-    PRIVATE
-    Qt6::Core
-    Qt6::Gui
-    Tesseract::libtesseract
-    windowsapp
-    spdlog::spdlog_header_only
-)
-target_compile_definitions(TalkInputOcrCompareBenchmark PRIVATE
-    TALKINPUT_TESSERACT_TRAIN_DATA_DIR="${TALKINPUT_TESSERACT_TRAIN_DATA_DIR}"
-    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
-)
-target_include_directories(TalkInputOcrCompareBenchmark PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
-)
-if(WIN32)
-    add_custom_command(TARGET TalkInputOcrCompareBenchmark
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_RUNTIME_DLLS:TalkInputOcrCompareBenchmark>
-        $<TARGET_FILE_DIR:TalkInputOcrCompareBenchmark>
-        COMMAND_EXPAND_LISTS
-    )
-endif()
 
 find_package(Clipper2 CONFIG REQUIRED)
 

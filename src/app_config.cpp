@@ -66,18 +66,35 @@ void ensureLoaded()
     try {
         QFile defaultFile(":/resources/misc/config.json");
         defaultFile.open(QIODevice::ReadOnly);
-        s_defaultConfig = nlohmann::json::parse(
-            defaultFile.readAll().constData()).get<AppConfigData>();
+        s_defaultConfig =
+            nlohmann::json::parse(defaultFile.readAll().constData())
+                .get<AppConfigData>();
 
         const QString userPath = appConfigPath();
         QFile userFile(userPath);
         if (userFile.open(QIODevice::ReadOnly)) {
             nlohmann::json defaultJson = nlohmann::json(s_defaultConfig);
-            nlohmann::json userJson = nlohmann::json::parse(
-                userFile.readAll().constData());
+            nlohmann::json userJson =
+                nlohmann::json::parse(userFile.readAll().constData());
             defaultJson.merge_patch(userJson);
             s_config = defaultJson.get<AppConfigData>();
             SPDLOG_INFO("config: loaded {}", userPath);
+
+            // Keep the OCR provider list in sync with the supported engine.
+            // Older user configs may still contain the removed System OCR and
+            // Tesseract entries after the bundled defaults are updated.
+            const bool removedSystem =
+                s_config.ocrPresets.erase("system-ocr") > 0;
+            const bool removedTesseract =
+                s_config.ocrPresets.erase("tesseract-ocr") > 0;
+            if (removedSystem || removedTesseract) {
+                if (s_config.settings.ocrProviderId == "system-ocr" ||
+                    s_config.settings.ocrProviderId == "tesseract-ocr")
+                {
+                    s_config.settings.ocrProviderId = "ppocrv6-small-ocr";
+                }
+                s_dirty = true;
+            }
         }
         else {
             s_config = s_defaultConfig;

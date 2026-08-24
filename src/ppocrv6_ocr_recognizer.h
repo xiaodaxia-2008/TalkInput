@@ -19,10 +19,11 @@ public:
 
     bool isAvailable() const override;
     QCoro::Task<QString> recognizeText(const QImage &image) override;
+    QCoro::Task<OcrResult> recognizeDetailed(const QImage &image) override;
 
 private:
     bool ensureInitialized();
-    QString recognizeWithPpOcr(const QImage &image);
+    OcrResult recognizeWithPpOcr(const QImage &image);
     QString modelDir() const;
 
     struct Impl;

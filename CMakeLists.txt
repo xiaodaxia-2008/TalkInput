@@ -19,7 +19,6 @@ find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network 
 find_package(LibArchive REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(Tesseract REQUIRED)
 find_package(Clipper2 CONFIG REQUIRED)
 
 if(WIN32)
@@ -95,7 +94,6 @@ FetchContent_MakeAvailable(QCoro)
 include(cmake/QtDeploy.cmake)
 include(cmake/SherpaOnnxRelease.cmake)
 include(cmake/GitInfo.cmake)
-include(cmake/TesseractTrainData.cmake)
 include(cmake/ModelDownload.cmake)
 
 if(MSVC)

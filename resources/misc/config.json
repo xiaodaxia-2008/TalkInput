@@ -265,16 +265,6 @@
     }
   },
   "ocrPresets": {
-    "system-ocr": {
-      "id": "system-ocr",
-      "name": "System",
-      "type": "System"
-    },
-    "tesseract-ocr": {
-      "id": "tesseract-ocr",
-      "name": "Tesseract",
-      "type": "Tesseract"
-    },
     "ppocrv6-small-ocr": {
       "id": "ppocrv6-small-ocr",
       "name": "PP-OCRv6 Small",

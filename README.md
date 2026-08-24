@@ -50,7 +50,7 @@ MacOS / Linux 暂时需要自己从源码编译。
 
 ### 文字识别（OCR) 模型
 
-支持使用系统OCR（Windows 系统自带），或者 Tesseract OCR 。
+支持使用 PP-OCRv6 进行文字识别。
 
 ### 大语言（LLM) 模型
 

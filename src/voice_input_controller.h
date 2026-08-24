@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app_config.h"
+#include "ocr_recognizer.h"
 
 #include <QAudioFormat>
 #include <QByteArray>
@@ -25,7 +26,6 @@ namespace talkinput
 {
 
 class LlmPostProcessor;
-class OcrRecognizer;
 class SpeechRecognizer;
 class VoiceHotkey;
 class VoiceOverlay;
@@ -62,6 +62,7 @@ struct ApiOcrResult
 {
     QString text;
     QString error;
+    QVector<OcrTextBlock> blocks;
 };
 
 PipelineMode pipelineModeFromString(const std::string &s);
@@ -112,6 +113,10 @@ public:
     void submitApiOcr(const QImage &image,
                       std::function<void(const ApiOcrResult &)> callback);
 
+    /// Recognizes an image and returns text boxes for visual OCR previews.
+    void submitDetailedOcr(const QImage &image,
+                           std::function<void(const ApiOcrResult &)> callback);
+
 signals:
     void listeningChanged(bool listening);
     void finalTextCommitted(const QString &text);
@@ -136,6 +141,9 @@ private:
     QCoro::Task<void>
     executeApiOcr(QImage image, QPointer<OcrRecognizer> recognizer,
                   std::function<void(const ApiOcrResult &)> callback);
+    QCoro::Task<void>
+    executeDetailedOcr(QImage image, QPointer<OcrRecognizer> recognizer,
+                       std::function<void(const ApiOcrResult &)> callback);
     void setStage(PipelineStage stage);
     void onResult(const QString &text, bool isFinal);
     std::expected<void, QString> startAudioCapture();

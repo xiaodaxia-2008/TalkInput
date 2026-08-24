@@ -3,8 +3,6 @@
 #ifdef TALKINPUT_HAS_PPOCRV6
 #include "ppocrv6_ocr_recognizer.h"
 #endif
-#include "system_ocr_recognizer.h"
-#include "tesseract_ocr_recognizer.h"
 
 #include <QGuiApplication>
 #include <QScreen>
@@ -17,6 +15,13 @@ OcrRecognizer::OcrRecognizer(QObject *parent) : QObject(parent)
 }
 
 OcrRecognizer::~OcrRecognizer() = default;
+
+QCoro::Task<OcrResult> OcrRecognizer::recognizeDetailed(const QImage &image)
+{
+    OcrResult result;
+    result.text = co_await recognizeText(image);
+    co_return result;
+}
 
 QImage OcrRecognizer::captureContextImage() const
 {
@@ -55,12 +60,6 @@ QImage OcrRecognizer::captureContextImage() const
 std::expected<std::unique_ptr<OcrRecognizer>, QString>
 OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
 {
-    if (preset.type == "System") {
-        return std::make_unique<SystemOcrRecognizer>(parent);
-    }
-    if (preset.type == "Tesseract") {
-        return std::make_unique<TesseractOcrRecognizer>(parent);
-    }
 #ifdef TALKINPUT_HAS_PPOCRV6
     if (preset.type == "PpOcrV6") {
         return std::make_unique<PpOcrV6OcrRecognizer>(parent);

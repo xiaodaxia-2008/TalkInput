@@ -8,7 +8,6 @@
     "spdlog",
     "nlohmann-json",
     "boost-pfr",
-    "tesseract",
     "clipper2"
   ]
 }

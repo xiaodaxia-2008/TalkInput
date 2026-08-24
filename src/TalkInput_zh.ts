@@ -14,42 +14,42 @@
         <translation>识别历史</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="52"/>
+        <location filename="history_widget.ui" line="99"/>
         <source>historyClearButton</source>
         <translation>historyClearButton</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="55"/>
+        <location filename="history_widget.ui" line="102"/>
         <source>Clear</source>
         <translation>清除</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="69"/>
+        <location filename="history_widget.ui" line="56"/>
         <source>Edit text</source>
         <translation>编辑文本</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="72"/>
+        <location filename="history_widget.ui" line="59"/>
         <source>Edit</source>
         <translation>编辑</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="79"/>
+        <location filename="history_widget.ui" line="66"/>
         <source>Copy text</source>
         <translation>复制文本</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="82"/>
+        <location filename="history_widget.ui" line="69"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="89"/>
+        <location filename="history_widget.ui" line="76"/>
         <source>Delete entry</source>
         <translation>删除条目</translation>
     </message>
     <message>
-        <location filename="history_widget.ui" line="92"/>
+        <location filename="history_widget.ui" line="79"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
@@ -290,37 +290,37 @@ POST /v1/audio/speech —— 文字转语音（JSON）</translation>
 <context>
     <name>talkinput::HistoryWidget</name>
     <message>
-        <location filename="history_widget.cpp" line="194"/>
+        <location filename="history_widget.cpp" line="204"/>
         <source>Edit Recognition Text</source>
         <translation>编辑识别文本</translation>
     </message>
     <message>
-        <location filename="history_widget.cpp" line="222"/>
+        <location filename="history_widget.cpp" line="232"/>
         <source>Updated</source>
         <translation>已更新</translation>
     </message>
     <message>
-        <location filename="history_widget.cpp" line="233"/>
+        <location filename="history_widget.cpp" line="253"/>
         <source>Copied</source>
         <translation>已复制</translation>
     </message>
     <message>
-        <location filename="history_widget.cpp" line="245"/>
+        <location filename="history_widget.cpp" line="277"/>
         <source>Deleted</source>
         <translation>已删除</translation>
     </message>
     <message>
-        <location filename="history_widget.cpp" line="255"/>
+        <location filename="history_widget.cpp" line="287"/>
         <source>Clear History</source>
         <translation>清除历史</translation>
     </message>
     <message>
-        <location filename="history_widget.cpp" line="256"/>
+        <location filename="history_widget.cpp" line="288"/>
         <source>Are you sure you want to clear all recognition history?</source>
         <translation>确定要清除所有识别历史吗？</translation>
     </message>
     <message>
-        <location filename="history_widget.cpp" line="264"/>
+        <location filename="history_widget.cpp" line="296"/>
         <source>History cleared</source>
         <translation>历史已清除</translation>
     </message>
@@ -386,17 +386,17 @@ POST /v1/audio/speech —— 文字转语音（JSON）</translation>
         <translation>刷新模型</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="202"/>
+        <location filename="llm_settings_widget.cpp" line="203"/>
         <source>Fetch models from the configured endpoint</source>
         <translation>从配置的接口获取模型列表</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="205"/>
+        <location filename="llm_settings_widget.cpp" line="206"/>
         <source>Prompt</source>
         <translation>提示词</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="259"/>
+        <location filename="llm_settings_widget.cpp" line="260"/>
         <source>LLM provider saved: %1</source>
         <translation>LLM 服务商已保存：%1</translation>
     </message>
@@ -406,28 +406,28 @@ POST /v1/audio/speech —— 文字转语音（JSON）</translation>
         <translation>大模型接口地址无效</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="328"/>
+        <location filename="llm_settings_widget.cpp" line="331"/>
         <source>Failed to refresh models: %1</source>
         <translation>刷新模型失败：%1</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="338"/>
-        <location filename="llm_settings_widget.cpp" line="373"/>
+        <location filename="llm_settings_widget.cpp" line="340"/>
+        <location filename="llm_settings_widget.cpp" line="377"/>
         <source>Model list response is invalid</source>
         <translation>模型列表响应格式无效</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="357"/>
+        <location filename="llm_settings_widget.cpp" line="360"/>
         <source>No models returned by endpoint</source>
         <translation>接口未返回模型</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="369"/>
+        <location filename="llm_settings_widget.cpp" line="374"/>
         <source>Models refreshed: %1</source>
         <translation>模型已刷新：%1 个</translation>
     </message>
     <message>
-        <location filename="llm_settings_widget.cpp" line="206"/>
+        <location filename="llm_settings_widget.cpp" line="207"/>
         <source>Available variables: {{input}}, {{context}}, {{hotwords}}</source>
         <translation>可用变量：{{input}}、{{context}}、{{hotwords}}</translation>
     </message>
@@ -633,9 +633,70 @@ Model downloads and recognition history will not be deleted.</source>
 <context>
     <name>talkinput::OcrSettingsWidget</name>
     <message>
-        <location filename="ocr_settings_widget.cpp" line="68"/>
+        <location filename="ocr_settings_widget.cpp" line="90"/>
+        <location filename="ocr_settings_widget.cpp" line="124"/>
+        <source>OCR image preview will appear here</source>
+        <translation>OCR 图片预览将显示在这里</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="118"/>
         <source>Provider:</source>
         <translation>服务商：</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="119"/>
+        <source>Recognize clipboard image</source>
+        <translation>识别剪贴板图像</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="120"/>
+        <source>Open image and recognize</source>
+        <translation>打开图片并识别</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="121"/>
+        <source>OCR Result</source>
+        <translation>OCR 识别结果</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="122"/>
+        <source>Copy result</source>
+        <translation>复制结果</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="123"/>
+        <source>Copy OCR result to clipboard</source>
+        <translation>复制 OCR 识别结果到剪贴板</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="160"/>
+        <source>The clipboard does not contain an image.</source>
+        <translation>剪贴板中没有图像</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="169"/>
+        <source>Open image</source>
+        <translation>打开图片</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="170"/>
+        <source>Images (*.png *.jpg *.jpeg *.bmp *.webp *.gif);;All files (*)</source>
+        <translation>图像 (*.png *.jpg *.jpeg *.bmp *.webp *.gif);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="177"/>
+        <source>Failed to open image.</source>
+        <translation>打开图片失败</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="187"/>
+        <source>OCR provider is not available.</source>
+        <translation>OCR 服务不可用。</translation>
+    </message>
+    <message>
+        <location filename="ocr_settings_widget.cpp" line="222"/>
+        <source>OCR result copied</source>
+        <translation>OCR 结果已复制</translation>
     </message>
 </context>
 <context>
@@ -896,13 +957,15 @@ Selected:
     </message>
     <message>
         <location filename="shortcut_settings_widget.cpp" line="91"/>
-        <source>Global Speech Recognition Trigger</source>
-        <translation>全局语音识别唤醒</translation>
+        <source>Global Input Method Trigger</source>
+        <oldsource>Global Speech Recognition Trigger</oldsource>
+        <translation>全局输入法唤醒</translation>
     </message>
     <message>
         <location filename="shortcut_settings_widget.cpp" line="92"/>
-        <source>Speech Recognition Mode Switch</source>
-        <translation>语音识别模式切换</translation>
+        <source>Voice Input Mode</source>
+        <oldsource>Voice Input Recognition Mode</oldsource>
+        <translation>语音输入模式</translation>
     </message>
     <message>
         <location filename="shortcut_settings_widget.cpp" line="115"/>
@@ -1191,21 +1254,25 @@ Selected:
     </message>
     <message>
         <location filename="voice_input_controller.cpp" line="791"/>
+        <location filename="voice_input_controller.cpp" line="807"/>
         <source>OCR provider was unloaded.</source>
         <translation>OCR 服务已卸载。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="811"/>
+        <location filename="voice_input_controller.cpp" line="830"/>
+        <location filename="voice_input_controller.cpp" line="857"/>
         <source>OCR engine is busy.</source>
         <translation>OCR 引擎正忙。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="815"/>
+        <location filename="voice_input_controller.cpp" line="834"/>
+        <location filename="voice_input_controller.cpp" line="861"/>
         <source>OCR provider is not available.</source>
         <translation>OCR 服务不可用。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="819"/>
+        <location filename="voice_input_controller.cpp" line="838"/>
+        <location filename="voice_input_controller.cpp" line="865"/>
         <source>The image is empty.</source>
         <translation>图片为空。</translation>
     </message>

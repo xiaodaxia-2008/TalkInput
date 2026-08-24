@@ -88,8 +88,8 @@ void ShortcutSettingsWidget::buildUi()
 void ShortcutSettingsWidget::retranslate()
 {
     m_group->setTitle(tr("Shortcuts"));
-    m_triggerLabel->setText(tr("Global Speech Recognition Trigger"));
-    m_modeSwitchLabel->setText(tr("Speech Recognition Mode Switch"));
+    m_triggerLabel->setText(tr("Global Input Method Trigger"));
+    m_modeSwitchLabel->setText(tr("Voice Input Mode"));
     m_triggerApplyBtn->setToolTip(tr("Apply shortcut"));
     m_modeSwitchApplyBtn->setToolTip(tr("Apply shortcut"));
 }

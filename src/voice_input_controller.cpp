@@ -798,6 +798,25 @@ QCoro::Task<void> VoiceInputController::executeApiOcr(
     callback(result);
 }
 
+QCoro::Task<void> VoiceInputController::executeDetailedOcr(
+    QImage image, QPointer<OcrRecognizer> recognizer,
+    std::function<void(const ApiOcrResult &)> callback)
+{
+    ApiOcrResult result;
+    if (!recognizer) {
+        result.error = tr("OCR provider was unloaded.");
+    }
+    else {
+        const OcrResult ocrResult =
+            co_await recognizer->recognizeDetailed(image);
+        result.text = ocrResult.text;
+        result.blocks = ocrResult.blocks;
+    }
+
+    setStage(PipelineStage::Idle);
+    callback(result);
+}
+
 void VoiceInputController::submitApiOcr(
     const QImage &image, std::function<void(const ApiOcrResult &)> callback)
 {
@@ -823,6 +842,34 @@ void VoiceInputController::submitApiOcr(
     setStage(PipelineStage::ApiTranscribing);
     executeApiOcr(image.copy(), QPointer<OcrRecognizer>(m_ocrRecognizer.get()),
                   std::move(callback));
+}
+
+void VoiceInputController::submitDetailedOcr(
+    const QImage &image, std::function<void(const ApiOcrResult &)> callback)
+{
+    const auto reject = [&callback](const QString &error) {
+        ApiOcrResult result;
+        result.error = error;
+        callback(result);
+    };
+
+    if (m_stage != PipelineStage::Idle) {
+        reject(tr("OCR engine is busy."));
+        return;
+    }
+    if (!m_ocrRecognizer || !m_ocrRecognizer->isAvailable()) {
+        reject(tr("OCR provider is not available."));
+        return;
+    }
+    if (image.isNull()) {
+        reject(tr("The image is empty."));
+        return;
+    }
+
+    setStage(PipelineStage::ApiTranscribing);
+    executeDetailedOcr(image.copy(),
+                       QPointer<OcrRecognizer>(m_ocrRecognizer.get()),
+                       std::move(callback));
 }
 
 bool VoiceInputController::isSpeechRecognitionModelLoaded() const

@@ -50,7 +50,7 @@ After switching models, click the checkmark button to load the model. If the mod
 
 ### Optical Character Recognition (OCR) Models
 
-Supports system OCR (built into Windows) or Tesseract OCR.
+Supports PP-OCRv6 for optical character recognition.
 
 ### Large Language Model (LLM)
 

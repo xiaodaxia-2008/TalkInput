@@ -54,9 +54,6 @@ add_executable(TalkInput WIN32
     ocr_recognizer.cpp
     ocr_recognizer.h
     ppocrv6_ocr_recognizer.h
-    system_ocr_recognizer.h
-    tesseract_ocr_recognizer.cpp
-    tesseract_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
     speech_api_server.h
@@ -156,7 +153,6 @@ target_link_libraries(TalkInput
     spdlog::spdlog_header_only
     fmt::fmt-header-only
     nlohmann_json::nlohmann_json
-    Tesseract::libtesseract
 )
 
 qcoro_enable_coroutines(TalkInput)
@@ -176,17 +172,14 @@ if(WIN32)
     target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore imm32)
     target_sources(TalkInput PRIVATE
         windows/platform_utils.cpp
-        windows/system_ocr_recognizer.cpp
     )
 elseif(APPLE)
     target_sources(TalkInput PRIVATE
         macos/platform_utils.cpp
-        macos/system_ocr_recognizer.cpp
     )
 elseif(UNIX)
     target_sources(TalkInput PRIVATE
         linux/platform_utils.cpp
-        linux/system_ocr_recognizer.cpp
     )
 endif()
 

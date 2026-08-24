@@ -563,7 +563,7 @@ bool PpOcrV6OcrRecognizer::ensureInitialized()
     }
 }
 
-QString PpOcrV6OcrRecognizer::recognizeWithPpOcr(const QImage &image)
+OcrResult PpOcrV6OcrRecognizer::recognizeWithPpOcr(const QImage &image)
 {
     if (image.isNull() || !ensureInitialized()) {
         return {};
@@ -592,44 +592,65 @@ QString PpOcrV6OcrRecognizer::recognizeWithPpOcr(const QImage &image)
         trimResult(box, decodeRecognition(output, m_impl->dictionary));
     }
 
-    QString result;
+    OcrResult result;
     for (const auto &box : boxes) {
         if (box.text.empty()) {
             continue;
         }
-        if (!result.isEmpty()) {
-            result += QLatin1Char('\n');
+        const QString text = QString::fromUtf8(box.text);
+        if (!result.text.isEmpty()) {
+            result.text += QLatin1Char('\n');
         }
-        result += QString::fromUtf8(box.text);
+        result.text += text;
+
+        float left = box.quad[0].x;
+        float top = box.quad[0].y;
+        float right = left;
+        float bottom = top;
+        for (const auto &point : box.quad) {
+            left = std::min(left, point.x);
+            top = std::min(top, point.y);
+            right = std::max(right, point.x);
+            bottom = std::max(bottom, point.y);
+        }
+        result.blocks.append(
+            {text, QRectF(left, top, right - left, bottom - top)});
     }
     return result;
 }
 
-QCoro::Task<QString> PpOcrV6OcrRecognizer::recognizeText(const QImage &image)
+QCoro::Task<OcrResult>
+PpOcrV6OcrRecognizer::recognizeDetailed(const QImage &image)
 {
     if (image.isNull()) {
-        co_return QString();
+        co_return OcrResult{};
     }
 
-    QPromise<QString> promise;
+    QPromise<OcrResult> promise;
     promise.start();
     auto future = promise.future();
     const QImage imageCopy = image.copy();
     QThreadPool::globalInstance()->start(
         [this, imageCopy, promise = std::move(promise)]() mutable {
-            QString text;
+            OcrResult result;
             try {
-                text = recognizeWithPpOcr(imageCopy);
+                result = recognizeWithPpOcr(imageCopy);
             }
             catch (const std::exception &error) {
                 SPDLOG_WARN("PP-OCRv6 Small: recognition failed: {}",
                             error.what());
             }
-            promise.addResult(text);
+            promise.addResult(result);
             promise.finish();
         });
 
     co_return co_await future;
+}
+
+QCoro::Task<QString> PpOcrV6OcrRecognizer::recognizeText(const QImage &image)
+{
+    const OcrResult result = co_await recognizeDetailed(image);
+    co_return result.text;
 }
 
 } // namespace talkinput
