@@ -9,6 +9,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFileInfo>
 
 #include <algorithm>
@@ -222,18 +223,21 @@ void OfflineSpeechRecognizer::finish()
 
         bool vadDecoded = false;
         if (m_vad) {
+            QElapsedTimer vadTimer;
+            vadTimer.start();
             const auto rawSegs =
                 extractVadSegments({m_samples.data(), m_samples.size()});
+            SPDLOG_INFO("Offline ASR VAD: {} ms, {} raw segments",
+                        vadTimer.elapsed(), rawSegs.size());
             if (!rawSegs.empty()) {
                 const auto merged =
                     mergeVadSegments(rawSegs, minSplitSamples, maxSamples);
                 for (const auto &chunk : merged) {
                     const int paddedStart =
                         std::max(0, chunk.startSample - padSamples);
-                    const int paddedEnd =
-                        std::min(totalSamples, chunk.startSample +
-                                                   chunk.sampleCount +
-                                                   padSamples);
+                    const int paddedEnd = std::min(
+                        totalSamples,
+                        chunk.startSample + chunk.sampleCount + padSamples);
                     decodeBlock(paddedStart, paddedEnd - paddedStart);
                 }
                 vadDecoded = true;
@@ -335,7 +339,8 @@ std::vector<AudioSegment> OfflineSpeechRecognizer::mergeVadSegments(
         const int nextEnd = seg.start + seg.count;
         const int combinedLength = nextEnd - curStart;
 
-        if ((curEnd - curStart >= minSamples) && (combinedLength > maxSamples)) {
+        if ((curEnd - curStart >= minSamples) && (combinedLength > maxSamples))
+        {
             chunks.push_back({curStart, curEnd - curStart});
             curStart = seg.start;
             curEnd = nextEnd;
@@ -390,7 +395,12 @@ void OfflineSpeechRecognizer::decodeBlock(int start, int size)
 
     SherpaOnnxAcceptWaveformOffline(stream, m_modelSampleRate,
                                     m_samples.data() + start, size);
+    QElapsedTimer decodeTimer;
+    decodeTimer.start();
     SherpaOnnxDecodeOfflineStream(m_recognizer, stream);
+    SPDLOG_INFO("Offline ASR decode: start={}, samples={} ({:.2f}s), {} ms",
+                start, size, static_cast<double>(size) / m_modelSampleRate,
+                decodeTimer.elapsed());
 
     const SherpaOnnxOfflineRecognizerResult *result =
         SherpaOnnxGetOfflineStreamResult(stream);
