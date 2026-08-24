@@ -1,1 +1,43 @@
-<?xml version="1.0" encoding="UTF-8"?><ui version="4.0"><class>HistoryEditDialog</class><widget class="QDialog" name="HistoryEditDialog"><property name="minimumSize"><size><width>480</width><height>260</height></size></property><layout class="QVBoxLayout" name="layout"><item><widget class="QTextEdit" name="editor"/></item><item><widget class="QDialogButtonBox" name="buttons"><property name="standardButtons"><set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set></property></widget></item></layout></widget><resources/><connections><connection><sender>buttons</sender><signal>accepted()</signal><receiver>HistoryEditDialog</receiver><slot>accept()</slot><hints><hint type="sourcelabel"><x>20</x><y>20</y></hint><hint type="destinationlabel"><x>20</x><y>20</y></hint></hints></connection><connection><sender>buttons</sender><signal>rejected()</signal><receiver>HistoryEditDialog</receiver><slot>reject()</slot><hints><hint type="sourcelabel"><x>20</x><y>20</y></hint><hint type="destinationlabel"><x>20</x><y>20</y></hint></hints></connection></connections></ui>
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HistoryEditDialog</class>
+ <widget class="QDialog" name="HistoryEditDialog">
+  <property name="windowTitle">
+   <string>Edit Recognition Text</string>
+  </property>
+  <property name="minimumSize">
+   <size><width>480</width><height>260</height></size>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <item><widget class="QTextEdit" name="editor"/></item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttons">
+     <property name="standardButtons"><set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttons</sender>
+   <signal>accepted()</signal>
+   <receiver>HistoryEditDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel"><x>20</x><y>20</y></hint>
+    <hint type="destinationlabel"><x>20</x><y>20</y></hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttons</sender>
+   <signal>rejected()</signal>
+   <receiver>HistoryEditDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel"><x>20</x><y>20</y></hint>
+    <hint type="destinationlabel"><x>20</x><y>20</y></hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

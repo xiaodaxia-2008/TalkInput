@@ -31,15 +31,7 @@ void ShortcutSettingsWidget::buildUi()
 
 void ShortcutSettingsWidget::retranslate()
 {
-    m_ui->group->setTitle(tr("Shortcuts"));
-    m_ui->triggerLabel->setText(tr("Global Input Method Trigger"));
-    m_ui->modeSwitchLabel->setText(tr("Voice Input Mode"));
-    m_ui->triggerLabel->setToolTip(
-        tr("Global hotkey to trigger the current active mode"));
-    m_ui->modeSwitchLabel->setToolTip(
-        tr("Global hotkey to cycle the active pipeline mode"));
-    m_ui->triggerApplyBtn->setToolTip(tr("Apply shortcut"));
-    m_ui->modeSwitchApplyBtn->setToolTip(tr("Apply shortcut"));
+    m_ui->retranslateUi(this);
 }
 
 void ShortcutSettingsWidget::changeEvent(QEvent *event)
@@ -61,26 +53,25 @@ void ShortcutSettingsWidget::initShortcuts()
         }
         STATUSBAR_INFO("{}", tr("Trigger shortcut applied"));
     });
-    connect(m_ui->modeSwitchApplyBtn, &QPushButton::clicked, this,
-            [this]() {
-                appConfig().settings.modeSwitchHotkey =
-                    m_ui->modeSwitchEdit->keySequence().toString().toStdString();
-                markConfigDirty();
-                if (auto *ctrl = VoiceInputController::instance()) {
-                    ctrl->reregisterModeSwitchHotkey();
-                }
-                STATUSBAR_INFO("{}", tr("Mode switch shortcut applied"));
-            });
+    connect(m_ui->modeSwitchApplyBtn, &QPushButton::clicked, this, [this]() {
+        appConfig().settings.modeSwitchHotkey =
+            m_ui->modeSwitchEdit->keySequence().toString().toStdString();
+        markConfigDirty();
+        if (auto *ctrl = VoiceInputController::instance()) {
+            ctrl->reregisterModeSwitchHotkey();
+        }
+        STATUSBAR_INFO("{}", tr("Mode switch shortcut applied"));
+    });
 }
 
 void ShortcutSettingsWidget::refreshFromConfig()
 {
     const QSignalBlocker b1(m_ui->triggerEdit);
     const QSignalBlocker b2(m_ui->modeSwitchEdit);
-    m_ui->triggerEdit->setKeySequence(
-        QKeySequence(QString::fromStdString(appConfig().settings.triggerHotkey)));
-    m_ui->modeSwitchEdit->setKeySequence(
-        QKeySequence(QString::fromStdString(appConfig().settings.modeSwitchHotkey)));
+    m_ui->triggerEdit->setKeySequence(QKeySequence(
+        QString::fromStdString(appConfig().settings.triggerHotkey)));
+    m_ui->modeSwitchEdit->setKeySequence(QKeySequence(
+        QString::fromStdString(appConfig().settings.modeSwitchHotkey)));
 }
 
 } // namespace talkinput

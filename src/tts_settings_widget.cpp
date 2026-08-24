@@ -7,8 +7,8 @@
 #include "tts/melo_tts_engine.h"
 #include "tts/tts_audio.h"
 #include "tts_engine.h"
-#include "utils.h"
 #include "ui_tts_settings_widget.h"
+#include "utils.h"
 
 #include <QAudioOutput>
 #include <QComboBox>
@@ -22,8 +22,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
 #include <QMediaPlayer>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalBlocker>
@@ -49,10 +49,12 @@ void TtsSettingsWidget::buildUi()
 {
     m_ui = std::make_unique<Ui::TtsSettingsWidget>();
     m_ui->setupUi(this);
-    m_ui->providerCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_ui->providerCombo->setSizePolicy(QSizePolicy::Expanding,
+                                       QSizePolicy::Fixed);
     m_ui->providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_ui->providerCombo->addItem(tr("Edge (Online)"), QStringLiteral("edge"));
-    m_ui->providerCombo->addItem(tr("MeloTTS (Offline)"), QStringLiteral("melo"));
+    m_ui->providerCombo->addItem(tr("MeloTTS (Offline)"),
+                                 QStringLiteral("melo"));
     m_ui->voiceCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_ui->voiceCombo->setInsertPolicy(QComboBox::NoInsert);
     m_ui->voiceCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
@@ -74,7 +76,8 @@ void TtsSettingsWidget::buildUi()
     m_ui->browserButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
     m_ui->importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->downloadButton, ":/resources/icons/download.svg", iconSize);
+    setButtonIcon(m_ui->downloadButton, ":/resources/icons/download.svg",
+                  iconSize);
     m_ui->downloadButton->setProperty("buttonRole", "icon");
 
     m_audioOutput = new QAudioOutput(this);
@@ -113,16 +116,7 @@ void TtsSettingsWidget::buildUi()
 
 void TtsSettingsWidget::retranslate()
 {
-    m_ui->providerFormLabel->setText(tr("Provider"));
-    m_ui->voiceFormLabel->setText(tr("Voice"));
-    m_ui->modelFormLabel->setText(tr("Model"));
-    m_ui->previewFormLabel->setText(tr("Preview"));
-    m_ui->previewButton->setText(tr("Convert to speech"));
-    m_ui->playPreviewButton->setText(tr("Play"));
-    m_ui->savePreviewButton->setText(tr("Save MP3"));
-    m_ui->previewEdit->setPlaceholderText(tr("Enter text to synthesize"));
-    m_ui->voiceCombo->lineEdit()->setPlaceholderText(
-        tr("Voice name, e.g. zh-CN-XiaoxiaoNeural"));
+    m_ui->retranslateUi(this);
 }
 
 void TtsSettingsWidget::synthesizePreview()
@@ -134,7 +128,8 @@ void TtsSettingsWidget::synthesizePreview()
     }
 
     std::unique_ptr<TtsEngine> engine;
-    if (m_ui->providerCombo->currentData().toString() == QStringLiteral("melo")) {
+    if (m_ui->providerCombo->currentData().toString() == QStringLiteral("melo"))
+    {
         engine = std::make_unique<MeloTtsEngine>();
     }
     else {
@@ -142,11 +137,12 @@ void TtsSettingsWidget::synthesizePreview()
     }
 
     m_ui->previewButton->setEnabled(false);
-    const TtsSynthesisResult result = engine->synthesize(
-        text, m_ui->voiceCombo->currentText(), 1.0);
+    const TtsSynthesisResult result =
+        engine->synthesize(text, m_ui->voiceCombo->currentText(), 1.0);
     m_ui->previewButton->setEnabled(true);
     if (!result.ok()) {
-        STATUSBAR_INFO("{}", tr("Speech conversion failed: %1").arg(result.error));
+        STATUSBAR_INFO("{}",
+                       tr("Speech conversion failed: %1").arg(result.error));
         return;
     }
 
@@ -174,7 +170,8 @@ void TtsSettingsWidget::synthesizePreview()
 void TtsSettingsWidget::playPreview()
 {
     if (m_previewFile) {
-        m_mediaPlayer->setSource(QUrl::fromLocalFile(m_previewFile->fileName()));
+        m_mediaPlayer->setSource(
+            QUrl::fromLocalFile(m_previewFile->fileName()));
         m_mediaPlayer->play();
     }
 }
@@ -253,8 +250,9 @@ void TtsSettingsWidget::updateTtsWidgetStates()
 void TtsSettingsWidget::refreshTtsModelStatus()
 {
     const bool installed = MeloTtsEngine::isModelInstalled();
-    m_ui->modelStatusLabel->setText(installed ? tr("MeloTTS model installed")
-                                          : tr("MeloTTS model not installed"));
+    m_ui->modelStatusLabel->setText(installed
+                                        ? tr("MeloTTS model installed")
+                                        : tr("MeloTTS model not installed"));
     m_ui->downloadButton->setEnabled(!installed);
 }
 
@@ -266,7 +264,8 @@ void TtsSettingsWidget::onTtsProviderChanged(int /*index*/)
     updateTtsWidgetStates();
     refreshTtsModelStatus();
     STATUSBAR_INFO(
-        "{}", tr("TTS provider saved: %1").arg(m_ui->providerCombo->currentText()));
+        "{}",
+        tr("TTS provider saved: %1").arg(m_ui->providerCombo->currentText()));
 }
 
 QCoro::Task<void> TtsSettingsWidget::downloadTtsModel()

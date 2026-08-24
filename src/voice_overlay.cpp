@@ -18,7 +18,6 @@ namespace talkinput
 VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
 {
     setObjectName("voiceOverlay");
-    setWindowTitle(QStringLiteral("TalkInput"));
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -29,7 +28,6 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
 
     m_ui = std::make_unique<Ui::VoiceOverlay>();
     m_ui->setupUi(this);
-    m_ui->modeLabel->setText(QStringLiteral("🎙"));
 
     auto *effect = new QGraphicsOpacityEffect(m_ui->modeLabel);
     m_ui->modeLabel->setGraphicsEffect(effect);

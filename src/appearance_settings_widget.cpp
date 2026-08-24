@@ -76,15 +76,7 @@ void AppearanceSettingsWidget::buildUi()
 
 void AppearanceSettingsWidget::retranslate()
 {
-    m_ui->themeGroup->setTitle(tr("Theme"));
-    m_ui->themeSystemRadio->setText(tr("Follow system"));
-    m_ui->themeLightRadio->setText(tr("Light"));
-    m_ui->themeDarkRadio->setText(tr("Dark"));
-    m_ui->languageGroup->setTitle(tr("Language"));
-    m_ui->languageChineseRadio->setText(tr("Chinese (简体中文)"));
-    m_ui->languageEnglishRadio->setText(tr("English"));
-    m_ui->startupGroup->setTitle(tr("Startup"));
-    m_ui->startMinimizedCheck->setText(tr("Start minimized"));
+    m_ui->retranslateUi(this);
 }
 
 void AppearanceSettingsWidget::changeEvent(QEvent *event)

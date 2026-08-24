@@ -10,7 +10,8 @@ namespace Ui
 class ScrollTextDisplay;
 }
 
-class ScrollTextDisplay : public QWidget {
+class ScrollTextDisplay : public QWidget
+{
     Q_OBJECT
 public:
     explicit ScrollTextDisplay(QWidget *parent = nullptr);
@@ -18,6 +19,9 @@ public:
 
     void setText(const QString &text);
     void setPlaceholder(const QString &text);
+
+protected:
+    void changeEvent(QEvent *event) override;
 
 private:
     std::unique_ptr<Ui::ScrollTextDisplay> m_ui;

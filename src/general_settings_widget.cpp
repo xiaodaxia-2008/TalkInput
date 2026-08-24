@@ -31,11 +31,7 @@ void GeneralSettingsWidget::buildUi()
 
 void GeneralSettingsWidget::retranslate()
 {
-    m_ui->group->setTitle(tr("General"));
-    m_ui->resetButton->setText(tr("Reset Settings"));
-    m_ui->dataDirectoryButton->setText(tr("Open Data Directory"));
-    m_ui->aboutButton->setText(tr("About"));
-    m_ui->exitButton->setText(tr("Exit"));
+    m_ui->retranslateUi(this);
 }
 
 void GeneralSettingsWidget::changeEvent(QEvent *event)

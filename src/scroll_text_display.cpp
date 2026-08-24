@@ -2,16 +2,15 @@
 #include "ui_scroll_text_display.h"
 
 #include <QCoreApplication>
+#include <QEvent>
 #include <QScrollBar>
 #include <QVBoxLayout>
 
 ScrollTextDisplay::ScrollTextDisplay(QWidget *parent) : QWidget(parent)
 {
-    m_placeholder = tr("Recording...");
-
     m_ui = std::make_unique<Ui::ScrollTextDisplay>();
     m_ui->setupUi(this);
-    m_ui->scrollTextLabel->setText(m_placeholder);
+    m_placeholder = m_ui->scrollTextLabel->text();
 }
 
 ScrollTextDisplay::~ScrollTextDisplay() = default;
@@ -29,5 +28,26 @@ void ScrollTextDisplay::setText(const QString &text)
 
 void ScrollTextDisplay::setPlaceholder(const QString &text)
 {
+    const bool showingPlaceholder =
+        m_ui->scrollTextLabel->text() == m_placeholder;
     m_placeholder = text;
+    if (showingPlaceholder) {
+        m_ui->scrollTextLabel->setText(m_placeholder);
+    }
+}
+
+void ScrollTextDisplay::changeEvent(QEvent *event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() != QEvent::LanguageChange) {
+        return;
+    }
+
+    const QString currentText = m_ui->scrollTextLabel->text();
+    const bool showingPlaceholder = currentText == m_placeholder;
+    m_ui->retranslateUi(this);
+    m_placeholder = m_ui->scrollTextLabel->text();
+    if (!showingPlaceholder) {
+        m_ui->scrollTextLabel->setText(currentText);
+    }
 }

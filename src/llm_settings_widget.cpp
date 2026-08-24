@@ -1,8 +1,8 @@
 #include "llm_settings_widget.h"
 #include "app_config.h"
 #include "logging.h"
-#include "utils.h"
 #include "ui_llm_settings_widget.h"
+#include "utils.h"
 
 #include <nlohmann/json.hpp>
 
@@ -66,9 +66,9 @@ void LlmSettingsWidget::buildUi()
     m_ui->providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_ui->llmModelCombo->setInsertPolicy(QComboBox::NoInsert);
     m_ui->llmModelCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_ui->llmModelCombo->lineEdit()->setPlaceholderText(
-        tr("Model name sent to the LLM service"));
     m_ui->promptFormLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_ui->promptLayout->setAlignment(Qt::AlignTop);
+    m_ui->contentLayout->setAlignment(m_ui->promptLayout, Qt::AlignTop);
 
     const int iconSize = fontMetrics().height();
     setButtonIcon(m_ui->refreshModelsButton, ":/resources/icons/refresh.svg",
@@ -130,18 +130,7 @@ void LlmSettingsWidget::buildUi()
 
 void LlmSettingsWidget::retranslate()
 {
-    m_ui->providerFormLabel->setText(tr("Provider"));
-    m_ui->endpointFormLabel->setText(tr("Endpoint"));
-    m_ui->llmModelFormLabel->setText(tr("Model"));
-    m_ui->apiKeyFormLabel->setText(tr("API Key"));
-    m_ui->refreshModelsButton->setText(tr("Refresh models"));
-    m_ui->refreshModelsButton->setToolTip(
-        tr("Fetch models from the configured endpoint"));
-    m_ui->promptFormLabel->setText(
-        QStringLiteral("<b>%1</b><br><small>%2</small>")
-            .arg(tr("Prompt"),
-                 tr("Available variables: {{input}}, {{context}}, "
-                    "{{hotwords}}")));
+    m_ui->retranslateUi(this);
 }
 
 void LlmSettingsWidget::changeEvent(QEvent *event)
@@ -156,7 +145,8 @@ void LlmSettingsWidget::refreshFromConfig()
 {
     const QString savedLlmProviderId =
         QString::fromStdString(appConfig().settings.llmProviderId);
-    const int llmProviderIndex = m_ui->providerCombo->findData(savedLlmProviderId);
+    const int llmProviderIndex =
+        m_ui->providerCombo->findData(savedLlmProviderId);
     {
         const QSignalBlocker blocker(m_ui->providerCombo);
         if (llmProviderIndex >= 0) {
@@ -193,7 +183,8 @@ void LlmSettingsWidget::onLlmProviderChanged(int /*index*/)
         m_ui->providerCombo->currentData().toString().toStdString();
     markConfigDirty();
     STATUSBAR_INFO(
-        "{}", tr("LLM provider saved: %1").arg(m_ui->providerCombo->currentText()));
+        "{}",
+        tr("LLM provider saved: %1").arg(m_ui->providerCombo->currentText()));
 }
 
 void LlmSettingsWidget::applyLlmProviderToUi(const LlmPreset &provider)
@@ -208,9 +199,10 @@ void LlmSettingsWidget::applyLlmProviderToUi(const LlmPreset &provider)
     m_ui->llmModelCombo->clear();
     for (const auto &[key, info] : provider.models) {
         m_ui->llmModelCombo->addItem(QString::fromStdString(key),
-                                 QString::fromStdString(key));
+                                     QString::fromStdString(key));
     }
-    if (!currentModel.isEmpty() && m_ui->llmModelCombo->findText(currentModel) < 0)
+    if (!currentModel.isEmpty() &&
+        m_ui->llmModelCombo->findText(currentModel) < 0)
     {
         m_ui->llmModelCombo->addItem(currentModel, currentModel);
     }

@@ -194,15 +194,17 @@ void OcrSettingsWidget::buildUi()
     const int iconSize = fontMetrics().height();
     setButtonIcon(m_ui->clipboardButton, ":/resources/icons/clipboard.svg",
                   iconSize);
-    setButtonIcon(m_ui->openImageButton, ":/resources/icons/folder.svg", iconSize);
-    setButtonIcon(m_ui->copyResultButton, ":/resources/icons/copy.svg", iconSize);
+    setButtonIcon(m_ui->openImageButton, ":/resources/icons/folder.svg",
+                  iconSize);
+    setButtonIcon(m_ui->copyResultButton, ":/resources/icons/copy.svg",
+                  iconSize);
     m_ui->clipboardButton->setProperty("buttonRole", "icon");
     m_ui->openImageButton->setProperty("buttonRole", "icon");
     m_ui->copyResultButton->setProperty("buttonRole", "icon");
 
     for (const auto &[key, preset] : appConfig().ocrPresets) {
         m_ui->ocrCombo->addItem(QString::fromStdString(preset.name),
-                            QString::fromStdString(key));
+                                QString::fromStdString(key));
     }
 
     connect(m_ui->ocrCombo, &QComboBox::currentIndexChanged, this,
@@ -217,15 +219,11 @@ void OcrSettingsWidget::buildUi()
 
 void OcrSettingsWidget::retranslate()
 {
-    m_ui->providerLabel->setText(tr("Provider:"));
-    m_ui->clipboardButton->setToolTip(tr("Recognize clipboard image"));
-    m_ui->openImageButton->setToolTip(tr("Open image and recognize"));
-    m_ui->copyResultButton->setToolTip(tr("Copy OCR result to clipboard"));
+    m_ui->retranslateUi(this);
     if (!m_ui->previewLabel->hasImage()) {
         m_ui->previewLabel->setPlaceholder(
             tr("OCR image preview will appear here"));
     }
-    m_ui->resultEdit->setPlaceholderText(tr("OCR result will appear here"));
 }
 
 void OcrSettingsWidget::changeEvent(QEvent *event)

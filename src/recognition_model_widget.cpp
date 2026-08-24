@@ -3,12 +3,12 @@
 #include "archive_utils.h"
 #include "logging.h"
 #include "model_download.h"
+#include "ui_recognition_model_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
-#include "ui_recognition_model_widget.h"
 
-#include <QComboBox>
 #include <QAction>
+#include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -21,7 +21,6 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QTextEdit>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStandardPaths>
@@ -56,7 +55,8 @@ void RecognitionModelWidget::buildUi()
     m_ui->browserButton->setProperty("buttonRole", "icon");
     setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
     m_ui->importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->hotwordsSaveButton, ":/resources/icons/save.svg", iconSize);
+    setButtonIcon(m_ui->hotwordsSaveButton, ":/resources/icons/save.svg",
+                  iconSize);
     m_ui->hotwordsSaveButton->setProperty("buttonRole", "icon");
 
     connect(m_ui->hotwordsEdit, &QTextEdit::textChanged, this,
@@ -91,8 +91,7 @@ void RecognitionModelWidget::setRecognitionResult(const QString &text)
 
 void RecognitionModelWidget::retranslate()
 {
-    m_ui->modelLabel->setText(tr("Model:"));
-    m_ui->modeLabel->setText(tr("Mode:"));
+    m_ui->retranslateUi(this);
 
     {
         const QSignalBlocker blocker(m_ui->modeCombo);
@@ -100,22 +99,14 @@ void RecognitionModelWidget::retranslate()
         m_ui->modeCombo->clear();
         m_ui->modeCombo->addItem(tr("ASR only"), QStringLiteral("asr_only"));
         m_ui->modeCombo->addItem(tr("ASR + AI Polish"),
-                             QStringLiteral("asr_llm"));
+                                 QStringLiteral("asr_llm"));
         m_ui->modeCombo->addItem(tr("ASR + OCR context + AI Polish"),
-                             QStringLiteral("asr_llm_ocr"));
+                                 QStringLiteral("asr_llm_ocr"));
         const int idx = m_ui->modeCombo->findData(current);
         if (idx >= 0) {
             m_ui->modeCombo->setCurrentIndex(idx);
         }
     }
-
-    m_ui->browserButton->setToolTip(tr("Open download page in browser"));
-    m_ui->importButton->setToolTip(tr("Import downloaded model archive"));
-    m_ui->useButton->setToolTip(tr("Use this model"));
-    m_ui->hotwordsSaveButton->setToolTip(tr("Save hot words and reload model"));
-    m_ui->hotwordsHintLabel->setText(
-        tr("<b>Hot Words</b> — one per line. Saved hot words are applied by "
-           "reloading the speech recognition model."));
 
     refreshAsrModelCombo();
 }
@@ -151,8 +142,8 @@ void RecognitionModelWidget::initActiveMode()
         const QString mode = m_ui->modeCombo->currentData().toString();
         appConfig().settings.activeMode = mode.toStdString();
         markConfigDirty();
-        STATUSBAR_INFO("{}",
-                       tr("Active mode changed to %1").arg(m_ui->modeCombo->currentText()));
+        STATUSBAR_INFO("{}", tr("Active mode changed to %1")
+                                 .arg(m_ui->modeCombo->currentText()));
     });
 }
 

@@ -56,25 +56,7 @@ void ApiServerSettingsWidget::buildUi()
 
 void ApiServerSettingsWidget::retranslate()
 {
-    m_ui->enableCheck->setText(tr("Enable local API server"));
-    m_ui->enableCheck->setToolTip(tr(
-        "Expose the loaded ASR and OCR providers through an OpenAI-compatible "
-        "HTTP API"));
-    m_ui->hostLabel->setText(tr("Host"));
-    m_ui->portLabel->setText(tr("Port"));
-    m_ui->keyLabel->setText(tr("API Key"));
-    m_ui->keyLabel->setToolTip(
-        tr("Leave empty to allow requests without authentication"));
-    m_ui->apiInfoEdit->setPlainText(
-        tr("Local API endpoints:\n"
-           "GET /, /health, /healthz — health check\n"
-           "GET /v1/models — list the currently loaded recognition model\n"
-           "POST /v1/audio/transcriptions — transcribe an audio file "
-           "(multipart/form-data)\n"
-           "POST /v1/ocr — recognize text in an image "
-           "(multipart/form-data)\n"
-           "POST /v1/images/ocr — alias for /v1/ocr\n"
-           "POST /v1/audio/speech — convert text to speech (JSON)"));
+    m_ui->retranslateUi(this);
 }
 
 void ApiServerSettingsWidget::changeEvent(QEvent *event)

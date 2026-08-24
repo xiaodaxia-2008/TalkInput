@@ -3,9 +3,65 @@
  <class>ApiServerSettingsWidget</class>
  <widget class="QWidget" name="ApiServerSettingsWidget">
   <layout class="QVBoxLayout" name="outerLayout">
-   <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
-   <item><widget class="QScrollArea" name="settingsScroll"><property name="widgetResizable"><bool>true</bool></property><property name="frameShape"><enum>QFrame::NoFrame</enum></property><widget class="QWidget" name="content"><layout class="QVBoxLayout" name="contentLayout"><property name="spacing"><number>12</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><item><layout class="QGridLayout" name="grid"><property name="horizontalSpacing"><number>8</number></property><property name="verticalSpacing"><number>10</number></property><item row="0" column="0" colspan="2"><widget class="QCheckBox" name="enableCheck"/></item><item row="1" column="0"><widget class="QLabel" name="hostLabel"/></item><item row="1" column="1"><widget class="QLineEdit" name="hostEdit"><property name="placeholderText"><string>127.0.0.1</string></property></widget></item><item row="2" column="0"><widget class="QLabel" name="portLabel"/></item><item row="2" column="1"><widget class="QSpinBox" name="portSpin"><property name="maximum"><number>65535</number></property><property name="minimum"><number>1</number></property><property name="value"><number>8766</number></property></widget></item><item row="3" column="0"><widget class="QLabel" name="keyLabel"/></item><item row="3" column="1"><widget class="QLineEdit" name="keyEdit"><property name="echoMode"><enum>QLineEdit::Password</enum></property></widget></item></layout></item><item><widget class="QTextEdit" name="apiInfoEdit"><property name="readOnly"><bool>true</bool></property><property name="acceptRichText"><bool>false</bool></property><property name="minimumHeight"><number>220</number></property></widget></item><item><spacer name="verticalSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item></layout></widget></widget></item>
+   <property name="leftMargin"><number>0</number></property>
+   <property name="topMargin"><number>0</number></property>
+   <property name="rightMargin"><number>0</number></property>
+   <property name="bottomMargin"><number>0</number></property>
+   <item>
+    <widget class="QScrollArea" name="settingsScroll">
+     <property name="widgetResizable"><bool>true</bool></property>
+     <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+     <widget class="QWidget" name="content">
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing"><number>12</number></property>
+       <property name="leftMargin"><number>0</number></property>
+       <property name="topMargin"><number>0</number></property>
+       <property name="rightMargin"><number>0</number></property>
+       <property name="bottomMargin"><number>0</number></property>
+       <item>
+        <layout class="QGridLayout" name="grid">
+         <property name="horizontalSpacing"><number>8</number></property>
+         <property name="verticalSpacing"><number>10</number></property>
+         <item row="0" column="0" colspan="2">
+          <widget class="QCheckBox" name="enableCheck">
+           <property name="toolTip"><string>Expose the loaded ASR and OCR providers through an OpenAI-compatible HTTP API</string></property>
+           <property name="text"><string>Enable local API server</string></property>
+          </widget>
+         </item>
+         <item row="1" column="0"><widget class="QLabel" name="hostLabel"><property name="text"><string>Host</string></property></widget></item>
+         <item row="1" column="1"><widget class="QLineEdit" name="hostEdit"><property name="placeholderText"><string>127.0.0.1</string></property></widget></item>
+         <item row="2" column="0"><widget class="QLabel" name="portLabel"><property name="text"><string>Port</string></property></widget></item>
+         <item row="2" column="1"><widget class="QSpinBox" name="portSpin"><property name="maximum"><number>65535</number></property><property name="minimum"><number>1</number></property><property name="value"><number>8766</number></property></widget></item>
+         <item row="3" column="0"><widget class="QLabel" name="keyLabel"><property name="toolTip"><string>Leave empty to allow requests without authentication</string></property><property name="text"><string>API Key</string></property></widget></item>
+         <item row="3" column="1"><widget class="QLineEdit" name="keyEdit"><property name="echoMode"><enum>QLineEdit::Password</enum></property></widget></item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="apiInfoEdit">
+         <property name="readOnly"><bool>true</bool></property>
+         <property name="acceptRichText"><bool>false</bool></property>
+         <property name="minimumHeight"><number>220</number></property>
+         <property name="plainText"><string>Local API endpoints:
+GET /, /health, /healthz — health check
+GET /v1/models — list the currently loaded recognition model
+POST /v1/audio/transcriptions — transcribe an audio file (multipart/form-data)
+POST /v1/ocr — recognize text in an image (multipart/form-data)
+POST /v1/images/ocr — alias for /v1/ocr
+POST /v1/audio/speech — convert text to speech (JSON)</string></property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation"><enum>Qt::Vertical</enum></property>
+         <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
   </layout>
  </widget>
- <resources/><connections/>
+ <resources/>
+ <connections/>
 </ui>

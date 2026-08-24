@@ -1,7 +1,7 @@
 #include "history_widget.h"
-#include "ui_history_edit_dialog.h"
 #include "logging.h"
 #include "recognition_history.h"
+#include "ui_history_edit_dialog.h"
 #include "ui_history_widget.h"
 #include "utils.h"
 
@@ -16,12 +16,12 @@
 #include <QItemSelectionModel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QStringList>
 #include <QTableView>
 #include <QTextEdit>
 #include <QTextOption>
-#include <QStringList>
-#include <QVector>
 #include <QVBoxLayout>
+#include <QVector>
 
 namespace talkinput
 {
@@ -47,7 +47,8 @@ public:
     QVariant data(const QModelIndex &index, int role) const override
     {
         if (!index.isValid() || index.column() != 0 ||
-            index.row() >= m_entries.size()) {
+            index.row() >= m_entries.size())
+        {
             return {};
         }
 
@@ -143,16 +144,16 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
         m_ui->copyButton->setEnabled(!selectedRows.isEmpty());
         m_ui->deleteButton->setEnabled(!selectedRows.isEmpty());
     };
-    connect(m_ui->table->selectionModel(),
-            &QItemSelectionModel::selectionChanged, this,
-            [updateActionButtons](const QItemSelection &,
-                                  const QItemSelection &) {
-                updateActionButtons();
-            });
+    connect(
+        m_ui->table->selectionModel(), &QItemSelectionModel::selectionChanged,
+        this,
+        [updateActionButtons](const QItemSelection &, const QItemSelection &) {
+            updateActionButtons();
+        });
 
     m_ui->table->horizontalHeader()->hide();
-    m_ui->table->horizontalHeader()->setSectionResizeMode(
-        0, QHeaderView::Stretch);
+    m_ui->table->horizontalHeader()->setSectionResizeMode(0,
+                                                          QHeaderView::Stretch);
     m_ui->table->verticalHeader()->hide();
     m_ui->table->verticalHeader()->setDefaultSectionSize(30);
     m_ui->table->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -202,7 +203,6 @@ void HistoryWidget::editEntry()
     }
 
     QDialog dialog(this);
-    dialog.setWindowTitle(tr("Edit Recognition Text"));
     dialog.setMinimumSize(480, 260);
 
     auto m_ui = std::make_unique<Ui::HistoryEditDialog>();
