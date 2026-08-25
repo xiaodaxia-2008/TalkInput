@@ -170,26 +170,17 @@ install(TARGETS Zenny
 )
 
 # ── Development symlinks ─────────────────────────────────────────
-# Create directory symlinks in the binary output so models and
-# tessdata are available at runtime without manual copying.
+# Create a directory symlink in the binary output so models are
+# available at runtime without manual copying.
 add_custom_command(TARGET Zenny POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:Zenny>/models"
-    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:Zenny>/tessdata"
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${PROJECT_SOURCE_DIR}/models"
         "$<TARGET_FILE_DIR:Zenny>/models"
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-        "${PROJECT_SOURCE_DIR}/teact/train_data"
-        "$<TARGET_FILE_DIR:Zenny>/tessdata"
-    COMMENT "Creating symlinks for models & tessdata"
+    COMMENT "Creating symlink for models"
 )
 
 # ── Install assets ───────────────────────────────────────────────
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/teact/train_data/
-    DESTINATION ${CMAKE_INSTALL_BINDIR}/tessdata
-    COMPONENT Runtime
-)
-
 install(DIRECTORY ${ZENNY_SENSEVOICE_MODEL_DIR}/
     DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${ZENNY_SENSEVOICE_MODEL_NAME}
     COMPONENT Runtime
