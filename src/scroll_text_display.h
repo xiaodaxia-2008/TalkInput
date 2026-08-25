@@ -1,14 +1,9 @@
 #pragma once
 
-#include <QLabel>
-#include <QScrollArea>
 #include <QWidget>
-#include <memory>
 
-namespace Ui
-{
-class ScrollTextDisplay;
-}
+class QLabel;
+class QScrollArea;
 
 class ScrollTextDisplay : public QWidget
 {
@@ -24,6 +19,7 @@ protected:
     void changeEvent(QEvent *event) override;
 
 private:
-    std::unique_ptr<Ui::ScrollTextDisplay> m_ui;
+    QLabel *m_scrollTextLabel = nullptr;
+    QScrollArea *m_scrollTextArea = nullptr;
     QString m_placeholder;
 };

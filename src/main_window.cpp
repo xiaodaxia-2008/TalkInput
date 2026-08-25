@@ -101,7 +101,6 @@ void MainWindow::setupUi()
 {
     SPDLOG_DEBUG("setupUi: begin");
     m_ui->setupUi(this);
-    m_ui->recognitionToolBar->setVisible(false);
     m_ui->mainSplitter->setStretchFactor(0, 0);
     m_ui->mainSplitter->setStretchFactor(1, 1);
     m_ui->mainSplitter->setSizes({200, 1000});

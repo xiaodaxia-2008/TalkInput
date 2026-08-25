@@ -15,7 +15,6 @@ add_executable(TalkInput WIN32
     voice_input_controller.h
     voice_overlay.cpp
     voice_overlay.h
-    voice_overlay.ui
     app_config.cpp
     app_config.h
     json_utils.cpp
@@ -95,7 +94,6 @@ add_executable(TalkInput WIN32
     recognizers/funasr_nano_speech_recognizer.h
     platform_utils.h
     scroll_text_display.h
-    scroll_text_display.ui
     scroll_text_display.cpp
     utils.h
     utils.cpp

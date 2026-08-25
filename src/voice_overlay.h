@@ -2,12 +2,6 @@
 
 #include <QString>
 #include <QWidget>
-#include <memory>
-
-namespace Ui
-{
-class VoiceOverlay;
-}
 
 class QGraphicsOpacityEffect;
 class QLabel;
@@ -32,7 +26,8 @@ public:
 private:
     void positionOnActiveScreen();
 
-    std::unique_ptr<Ui::VoiceOverlay> m_ui;
+    QLabel *m_modeLabel = nullptr;
+    ScrollTextDisplay *m_scrollText = nullptr;
     QPropertyAnimation *m_blinkAnimation = nullptr;
 };
 

@@ -1,26 +1,41 @@
 #include "scroll_text_display.h"
-#include "ui_scroll_text_display.h"
 
 #include <QCoreApplication>
 #include <QEvent>
+#include <QLabel>
+#include <QScrollArea>
 #include <QScrollBar>
 #include <QVBoxLayout>
 
 ScrollTextDisplay::ScrollTextDisplay(QWidget *parent) : QWidget(parent)
 {
-    m_ui = std::make_unique<Ui::ScrollTextDisplay>();
-    m_ui->setupUi(this);
-    m_placeholder = m_ui->scrollTextLabel->text();
+    auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    m_scrollTextArea = new QScrollArea(this);
+    m_scrollTextArea->setWidgetResizable(true);
+    m_scrollTextArea->setFrameShape(QFrame::NoFrame);
+    m_scrollTextArea->setAlignment(Qt::AlignCenter);
+    m_scrollTextArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_scrollTextArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    m_scrollTextLabel = new QLabel(tr("Recording..."));
+    m_scrollTextLabel->setWordWrap(true);
+    m_scrollTextLabel->setAlignment(Qt::AlignCenter);
+    m_scrollTextArea->setWidget(m_scrollTextLabel);
+    layout->addWidget(m_scrollTextArea);
+
+    m_placeholder = m_scrollTextLabel->text();
 }
 
 ScrollTextDisplay::~ScrollTextDisplay() = default;
 
 void ScrollTextDisplay::setText(const QString &text)
 {
-    m_ui->scrollTextLabel->setText(text.isEmpty() ? m_placeholder : text);
-    m_ui->scrollTextArea->viewport()->update();
+    m_scrollTextLabel->setText(text.isEmpty() ? m_placeholder : text);
+    m_scrollTextArea->viewport()->update();
     QCoreApplication::processEvents();
-    auto *sb = m_ui->scrollTextArea->verticalScrollBar();
+    auto *sb = m_scrollTextArea->verticalScrollBar();
     if (sb && sb->maximum() > 0) {
         sb->setValue(sb->maximum());
     }
@@ -28,11 +43,10 @@ void ScrollTextDisplay::setText(const QString &text)
 
 void ScrollTextDisplay::setPlaceholder(const QString &text)
 {
-    const bool showingPlaceholder =
-        m_ui->scrollTextLabel->text() == m_placeholder;
+    const bool showingPlaceholder = m_scrollTextLabel->text() == m_placeholder;
     m_placeholder = text;
     if (showingPlaceholder) {
-        m_ui->scrollTextLabel->setText(m_placeholder);
+        m_scrollTextLabel->setText(m_placeholder);
     }
 }
 
@@ -43,11 +57,13 @@ void ScrollTextDisplay::changeEvent(QEvent *event)
         return;
     }
 
-    const QString currentText = m_ui->scrollTextLabel->text();
+    const QString currentText = m_scrollTextLabel->text();
     const bool showingPlaceholder = currentText == m_placeholder;
-    m_ui->retranslateUi(this);
-    m_placeholder = m_ui->scrollTextLabel->text();
+    m_placeholder = tr("Recording...");
     if (!showingPlaceholder) {
-        m_ui->scrollTextLabel->setText(currentText);
+        m_scrollTextLabel->setText(currentText);
+    }
+    else {
+        m_scrollTextLabel->setText(m_placeholder);
     }
 }
