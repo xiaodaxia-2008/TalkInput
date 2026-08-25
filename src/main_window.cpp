@@ -26,6 +26,7 @@
 #include <QIcon>
 #include <QMenu>
 #include <QMessageBox>
+#include <QPointer>
 #include <QProxyStyle>
 #include <QShortcut>
 #include <QSignalBlocker>
@@ -497,15 +498,26 @@ void MainWindow::onRecognizeAudioFile()
                 decoded->pcm16.size(), path, decoded->sampleRate,
                 decoded->channels);
 
-    if (m_voicePipelineController) {
-        if (!m_voicePipelineController->startSpeechRecognitionSession()) {
-            return;
-        }
-        m_voicePipelineController->feedSpeechRecognitionAudio(
-            decoded->pcm16, decoded->sampleRate, decoded->channels);
-        m_voicePipelineController->finishSpeechRecognitionSession();
+    if (!m_voicePipelineController) {
+        return;
     }
+
+    const QPointer<MainWindow> window(this);
     STATUSBAR_INFO("{}", tr("Recognition sent to ASR engine"));
+    m_voicePipelineController->submitApiTranscription(
+        decoded->pcm16, decoded->sampleRate, decoded->channels,
+        [window](const ApiTranscriptionResult &result) {
+            if (!window) {
+                return;
+            }
+            if (!result.error.isEmpty()) {
+                STATUSBAR_ERROR("{}", result.error);
+                return;
+            }
+
+            window->recordHistoryEntry(result.text);
+            window->m_sttSettingsWidget->setRecognitionResult(result.text);
+        });
 }
 
 void MainWindow::onShowMainWindow()

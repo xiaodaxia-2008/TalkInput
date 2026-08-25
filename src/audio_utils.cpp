@@ -4,12 +4,13 @@
 #include <QAudioBuffer>
 #include <QAudioDecoder>
 #include <QAudioFormat>
+#include <QBuffer>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
+#include <QIODevice>
 #include <QProcess>
 #include <QTimer>
-#include <QUrl>
 #include <QtEndian>
 
 #include <algorithm>
@@ -94,8 +95,13 @@ QByteArray convertAudioToPcm16(const QByteArray &audioData,
 }
 
 std::expected<DecodedAudioFile, QString>
-decodeAudioFileToPcm16(const QString &path, int timeoutMs)
+decodeAudioDeviceToPcm16(QIODevice *device, int timeoutMs)
 {
+    if (!device || !device->isOpen() || !device->isReadable()) {
+        return std::unexpected(
+            QStringLiteral("Audio input device is not open for reading."));
+    }
+
     QAudioDecoder decoder;
     QEventLoop loop;
     QTimer timeoutTimer;
@@ -139,9 +145,12 @@ decodeAudioFileToPcm16(const QString &path, int timeoutMs)
                          loop.quit();
                      });
 
-    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, [&]() {
+        error = QStringLiteral("Audio decoding timed out.");
+        loop.quit();
+    });
 
-    decoder.setSource(QUrl::fromLocalFile(path));
+    decoder.setSourceDevice(device);
     decoder.start();
 
     timeoutTimer.start(timeoutMs);
@@ -158,6 +167,34 @@ decodeAudioFileToPcm16(const QString &path, int timeoutMs)
     }
 
     return decoded;
+}
+
+std::expected<DecodedAudioFile, QString>
+decodeAudioDataToPcm16(const QByteArray &data, int timeoutMs)
+{
+    if (data.isEmpty()) {
+        return std::unexpected(QStringLiteral("Audio data is empty."));
+    }
+
+    QBuffer buffer;
+    buffer.setData(data);
+    if (!buffer.open(QIODevice::ReadOnly)) {
+        return std::unexpected(QStringLiteral("Failed to open audio data."));
+    }
+
+    return decodeAudioDeviceToPcm16(&buffer, timeoutMs);
+}
+
+std::expected<DecodedAudioFile, QString>
+decodeAudioFileToPcm16(const QString &path, int timeoutMs)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return std::unexpected(QStringLiteral("Failed to open audio file: %1")
+                                   .arg(file.errorString()));
+    }
+
+    return decodeAudioDeviceToPcm16(&file, timeoutMs);
 }
 
 bool savePcm16ToWav(const QByteArray &pcm16, int sampleRate, int channels,

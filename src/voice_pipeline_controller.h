@@ -131,11 +131,6 @@ public slots:
 
     void reloadOcrRecognizer();
 
-    bool startSpeechRecognitionSession();
-    void feedSpeechRecognitionAudio(const QByteArray &pcm16, int sampleRate,
-                                    int channels);
-    void finishSpeechRecognitionSession();
-
 private:
     QCoro::Task<void> executePipeline();
     QCoro::Task<void>

@@ -11,9 +11,7 @@
 
 #include <QBuffer>
 #include <QCoreApplication>
-#include <QDir>
 #include <QEventLoop>
-#include <QFileInfo>
 #include <QHostAddress>
 #include <QImageReader>
 #include <QJsonDocument>
@@ -21,7 +19,6 @@
 #include <QRegularExpression>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <QTemporaryFile>
 #include <QThread>
 #include <QTimer>
 
@@ -223,20 +220,6 @@ parseMultipart(const QByteArray &body, const QByteArray &boundary)
     }
 
     return fields;
-}
-
-QString safeAudioSuffix(const QString &fileName)
-{
-    QString suffix = QFileInfo(fileName).suffix().toLower();
-    suffix = suffix.left(10);
-    QString clean;
-    clean.reserve(suffix.size());
-    for (const QChar c : suffix) {
-        if (c.isLetterOrNumber()) {
-            clean.append(c);
-        }
-    }
-    return clean.isEmpty() ? QStringLiteral("audio") : clean;
 }
 
 std::optional<QImage> decodeOcrImage(const QByteArray &data)
@@ -1114,19 +1097,9 @@ private:
     }
 
     TranscriptionResult transcribeFile(const QByteArray &audioData,
-                                       const QString &fileName, QString *error)
+                                       const QString &, QString *error)
     {
-        QTemporaryFile tempFile;
-        tempFile.setFileTemplate(QDir::tempPath() + "/talkinput-api-XXXXXX." +
-                                 safeAudioSuffix(fileName));
-        if (!tempFile.open()) {
-            *error = QStringLiteral("Failed to create temporary audio file");
-            return {};
-        }
-        tempFile.write(audioData);
-        tempFile.flush();
-
-        auto decoded = decodeAudioFileToPcm16(tempFile.fileName());
+        auto decoded = decodeAudioDataToPcm16(audioData);
         if (!decoded) {
             *error = QStringLiteral("Failed to decode audio: %1")
                          .arg(decoded.error());

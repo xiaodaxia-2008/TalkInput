@@ -1,5 +1,7 @@
 #include "audio_utils.h"
 
+#include <QCoreApplication>
+#include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
 
@@ -12,6 +14,11 @@
 
 namespace
 {
+
+int testArgc = 1;
+char testProgramName[] = "TalkInputTests";
+char *testArgv[] = {testProgramName, nullptr};
+QCoreApplication testApplication(testArgc, testArgv);
 
 // A 1 kHz rate makes milliseconds map directly to sample counts.
 constexpr int sampleRate = 1000;
@@ -53,6 +60,26 @@ TEST_CASE("savePcm16ToM4a creates valid file", "[audio_utils]")
     REQUIRE(QFileInfo(path).size() > 0);
 }
 
+TEST_CASE("decodeAudioDataToPcm16 decodes WAV from memory", "[audio_utils]")
+{
+    QTemporaryDir tempDir;
+    REQUIRE(tempDir.isValid());
+
+    const QByteArray sourcePcm(16000 * 2, '\0');
+    const QString path = tempDir.filePath("audio.wav");
+    REQUIRE(talkinput::savePcm16ToWav(sourcePcm, 16000, 1, path));
+
+    QFile file(path);
+    REQUIRE(file.open(QIODevice::ReadOnly));
+    const QByteArray encoded = file.readAll();
+
+    const auto decoded = talkinput::decodeAudioDataToPcm16(encoded);
+    REQUIRE(decoded.has_value());
+    REQUIRE(decoded->sampleRate == 16000);
+    REQUIRE(decoded->channels == 1);
+    REQUIRE(decoded->pcm16 == sourcePcm);
+}
+
 TEST_CASE("segmentAudioBySilence", "[audio_utils]")
 {
     SECTION("short audio below limit stays single segment")
@@ -87,15 +114,14 @@ TEST_CASE("findSilenceSplits thresholds", "[audio_utils]")
     const std::vector<float> elevenFrames(11 * 30, 0.0F);
     REQUIRE(talkinput::findSilenceSplits(tenFrames, sampleRate, 30, 305, 0.1F)
                 .empty());
-    REQUIRE(talkinput::findSilenceSplits(elevenFrames, sampleRate, 30, 305, 0.1F)
-                .size()
-            == 1);
+    REQUIRE(
+        talkinput::findSilenceSplits(elevenFrames, sampleRate, 30, 305, 0.1F)
+            .size() == 1);
 }
 
 TEST_CASE("findBestSilenceSplit returns first valid index", "[audio_utils]")
 {
     const std::vector<float> tenFrames(10 * 30, 0.0F);
     REQUIRE(talkinput::findBestSilenceSplit(tenFrames, sampleRate, 10 * 30 + 1,
-                                            11 * 30, 30, 300, 0.1F)
-            == 0);
+                                            11 * 30, 30, 300, 0.1F) == 0);
 }

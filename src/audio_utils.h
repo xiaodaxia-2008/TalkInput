@@ -8,6 +8,8 @@
 #include <span>
 #include <vector>
 
+class QIODevice;
+
 namespace talkinput
 {
 
@@ -22,6 +24,15 @@ struct DecodedAudioFile
     int sampleRate = 0;
     int channels = 0;
 };
+
+/// Decode audio from an already-open readable device. The device remains
+/// owned by the caller and must stay alive until this function returns.
+std::expected<DecodedAudioFile, QString>
+decodeAudioDeviceToPcm16(QIODevice *device, int timeoutMs = 30000);
+
+/// Decode audio bytes without materializing them as a temporary file.
+std::expected<DecodedAudioFile, QString>
+decodeAudioDataToPcm16(const QByteArray &data, int timeoutMs = 30000);
 
 std::expected<DecodedAudioFile, QString>
 decodeAudioFileToPcm16(const QString &path, int timeoutMs = 30000);

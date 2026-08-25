@@ -666,46 +666,6 @@ void VoicePipelineController::unloadSpeechRecognitionModel()
     m_loadedPresetId.clear();
 }
 
-bool VoicePipelineController::startSpeechRecognitionSession()
-{
-    if (m_stage != PipelineStage::Idle) {
-        STATUSBAR_INFO("{}", tr("Recognition is still processing."));
-        return false;
-    }
-
-    m_lastResult.clear();
-    setStage(PipelineStage::Recognizing);
-
-    if (!m_recognizer) {
-        STATUSBAR_WARN("{}",
-                       tr("Speech recognition model not loaded yet. Please "
-                          "wait or select a model."));
-        setStage(PipelineStage::Idle);
-        return false;
-    }
-
-    queueRecognizerReset();
-    return true;
-}
-
-void VoicePipelineController::feedSpeechRecognitionAudio(
-    const QByteArray &pcm16, int sampleRate, int channels)
-{
-    if (m_recognizer) {
-        queueRecognizerAudio(pcm16, sampleRate, channels);
-    }
-}
-
-void VoicePipelineController::finishSpeechRecognitionSession()
-{
-    if (!m_recognizer) {
-        setStage(PipelineStage::Idle);
-        return;
-    }
-
-    queueRecognizerFinish();
-}
-
 void VoicePipelineController::submitApiTranscription(
     const QByteArray &pcm16, int sampleRate, int channels,
     std::function<void(const ApiTranscriptionResult &)> callback)
