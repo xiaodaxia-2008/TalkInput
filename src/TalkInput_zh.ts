@@ -243,7 +243,7 @@ POST /v1/audio/speech —— 文字转语音（JSON）</translation>
     <message>
         <location filename="llm_settings_widget.ui" line="41"/>
         <source>&lt;b&gt;Prompt&lt;/b&gt;&lt;br&gt;&lt;small&gt;Available variables: {{input}}, {{context}}, {{hotwords}}&lt;/small&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;b&gt;提示词&lt;/b&gt;&lt;br&gt;&lt;small&gt;可用变量：{{input}}、{{context}}、{{hotwords}}&lt;/small&gt;</translation>
     </message>
 </context>
 <context>
