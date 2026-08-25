@@ -1,15 +1,4 @@
-include(FetchContent)
-
-# Prefer vcpkg Catch2 if available, otherwise fetch it
 find_package(Catch2 3 QUIET)
-if(NOT Catch2_FOUND)
-    FetchContent_Declare(
-        Catch2
-        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG v3.7.1
-    )
-    FetchContent_MakeAvailable(Catch2)
-endif()
 
 include(CTest)
 include(Catch)
