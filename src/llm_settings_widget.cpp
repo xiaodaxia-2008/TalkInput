@@ -2,7 +2,6 @@
 #include "app_config.h"
 #include "logging.h"
 #include "ui_llm_settings_widget.h"
-#include "utils.h"
 
 #include <nlohmann/json.hpp>
 
@@ -63,16 +62,6 @@ void LlmSettingsWidget::buildUi()
 {
     m_ui = std::make_unique<Ui::LlmSettingsWidget>();
     m_ui->setupUi(this);
-    m_ui->providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_ui->llmModelCombo->setInsertPolicy(QComboBox::NoInsert);
-    m_ui->llmModelCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_ui->promptFormLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    m_ui->promptLayout->setAlignment(Qt::AlignTop);
-    m_ui->contentLayout->setAlignment(m_ui->promptLayout, Qt::AlignTop);
-
-    const int iconSize = fontMetrics().height();
-    setButtonIcon(m_ui->refreshModelsButton, ":/resources/icons/refresh.svg",
-                  iconSize);
     m_network = new QNetworkAccessManager(this);
 
     // Populate — store only the provider ID

@@ -9,10 +9,9 @@
 #include "log_panel.h"
 #include "logging.h"
 #include "ocr_settings_widget.h"
-#include "recognition_behavior_widget.h"
-#include "recognition_model_widget.h"
 #include "shortcut_settings_widget.h"
 #include "speech_api_server.h"
+#include "stt_settings_widget.h"
 #include "tts_settings_widget.h"
 #include "ui_main_window.h"
 #include "utils.h"
@@ -120,8 +119,8 @@ void MainWindow::setupUi()
 
     // ── Settings pages ─────────────────────────────────────────────
     setupSettingsPages();
-    m_recognitionModelWidget->setRecognitionActions(
-        m_ui->actionStartRecognition, m_ui->actionRecognizeFile);
+    m_sttSettingsWidget->setRecognitionActions(m_ui->actionStartRecognition,
+                                               m_ui->actionRecognizeFile);
 
     // ── History page ───────────────────────────────────────────────
     SPDLOG_DEBUG("setupUi: creating HistoryWidget");
@@ -146,7 +145,7 @@ void MainWindow::setupUi()
     connect(m_voiceInputController, &VoiceInputController::finalTextCommitted,
             this, [this](const QString &text) {
                 recordHistoryEntry(text);
-                m_recognitionModelWidget->setRecognitionResult(text);
+                m_sttSettingsWidget->setRecognitionResult(text);
             });
     if (auto *apiServer = SpeechApiServer::instance()) {
         connect(apiServer, &SpeechApiServer::transcriptionCompleted, this,
@@ -156,8 +155,8 @@ void MainWindow::setupUi()
             this, [this](bool listening) { updateControls(listening); });
     connect(m_voiceInputController, &VoiceInputController::modeChanged, this,
             [this](PipelineMode) {
-                if (m_recognitionModelWidget) {
-                    m_recognitionModelWidget->updateActiveModeDisplay();
+                if (m_sttSettingsWidget) {
+                    m_sttSettingsWidget->updateActiveModeDisplay();
                 }
             });
 
@@ -208,12 +207,8 @@ void MainWindow::setupSettingsPages()
 {
     SPDLOG_DEBUG("setupSettingsPages: begin");
 
-    m_recognitionModelWidget = new RecognitionModelWidget(m_ui->pageStt);
-    m_ui->sttContentLayout->addWidget(m_recognitionModelWidget);
-
-    m_recognitionBehaviorWidget =
-        new RecognitionBehaviorWidget(m_ui->pageStt);
-    m_ui->sttContentLayout->addWidget(m_recognitionBehaviorWidget);
+    m_sttSettingsWidget = new SttSettingsWidget(m_ui->pageStt);
+    m_ui->sttContentLayout->addWidget(m_sttSettingsWidget);
 
     m_ocrSettingsWidget = new OcrSettingsWidget(m_ui->pageOcr);
     m_ui->ocrContentLayout->addWidget(m_ocrSettingsWidget);
@@ -289,10 +284,9 @@ void MainWindow::setupNavTree()
     };
 
     auto *serviceItem = makeSection(tr("Services"));
-    auto *sttItem =
-        makeChildItem(serviceItem, tr("Speech Recognition (STT)"),
-                      QStringLiteral(":/resources/icons/cpu.svg"),
-                      static_cast<int>(SettingsPage::Stt));
+    auto *sttItem = makeChildItem(serviceItem, tr("Speech Recognition (STT)"),
+                                  QStringLiteral(":/resources/icons/cpu.svg"),
+                                  static_cast<int>(SettingsPage::Stt));
     makeChildItem(serviceItem, tr("Text Recognition (OCR)"),
                   QStringLiteral(":/resources/icons/camera.svg"),
                   static_cast<int>(SettingsPage::Ocr));
@@ -306,7 +300,8 @@ void MainWindow::setupNavTree()
                   QStringLiteral(":/resources/icons/link.svg"),
                   static_cast<int>(SettingsPage::ApiServer));
 
-    makeTopItem(tr("Shortcuts"), QStringLiteral(":/resources/icons/keyboard.svg"),
+    makeTopItem(tr("Shortcuts"),
+                QStringLiteral(":/resources/icons/keyboard.svg"),
                 static_cast<int>(SettingsPage::Shortcut));
     makeTopItem(tr("Appearance"),
                 QStringLiteral(":/resources/icons/palette.svg"),
@@ -351,8 +346,8 @@ void MainWindow::retranslateNav()
 
 void MainWindow::refreshNavIcons()
 {
-    const QColor sectionColor = m_dark ? QColor(0x9a, 0x9a, 0x9a)
-                                       : QColor(0x66, 0x66, 0x66);
+    const QColor sectionColor =
+        m_dark ? QColor(0x9a, 0x9a, 0x9a) : QColor(0x66, 0x66, 0x66);
     for (auto *section : m_sectionItems) {
         section->setForeground(0, sectionColor);
     }
@@ -397,8 +392,7 @@ void MainWindow::restoreNavSelection()
 
 void MainWindow::refreshAllSettingsPages()
 {
-    m_recognitionModelWidget->refreshFromConfig();
-    m_recognitionBehaviorWidget->refreshFromConfig();
+    m_sttSettingsWidget->refreshFromConfig();
     m_ocrSettingsWidget->refreshFromConfig();
     m_llmSettingsWidget->refreshFromConfig();
     m_ttsSettingsWidget->refreshFromConfig();

@@ -2,7 +2,6 @@
 #include "app_config.h"
 #include "logging.h"
 #include "ocr_recognizer.h"
-#include "utils.h"
 #include "voice_input_controller.h"
 
 #include <QApplication>
@@ -185,22 +184,12 @@ void OcrSettingsWidget::buildUi()
 {
     m_ui = std::make_unique<Ui::OcrSettingsWidget>();
     m_ui->setupUi(this);
-    m_ui->resultPanel->setSizePolicy(QSizePolicy::Expanding,
-                                     QSizePolicy::Expanding);
     m_ui->copyResultButton->setEnabled(false);
-    m_ui->previewLabel->setPlaceholder(
-        tr("OCR image preview will appear here"));
-
-    const int iconSize = fontMetrics().height();
-    setButtonIcon(m_ui->clipboardButton, ":/resources/icons/clipboard.svg",
-                  iconSize);
-    setButtonIcon(m_ui->openImageButton, ":/resources/icons/folder.svg",
-                  iconSize);
-    setButtonIcon(m_ui->copyResultButton, ":/resources/icons/copy.svg",
-                  iconSize);
     m_ui->clipboardButton->setProperty("buttonRole", "icon");
     m_ui->openImageButton->setProperty("buttonRole", "icon");
     m_ui->copyResultButton->setProperty("buttonRole", "icon");
+    m_ui->previewLabel->setPlaceholder(
+        tr("OCR image preview will appear here"));
 
     for (const auto &[key, preset] : appConfig().ocrPresets) {
         m_ui->ocrCombo->addItem(QString::fromStdString(preset.name),

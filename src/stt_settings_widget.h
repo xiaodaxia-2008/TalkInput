@@ -14,20 +14,21 @@ class QTextEdit;
 
 namespace Ui
 {
-class RecognitionModelWidget;
+class SttSettingsWidget;
 }
 
 namespace talkinput
 {
 
-/// Speech recognition: model selection + hot words ("模型与热词").
-class RecognitionModelWidget final : public QWidget
+/// Speech-to-text settings: model, mode, hot words, actions, result and
+/// behavior.
+class SttSettingsWidget final : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit RecognitionModelWidget(QWidget *parent = nullptr);
-    ~RecognitionModelWidget() override;
+    explicit SttSettingsWidget(QWidget *parent = nullptr);
+    ~SttSettingsWidget() override;
 
     /// Re-reads the current config and refreshes every control.
     void refreshFromConfig();
@@ -57,7 +58,7 @@ private:
     void loadInstalledAsrModel(const QString &providerId);
     void refreshAsrModelCombo();
 
-    std::unique_ptr<Ui::RecognitionModelWidget> m_ui;
+    std::unique_ptr<Ui::SttSettingsWidget> m_ui;
 };
 
 } // namespace talkinput

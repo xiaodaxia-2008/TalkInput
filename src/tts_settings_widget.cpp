@@ -49,15 +49,12 @@ void TtsSettingsWidget::buildUi()
 {
     m_ui = std::make_unique<Ui::TtsSettingsWidget>();
     m_ui->setupUi(this);
-    m_ui->providerCombo->setSizePolicy(QSizePolicy::Expanding,
-                                       QSizePolicy::Fixed);
-    m_ui->providerCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_ui->browserButton->setProperty("buttonRole", "icon");
+    m_ui->importButton->setProperty("buttonRole", "icon");
+    m_ui->downloadButton->setProperty("buttonRole", "icon");
     m_ui->providerCombo->addItem(tr("Edge (Online)"), QStringLiteral("edge"));
     m_ui->providerCombo->addItem(tr("MeloTTS (Offline)"),
                                  QStringLiteral("melo"));
-    m_ui->voiceCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_ui->voiceCombo->setInsertPolicy(QComboBox::NoInsert);
-    m_ui->voiceCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     const char *voices[] = {
         "zh-CN-XiaoxiaoNeural", "zh-CN-XiaoyiNeural",  "zh-CN-YunxiNeural",
         "zh-CN-YunjianNeural",  "zh-CN-YunyangNeural", "en-US-AriaNeural",
@@ -67,19 +64,6 @@ void TtsSettingsWidget::buildUi()
     for (const char *voice : voices) {
         m_ui->voiceCombo->addItem(QString::fromLatin1(voice));
     }
-    m_ui->modelStatusLabel->setSizePolicy(QSizePolicy::Expanding,
-                                          QSizePolicy::Preferred);
-    m_ui->modelStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-    const int iconSize = fontMetrics().height();
-    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", iconSize);
-    m_ui->browserButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
-    m_ui->importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->downloadButton, ":/resources/icons/download.svg",
-                  iconSize);
-    m_ui->downloadButton->setProperty("buttonRole", "icon");
-
     m_audioOutput = new QAudioOutput(this);
     m_mediaPlayer = new QMediaPlayer(this);
     m_ui->playPreviewButton->setEnabled(false);

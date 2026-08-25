@@ -41,8 +41,7 @@ class HistoryWidget;
 class LlmSettingsWidget;
 class LogPanel;
 class OcrSettingsWidget;
-class RecognitionBehaviorWidget;
-class RecognitionModelWidget;
+class SttSettingsWidget;
 class ShortcutSettingsWidget;
 class TtsSettingsWidget;
 
@@ -83,8 +82,7 @@ private:
     void onOpenDataDirectory();
 
     std::unique_ptr<Ui::MainWindow> m_ui;
-    RecognitionModelWidget *m_recognitionModelWidget = nullptr;
-    RecognitionBehaviorWidget *m_recognitionBehaviorWidget = nullptr;
+    SttSettingsWidget *m_sttSettingsWidget = nullptr;
     OcrSettingsWidget *m_ocrSettingsWidget = nullptr;
     LlmSettingsWidget *m_llmSettingsWidget = nullptr;
     TtsSettingsWidget *m_ttsSettingsWidget = nullptr;

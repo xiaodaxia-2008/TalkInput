@@ -2,6 +2,7 @@ qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh)
 
 add_executable(TalkInput WIN32
     ${PROJECT_SOURCE_DIR}/resources/misc/app.rc
+    ${PROJECT_SOURCE_DIR}/resources/resources.qrc
     main.cpp
     single_instance.cpp
     single_instance.h
@@ -27,12 +28,9 @@ add_executable(TalkInput WIN32
     model_download.h
     theme.cpp
     theme.h
-    recognition_model_widget.cpp
-    recognition_model_widget.h
-    recognition_model_widget.ui
-    recognition_behavior_widget.cpp
-    recognition_behavior_widget.h
-    recognition_behavior_widget.ui
+    stt_settings_widget.cpp
+    stt_settings_widget.h
+    stt_settings_widget.ui
     ocr_settings_widget.cpp
     ocr_settings_widget.h
     ocr_settings_widget.ui
@@ -101,48 +99,6 @@ add_executable(TalkInput WIN32
     scroll_text_display.cpp
     utils.h
     utils.cpp
-)
-
-qt_add_resources(TalkInput resources
-    PREFIX "/"
-    BASE "${PROJECT_SOURCE_DIR}"
-    FILES
-    "${PROJECT_SOURCE_DIR}/resources/misc/app.qss"
-    "${PROJECT_SOURCE_DIR}/resources/misc/app-dark.qss"
-    "${PROJECT_SOURCE_DIR}/resources/icons/icon.png"
-    "${PROJECT_SOURCE_DIR}/resources/icons/icon.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/mic.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/stop.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/folder.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/folder-plus.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/check.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/chevron-right.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/chevron-down.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/download.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/import.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/globe.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/hotwords.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/copy.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/clipboard.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/edit.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/save.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/refresh.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/cpu.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/zap.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/server.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/camera.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/message-square.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/volume-2.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/link.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/keyboard.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/palette.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/clock.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/terminal.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/sliders.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/zh.svg"
-    "${PROJECT_SOURCE_DIR}/resources/icons/en.svg"
-    "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
 qt_add_translations(TalkInput

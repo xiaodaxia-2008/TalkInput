@@ -1,13 +1,14 @@
-#include "recognition_model_widget.h"
+#include "stt_settings_widget.h"
 #include "app_config.h"
 #include "archive_utils.h"
 #include "logging.h"
 #include "model_download.h"
-#include "ui_recognition_model_widget.h"
+#include "ui_stt_settings_widget.h"
 #include "utils.h"
 #include "voice_input_controller.h"
 
 #include <QAction>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
@@ -31,8 +32,7 @@
 namespace talkinput
 {
 
-RecognitionModelWidget::RecognitionModelWidget(QWidget *parent)
-    : QWidget(parent)
+SttSettingsWidget::SttSettingsWidget(QWidget *parent) : QWidget(parent)
 {
     buildUi();
     initAsrModel();
@@ -41,32 +41,51 @@ RecognitionModelWidget::RecognitionModelWidget(QWidget *parent)
     refreshFromConfig();
 }
 
-RecognitionModelWidget::~RecognitionModelWidget() = default;
+SttSettingsWidget::~SttSettingsWidget() = default;
 
-void RecognitionModelWidget::buildUi()
+void SttSettingsWidget::buildUi()
 {
-    m_ui = std::make_unique<Ui::RecognitionModelWidget>();
+    m_ui = std::make_unique<Ui::SttSettingsWidget>();
     m_ui->setupUi(this);
-
-    const int iconSize = fontMetrics().height();
-    setButtonIcon(m_ui->useButton, ":/resources/icons/check.svg", iconSize);
     m_ui->useButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->browserButton, ":/resources/icons/globe.svg", iconSize);
     m_ui->browserButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->importButton, ":/resources/icons/import.svg", iconSize);
     m_ui->importButton->setProperty("buttonRole", "icon");
-    setButtonIcon(m_ui->hotwordsSaveButton, ":/resources/icons/save.svg",
-                  iconSize);
     m_ui->hotwordsSaveButton->setProperty("buttonRole", "icon");
 
     connect(m_ui->hotwordsEdit, &QTextEdit::textChanged, this,
-            &RecognitionModelWidget::onHotwordsChanged);
+            &SttSettingsWidget::onHotwordsChanged);
     connect(m_ui->hotwordsSaveButton, &QPushButton::clicked, this,
             [this]() { saveHotwords(true); });
+
+    connect(m_ui->useClipboardCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.useClipboard = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->copyToClipboardCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.copyToClipboard = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->restoreClipboardCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.restoreClipboard = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->saveOcrScreenshotCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.saveOcrScreenshot = checked;
+                markConfigDirty();
+            });
+    connect(m_ui->saveAsrAudioCheck, &QCheckBox::toggled, this,
+            [](bool checked) {
+                appConfig().settings.saveAsrAudio = checked;
+                markConfigDirty();
+            });
 }
 
-void RecognitionModelWidget::setRecognitionActions(QAction *startAction,
-                                                   QAction *fileAction)
+void SttSettingsWidget::setRecognitionActions(QAction *startAction,
+                                              QAction *fileAction)
 {
     const auto bindAction = [](QPushButton *button, QAction *action) {
         const auto sync = [button, action]() {
@@ -84,12 +103,12 @@ void RecognitionModelWidget::setRecognitionActions(QAction *startAction,
     bindAction(m_ui->recognizeFileButton, fileAction);
 }
 
-void RecognitionModelWidget::setRecognitionResult(const QString &text)
+void SttSettingsWidget::setRecognitionResult(const QString &text)
 {
     m_ui->resultEdit->setPlainText(text);
 }
 
-void RecognitionModelWidget::retranslate()
+void SttSettingsWidget::retranslate()
 {
     m_ui->retranslateUi(this);
 
@@ -111,7 +130,7 @@ void RecognitionModelWidget::retranslate()
     refreshAsrModelCombo();
 }
 
-void RecognitionModelWidget::changeEvent(QEvent *event)
+void SttSettingsWidget::changeEvent(QEvent *event)
 {
     QWidget::changeEvent(event);
     if (event->type() == QEvent::LanguageChange) {
@@ -119,7 +138,7 @@ void RecognitionModelWidget::changeEvent(QEvent *event)
     }
 }
 
-void RecognitionModelWidget::refreshFromConfig()
+void SttSettingsWidget::refreshFromConfig()
 {
     auto task =
         useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
@@ -134,9 +153,23 @@ void RecognitionModelWidget::refreshFromConfig()
     }
     const QSignalBlocker blocker(m_ui->hotwordsEdit);
     m_ui->hotwordsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+
+    const QSignalBlocker b1(m_ui->useClipboardCheck);
+    const QSignalBlocker b2(m_ui->copyToClipboardCheck);
+    const QSignalBlocker b3(m_ui->restoreClipboardCheck);
+    const QSignalBlocker b4(m_ui->saveOcrScreenshotCheck);
+    const QSignalBlocker b5(m_ui->saveAsrAudioCheck);
+    m_ui->useClipboardCheck->setChecked(appConfig().settings.useClipboard);
+    m_ui->copyToClipboardCheck->setChecked(
+        appConfig().settings.copyToClipboard);
+    m_ui->restoreClipboardCheck->setChecked(
+        appConfig().settings.restoreClipboard);
+    m_ui->saveOcrScreenshotCheck->setChecked(
+        appConfig().settings.saveOcrScreenshot);
+    m_ui->saveAsrAudioCheck->setChecked(appConfig().settings.saveAsrAudio);
 }
 
-void RecognitionModelWidget::initActiveMode()
+void SttSettingsWidget::initActiveMode()
 {
     connect(m_ui->modeCombo, &QComboBox::currentIndexChanged, this, [this]() {
         const QString mode = m_ui->modeCombo->currentData().toString();
@@ -147,7 +180,7 @@ void RecognitionModelWidget::initActiveMode()
     });
 }
 
-void RecognitionModelWidget::updateActiveModeDisplay()
+void SttSettingsWidget::updateActiveModeDisplay()
 {
     const QString activeMode =
         QString::fromStdString(appConfig().settings.activeMode);
@@ -158,18 +191,18 @@ void RecognitionModelWidget::updateActiveModeDisplay()
     }
 }
 
-void RecognitionModelWidget::initAsrModel()
+void SttSettingsWidget::initAsrModel()
 {
     connect(m_ui->useButton, &QPushButton::clicked, this,
-            &RecognitionModelWidget::onUseAsrModel);
+            &SttSettingsWidget::onUseAsrModel);
     connect(m_ui->browserButton, &QPushButton::clicked, this,
-            &RecognitionModelWidget::onOpenModelUrl);
+            &SttSettingsWidget::onOpenModelUrl);
     connect(m_ui->importButton, &QPushButton::clicked, this,
-            &RecognitionModelWidget::onImportModel);
+            &SttSettingsWidget::onImportModel);
     refreshAsrModelCombo();
 }
 
-void RecognitionModelWidget::loadInstalledAsrModel(const QString &providerId)
+void SttSettingsWidget::loadInstalledAsrModel(const QString &providerId)
 {
     const auto &presets = appConfig().asrPresets;
     auto it = presets.find(providerId.toStdString());
@@ -189,7 +222,7 @@ void RecognitionModelWidget::loadInstalledAsrModel(const QString &providerId)
         return;
     }
 
-    SPDLOG_DEBUG("RecognitionModelWidget: loading ASR model {}", preset.name);
+    SPDLOG_DEBUG("SttSettingsWidget: loading ASR model {}", preset.name);
     vc->loadSpeechRecognitionModel(preset);
     if (vc->isSpeechRecognitionModelLoaded()) {
         STATUSBAR_INFO("{}",
@@ -201,7 +234,7 @@ void RecognitionModelWidget::loadInstalledAsrModel(const QString &providerId)
     }
 }
 
-void RecognitionModelWidget::refreshAsrModelCombo()
+void SttSettingsWidget::refreshAsrModelCombo()
 {
     const QString currentId =
         QString::fromStdString(appConfig().settings.asrProviderId);
@@ -234,8 +267,7 @@ void RecognitionModelWidget::refreshAsrModelCombo()
     }
 }
 
-QCoro::Task<bool>
-RecognitionModelWidget::downloadAsrModel(const QString &providerId)
+QCoro::Task<bool> SttSettingsWidget::downloadAsrModel(const QString &providerId)
 {
     const auto &presetsModel = appConfig().asrPresets;
     auto it = presetsModel.find(providerId.toStdString());
@@ -249,7 +281,7 @@ RecognitionModelWidget::downloadAsrModel(const QString &providerId)
         co_return true;
     }
 
-    const QPointer<RecognitionModelWidget> guard(this);
+    const QPointer<SttSettingsWidget> guard(this);
     auto result = co_await downloadModelArchive(
         QString::fromStdString(model.name), QString::fromStdString(model.url),
         QStringLiteral("ASR"));
@@ -265,7 +297,7 @@ RecognitionModelWidget::downloadAsrModel(const QString &providerId)
     co_return true;
 }
 
-void RecognitionModelWidget::onUseAsrModel()
+void SttSettingsWidget::onUseAsrModel()
 {
     const int index = m_ui->modelCombo->currentIndex();
     if (index < 0 || index >= m_ui->modelCombo->count()) {
@@ -280,7 +312,7 @@ void RecognitionModelWidget::onUseAsrModel()
     auto task = useAsrModel(providerId);
 }
 
-QCoro::Task<void> RecognitionModelWidget::useAsrModel(const QString &providerId)
+QCoro::Task<void> SttSettingsWidget::useAsrModel(const QString &providerId)
 {
     // Check if this model is already loaded
     auto *vc = VoiceInputController::instance();
@@ -307,7 +339,7 @@ QCoro::Task<void> RecognitionModelWidget::useAsrModel(const QString &providerId)
     refreshAsrModelCombo();
 }
 
-void RecognitionModelWidget::onOpenModelUrl()
+void SttSettingsWidget::onOpenModelUrl()
 {
     const int index = m_ui->modelCombo->currentIndex();
     if (index < 0 || index >= m_ui->modelCombo->count()) {
@@ -329,7 +361,7 @@ void RecognitionModelWidget::onOpenModelUrl()
     QDesktopServices::openUrl(QUrl(QString::fromStdString(it->second.url)));
 }
 
-void RecognitionModelWidget::onImportModel()
+void SttSettingsWidget::onImportModel()
 {
     const int index = m_ui->modelCombo->currentIndex();
     if (index < 0 || index >= m_ui->modelCombo->count()) {
@@ -399,12 +431,12 @@ void RecognitionModelWidget::onImportModel()
     auto task = useAsrModel(providerId);
 }
 
-void RecognitionModelWidget::onHotwordsChanged()
+void SttSettingsWidget::onHotwordsChanged()
 {
     saveHotwords(false);
 }
 
-void RecognitionModelWidget::saveHotwords(bool reloadModel)
+void SttSettingsWidget::saveHotwords(bool reloadModel)
 {
     std::vector<std::string> hwList;
     const QStringList lines =
