@@ -1,13 +1,13 @@
 #include "ocr_recognizer.h"
 #include "platform_utils.h"
-#ifdef TALKINPUT_HAS_PPOCRV6
+#ifdef ZENNY_HAS_PPOCRV6
 #include "ppocrv6_ocr_recognizer.h"
 #endif
 
 #include <QGuiApplication>
 #include <QScreen>
 
-namespace talkinput
+namespace zenny
 {
 
 OcrRecognizer::OcrRecognizer(QObject *parent) : QObject(parent)
@@ -60,7 +60,7 @@ QImage OcrRecognizer::captureContextImage() const
 std::expected<std::unique_ptr<OcrRecognizer>, QString>
 OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
 {
-#ifdef TALKINPUT_HAS_PPOCRV6
+#ifdef ZENNY_HAS_PPOCRV6
     if (preset.type == "PpOcrV6") {
         return std::make_unique<PpOcrV6OcrRecognizer>(parent);
     }
@@ -70,4 +70,4 @@ OcrRecognizer::createFromPreset(const OcrPreset &preset, QObject *parent)
                                .arg(QString::fromStdString(preset.type)));
 }
 
-} // namespace talkinput
+} // namespace zenny

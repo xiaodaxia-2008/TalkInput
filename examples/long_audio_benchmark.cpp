@@ -162,12 +162,12 @@ mergeSegments(const std::vector<RawVadSegment> &rawSegs, int sampleRate,
     return chunks;
 }
 
-// ── Baseline (Current TalkInput 15s Hard Split) ─────────────────────────
-QString runBaseline(const talkinput::AsrPreset &preset, const QByteArray &pcm16,
+// ── Baseline (Current Zenny 15s Hard Split) ─────────────────────────
+QString runBaseline(const zenny::AsrPreset &preset, const QByteArray &pcm16,
                     int sampleRate, int channels)
 {
     auto recognizerExpected =
-        talkinput::SpeechRecognizer::createFromPreset(preset, nullptr, true);
+        zenny::SpeechRecognizer::createFromPreset(preset, nullptr, true);
     if (!recognizerExpected) {
         return {};
     }
@@ -175,7 +175,7 @@ QString runBaseline(const talkinput::AsrPreset &preset, const QByteArray &pcm16,
 
     QString text;
     QObject::connect(recognizer.get(),
-                     &talkinput::SpeechRecognizer::resultChanged,
+                     &zenny::SpeechRecognizer::resultChanged,
                      [&text](const QString &t, bool isFinal) {
                          if (isFinal) {
                              text = t;
@@ -187,7 +187,7 @@ QString runBaseline(const talkinput::AsrPreset &preset, const QByteArray &pcm16,
 }
 
 // ── Smart Merged VAD Strategy (with configurable padding ms) ────────────
-QString runSmartMergedVad(const talkinput::AsrPreset &preset,
+QString runSmartMergedVad(const zenny::AsrPreset &preset,
                           const std::vector<float> &floats, int sampleRate,
                           int paddingMs)
 {
@@ -202,7 +202,7 @@ QString runSmartMergedVad(const talkinput::AsrPreset &preset,
                 rawSegs.size(), mergedChunks.size(), paddingMs);
 
     auto recognizerExpected =
-        talkinput::SpeechRecognizer::createFromPreset(preset, nullptr, true);
+        zenny::SpeechRecognizer::createFromPreset(preset, nullptr, true);
     if (!recognizerExpected) {
         return {};
     }
@@ -210,7 +210,7 @@ QString runSmartMergedVad(const talkinput::AsrPreset &preset,
 
     QString piece;
     QObject::connect(recognizer.get(),
-                     &talkinput::SpeechRecognizer::resultChanged,
+                     &zenny::SpeechRecognizer::resultChanged,
                      [&piece](const QString &t, bool isFinal) {
                          if (isFinal) {
                              piece = t;
@@ -251,7 +251,7 @@ QString runSmartMergedVad(const talkinput::AsrPreset &preset,
 
 void testEvaluation(const QString &presetId, const QString &audioPath)
 {
-    const auto &presets = talkinput::appConfig().asrPresets;
+    const auto &presets = zenny::appConfig().asrPresets;
     const auto it = presets.find(presetId.toStdString());
     if (it == presets.end()) {
         return;
@@ -265,7 +265,7 @@ void testEvaluation(const QString &presetId, const QString &audioPath)
     SPDLOG_INFO(
         "================================================================");
 
-    auto decoded = talkinput::decodeAudioFileToPcm16(audioPath);
+    auto decoded = zenny::decodeAudioFileToPcm16(audioPath);
     if (!decoded) {
         SPDLOG_ERROR("Failed to decode audio: {}",
                      decoded.error().toStdString());
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
     const QString fiberartPath =
         QDir::current().filePath("data/audio/fiberart.m4a");
 
-    talkinput::appConfig();
+    zenny::appConfig();
 
     // 1. SenseVoice
     testEvaluation(

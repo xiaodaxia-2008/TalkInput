@@ -6,7 +6,7 @@
 #include <memory>
 #include <mutex>
 
-namespace talkinput
+namespace zenny
 {
 
 class PpOcrV6OcrRecognizer final : public OcrRecognizer
@@ -32,4 +32,4 @@ private:
     std::atomic<bool> m_initialized{false};
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -9,7 +9,7 @@
 
 #include <Windows.h>
 
-namespace talkinput
+namespace zenny
 {
 
 static bool tryClipboardPaste(const QString &text)
@@ -226,4 +226,4 @@ SysWindowInfo nativeWindowInfoAtCursor()
     return info;
 }
 
-} // namespace talkinput
+} // namespace zenny

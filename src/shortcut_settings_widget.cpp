@@ -9,7 +9,7 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 
-namespace talkinput
+namespace zenny
 {
 
 ShortcutSettingsWidget::ShortcutSettingsWidget(QWidget *parent)
@@ -74,4 +74,4 @@ void ShortcutSettingsWidget::refreshFromConfig()
         QString::fromStdString(appConfig().settings.modeSwitchHotkey)));
 }
 
-} // namespace talkinput
+} // namespace zenny

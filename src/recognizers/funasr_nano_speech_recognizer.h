@@ -2,7 +2,7 @@
 
 #include "offline_speech_recognizer.h"
 
-namespace talkinput
+namespace zenny
 {
 
 class FunASRNanoSpeechRecognizer final : public OfflineSpeechRecognizer
@@ -19,4 +19,4 @@ protected:
     QString normalizeResultText(const QString &text) const override;
 };
 
-} // namespace talkinput
+} // namespace zenny

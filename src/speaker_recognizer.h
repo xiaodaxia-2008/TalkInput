@@ -11,7 +11,7 @@
 struct SherpaOnnxSpeakerEmbeddingExtractor;
 struct SherpaOnnxSpeakerEmbeddingManager;
 
-namespace talkinput
+namespace zenny
 {
 
 struct DiarizedSegment
@@ -65,4 +65,4 @@ private:
     int m_dim = 0;
 };
 
-} // namespace talkinput
+} // namespace zenny

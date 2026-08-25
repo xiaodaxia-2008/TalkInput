@@ -12,7 +12,7 @@ namespace Ui
 class GeneralSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// Misc actions: reset, data directory, about, exit ("常规").
@@ -40,4 +40,4 @@ private:
     std::unique_ptr<Ui::GeneralSettingsWidget> m_ui;
 };
 
-} // namespace talkinput
+} // namespace zenny

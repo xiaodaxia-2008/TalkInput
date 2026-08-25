@@ -11,7 +11,7 @@ namespace Ui
 class HistoryWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 class RecognitionHistory;
@@ -43,4 +43,4 @@ private:
     HistoryTableModel *m_model = nullptr;
 };
 
-} // namespace talkinput
+} // namespace zenny

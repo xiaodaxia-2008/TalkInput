@@ -55,7 +55,7 @@ private:
 
 void usage()
 {
-    std::cout << "Usage: TalkInputBenchmark --type <type> --dir <modelDir>"
+    std::cout << "Usage: ZennyBenchmark --type <type> --dir <modelDir>"
                  " --audio <audioFile>"
                  " [--hotwords <hotwordsFile>]"
                  " [--ground-truth <groundTruthFile>]"

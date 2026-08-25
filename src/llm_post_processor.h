@@ -10,7 +10,7 @@
 #include <deque>
 #include <memory>
 
-namespace talkinput
+namespace zenny
 {
 
 class LlmPostProcessor final : public QObject
@@ -43,4 +43,4 @@ private:
     std::deque<PendingRequest> m_pending;
 };
 
-} // namespace talkinput
+} // namespace zenny

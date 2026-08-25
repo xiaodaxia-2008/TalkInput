@@ -10,7 +10,7 @@
 #include <QStyleHints>
 #include <QSvgRenderer>
 
-namespace talkinput
+namespace zenny
 {
 
 ThemeMode themeModeFromString(const std::string &s)
@@ -140,4 +140,4 @@ QIcon themedNavIcon(const QString &svgPath, bool dark)
     return QIcon(pixmap);
 }
 
-} // namespace talkinput
+} // namespace zenny

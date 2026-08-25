@@ -14,7 +14,7 @@
 
 #include <cstring>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -183,4 +183,4 @@ TtsSynthesisResult MeloTtsEngine::synthesize(const QString &text,
     return result;
 }
 
-} // namespace talkinput
+} // namespace zenny

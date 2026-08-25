@@ -9,7 +9,7 @@
 
 class QThread;
 
-namespace talkinput
+namespace zenny
 {
 
 struct TranscriptionResult
@@ -76,4 +76,4 @@ private:
     ApiTranscriber m_transcriber;
 };
 
-} // namespace talkinput
+} // namespace zenny

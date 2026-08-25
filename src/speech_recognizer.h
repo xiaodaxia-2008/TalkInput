@@ -14,7 +14,7 @@
 
 struct SherpaOnnxOfflinePunctuation;
 
-namespace talkinput
+namespace zenny
 {
 
 class SpeechRecognizer : public QObject
@@ -74,4 +74,4 @@ protected:
 private:
     const SherpaOnnxOfflinePunctuation *m_punct = nullptr;
 };
-} // namespace talkinput
+} // namespace zenny

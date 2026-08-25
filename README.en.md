@@ -1,6 +1,6 @@
 English | [简体中文](README.md)
 
-# TalkInput
+# Zenny
 
 A local voice input tool that captures speech via microphone, supports OCR on the currently focused window for context, and uses LLM post-processing to correct recognition errors — results are automatically injected into any application's text field.
 
@@ -10,7 +10,7 @@ A local voice input tool that captures speech via microphone, supports OCR on th
 - **AI Polish**: Recognized text is refined by an LLM for corrections and improvements.
 - **OCR Context Awareness**: Captures the currently focused window, extracts text via OCR as LLM context, improving correction accuracy.
 
-![ASR Settings](docs/imgs/talkinput_asr_setting_en.png)
+![ASR Settings](docs/imgs/zenny_asr_setting_en.png)
 
 - **Global Hotkey**: `Ctrl+Alt+Space` to start anytime.
 - **Voice Overlay**: A floating text preview window appears during recording, showing real-time recognition progress and mode.
@@ -24,11 +24,11 @@ A local voice input tool that captures speech via microphone, supports OCR on th
 
 - **Recognition History**: All results are saved in a local SQLite database. Browse, copy, edit, or delete entries.
 
-![Recognition History](docs/imgs/talkinput_history_en.png)
+![Recognition History](docs/imgs/zenny_history_en.png)
 
 ## Installation
 
-On Windows, download the pre-built NSIS installer from [GitHub Releases](https://github.com/ZenShawn/TalkInput/releases) and run it.
+On Windows, download the pre-built NSIS installer from [GitHub Releases](https://github.com/xiaodaxia-2008/Zenny/releases) and run it.
 
 On macOS / Linux, you need to build from source for now.
 
@@ -98,11 +98,11 @@ third_parties/       — Third-party libraries
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) v1.13.3 static library
 
 ```bash
-git clone https://github.com/ZenShawn/TalkInput.git
-cd TalkInput
+git clone https://github.com/xiaodaxia-2008/Zenny.git
+cd Zenny
 cmake --preset release
 cmake --build build
-./build/bin/TalkInput
+./build/bin/Zenny
 ```
 
 To package the installer

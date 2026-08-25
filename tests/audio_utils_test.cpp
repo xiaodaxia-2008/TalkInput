@@ -16,7 +16,7 @@ namespace
 {
 
 int testArgc = 1;
-char testProgramName[] = "TalkInputTests";
+char testProgramName[] = "ZennyTests";
 char *testArgv[] = {testProgramName, nullptr};
 QCoreApplication testApplication(testArgc, testArgv);
 
@@ -26,7 +26,7 @@ constexpr int sampleRate = 1000;
 void checkSegments(const std::vector<float> &samples, int maxSeconds,
                    const std::vector<int> &expectedSeconds)
 {
-    const auto segments = talkinput::segmentAudioBySilence(
+    const auto segments = zenny::segmentAudioBySilence(
         samples, sampleRate, maxSeconds, 10, 100, 0.1F);
     REQUIRE(segments.size() == expectedSeconds.size());
     int expectedStart = 0;
@@ -55,7 +55,7 @@ TEST_CASE("savePcm16ToM4a creates valid file", "[audio_utils]")
 
     const QString path = tempDir.filePath("audio.m4a");
     const QByteArray pcm16(16000 * 2, '\0');
-    REQUIRE(talkinput::savePcm16ToM4a(pcm16, 16000, 1, path));
+    REQUIRE(zenny::savePcm16ToM4a(pcm16, 16000, 1, path));
     REQUIRE(QFileInfo::exists(path));
     REQUIRE(QFileInfo(path).size() > 0);
 }
@@ -67,13 +67,13 @@ TEST_CASE("decodeAudioDataToPcm16 decodes WAV from memory", "[audio_utils]")
 
     const QByteArray sourcePcm(16000 * 2, '\0');
     const QString path = tempDir.filePath("audio.wav");
-    REQUIRE(talkinput::savePcm16ToWav(sourcePcm, 16000, 1, path));
+    REQUIRE(zenny::savePcm16ToWav(sourcePcm, 16000, 1, path));
 
     QFile file(path);
     REQUIRE(file.open(QIODevice::ReadOnly));
     const QByteArray encoded = file.readAll();
 
-    const auto decoded = talkinput::decodeAudioDataToPcm16(encoded);
+    const auto decoded = zenny::decodeAudioDataToPcm16(encoded);
     REQUIRE(decoded.has_value());
     REQUIRE(decoded->sampleRate == 16000);
     REQUIRE(decoded->channels == 1);
@@ -112,16 +112,16 @@ TEST_CASE("findSilenceSplits thresholds", "[audio_utils]")
 {
     const std::vector<float> tenFrames(10 * 30, 0.0F);
     const std::vector<float> elevenFrames(11 * 30, 0.0F);
-    REQUIRE(talkinput::findSilenceSplits(tenFrames, sampleRate, 30, 305, 0.1F)
+    REQUIRE(zenny::findSilenceSplits(tenFrames, sampleRate, 30, 305, 0.1F)
                 .empty());
     REQUIRE(
-        talkinput::findSilenceSplits(elevenFrames, sampleRate, 30, 305, 0.1F)
+        zenny::findSilenceSplits(elevenFrames, sampleRate, 30, 305, 0.1F)
             .size() == 1);
 }
 
 TEST_CASE("findBestSilenceSplit returns first valid index", "[audio_utils]")
 {
     const std::vector<float> tenFrames(10 * 30, 0.0F);
-    REQUIRE(talkinput::findBestSilenceSplit(tenFrames, sampleRate, 10 * 30 + 1,
+    REQUIRE(zenny::findBestSilenceSplit(tenFrames, sampleRate, 10 * 30 + 1,
                                             11 * 30, 30, 300, 0.1F) == 0);
 }

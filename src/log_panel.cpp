@@ -5,7 +5,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-namespace talkinput
+namespace zenny
 {
 
 LogPanel::LogPanel(QWidget *parent) : QWidget(parent)
@@ -29,4 +29,4 @@ QPlainTextEdit *LogPanel::textEdit() const
     return m_ui->logPanelTextEdit;
 }
 
-} // namespace talkinput
+} // namespace zenny

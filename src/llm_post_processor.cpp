@@ -11,7 +11,7 @@
 #include <QNetworkRequest>
 #include <QUrl>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -215,4 +215,4 @@ QString LlmPostProcessor::cleanupResponseText(const QString &text)
     return result;
 }
 
-} // namespace talkinput
+} // namespace zenny

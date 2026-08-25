@@ -2,7 +2,7 @@
 
 #include "../tts_engine.h"
 
-namespace talkinput
+namespace zenny
 {
 
 /// Microsoft Edge online TTS backend (edge-tts compatible protocol over a
@@ -19,4 +19,4 @@ public:
     }
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -8,7 +8,7 @@
 
 class QSqlDatabase;
 
-namespace talkinput
+namespace zenny
 {
 
 class RecognitionHistory
@@ -35,4 +35,4 @@ private:
     std::unique_ptr<QSqlDatabase> m_db;
 };
 
-} // namespace talkinput
+} // namespace zenny

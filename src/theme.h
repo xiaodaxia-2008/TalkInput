@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace talkinput
+namespace zenny
 {
 
 enum class ThemeMode
@@ -29,4 +29,4 @@ bool applyTheme(ThemeMode mode);
 /// theme. Used for navigation icons so they remain visible in dark mode.
 QIcon themedNavIcon(const QString &svgPath, bool dark);
 
-} // namespace talkinput
+} // namespace zenny

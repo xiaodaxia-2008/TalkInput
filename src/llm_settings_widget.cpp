@@ -22,7 +22,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -296,4 +296,4 @@ void LlmSettingsWidget::refreshModels()
     });
 }
 
-} // namespace talkinput
+} // namespace zenny

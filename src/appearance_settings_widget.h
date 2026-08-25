@@ -15,7 +15,7 @@ namespace Ui
 class AppearanceSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// Theme, language, and startup options ("外观").
@@ -44,4 +44,4 @@ private:
     std::unique_ptr<Ui::AppearanceSettingsWidget> m_ui;
 };
 
-} // namespace talkinput
+} // namespace zenny

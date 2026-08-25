@@ -3,7 +3,7 @@ build/
 nul
 build-release/
 _CPack_Packages/
-TalkInput-*.exe
+Zenny-*.exe
 vcpkg_installed/
 *.bz2
 *.tar

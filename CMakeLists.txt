@@ -13,7 +13,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-project(TalkInput VERSION 0.13.0 DESCRIPTION "Voice input method")
+project(Zenny VERSION 0.13.0 DESCRIPTION "Voice input method")
 
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql WebSockets LinguistTools)
 find_package(LibArchive REQUIRED)
@@ -30,40 +30,40 @@ else()
 endif()
 
 # Normalize package-specific dependency names for the cross-platform provider.
-set(TALKINPUT_PPOCRV6_ORT_TARGET "")
+set(ZENNY_PPOCRV6_ORT_TARGET "")
 if(TARGET onnxruntime)
-    set(TALKINPUT_PPOCRV6_ORT_TARGET onnxruntime)
+    set(ZENNY_PPOCRV6_ORT_TARGET onnxruntime)
 elseif(TARGET onnxruntime::onnxruntime)
-    set(TALKINPUT_PPOCRV6_ORT_TARGET onnxruntime::onnxruntime)
+    set(ZENNY_PPOCRV6_ORT_TARGET onnxruntime::onnxruntime)
 elseif(TARGET ONNXRuntime::onnxruntime)
-    set(TALKINPUT_PPOCRV6_ORT_TARGET ONNXRuntime::onnxruntime)
+    set(ZENNY_PPOCRV6_ORT_TARGET ONNXRuntime::onnxruntime)
 elseif(onnxruntime_FOUND AND onnxruntime_LIBRARIES)
-    add_library(talkinput_onnxruntime INTERFACE)
+    add_library(zenny_onnxruntime INTERFACE)
     if(onnxruntime_INCLUDE_DIRS)
-        target_include_directories(talkinput_onnxruntime INTERFACE
+        target_include_directories(zenny_onnxruntime INTERFACE
             ${onnxruntime_INCLUDE_DIRS})
     endif()
-    target_link_libraries(talkinput_onnxruntime INTERFACE
+    target_link_libraries(zenny_onnxruntime INTERFACE
         ${onnxruntime_LIBRARIES})
-    set(TALKINPUT_PPOCRV6_ORT_TARGET talkinput_onnxruntime)
+    set(ZENNY_PPOCRV6_ORT_TARGET zenny_onnxruntime)
 endif()
 
-set(TALKINPUT_PPOCRV6_OPENCV_TARGETS "")
-if(TALKINPUT_OPENCV_FOUND)
-    set(TALKINPUT_PPOCRV6_OPENCV_TARGETS talkinput_opencv_world)
+set(ZENNY_PPOCRV6_OPENCV_TARGETS "")
+if(ZENNY_OPENCV_FOUND)
+    set(ZENNY_PPOCRV6_OPENCV_TARGETS zenny_opencv_world)
 elseif(TARGET OpenCV::opencv_core AND TARGET OpenCV::opencv_imgproc)
-    set(TALKINPUT_PPOCRV6_OPENCV_TARGETS
+    set(ZENNY_PPOCRV6_OPENCV_TARGETS
         OpenCV::opencv_core OpenCV::opencv_imgproc)
 elseif(TARGET opencv_core AND TARGET opencv_imgproc)
-    set(TALKINPUT_PPOCRV6_OPENCV_TARGETS opencv_core opencv_imgproc)
+    set(ZENNY_PPOCRV6_OPENCV_TARGETS opencv_core opencv_imgproc)
 elseif(OpenCV_FOUND AND OpenCV_LIBS)
-    add_library(talkinput_opencv INTERFACE)
+    add_library(zenny_opencv INTERFACE)
     if(OpenCV_INCLUDE_DIRS)
-        target_include_directories(talkinput_opencv INTERFACE
+        target_include_directories(zenny_opencv INTERFACE
             ${OpenCV_INCLUDE_DIRS})
     endif()
-    target_link_libraries(talkinput_opencv INTERFACE ${OpenCV_LIBS})
-    set(TALKINPUT_PPOCRV6_OPENCV_TARGETS talkinput_opencv)
+    target_link_libraries(zenny_opencv INTERFACE ${OpenCV_LIBS})
+    set(ZENNY_PPOCRV6_OPENCV_TARGETS zenny_opencv)
 endif()
 
 include(FetchContent)
@@ -108,26 +108,26 @@ include(InstallRequiredSystemLibraries)
 
 set(CPACK_GENERATOR "NSIS")
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
-set(CPACK_PACKAGE_VENDOR "TalkInput")
+set(CPACK_PACKAGE_VENDOR "Zenny")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
 set(CPACK_STRIP_FILES TRUE)
 
 set(CPACK_NSIS_LANGUAGE "SimpChinese")
-set(CPACK_NSIS_DISPLAY_NAME "TalkInput")
-set(CPACK_NSIS_PACKAGE_NAME "TalkInput")
-set(CPACK_NSIS_CONTACT "support@talkinput.local")
+set(CPACK_NSIS_DISPLAY_NAME "Zenny")
+set(CPACK_NSIS_PACKAGE_NAME "Zenny")
+set(CPACK_NSIS_CONTACT "support@zenny.local")
 set(CPACK_NSIS_MODIFY_PATH ON)
 
 set(CPACK_NSIS_MENU_LINKS
-    "bin/TalkInput.exe" "TalkInput"
+    "bin/Zenny.exe" "Zenny"
 )
 
 set(CPACK_NSIS_CREATE_ICONS_EXTRA
-    "CreateShortCut '$DESKTOP\\\\TalkInput.lnk' '$INSTDIR\\\\bin\\\\TalkInput.exe'"
+    "CreateShortCut '$DESKTOP\\\\Zenny.lnk' '$INSTDIR\\\\bin\\\\Zenny.exe'"
 )
 set(CPACK_NSIS_DELETE_ICONS_EXTRA
-    "Delete '$DESKTOP\\\\TalkInput.lnk'"
+    "Delete '$DESKTOP\\\\Zenny.lnk'"
 )
 
 set(CPACK_COMPONENTS_ALL Runtime)

@@ -55,7 +55,7 @@ using OfflineStream = const SherpaOnnxOfflineStream *;
 void printUsage()
 {
     std::cout
-        << "Usage: TalkInputFunAsrParallelBenchmark --dir <modelDir> "
+        << "Usage: ZennyFunAsrParallelBenchmark --dir <modelDir> "
            "--audio <audioFile> [options]\n"
         << "  --threads <n>       ONNX Runtime threads per stream (default: "
            "2)\n"

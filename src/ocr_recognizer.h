@@ -14,7 +14,7 @@
 #include <memory>
 #include <qwindowdefs.h>
 
-namespace talkinput
+namespace zenny
 {
 
 struct OcrTextBlock
@@ -53,4 +53,4 @@ public:
     createFromPreset(const OcrPreset &preset, QObject *parent = nullptr);
 };
 
-} // namespace talkinput
+} // namespace zenny

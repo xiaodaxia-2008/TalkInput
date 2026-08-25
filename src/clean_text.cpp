@@ -553,7 +553,7 @@ static bool shouldKeep(const QString &category, const QString &tok)
 
 } // namespace
 
-namespace talkinput
+namespace zenny
 {
 
 QString extractOcrWords(const QString &text)
@@ -581,4 +581,4 @@ QString extractOcrWords(const QString &text)
     return result.join(QLatin1Char(' '));
 }
 
-} // namespace talkinput
+} // namespace zenny

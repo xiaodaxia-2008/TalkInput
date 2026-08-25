@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>TalkInput</string>
+   <string>Zenny</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="rootLayout">
@@ -66,16 +66,16 @@
         <property name="currentIndex">
          <number>0</number>
         </property>
-        <widget class="talkinput::SttSettingsWidget" name="sttSettingsWidget"/>
-        <widget class="talkinput::OcrSettingsWidget" name="ocrSettingsWidget"/>
-        <widget class="talkinput::LlmSettingsWidget" name="llmSettingsWidget"/>
-        <widget class="talkinput::TtsSettingsWidget" name="ttsSettingsWidget"/>
-        <widget class="talkinput::ApiServerSettingsWidget" name="apiServerSettingsWidget"/>
-        <widget class="talkinput::ShortcutSettingsWidget" name="shortcutSettingsWidget"/>
-        <widget class="talkinput::AppearanceSettingsWidget" name="appearanceSettingsWidget"/>
-        <widget class="talkinput::HistoryWidget" name="historyWidget"/>
-        <widget class="talkinput::LogPanel" name="logPanel"/>
-        <widget class="talkinput::GeneralSettingsWidget" name="generalSettingsWidget"/>
+        <widget class="zenny::SttSettingsWidget" name="sttSettingsWidget"/>
+        <widget class="zenny::OcrSettingsWidget" name="ocrSettingsWidget"/>
+        <widget class="zenny::LlmSettingsWidget" name="llmSettingsWidget"/>
+        <widget class="zenny::TtsSettingsWidget" name="ttsSettingsWidget"/>
+        <widget class="zenny::ApiServerSettingsWidget" name="apiServerSettingsWidget"/>
+        <widget class="zenny::ShortcutSettingsWidget" name="shortcutSettingsWidget"/>
+        <widget class="zenny::AppearanceSettingsWidget" name="appearanceSettingsWidget"/>
+        <widget class="zenny::HistoryWidget" name="historyWidget"/>
+        <widget class="zenny::LogPanel" name="logPanel"/>
+        <widget class="zenny::GeneralSettingsWidget" name="generalSettingsWidget"/>
         </widget>
        </widget>
       </item>
@@ -112,52 +112,52 @@
  </resources>
  <customwidgets>
   <customwidget>
-   <class>talkinput::SttSettingsWidget</class>
+   <class>zenny::SttSettingsWidget</class>
    <extends>QWidget</extends>
    <header>stt_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::OcrSettingsWidget</class>
+   <class>zenny::OcrSettingsWidget</class>
    <extends>QWidget</extends>
    <header>ocr_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::LlmSettingsWidget</class>
+   <class>zenny::LlmSettingsWidget</class>
    <extends>QWidget</extends>
    <header>llm_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::TtsSettingsWidget</class>
+   <class>zenny::TtsSettingsWidget</class>
    <extends>QWidget</extends>
    <header>tts_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::ApiServerSettingsWidget</class>
+   <class>zenny::ApiServerSettingsWidget</class>
    <extends>QWidget</extends>
    <header>api_server_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::ShortcutSettingsWidget</class>
+   <class>zenny::ShortcutSettingsWidget</class>
    <extends>QWidget</extends>
    <header>shortcut_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::AppearanceSettingsWidget</class>
+   <class>zenny::AppearanceSettingsWidget</class>
    <extends>QWidget</extends>
    <header>appearance_settings_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::HistoryWidget</class>
+   <class>zenny::HistoryWidget</class>
    <extends>QWidget</extends>
    <header>history_widget.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::LogPanel</class>
+   <class>zenny::LogPanel</class>
    <extends>QWidget</extends>
    <header>log_panel.h</header>
   </customwidget>
   <customwidget>
-   <class>talkinput::GeneralSettingsWidget</class>
+   <class>zenny::GeneralSettingsWidget</class>
    <extends>QWidget</extends>
    <header>general_settings_widget.h</header>
   </customwidget>

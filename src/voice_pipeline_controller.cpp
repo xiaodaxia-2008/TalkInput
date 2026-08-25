@@ -35,7 +35,7 @@ void saveOcrDebugImage(const QImage &image)
         return;
     }
 
-    const QString dir = QDir(talkinput::appDataDir()).filePath("ocr_images");
+    const QString dir = QDir(zenny::appDataDir()).filePath("ocr_images");
     QDir().mkpath(dir);
     const QString timestamp =
         QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
@@ -52,7 +52,7 @@ void saveOcrDebugImage(const QImage &image)
 
 QString hotwordsText()
 {
-    const auto &hotwords = talkinput::appConfig().settings.hotwords;
+    const auto &hotwords = zenny::appConfig().settings.hotwords;
     return QString::fromStdString(hotwords | std::views::join_with('\n') |
                                   std::ranges::to<std::string>());
 }
@@ -63,21 +63,21 @@ void saveAsrAudio(const QByteArray &pcm16, int sampleRate, int channels)
         return;
     }
 
-    const QString dir = QDir(talkinput::appDataDir()).filePath("asr_audios");
+    const QString dir = QDir(zenny::appDataDir()).filePath("asr_audios");
     QDir().mkpath(dir);
     const QString timestamp =
         QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
     const QString path =
         QDir(dir).filePath(QString("asr-%1.m4a").arg(timestamp));
 
-    talkinput::savePcm16ToM4a(pcm16, sampleRate, channels, path);
+    zenny::savePcm16ToM4a(pcm16, sampleRate, channels, path);
 }
 
 } // namespace
 
 // ── VoicePipelineController ─────────────────────────────────────────
 
-namespace talkinput
+namespace zenny
 {
 
 PipelineMode pipelineModeFromString(const std::string &s)
@@ -848,4 +848,4 @@ std::string VoicePipelineController::loadedPresetId() const
     return m_loadedPresetId;
 }
 
-} // namespace talkinput
+} // namespace zenny

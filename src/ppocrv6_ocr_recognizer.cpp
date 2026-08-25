@@ -26,7 +26,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -480,7 +480,7 @@ std::vector<TextBox> detectText(Ort::Session &session, const QImage &image,
 
 struct PpOcrV6OcrRecognizer::Impl
 {
-    Ort::Env environment{ORT_LOGGING_LEVEL_WARNING, "talkinput-ppocrv6"};
+    Ort::Env environment{ORT_LOGGING_LEVEL_WARNING, "zenny-ppocrv6"};
     std::unique_ptr<Ort::Session> detector;
     std::unique_ptr<Ort::Session> recognizer;
     std::unique_ptr<Ort::Session> classifier;
@@ -653,4 +653,4 @@ QCoro::Task<QString> PpOcrV6OcrRecognizer::recognizeText(const QImage &image)
     co_return result.text;
 }
 
-} // namespace talkinput
+} // namespace zenny

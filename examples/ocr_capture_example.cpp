@@ -43,7 +43,7 @@ int parseDelaySeconds(const QStringList &args)
 
 QString outputDir()
 {
-    const QString dir = QDir(talkinput::appDataDir()).filePath("capture-test");
+    const QString dir = QDir(zenny::appDataDir()).filePath("capture-test");
     QDir().mkpath(dir);
     return dir;
 }

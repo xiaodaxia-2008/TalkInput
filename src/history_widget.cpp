@@ -23,7 +23,7 @@
 #include <QVBoxLayout>
 #include <QVector>
 
-namespace talkinput
+namespace zenny
 {
 
 class HistoryTableModel final : public QAbstractTableModel
@@ -300,4 +300,4 @@ void HistoryWidget::clearHistory()
     STATUSBAR_INFO("{}", tr("History cleared"));
 }
 
-} // namespace talkinput
+} // namespace zenny

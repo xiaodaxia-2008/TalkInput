@@ -2,7 +2,7 @@
 
 #include <sherpa-onnx/c-api/c-api.h>
 
-namespace talkinput
+namespace zenny
 {
 
 std::expected<void, QString> SenseVoiceSpeechRecognizer::configureModel(
@@ -23,4 +23,4 @@ std::expected<void, QString> SenseVoiceSpeechRecognizer::configureModel(
     return {};
 }
 
-} // namespace talkinput
+} // namespace zenny

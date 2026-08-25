@@ -22,7 +22,7 @@ class QAudioSource;
 class QIODevice;
 class QThread;
 
-namespace talkinput
+namespace zenny
 {
 
 class LlmPostProcessor;
@@ -168,4 +168,4 @@ private:
     std::string m_loadedPresetId;
 };
 
-} // namespace talkinput
+} // namespace zenny

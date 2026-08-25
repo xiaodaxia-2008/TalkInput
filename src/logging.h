@@ -26,7 +26,7 @@
 class QPlainTextEdit;
 class QStatusBar;
 
-namespace talkinput
+namespace zenny
 {
 
 void installStatusBarLogger(QStatusBar *statusBar);
@@ -35,4 +35,4 @@ void initLogger();
 
 void installLogPanelSink(QPlainTextEdit *textEdit);
 
-} // namespace talkinput
+} // namespace zenny

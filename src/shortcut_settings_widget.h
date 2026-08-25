@@ -9,7 +9,7 @@ namespace Ui
 class ShortcutSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// Global shortcuts and active pipeline mode ("快捷键").
@@ -35,4 +35,4 @@ private:
     std::unique_ptr<Ui::ShortcutSettingsWidget> m_ui;
 };
 
-} // namespace talkinput
+} // namespace zenny

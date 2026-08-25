@@ -6,7 +6,7 @@
 
 #include <QString>
 
-namespace talkinput
+namespace zenny
 {
 
 /// Human-readable label for an ASR preset, e.g.
@@ -32,4 +32,4 @@ QCoro::Task<ModelArchiveResult>
 downloadModelArchive(const QString &modelLabel, const QString &url,
                      const QString &serviceName);
 
-} // namespace talkinput
+} // namespace zenny

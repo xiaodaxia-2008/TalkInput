@@ -33,7 +33,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-namespace talkinput
+namespace zenny
 {
 
 TtsSettingsWidget::TtsSettingsWidget(QWidget *parent) : QWidget(parent)
@@ -343,4 +343,4 @@ void TtsSettingsWidget::onImportTtsModel()
                    tr("TTS model imported: %1").arg(QStringLiteral("MeloTTS")));
 }
 
-} // namespace talkinput
+} // namespace zenny

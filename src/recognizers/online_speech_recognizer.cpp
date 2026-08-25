@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstring>
 
-namespace talkinput
+namespace zenny
 {
 
 OnlineSpeechRecognizer::OnlineSpeechRecognizer(QObject *parent)
@@ -194,4 +194,4 @@ bool OnlineSpeechRecognizer::publishResult(bool isFinal)
     return true;
 }
 
-} // namespace talkinput
+} // namespace zenny

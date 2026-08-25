@@ -25,7 +25,7 @@
 #include <algorithm>
 #include <cstdint>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -594,4 +594,4 @@ TtsSynthesisResult EdgeTtsEngine::synthesize(const QString &text,
     return result;
 }
 
-} // namespace talkinput
+} // namespace zenny

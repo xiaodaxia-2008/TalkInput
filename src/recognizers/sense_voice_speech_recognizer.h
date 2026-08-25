@@ -2,7 +2,7 @@
 
 #include "offline_speech_recognizer.h"
 
-namespace talkinput
+namespace zenny
 {
 
 class SenseVoiceSpeechRecognizer final : public OfflineSpeechRecognizer
@@ -18,4 +18,4 @@ protected:
     configureModel(SherpaOnnxOfflineRecognizerConfig *recognizer) override;
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -1,35 +1,35 @@
 # Examples — standalone demos and benchmarks (not unit tests)
 
-add_executable(TalkInputAsrExample
+add_executable(ZennyAsrExample
     asr_example.cpp
 )
-add_executable(TalkInputSenseVoiceExample
+add_executable(ZennySenseVoiceExample
     sense_voice_example.cpp
 )
-add_executable(TalkInputAsrBenchmark
+add_executable(ZennyAsrBenchmark
     asr_benchmark.cpp
 )
-add_executable(TalkInputFunAsrParallelBenchmark
+add_executable(ZennyFunAsrParallelBenchmark
     funasr_parallel_benchmark.cpp
 )
-add_executable(TalkInputOcrCaptureExample
+add_executable(ZennyOcrCaptureExample
     ocr_capture_example.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
 )
-add_executable(TalkInputOcrWinRtExample
+add_executable(ZennyOcrWinRtExample
     ocr_winrt_example.cpp
 )
-add_executable(TalkInputPpOcrV6Example
+add_executable(ZennyPpOcrV6Example
     ppocrv6_ocr_example.cpp
 )
-add_executable(TalkInputWinRtSpeechExample
+add_executable(ZennyWinRtSpeechExample
     winrt_speech_example.cpp
 )
-add_executable(TalkInputAudioSegmentExample
+add_executable(ZennyAudioSegmentExample
     audio_segment_example.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
 )
-add_executable(TalkInputLongAudioExample
+add_executable(ZennyLongAudioExample
     long_audio_example.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
     ${PROJECT_SOURCE_DIR}/src/app_config.cpp
@@ -43,14 +43,14 @@ add_executable(TalkInputLongAudioExample
     ${PROJECT_SOURCE_DIR}/src/recognizers/streaming_paraformer_speech_recognizer.cpp
     ${PROJECT_SOURCE_DIR}/resources/misc/config.json
 )
-qt_add_resources(TalkInputLongAudioExample "long_audio_resources"
+qt_add_resources(ZennyLongAudioExample "long_audio_resources"
     PREFIX "/"
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
     "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
-add_executable(TalkInputLongAudioBenchmark
+add_executable(ZennyLongAudioBenchmark
     long_audio_benchmark.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
     ${PROJECT_SOURCE_DIR}/src/app_config.cpp
@@ -64,14 +64,14 @@ add_executable(TalkInputLongAudioBenchmark
     ${PROJECT_SOURCE_DIR}/src/recognizers/streaming_paraformer_speech_recognizer.cpp
     ${PROJECT_SOURCE_DIR}/resources/misc/config.json
 )
-qt_add_resources(TalkInputLongAudioBenchmark "long_audio_benchmark_resources"
+qt_add_resources(ZennyLongAudioBenchmark "long_audio_benchmark_resources"
     PREFIX "/"
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
     "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
-add_executable(TalkInputMeetingDiarizationExample
+add_executable(ZennyMeetingDiarizationExample
     meeting_diarization_example.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_utils.cpp
     ${PROJECT_SOURCE_DIR}/src/app_config.cpp
@@ -86,113 +86,113 @@ add_executable(TalkInputMeetingDiarizationExample
     ${PROJECT_SOURCE_DIR}/src/recognizers/streaming_paraformer_speech_recognizer.cpp
     ${PROJECT_SOURCE_DIR}/resources/misc/config.json
 )
-qt_add_resources(TalkInputMeetingDiarizationExample "meeting_diarization_resources"
+qt_add_resources(ZennyMeetingDiarizationExample "meeting_diarization_resources"
     PREFIX "/"
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
     "${PROJECT_SOURCE_DIR}/resources/misc/config.json"
 )
 
-target_link_libraries(TalkInputAsrExample
+target_link_libraries(ZennyAsrExample
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputAsrExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_compile_definitions(ZennyAsrExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
-target_link_libraries(TalkInputSenseVoiceExample
+target_link_libraries(ZennySenseVoiceExample
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputSenseVoiceExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_compile_definitions(ZennySenseVoiceExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
-target_link_libraries(TalkInputAsrBenchmark
+target_link_libraries(ZennyAsrBenchmark
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputAsrBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_compile_definitions(ZennyAsrBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
-target_link_libraries(TalkInputFunAsrParallelBenchmark
+target_link_libraries(ZennyFunAsrParallelBenchmark
     PRIVATE
     Qt6::Core
     sherpa-onnx-c-api
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputFunAsrParallelBenchmark PRIVATE
+target_compile_definitions(ZennyFunAsrParallelBenchmark PRIVATE
     SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
-target_link_libraries(TalkInputOcrCaptureExample
+target_link_libraries(ZennyOcrCaptureExample
     PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputOcrCaptureExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_compile_definitions(ZennyOcrCaptureExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
-target_link_libraries(TalkInputOcrWinRtExample
+target_link_libraries(ZennyOcrWinRtExample
     PRIVATE
     windowsapp
 )
-target_compile_definitions(TalkInputOcrWinRtExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_compile_definitions(ZennyOcrWinRtExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
 find_package(Clipper2 CONFIG REQUIRED)
 
-target_link_libraries(TalkInputPpOcrV6Example PRIVATE Qt6::Core Qt6::Gui)
-target_include_directories(TalkInputPpOcrV6Example PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_compile_definitions(TalkInputPpOcrV6Example PRIVATE
-    TALKINPUT_PPOCRV6_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/ppocrv6_small"
+target_link_libraries(ZennyPpOcrV6Example PRIVATE Qt6::Core Qt6::Gui)
+target_include_directories(ZennyPpOcrV6Example PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_compile_definitions(ZennyPpOcrV6Example PRIVATE
+    ZENNY_PPOCRV6_MODEL_DIR="${PROJECT_SOURCE_DIR}/models/ppocrv6_small"
 )
-if(TALKINPUT_PPOCRV6_ORT_TARGET)
-    target_compile_definitions(TalkInputPpOcrV6Example PRIVATE HAVE_ONNXRUNTIME)
-    target_link_libraries(TalkInputPpOcrV6Example PRIVATE
-        ${TALKINPUT_PPOCRV6_ORT_TARGET})
+if(ZENNY_PPOCRV6_ORT_TARGET)
+    target_compile_definitions(ZennyPpOcrV6Example PRIVATE HAVE_ONNXRUNTIME)
+    target_link_libraries(ZennyPpOcrV6Example PRIVATE
+        ${ZENNY_PPOCRV6_ORT_TARGET})
     if(WIN32)
-        add_custom_command(TARGET TalkInputPpOcrV6Example POST_BUILD
+        add_custom_command(TARGET ZennyPpOcrV6Example POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:TalkInputPpOcrV6Example>
-            $<TARGET_FILE_DIR:TalkInputPpOcrV6Example>
+            $<TARGET_RUNTIME_DLLS:ZennyPpOcrV6Example>
+            $<TARGET_FILE_DIR:ZennyPpOcrV6Example>
             COMMAND_EXPAND_LISTS
         )
     endif()
 endif()
-if(TALKINPUT_PPOCRV6_OPENCV_TARGETS)
-    target_compile_definitions(TalkInputPpOcrV6Example PRIVATE HAVE_OPENCV)
-    target_link_libraries(TalkInputPpOcrV6Example PRIVATE
-        ${TALKINPUT_PPOCRV6_OPENCV_TARGETS}
+if(ZENNY_PPOCRV6_OPENCV_TARGETS)
+    target_compile_definitions(ZennyPpOcrV6Example PRIVATE HAVE_OPENCV)
+    target_link_libraries(ZennyPpOcrV6Example PRIVATE
+        ${ZENNY_PPOCRV6_OPENCV_TARGETS}
         Clipper2::Clipper2)
     if(WIN32)
-        add_custom_command(TARGET TalkInputPpOcrV6Example POST_BUILD
+        add_custom_command(TARGET ZennyPpOcrV6Example POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${TALKINPUT_OPENCV_WORLD_DLL}"
-            $<TARGET_FILE_DIR:TalkInputPpOcrV6Example>)
+            "${ZENNY_OPENCV_WORLD_DLL}"
+            $<TARGET_FILE_DIR:ZennyPpOcrV6Example>)
     endif()
 endif()
 
-target_link_libraries(TalkInputWinRtSpeechExample
+target_link_libraries(ZennyWinRtSpeechExample
     PRIVATE
     windowsapp
 )
 
-target_link_libraries(TalkInputAudioSegmentExample
+target_link_libraries(ZennyAudioSegmentExample
     PRIVATE
     Qt6::Core
     Qt6::Multimedia
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputAudioSegmentExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-target_include_directories(TalkInputAudioSegmentExample PRIVATE
+target_compile_definitions(ZennyAudioSegmentExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(ZennyAudioSegmentExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
-target_link_libraries(TalkInputLongAudioExample
+target_link_libraries(ZennyLongAudioExample
     PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -202,13 +202,13 @@ target_link_libraries(TalkInputLongAudioExample
     nlohmann_json::nlohmann_json
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputLongAudioExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-target_include_directories(TalkInputLongAudioExample PRIVATE
+target_compile_definitions(ZennyLongAudioExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(ZennyLongAudioExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
-target_link_libraries(TalkInputLongAudioBenchmark
+target_link_libraries(ZennyLongAudioBenchmark
     PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -218,13 +218,13 @@ target_link_libraries(TalkInputLongAudioBenchmark
     nlohmann_json::nlohmann_json
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputLongAudioBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-target_include_directories(TalkInputLongAudioBenchmark PRIVATE
+target_compile_definitions(ZennyLongAudioBenchmark PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(ZennyLongAudioBenchmark PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
-target_link_libraries(TalkInputMeetingDiarizationExample
+target_link_libraries(ZennyMeetingDiarizationExample
     PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -234,29 +234,29 @@ target_link_libraries(TalkInputMeetingDiarizationExample
     nlohmann_json::nlohmann_json
     spdlog::spdlog_header_only
 )
-target_compile_definitions(TalkInputMeetingDiarizationExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
-target_include_directories(TalkInputMeetingDiarizationExample PRIVATE
+target_compile_definitions(ZennyMeetingDiarizationExample PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+target_include_directories(ZennyMeetingDiarizationExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
 # Include dirs for examples that need them
-target_include_directories(TalkInputAsrExample PRIVATE
+target_include_directories(ZennyAsrExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
-target_include_directories(TalkInputSenseVoiceExample PRIVATE
+target_include_directories(ZennySenseVoiceExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
-target_include_directories(TalkInputAsrBenchmark PRIVATE
+target_include_directories(ZennyAsrBenchmark PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
-target_include_directories(TalkInputOcrCaptureExample PRIVATE
+target_include_directories(ZennyOcrCaptureExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
-target_include_directories(TalkInputOcrWinRtExample PRIVATE
+target_include_directories(ZennyOcrWinRtExample PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )

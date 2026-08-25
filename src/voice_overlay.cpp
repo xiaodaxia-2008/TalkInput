@@ -11,7 +11,7 @@
 #include <QPropertyAnimation>
 #include <QScreen>
 
-namespace talkinput
+namespace zenny
 {
 
 VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
@@ -103,4 +103,4 @@ void VoiceOverlay::positionOnActiveScreen()
     move(x, workArea.bottom() - height() - 30);
 }
 
-} // namespace talkinput
+} // namespace zenny

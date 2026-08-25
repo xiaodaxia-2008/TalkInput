@@ -2,7 +2,7 @@
 
 #include <sherpa-onnx/c-api/c-api.h>
 
-namespace talkinput
+namespace zenny
 {
 
 QString
@@ -61,4 +61,4 @@ std::expected<void, QString> FunASRNanoSpeechRecognizer::configureModel(
     return {};
 }
 
-} // namespace talkinput
+} // namespace zenny

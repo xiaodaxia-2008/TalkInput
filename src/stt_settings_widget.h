@@ -17,7 +17,7 @@ namespace Ui
 class SttSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// Speech-to-text settings: model, mode, hot words, actions, result and
@@ -61,4 +61,4 @@ private:
     std::unique_ptr<Ui::SttSettingsWidget> m_ui;
 };
 
-} // namespace talkinput
+} // namespace zenny

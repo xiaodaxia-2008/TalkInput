@@ -51,7 +51,7 @@ std::vector<float> resampleFloats(const std::vector<float> &input,
 
 } // namespace
 
-namespace talkinput
+namespace zenny
 {
 
 // ── OfflineSpeechRecognizer ──────────────────────────────────────
@@ -380,7 +380,7 @@ int OfflineSpeechRecognizer::findSplitBefore(int minPos, int maxPos) const
         }
     }
 
-    return talkinput::findBestSilenceSplit(
+    return zenny::findBestSilenceSplit(
         {m_samples.data(), static_cast<size_t>(maxPos)}, m_modelSampleRate,
         minPos, maxPos);
 }
@@ -432,7 +432,7 @@ void OfflineSpeechRecognizer::saveSegment(int start, int size)
         pcm16.append(reinterpret_cast<const char *>(&sample), 2);
     }
 
-    const QString dir = QDir(talkinput::appDataDir()).filePath("asr_segments");
+    const QString dir = QDir(zenny::appDataDir()).filePath("asr_segments");
     QDir().mkpath(dir);
     const QString ts =
         QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss-zzz");
@@ -441,7 +441,7 @@ void OfflineSpeechRecognizer::saveSegment(int start, int size)
                                .arg(ts)
                                .arg(m_segmentIndex++, 3, 10, QLatin1Char('0')));
 
-    talkinput::savePcm16ToWav(pcm16, m_modelSampleRate, 1, path);
+    zenny::savePcm16ToWav(pcm16, m_modelSampleRate, 1, path);
 }
 
 void OfflineSpeechRecognizer::flushCompletedChunks()
@@ -481,4 +481,4 @@ void OfflineSpeechRecognizer::flushCompletedChunks()
     m_processing = false;
 }
 
-} // namespace talkinput
+} // namespace zenny

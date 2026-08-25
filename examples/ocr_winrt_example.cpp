@@ -1,12 +1,12 @@
 /// Standalone test: loads an image and runs Windows.Media.Ocr on it.
 ///
 /// Usage:
-///   TalkInputOcrRecognitionTest <image-file> [language-tag]
+///   ZennyOcrRecognitionTest <image-file> [language-tag]
 ///
 /// Examples:
-///   TalkInputOcrRecognitionTest C:\screenshot.png
-///   TalkInputOcrRecognitionTest C:\screenshot.png zh-Hans-CN
-///   TalkInputOcrRecognitionTest C:\test.png en-US
+///   ZennyOcrRecognitionTest C:\screenshot.png
+///   ZennyOcrRecognitionTest C:\screenshot.png zh-Hans-CN
+///   ZennyOcrRecognitionTest C:\test.png en-US
 ///
 /// If language-tag is omitted, TryCreateFromUserProfileLanguages() is used.
 /// If the specified language is unsupported, the test falls back to the
@@ -139,9 +139,9 @@ IAsyncAction RunOcrAsync(std::wstring imagePath, std::wstring languageTag)
 int wmain(int argc, wchar_t *argv[])
 {
     if (argc < 2) {
-        std::wcerr << L"Usage: TalkInputOcrRecognitionTest <image-file> "
+        std::wcerr << L"Usage: ZennyOcrRecognitionTest <image-file> "
                       L"[language-tag]\n"
-                      L"  e.g. TalkInputOcrRecognitionTest test.png "
+                      L"  e.g. ZennyOcrRecognitionTest test.png "
                       L"zh-Hans-CN"
                    << std::endl;
         return 1;

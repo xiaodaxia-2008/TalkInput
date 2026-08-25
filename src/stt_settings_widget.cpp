@@ -29,7 +29,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-namespace talkinput
+namespace zenny
 {
 
 SttSettingsWidget::SttSettingsWidget(QWidget *parent) : QWidget(parent)
@@ -457,4 +457,4 @@ void SttSettingsWidget::saveHotwords(bool reloadModel)
     }
 }
 
-} // namespace talkinput
+} // namespace zenny

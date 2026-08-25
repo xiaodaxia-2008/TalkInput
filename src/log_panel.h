@@ -9,7 +9,7 @@ namespace Ui
 class LogPanel;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 class LogPanel final : public QWidget
@@ -29,4 +29,4 @@ private:
     static constexpr int kMaxLines = 10000;
 };
 
-} // namespace talkinput
+} // namespace zenny

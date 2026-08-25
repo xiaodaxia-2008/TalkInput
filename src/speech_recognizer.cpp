@@ -18,7 +18,7 @@
 #include <cstring>
 #include <optional>
 
-namespace talkinput
+namespace zenny
 {
 
 SpeechRecognizer::SpeechRecognizer(QObject *parent) : QObject(parent)
@@ -223,4 +223,4 @@ SpeechRecognizer::createFromPreset(const AsrPreset &preset, QObject *parent,
     return r;
 }
 
-} // namespace talkinput
+} // namespace zenny

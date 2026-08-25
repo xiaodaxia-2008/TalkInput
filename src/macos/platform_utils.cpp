@@ -1,6 +1,6 @@
 #include "../platform_utils.h"
 
-namespace talkinput
+namespace zenny
 {
 
 void pasteTextToActiveWindow(const QString &, bool, bool, bool)
@@ -12,4 +12,4 @@ SysWindowInfo nativeWindowInfoAtCursor()
     return {};
 }
 
-} // namespace talkinput
+} // namespace zenny

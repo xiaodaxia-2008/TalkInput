@@ -4,7 +4,7 @@
 #include <QString>
 #include <QWindow>
 
-namespace talkinput
+namespace zenny
 {
 struct SysWindowInfo
 {
@@ -20,4 +20,4 @@ void pasteTextToActiveWindow(const QString &text, bool useClipboard,
 
 SysWindowInfo nativeWindowInfoAtCursor();
 
-} // namespace talkinput
+} // namespace zenny

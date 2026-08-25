@@ -18,7 +18,7 @@ namespace Ui
 class OcrSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 struct OcrTextBlock;
@@ -51,4 +51,4 @@ private:
     std::unique_ptr<Ui::OcrSettingsWidget> m_ui;
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -10,7 +10,7 @@
 
 class QIODevice;
 
-namespace talkinput
+namespace zenny
 {
 
 void appendPcm16Sample(QByteArray &audioData, qint16 sample);
@@ -78,4 +78,4 @@ segmentAudioBySilence(std::span<const float> samples, int sampleRate,
                       int maxChunkSeconds = 15, int frameMs = 30,
                       int minSilenceMs = 300, float silenceThresh = 0.02f);
 
-} // namespace talkinput
+} // namespace zenny

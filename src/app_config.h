@@ -10,7 +10,7 @@
 class QObject;
 class QTranslator;
 
-namespace talkinput
+namespace zenny
 {
 
 // ═══════════════════════════════════════════════════════════════════
@@ -161,4 +161,4 @@ void installAppTranslations(const QString &language, QObject *parent,
                             QTranslator *&appTranslator,
                             QTranslator *&qtTranslator);
 
-} // namespace talkinput
+} // namespace zenny

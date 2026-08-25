@@ -7,7 +7,7 @@
 #include <QStandardPaths>
 #include <QThread>
 
-namespace talkinput
+namespace zenny
 {
 
 SingleInstance::SingleInstance(QString applicationId, QObject *parent)
@@ -50,7 +50,7 @@ void SingleInstance::notifyPrimaryInstance() const
             if (socket.write("activate") < 0 ||
                 !socket.waitForBytesWritten(1000))
             {
-                SPDLOG_WARN("Failed to notify the primary TalkInput instance: "
+                SPDLOG_WARN("Failed to notify the primary Zenny instance: "
                             "{}",
                             socket.errorString());
             }
@@ -63,7 +63,7 @@ void SingleInstance::notifyPrimaryInstance() const
         }
     }
 
-    SPDLOG_WARN("Another TalkInput instance is running, but it could not be "
+    SPDLOG_WARN("Another Zenny instance is running, but it could not be "
                 "activated after {} attempts",
                 maxAttempts);
 }
@@ -82,4 +82,4 @@ void SingleInstance::handleConnection()
     }
 }
 
-} // namespace talkinput
+} // namespace zenny

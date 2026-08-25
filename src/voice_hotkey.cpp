@@ -5,7 +5,7 @@
 #include <QHotkey>
 #include <QKeySequence>
 
-namespace talkinput
+namespace zenny
 {
 
 VoiceHotkey::VoiceHotkey(QObject *parent) : QObject(parent)
@@ -106,4 +106,4 @@ void VoiceHotkey::unregisterShortcuts()
     }
 }
 
-} // namespace talkinput
+} // namespace zenny

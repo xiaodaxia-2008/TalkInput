@@ -3,10 +3,10 @@
 #include <QString>
 #include <expected>
 
-namespace talkinput
+namespace zenny
 {
 
 std::expected<void, QString> extractArchive(const QString &archivePath,
                                             const QString &destDir);
 
-} // namespace talkinput
+} // namespace zenny

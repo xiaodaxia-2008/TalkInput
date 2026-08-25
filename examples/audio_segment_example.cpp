@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
     SPDLOG_INFO("Loading: {}", audioPath);
 
-    auto decoded = talkinput::decodeAudioFileToPcm16(audioPath);
+    auto decoded = zenny::decodeAudioFileToPcm16(audioPath);
     if (!decoded) {
         SPDLOG_ERROR("Failed to decode audio: {}", decoded.error());
         return 1;
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     }
 
     // ── Segment ──
-    auto segs = talkinput::segmentAudioBySilence(floats, sampleRate);
+    auto segs = zenny::segmentAudioBySilence(floats, sampleRate);
     SPDLOG_INFO("Segments: {}", segs.size());
     for (size_t i = 0; i < segs.size(); ++i) {
         const auto &seg = segs[i];
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
                 .arg(ts)
                 .arg(static_cast<int>(i), 3, 10, QLatin1Char('0')));
 
-        talkinput::savePcm16ToM4a(pcm16seg, sampleRate, 1, path);
+        zenny::savePcm16ToM4a(pcm16seg, sampleRate, 1, path);
     }
 
     SPDLOG_INFO("Segments saved to: {}", outDir);

@@ -1,6 +1,6 @@
 [English](README.en.md) | 简体中文
 
-# TalkInput 语音输入法
+# Zenny 语音输入法
 
 本地语音输入工具，通过麦克风采集语音，支持 OCR 识别输入框所在窗口的文字作为上下文，结合 LLM 后处理修正识别错误，结果自动注入到任意应用程序的输入框。
 
@@ -10,7 +10,7 @@
 - **AI 润色**: 识别文本经由大语言模型进行润色修改。
 - **OCR 上下文感知**: 支持截取当前焦点窗口屏幕，然后通过 OCR 识别出文字作为 LLM 上下文，提升修正准确率。
 
-![ASR 设置](docs/imgs/talkinput_asr_setting_zh.png)
+![ASR 设置](docs/imgs/zenny_asr_setting_zh.png)
 
 - **全局快捷键**： `ctrl+alt+空格` 随时唤醒
 - **语音覆盖层**: 录音时显示浮动文字预览窗口，实时展示识别进度模式
@@ -24,11 +24,11 @@
   
 - **识别历史**: 所有识别结果自动存入本地 SQLite 数据库，支持浏览、复制、编辑、删除。
 
-![识别历史](docs/imgs/talkinput_history_zh.png)
+![识别历史](docs/imgs/zenny_history_zh.png)
 
 ## 安装
 
-Windows 系统可以从 [GitHub Releases](https://github.com/ZenShawn/TalkInput/releases) 下载预编译的 NSIS 安装包，运行安装即可。
+Windows 系统可以从 [GitHub Releases](https://github.com/xiaodaxia-2008/Zenny/releases) 下载预编译的 NSIS 安装包，运行安装即可。
 
 MacOS / Linux 暂时需要自己从源码编译。
 
@@ -98,11 +98,11 @@ third_parties/       — 第三方库
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) v1.13.3 静态库
 
 ```bash
-git clone https://github.com/ZenShawn/TalkInput.git
-cd TalkInput
+git clone https://github.com/xiaodaxia-2008/Zenny.git
+cd Zenny
 cmake --preset release
 cmake --build build
-./build/bin/TalkInput
+./build/bin/Zenny
 ```
 
 打包安装程序

@@ -8,7 +8,7 @@ class QLabel;
 class QPropertyAnimation;
 class ScrollTextDisplay;
 
-namespace talkinput
+namespace zenny
 {
 
 class VoiceOverlay final : public QWidget
@@ -31,4 +31,4 @@ private:
     QPropertyAnimation *m_blinkAnimation = nullptr;
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -14,7 +14,7 @@
 #include <QTimer>
 #include <QTranslator>
 
-namespace talkinput
+namespace zenny
 {
 
 // ═══════════════════════════════════════════════════════════════════
@@ -148,7 +148,7 @@ bool resetAppConfigToDefaults()
 
 QString appConfigPath()
 {
-    return QDir(talkinput::appDataDir()).filePath("config.json");
+    return QDir(zenny::appDataDir()).filePath("config.json");
 }
 
 void markConfigDirty()
@@ -227,7 +227,7 @@ void installAppTranslations(const QString &language, QObject *parent,
 
     const QLocale locale = localeForLanguage(normalized);
     auto *appT = new QTranslator(parent);
-    if (appT->load(locale, QStringLiteral("TalkInput"), QStringLiteral("_"),
+    if (appT->load(locale, QStringLiteral("Zenny"), QStringLiteral("_"),
                    QStringLiteral(":/i18n")))
     {
         SPDLOG_DEBUG("loading app translation for {}", normalized);
@@ -253,4 +253,4 @@ void installAppTranslations(const QString &language, QObject *parent,
     qtTranslator = s_qtTranslator;
 }
 
-} // namespace talkinput
+} // namespace zenny

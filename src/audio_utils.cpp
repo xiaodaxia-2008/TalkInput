@@ -20,7 +20,7 @@
 #include <numeric>
 #include <span>
 
-namespace talkinput
+namespace zenny
 {
 
 void appendPcm16Sample(QByteArray &audioData, qint16 sample)
@@ -483,4 +483,4 @@ std::vector<AudioSegment> segmentAudioBySilence(std::span<const float> samples,
     return blocks;
 }
 
-} // namespace talkinput
+} // namespace zenny

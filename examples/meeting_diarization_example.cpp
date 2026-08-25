@@ -67,13 +67,13 @@ QString formatTimestamp(int ms)
 }
 
 void processMeetingAudio(const QString &audioPath,
-                         talkinput::SpeakerRecognizer &speakerRecognizer,
-                         talkinput::SpeechRecognizer &recognizer)
+                         zenny::SpeakerRecognizer &speakerRecognizer,
+                         zenny::SpeechRecognizer &recognizer)
 {
     SPDLOG_INFO("==================================================");
     SPDLOG_INFO("Processing meeting file: {}", audioPath.toStdString());
 
-    auto decoded = talkinput::decodeAudioFileToPcm16(audioPath);
+    auto decoded = zenny::decodeAudioFileToPcm16(audioPath);
     if (!decoded) {
         SPDLOG_ERROR("Failed to decode audio: {}", decoded.error().toStdString());
         return;
@@ -110,7 +110,7 @@ void processMeetingAudio(const QString &audioPath,
 
         QString segText;
         auto conn = QObject::connect(&recognizer,
-                         &talkinput::SpeechRecognizer::resultChanged,
+                         &zenny::SpeechRecognizer::resultChanged,
                          [&segText](const QString &text, bool isFinal) {
                              if (isFinal) {
                                  segText = text;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
 
     // Initialize Speaker Recognizer
-    talkinput::SpeakerRecognizer speakerRecognizer;
+    zenny::SpeakerRecognizer speakerRecognizer;
     auto initRes = speakerRecognizer.init();
     if (!initRes) {
         SPDLOG_ERROR("Failed to initialize SpeakerRecognizer: {}",
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     }
 
     // Prepare default SenseVoice ASR preset
-    const auto &presets = talkinput::appConfig().asrPresets;
+    const auto &presets = zenny::appConfig().asrPresets;
     auto it = presets.find("sense-voice-zh-en-ja-ko-yue-int8-2024-07-17");
     if (it == presets.end()) {
         it = presets.find("sense-voice");
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
     const auto &preset = it->second;
 
     auto recognizerExpected =
-        talkinput::SpeechRecognizer::createFromPreset(preset, nullptr, true);
+        zenny::SpeechRecognizer::createFromPreset(preset, nullptr, true);
     if (!recognizerExpected) {
         SPDLOG_ERROR("Failed to create ASR recognizer");
         return 1;

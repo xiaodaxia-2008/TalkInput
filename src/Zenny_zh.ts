@@ -258,8 +258,8 @@ POST /v1/audio/speech —— 文字转语音（JSON）</translation>
     <name>MainWindow</name>
     <message>
         <location filename="main_window.ui" line="20"/>
-        <source>TalkInput</source>
-        <translation>TalkInput</translation>
+        <source>Zenny</source>
+        <translation>Zenny</translation>
     </message>
     <message>
         <location filename="main_window.ui" line="211"/>
@@ -566,7 +566,7 @@ Reset configuration to defaults?</source>
     </message>
 </context>
 <context>
-    <name>talkinput::HistoryWidget</name>
+    <name>zenny::HistoryWidget</name>
     <message>
         <location filename="history_widget.cpp" line="225"/>
         <source>Updated</source>
@@ -599,7 +599,7 @@ Reset configuration to defaults?</source>
     </message>
 </context>
 <context>
-    <name>talkinput::LlmPostProcessor</name>
+    <name>zenny::LlmPostProcessor</name>
     <message>
         <location filename="llm_post_processor.cpp" line="182"/>
         <source>LLM post-processing failed; using original text.</source>
@@ -612,7 +612,7 @@ Reset configuration to defaults?</source>
     </message>
 </context>
 <context>
-    <name>talkinput::LlmSettingsWidget</name>
+    <name>zenny::LlmSettingsWidget</name>
     <message>
         <location filename="llm_settings_widget.cpp" line="82"/>
         <source>LLM endpoint saved</source>
@@ -661,16 +661,16 @@ Reset configuration to defaults?</source>
     </message>
 </context>
 <context>
-    <name>talkinput::MainWindow</name>
+    <name>zenny::MainWindow</name>
     <message>
         <location filename="main_window.cpp" line="595"/>
-        <source>About TalkInput</source>
-        <translation>关于 TalkInput</translation>
+        <source>About Zenny</source>
+        <translation>关于 Zenny</translation>
     </message>
     <message>
         <location filename="main_window.cpp" line="596"/>
-        <source>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;Local voice input method.&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Commit&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Date&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
-        <translation>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;本地语音输入法。&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;提交&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;日期&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+        <source>&lt;h3&gt;Zenny %1&lt;/h3&gt;&lt;p&gt;Local voice input method.&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Commit&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Date&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
+        <translation>&lt;h3&gt;Zenny %1&lt;/h3&gt;&lt;p&gt;本地语音输入法。&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;提交&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;日期&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
     <message>
         <location filename="main_window.cpp" line="423"/>
@@ -851,7 +851,7 @@ Model downloads and recognition history will not be deleted.</source>
     </message>
 </context>
 <context>
-    <name>talkinput::OcrSettingsWidget</name>
+    <name>zenny::OcrSettingsWidget</name>
     <message>
         <location filename="ocr_settings_widget.cpp" line="192"/>
         <location filename="ocr_settings_widget.cpp" line="214"/>
@@ -891,7 +891,7 @@ Model downloads and recognition history will not be deleted.</source>
     </message>
 </context>
 <context>
-    <name>talkinput::ShortcutSettingsWidget</name>
+    <name>zenny::ShortcutSettingsWidget</name>
     <message>
         <location filename="shortcut_settings_widget.cpp" line="54"/>
         <source>Trigger shortcut applied</source>
@@ -904,7 +904,7 @@ Model downloads and recognition history will not be deleted.</source>
     </message>
 </context>
 <context>
-    <name>talkinput::SttSettingsWidget</name>
+    <name>zenny::SttSettingsWidget</name>
     <message>
         <location filename="stt_settings_widget.cpp" line="119"/>
         <source>ASR only</source>
@@ -1041,7 +1041,7 @@ Selected:
     </message>
 </context>
 <context>
-    <name>talkinput::TtsSettingsWidget</name>
+    <name>zenny::TtsSettingsWidget</name>
     <message>
         <location filename="tts_settings_widget.cpp" line="55"/>
         <source>Edge (Online)</source>
@@ -1188,7 +1188,7 @@ Selected:
     </message>
 </context>
 <context>
-    <name>talkinput::VoicePipelineController</name>
+    <name>zenny::VoicePipelineController</name>
     <message>
         <location filename="voice_pipeline_controller.cpp" line="223"/>
         <location filename="voice_pipeline_controller.cpp" line="421"/>

@@ -1,6 +1,6 @@
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh)
 
-add_executable(TalkInput WIN32
+add_executable(Zenny WIN32
     ${PROJECT_SOURCE_DIR}/resources/misc/app.rc
     ${PROJECT_SOURCE_DIR}/resources/resources.qrc
     main.cpp
@@ -99,11 +99,11 @@ add_executable(TalkInput WIN32
     utils.cpp
 )
 
-qt_add_translations(TalkInput
+qt_add_translations(Zenny
     LUPDATE_OPTIONS -no-obsolete
 )
 
-target_link_libraries(TalkInput
+target_link_libraries(Zenny
     PRIVATE
     Qt6::Widgets
     Qt6::Core
@@ -123,64 +123,64 @@ target_link_libraries(TalkInput
     nlohmann_json::nlohmann_json
 )
 
-qcoro_enable_coroutines(TalkInput)
+qcoro_enable_coroutines(Zenny)
 
-if(TALKINPUT_PPOCRV6_ORT_TARGET AND TALKINPUT_PPOCRV6_OPENCV_TARGETS)
-    set(TALKINPUT_PPOCRV6_ENABLED TRUE)
-    target_sources(TalkInput PRIVATE ppocrv6_ocr_recognizer.cpp)
-    target_link_libraries(TalkInput PRIVATE
-        ${TALKINPUT_PPOCRV6_ORT_TARGET}
-        ${TALKINPUT_PPOCRV6_OPENCV_TARGETS}
+if(ZENNY_PPOCRV6_ORT_TARGET AND ZENNY_PPOCRV6_OPENCV_TARGETS)
+    set(ZENNY_PPOCRV6_ENABLED TRUE)
+    target_sources(Zenny PRIVATE ppocrv6_ocr_recognizer.cpp)
+    target_link_libraries(Zenny PRIVATE
+        ${ZENNY_PPOCRV6_ORT_TARGET}
+        ${ZENNY_PPOCRV6_OPENCV_TARGETS}
         Clipper2::Clipper2
     )
-    target_compile_definitions(TalkInput PRIVATE TALKINPUT_HAS_PPOCRV6)
+    target_compile_definitions(Zenny PRIVATE ZENNY_HAS_PPOCRV6)
 endif()
 
 if(WIN32)
-    target_link_libraries(TalkInput PRIVATE windowsapp ole32 uiautomationcore imm32)
-    target_sources(TalkInput PRIVATE
+    target_link_libraries(Zenny PRIVATE windowsapp ole32 uiautomationcore imm32)
+    target_sources(Zenny PRIVATE
         windows/platform_utils.cpp
     )
 elseif(APPLE)
-    target_sources(TalkInput PRIVATE
+    target_sources(Zenny PRIVATE
         macos/platform_utils.cpp
     )
 elseif(UNIX)
-    target_sources(TalkInput PRIVATE
+    target_sources(Zenny PRIVATE
         linux/platform_utils.cpp
     )
 endif()
 
-target_include_directories(TalkInput PRIVATE
+target_include_directories(Zenny PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/third_parties/KDToolBox
 )
 
-target_compile_definitions(TalkInput PRIVATE
+target_compile_definitions(Zenny PRIVATE
     PROJECT_VERSION_STR="${PROJECT_VERSION}"
     GIT_COMMIT_ID="${GIT_COMMIT_ID}"
     GIT_COMMIT_DATE="${GIT_COMMIT_DATE}"
     SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
-qt_deploy(TARGET TalkInput COMPONENT Runtime)
+qt_deploy(TARGET Zenny COMPONENT Runtime)
 
-install(TARGETS TalkInput
+install(TARGETS Zenny
     COMPONENT Runtime
 )
 
 # ── Development symlinks ─────────────────────────────────────────
 # Create directory symlinks in the binary output so models and
 # tessdata are available at runtime without manual copying.
-add_custom_command(TARGET TalkInput POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:TalkInput>/models"
-    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:TalkInput>/tessdata"
+add_custom_command(TARGET Zenny POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:Zenny>/models"
+    COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:Zenny>/tessdata"
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${PROJECT_SOURCE_DIR}/models"
-        "$<TARGET_FILE_DIR:TalkInput>/models"
+        "$<TARGET_FILE_DIR:Zenny>/models"
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${PROJECT_SOURCE_DIR}/teact/train_data"
-        "$<TARGET_FILE_DIR:TalkInput>/tessdata"
+        "$<TARGET_FILE_DIR:Zenny>/tessdata"
     COMMENT "Creating symlinks for models & tessdata"
 )
 
@@ -190,58 +190,58 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/teact/train_data/
     COMPONENT Runtime
 )
 
-install(DIRECTORY ${TALKINPUT_SENSEVOICE_MODEL_DIR}/
-    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_SENSEVOICE_MODEL_NAME}
+install(DIRECTORY ${ZENNY_SENSEVOICE_MODEL_DIR}/
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${ZENNY_SENSEVOICE_MODEL_NAME}
     COMPONENT Runtime
 )
 
 install(FILES
-    ${TALKINPUT_PPOCRV6_DET_MODEL}
-    ${TALKINPUT_PPOCRV6_REC_MODEL}
-    ${TALKINPUT_PPOCRV6_KEYS}
+    ${ZENNY_PPOCRV6_DET_MODEL}
+    ${ZENNY_PPOCRV6_REC_MODEL}
+    ${ZENNY_PPOCRV6_KEYS}
     DESTINATION ${CMAKE_INSTALL_BINDIR}/models/ppocrv6_small
     COMPONENT Runtime
 )
-if(EXISTS "${TALKINPUT_PPOCRV6_CLS_MODEL}")
-    install(FILES ${TALKINPUT_PPOCRV6_CLS_MODEL}
+if(EXISTS "${ZENNY_PPOCRV6_CLS_MODEL}")
+    install(FILES ${ZENNY_PPOCRV6_CLS_MODEL}
         DESTINATION ${CMAKE_INSTALL_BINDIR}/models/ppocrv6_small
         COMPONENT Runtime
     )
 endif()
 
-if(TALKINPUT_PPOCRV6_ENABLED AND WIN32)
-    install(FILES ${TALKINPUT_ONNXRUNTIME_DLL}
+if(ZENNY_PPOCRV6_ENABLED AND WIN32)
+    install(FILES ${ZENNY_ONNXRUNTIME_DLL}
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         COMPONENT Runtime
     )
-    if(EXISTS "${TALKINPUT_ONNXRUNTIME_PROVIDERS_SHARED_DLL}")
-        install(FILES ${TALKINPUT_ONNXRUNTIME_PROVIDERS_SHARED_DLL}
+    if(EXISTS "${ZENNY_ONNXRUNTIME_PROVIDERS_SHARED_DLL}")
+        install(FILES ${ZENNY_ONNXRUNTIME_PROVIDERS_SHARED_DLL}
             DESTINATION ${CMAKE_INSTALL_BINDIR}
             COMPONENT Runtime
         )
     endif()
-    install(FILES ${TALKINPUT_OPENCV_WORLD_DLL}
+    install(FILES ${ZENNY_OPENCV_WORLD_DLL}
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         COMPONENT Runtime
     )
 endif()
 
-install(FILES ${TALKINPUT_SILERO_VAD_MODEL_FILE}
-    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_SILERO_VAD_MODEL_NAME}
+install(FILES ${ZENNY_SILERO_VAD_MODEL_FILE}
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${ZENNY_SILERO_VAD_MODEL_NAME}
     COMPONENT Runtime
 )
 
-install(FILES ${TALKINPUT_CAMPLUS_MODEL_FILE}
-    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${TALKINPUT_CAMPLUS_MODEL_NAME}
+install(FILES ${ZENNY_CAMPLUS_MODEL_FILE}
+    DESTINATION ${CMAKE_INSTALL_BINDIR}/models/${ZENNY_CAMPLUS_MODEL_NAME}
     COMPONENT Runtime
 )
 
 if(WIN32)
-    add_custom_command(TARGET TalkInput
+    add_custom_command(TARGET Zenny
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_RUNTIME_DLLS:TalkInput>
-        $<TARGET_FILE_DIR:TalkInput>
+        $<TARGET_RUNTIME_DLLS:Zenny>
+        $<TARGET_FILE_DIR:Zenny>
         COMMAND_EXPAND_LISTS
     )
 endif()

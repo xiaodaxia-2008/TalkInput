@@ -39,7 +39,7 @@ QString entryPath(struct archive_entry *entry)
 
 } // namespace
 
-namespace talkinput
+namespace zenny
 {
 
 std::expected<void, QString> extractArchive(const QString &archivePath,
@@ -114,4 +114,4 @@ std::expected<void, QString> extractArchive(const QString &archivePath,
     return {};
 }
 
-} // namespace talkinput
+} // namespace zenny

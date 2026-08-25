@@ -1,7 +1,7 @@
 /// Quick WinRT online speech recognition microphone test.
 ///
 /// Usage:
-///   TalkInputWinRTSpeechTest [language-tag] [seconds]
+///   ZennyWinRTSpeechTest [language-tag] [seconds]
 ///
 ///   language-tag = "zh-CN" (default), "en-US", etc.
 ///   seconds = 10 (default)
@@ -38,7 +38,7 @@ int wmain(int argc, wchar_t *argv[])
     for (int i = 1; i < argc; ++i) {
         std::wstring arg = argv[i];
         if (arg == L"--help" || arg == L"-h") {
-            std::wcout << L"Usage: TalkInputWinRTSpeechTest [lang-tag] [seconds]\n";
+            std::wcout << L"Usage: ZennyWinRTSpeechTest [lang-tag] [seconds]\n";
             return 0;
         }
         try { secs = std::stoi(arg); }

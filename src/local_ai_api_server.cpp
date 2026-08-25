@@ -29,7 +29,7 @@
 #include <optional>
 #include <vector>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -710,7 +710,7 @@ private:
         const QString model =
             QString::fromStdString(appConfig().settings.asrProviderId);
         const QByteArray body =
-            QStringLiteral("{\"status\":\"ok\",\"service\":\"TalkInput\","
+            QStringLiteral("{\"status\":\"ok\",\"service\":\"Zenny\","
                            "\"model\":\"%1\"}")
                 .arg(jsonEscape(model))
                 .toUtf8();
@@ -728,7 +728,7 @@ private:
         if (it != presets.end()) {
             item =
                 QStringLiteral("{\"id\":\"%1\",\"object\":\"model\","
-                               "\"owned_by\":\"talkinput\",\"name\":\"%2\"}")
+                               "\"owned_by\":\"zenny\",\"name\":\"%2\"}")
                     .arg(jsonEscape(QString::fromStdString(it->first)),
                          jsonEscape(QString::fromStdString(it->second.name)));
         }
@@ -1244,7 +1244,7 @@ LocalAiApiServer::LocalAiApiServer(QObject *parent) : QObject(parent)
 {
     s_instance = this;
     m_thread = std::make_unique<QThread>();
-    m_thread->setObjectName(QStringLiteral("TalkInputApiServer"));
+    m_thread->setObjectName(QStringLiteral("ZennyApiServer"));
     m_core = new Core();
     m_core->moveToThread(m_thread.get());
     connect(m_core, &Core::listeningChanged, this,
@@ -1307,6 +1307,6 @@ void LocalAiApiServer::shutdown()
     m_thread.reset();
 }
 
-} // namespace talkinput
+} // namespace zenny
 
 #include "local_ai_api_server.moc"

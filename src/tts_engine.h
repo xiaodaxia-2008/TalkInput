@@ -3,7 +3,7 @@
 #include <QByteArray>
 #include <QString>
 
-namespace talkinput
+namespace zenny
 {
 
 /// Audio produced by a TtsEngine: 24 kHz, 16-bit, mono, little-endian PCM.
@@ -33,4 +33,4 @@ public:
     virtual QString name() const = 0;
 };
 
-} // namespace talkinput
+} // namespace zenny

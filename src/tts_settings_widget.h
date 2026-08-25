@@ -20,7 +20,7 @@ namespace Ui
 class TtsSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// TTS service configuration ("TTS").
@@ -59,4 +59,4 @@ private:
     QByteArray m_previewPcm;
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -2,7 +2,7 @@
 
 #include "../tts_engine.h"
 
-namespace talkinput
+namespace zenny
 {
 
 /// Offline MeloTTS backend running through the bundled sherpa-onnx TTS
@@ -30,4 +30,4 @@ private:
     int m_sampleRate = 0;
 };
 
-} // namespace talkinput
+} // namespace zenny

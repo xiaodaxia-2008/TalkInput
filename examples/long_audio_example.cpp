@@ -26,7 +26,7 @@ struct RecognitionRun
 
 void runTranscription(const QString &presetId, const QString &audioPath)
 {
-    const auto &presets = talkinput::appConfig().asrPresets;
+    const auto &presets = zenny::appConfig().asrPresets;
     const auto it = presets.find(presetId.toStdString());
     if (it == presets.end()) {
         SPDLOG_ERROR("Preset not found: {}", presetId.toStdString());
@@ -38,7 +38,7 @@ void runTranscription(const QString &presetId, const QString &audioPath)
     SPDLOG_INFO("Model: {} ({})", preset.name, preset.id);
     SPDLOG_INFO("Audio: {}", audioPath.toStdString());
 
-    auto decoded = talkinput::decodeAudioFileToPcm16(audioPath);
+    auto decoded = zenny::decodeAudioFileToPcm16(audioPath);
     if (!decoded) {
         SPDLOG_ERROR("Failed to decode audio file: {}", decoded.error().toStdString());
         return;
@@ -48,17 +48,17 @@ void runTranscription(const QString &presetId, const QString &audioPath)
                 decoded->pcm16.size() / (2 * decoded->channels),
                 decoded->sampleRate, decoded->channels);
 
-    // Create speech recognizer from preset using TalkInput top-level factory
-    auto recognizerExpected = talkinput::SpeechRecognizer::createFromPreset(preset, nullptr, true);
+    // Create speech recognizer from preset using Zenny top-level factory
+    auto recognizerExpected = zenny::SpeechRecognizer::createFromPreset(preset, nullptr, true);
     if (!recognizerExpected) {
         SPDLOG_ERROR("Failed to create recognizer: {}", recognizerExpected.error().toStdString());
         return;
     }
 
-    std::unique_ptr<talkinput::SpeechRecognizer> recognizer = std::move(*recognizerExpected);
+    std::unique_ptr<zenny::SpeechRecognizer> recognizer = std::move(*recognizerExpected);
 
     QString recognizedText;
-    QObject::connect(recognizer.get(), &talkinput::SpeechRecognizer::resultChanged,
+    QObject::connect(recognizer.get(), &zenny::SpeechRecognizer::resultChanged,
                      [&recognizedText](const QString &text, bool isFinal) {
                          if (isFinal) {
                              recognizedText = text;

@@ -56,7 +56,7 @@ inline bool jsonBool(const nlohmann::json &obj, const std::string &key,
                : fallback;
 }
 
-namespace talkinput::json_detail
+namespace zenny::json_detail
 {
 
 template <typename T>
@@ -116,21 +116,21 @@ void aggregateFromJson(const nlohmann::json &j, T &value,
     (assign.template operator()<I>(), ...);
 }
 
-} // namespace talkinput::json_detail
+} // namespace zenny::json_detail
 
 namespace nlohmann
 {
 
 template <typename T>
 struct adl_serializer<
-    T, std::enable_if_t<talkinput::json_detail::ReflectableAggregate<T>>>
+    T, std::enable_if_t<zenny::json_detail::ReflectableAggregate<T>>>
 {
     static void to_json(json &j, const T &value)
     {
-        talkinput::json_detail::aggregateToJson(
+        zenny::json_detail::aggregateToJson(
             j, value,
             std::make_index_sequence<
-                boost::pfr::tuple_size_v<talkinput::json_detail::Clean<T>>>{});
+                boost::pfr::tuple_size_v<zenny::json_detail::Clean<T>>>{});
     }
 
     static void from_json(const json &j, T &value)
@@ -139,10 +139,10 @@ struct adl_serializer<
             throw std::runtime_error(
                 "JSON input must be an object to map onto a struct.");
         }
-        talkinput::json_detail::aggregateFromJson(
+        zenny::json_detail::aggregateFromJson(
             j, value,
             std::make_index_sequence<
-                boost::pfr::tuple_size_v<talkinput::json_detail::Clean<T>>>{});
+                boost::pfr::tuple_size_v<zenny::json_detail::Clean<T>>>{});
     }
 };
 

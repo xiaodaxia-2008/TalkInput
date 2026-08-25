@@ -3,7 +3,7 @@
 #include <QByteArray>
 #include <QtGlobal>
 
-namespace talkinput
+namespace zenny
 {
 
 /// Linear-interpolation resample of mono float samples in [-1, 1] to
@@ -17,4 +17,4 @@ QByteArray pcm16ToWav(const QByteArray &pcm16, int sampleRate);
 QByteArray pcm16ToMp3(const QByteArray &pcm16, int sampleRate,
                       QString *error);
 
-} // namespace talkinput
+} // namespace zenny

@@ -6,7 +6,7 @@ struct SherpaOnnxOnlineRecognizer;
 struct SherpaOnnxOnlineRecognizerConfig;
 struct SherpaOnnxOnlineStream;
 
-namespace talkinput
+namespace zenny
 {
 
 class OnlineSpeechRecognizer : public SpeechRecognizer
@@ -39,4 +39,4 @@ private:
     QString m_lastText;
 };
 
-} // namespace talkinput
+} // namespace zenny

@@ -13,7 +13,7 @@
 #include <QNetworkRequest>
 #include <QUrl>
 
-namespace talkinput
+namespace zenny
 {
 
 QString asrModelLabel(const AsrPreset &m)
@@ -167,4 +167,4 @@ QCoro::Task<ModelArchiveResult> downloadModelArchive(const QString &modelLabel,
     co_return result;
 }
 
-} // namespace talkinput
+} // namespace zenny

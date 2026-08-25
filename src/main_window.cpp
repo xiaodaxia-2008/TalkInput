@@ -37,7 +37,7 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-namespace talkinput
+namespace zenny
 {
 
 namespace
@@ -386,7 +386,7 @@ void MainWindow::recordHistoryEntry(const QString &text)
 void MainWindow::setupTrayIcon()
 {
     m_trayIcon = new QSystemTrayIcon(QIcon(":/resources/icons/icon.png"), this);
-    m_trayIcon->setToolTip(QStringLiteral("TalkInput"));
+    m_trayIcon->setToolTip(QStringLiteral("Zenny"));
 
     auto *trayMenu = new QMenu(this);
     auto *showAction = trayMenu->addAction(tr("Show Window"));
@@ -572,8 +572,8 @@ void MainWindow::onResetSettings()
 
 void MainWindow::onShowAboutDialog()
 {
-    QMessageBox::about(this, tr("About TalkInput"),
-                       tr("<h3>TalkInput %1</h3>"
+    QMessageBox::about(this, tr("About Zenny"),
+                       tr("<h3>Zenny %1</h3>"
                           "<p>Local voice input method.</p>"
                           "<table>"
                           "<tr><td>Commit</td><td>%2</td></tr>"
@@ -589,4 +589,4 @@ void MainWindow::onOpenDataDirectory()
     QDesktopServices::openUrl(QUrl::fromLocalFile(appDataDir()));
 }
 
-} // namespace talkinput
+} // namespace zenny

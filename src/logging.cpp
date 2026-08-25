@@ -15,7 +15,7 @@
 #include <QPlainTextEdit>
 #include <spdlog/sinks/qt_sinks.h>
 
-namespace talkinput
+namespace zenny
 {
 namespace
 {
@@ -66,7 +66,7 @@ auto getFileSink()
 {
     static auto fileSink = []() {
         const QString logPath =
-            QDir(appDataDir()).filePath(QStringLiteral("talkinput.log"));
+            QDir(appDataDir()).filePath(QStringLiteral("zenny.log"));
         QDir().mkpath(appDataDir());
         auto sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
             logPath.toStdString(), 10 * 1024 * 1024, 3);
@@ -104,7 +104,7 @@ void installLogPanelSink(QPlainTextEdit *textEdit)
 
 void initLogger()
 {
-    auto logger = std::make_shared<spdlog::logger>("talkinput");
+    auto logger = std::make_shared<spdlog::logger>("zenny");
     logger->sinks().push_back(getFileSink());
     auto terminal_sink =
         std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -115,4 +115,4 @@ void initLogger()
     spdlog::register_or_replace(logger);
     spdlog::set_default_logger(logger);
 }
-} // namespace talkinput
+} // namespace zenny

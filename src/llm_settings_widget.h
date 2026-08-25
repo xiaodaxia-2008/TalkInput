@@ -18,7 +18,7 @@ namespace Ui
 class LlmSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// LLM service configuration ("LLM").
@@ -48,4 +48,4 @@ private:
     QNetworkAccessManager *m_network = nullptr;
 };
 
-} // namespace talkinput
+} // namespace zenny

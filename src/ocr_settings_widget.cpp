@@ -29,10 +29,10 @@
 
 #include <algorithm>
 
-namespace talkinput
+namespace zenny
 {
 
-} // namespace talkinput
+} // namespace zenny
 
 class OcrImagePreview final : public QGraphicsView
 {
@@ -73,7 +73,7 @@ public:
     }
 
     void setContent(const QImage &image,
-                    const QVector<talkinput::OcrTextBlock> &blocks)
+                    const QVector<zenny::OcrTextBlock> &blocks)
     {
         m_scene->clear();
         if (image.isNull()) {
@@ -168,7 +168,7 @@ private:
 
 #include "ui_ocr_settings_widget.h"
 
-namespace talkinput
+namespace zenny
 {
 
 OcrSettingsWidget::OcrSettingsWidget(QWidget *parent) : QWidget(parent)
@@ -353,4 +353,4 @@ void OcrSettingsWidget::showPreview(const QImage &image,
     m_ui->previewLabel->setContent(displayImage, displayBlocks);
 }
 
-} // namespace talkinput
+} // namespace zenny

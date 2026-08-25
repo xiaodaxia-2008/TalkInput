@@ -2,9 +2,9 @@
 
 #include <QString>
 
-namespace talkinput
+namespace zenny
 {
 
 QString appDataDir();
 
-} // namespace talkinput
+} // namespace zenny

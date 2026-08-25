@@ -2,7 +2,7 @@
 
 #include "online_speech_recognizer.h"
 
-namespace talkinput
+namespace zenny
 {
 
 class StreamingParaformerSpeechRecognizer final : public OnlineSpeechRecognizer
@@ -23,4 +23,4 @@ protected:
     }
 };
 
-} // namespace talkinput
+} // namespace zenny

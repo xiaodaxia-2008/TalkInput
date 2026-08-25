@@ -5,7 +5,7 @@
 /// final text. It also keeps model-only timings for comparison.
 ///
 /// Usage:
-///   TalkInputPpOcrV6Test [image] [det.onnx] [rec.onnx] [keys.txt] [cls.onnx]
+///   ZennyPpOcrV6Test [image] [det.onnx] [rec.onnx] [keys.txt] [cls.onnx]
 
 #include <QCoreApplication>
 #include <QFileInfo>
@@ -40,8 +40,8 @@
 #include <opencv2/imgproc.hpp>
 #endif
 
-#ifndef TALKINPUT_PPOCRV6_MODEL_DIR
-#define TALKINPUT_PPOCRV6_MODEL_DIR "models/ppocrv6_small"
+#ifndef ZENNY_PPOCRV6_MODEL_DIR
+#define ZENNY_PPOCRV6_MODEL_DIR "models/ppocrv6_small"
 #endif
 
 static std::string findModel(const std::string &hint,
@@ -678,20 +678,20 @@ int main(int argc, char *argv[])
         argc >= 2 ? argv[1] : "data/images/paseo_sreenshot.png";
     const std::string detPath = findModel(
         argc >= 3 ? argv[2]
-                  : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/det.onnx",
-        std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/det.onnx");
+                  : std::string(ZENNY_PPOCRV6_MODEL_DIR) + "/det.onnx",
+        std::string(ZENNY_PPOCRV6_MODEL_DIR) + "/det.onnx");
     const std::string recPath = findModel(
         argc >= 4 ? argv[3]
-                  : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/rec.onnx",
-        std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/rec.onnx");
+                  : std::string(ZENNY_PPOCRV6_MODEL_DIR) + "/rec.onnx",
+        std::string(ZENNY_PPOCRV6_MODEL_DIR) + "/rec.onnx");
     const std::string clsPath =
         argc >= 6 ? argv[5]
-                  : findModel(std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/cls.onnx",
+                  : findModel(std::string(ZENNY_PPOCRV6_MODEL_DIR) + "/cls.onnx",
                               "");
     const std::string keysPath =
         argc >= 5
             ? argv[4]
-            : std::string(TALKINPUT_PPOCRV6_MODEL_DIR) + "/ppocrv6_keys2.txt";
+            : std::string(ZENNY_PPOCRV6_MODEL_DIR) + "/ppocrv6_keys2.txt";
 
     QFileInfo imageInfo(QString::fromStdString(imagePath));
     if (!imageInfo.exists()) {

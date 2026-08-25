@@ -1,4 +1,4 @@
-# TalkInput — Agent Guide
+# Zenny — Agent Guide
 
 ## Build & Run
 
@@ -6,12 +6,12 @@ Requires C++23, Qt6 (Widgets/Core/Gui/Multimedia/Network/Svg/Sql), libarchive (v
 
 The CMake module `cmake/SherpaOnnxRelease.cmake` auto-extracts the matching Debug/Release archive into `build/third_parties/sherpa-onnx/`. If the archive is missing, configure fails with a clear message.
 
-kill the `build/bin/TalkInput` process if it's locked before build.
+kill the `build/bin/Zenny` process if it's locked before build.
 
 ```powershell
 pwsh msvc.ps1 cmake --preset release --fresh
 pwsh msvc.ps1 cmake --build build
-.\build\bin\TalkInput.exe
+.\build\bin\Zenny.exe
 ```
 
 ### update translations
@@ -19,7 +19,7 @@ pwsh msvc.ps1 cmake --build build
 pwsh msvc.ps1 cmake --build build -t update_translations
 ```
 
-Then search unfinished items in `src/TalkInput_zh.ts` and update them.
+Then search unfinished items in `src/Zenny_zh.ts` and update them.
 
 ## Common Rules
 - 特定操作系统相关的代码: 在 src 目录放声明的 .h, 实现全部放在 windows/linux/macos 子文件夹中， 编译时在 cmake 中配置使用哪些源文件，在代码库中禁止使用任何判断平台的宏， 比如 `Q_OS_WIN` ，第三方库的代码除外。

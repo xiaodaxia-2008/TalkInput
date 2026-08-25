@@ -5,7 +5,7 @@
 #include <QObject>
 #include <QString>
 
-namespace talkinput
+namespace zenny
 {
 
 class SingleInstance final : public QObject
@@ -29,4 +29,4 @@ private:
     QLocalServer m_server;
 };
 
-} // namespace talkinput
+} // namespace zenny

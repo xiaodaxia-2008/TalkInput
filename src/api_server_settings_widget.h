@@ -15,7 +15,7 @@ namespace Ui
 class ApiServerSettingsWidget;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 /// Local OpenAI-compatible API server configuration ("API 服务器").
@@ -41,4 +41,4 @@ private:
     std::unique_ptr<Ui::ApiServerSettingsWidget> m_ui;
 };
 
-} // namespace talkinput
+} // namespace zenny

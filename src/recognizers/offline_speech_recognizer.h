@@ -12,7 +12,7 @@ struct SherpaOnnxOfflineRecognizer;
 struct SherpaOnnxOfflineRecognizerConfig;
 struct SherpaOnnxVoiceActivityDetector;
 
-namespace talkinput
+namespace zenny
 {
 
 struct AudioSegment;
@@ -74,4 +74,4 @@ private:
     int m_segmentIndex = 0;
 };
 
-} // namespace talkinput
+} // namespace zenny

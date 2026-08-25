@@ -4,7 +4,7 @@
 #include <QEvent>
 #include <QPushButton>
 
-namespace talkinput
+namespace zenny
 {
 
 GeneralSettingsWidget::GeneralSettingsWidget(QWidget *parent) : QWidget(parent)
@@ -42,4 +42,4 @@ void GeneralSettingsWidget::changeEvent(QEvent *event)
     }
 }
 
-} // namespace talkinput
+} // namespace zenny

@@ -7,7 +7,7 @@
 #include <QRadioButton>
 #include <QSignalBlocker>
 
-namespace talkinput
+namespace zenny
 {
 
 AppearanceSettingsWidget::AppearanceSettingsWidget(QWidget *parent)
@@ -119,4 +119,4 @@ void AppearanceSettingsWidget::refreshFromConfig()
     m_ui->startMinimizedCheck->setChecked(appConfig().settings.startMinimized);
 }
 
-} // namespace talkinput
+} // namespace zenny

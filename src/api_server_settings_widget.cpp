@@ -12,7 +12,7 @@
 #include <QTextEdit>
 #include <QVBoxLayout>
 
-namespace talkinput
+namespace zenny
 {
 
 ApiServerSettingsWidget::ApiServerSettingsWidget(QWidget *parent)
@@ -88,4 +88,4 @@ void ApiServerSettingsWidget::applyApiServerSettings()
     }
 }
 
-} // namespace talkinput
+} // namespace zenny

@@ -3,16 +3,16 @@
 #include <QDir>
 #include <QStandardPaths>
 
-namespace talkinput
+namespace zenny
 {
 QString appDataDir()
 {
     QString base =
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (base.isEmpty()) {
-        return QDir::current().filePath(".TalkInputData");
+        return QDir::current().filePath(".ZennyData");
     }
     return base;
 }
 
-} // namespace talkinput
+} // namespace zenny

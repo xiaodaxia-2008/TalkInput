@@ -5,7 +5,7 @@
 
 class QHotkey;
 
-namespace talkinput
+namespace zenny
 {
 
 class VoiceHotkey final : public QObject
@@ -33,4 +33,4 @@ private:
     std::unique_ptr<QHotkey> m_modeSwitchHotkey;
 };
 
-} // namespace talkinput
+} // namespace zenny

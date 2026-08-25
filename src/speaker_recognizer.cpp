@@ -40,7 +40,7 @@ float vectorNorm(std::span<const float> a)
 
 } // namespace
 
-namespace talkinput
+namespace zenny
 {
 
 SpeakerRecognizer::SpeakerRecognizer(QObject *parent)
@@ -385,4 +385,4 @@ SpeakerRecognizer::diarizeAudio(std::span<const float> samples, int sampleRate,
     return result;
 }
 
-} // namespace talkinput
+} // namespace zenny

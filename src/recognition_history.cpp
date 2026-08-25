@@ -8,14 +8,14 @@
 #include <QSqlError>
 #include <QSqlQuery>
 
-namespace talkinput
+namespace zenny
 {
 
 RecognitionHistory::RecognitionHistory()
 {
     const QString dbPath =
-        QDir(talkinput::appDataDir()).filePath(QStringLiteral("history.db"));
-    QDir().mkpath(talkinput::appDataDir());
+        QDir(zenny::appDataDir()).filePath(QStringLiteral("history.db"));
+    QDir().mkpath(zenny::appDataDir());
 
     m_db = std::make_unique<QSqlDatabase>(QSqlDatabase::addDatabase(
         QStringLiteral("QSQLITE"), QStringLiteral("history")));
@@ -154,4 +154,4 @@ QVector<RecognitionHistory::Entry> RecognitionHistory::allEntries() const
     return result;
 }
 
-} // namespace talkinput
+} // namespace zenny

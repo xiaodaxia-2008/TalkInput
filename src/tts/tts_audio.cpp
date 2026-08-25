@@ -2,7 +2,7 @@
 
 #include <QProcess>
 
-namespace talkinput
+namespace zenny
 {
 
 QByteArray resampleFloatToInt16(const float *samples, qsizetype n,
@@ -103,4 +103,4 @@ QByteArray pcm16ToMp3(const QByteArray &pcm16, int sampleRate, QString *error)
     return ffmpeg.readAllStandardOutput();
 }
 
-} // namespace talkinput
+} // namespace zenny

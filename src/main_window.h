@@ -17,7 +17,7 @@ namespace Ui
 class MainWindow;
 }
 
-namespace talkinput
+namespace zenny
 {
 
 enum class SettingsPage : int
@@ -106,4 +106,4 @@ private:
     bool m_forceQuit = false;
 };
 
-} // namespace talkinput
+} // namespace zenny
