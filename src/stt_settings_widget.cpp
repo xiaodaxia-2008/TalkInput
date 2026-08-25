@@ -90,7 +90,6 @@ void SttSettingsWidget::setRecognitionActions(QAction *startAction,
     const auto bindAction = [](QPushButton *button, QAction *action) {
         const auto sync = [button, action]() {
             button->setText(action->text());
-            button->setIcon(action->icon());
             button->setToolTip(action->toolTip());
             button->setEnabled(action->isEnabled());
         };

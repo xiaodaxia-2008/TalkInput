@@ -21,11 +21,11 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="rootLayout">
-    <property name="spacing">0</property>
-    <property name="leftMargin">0</property>
-    <property name="topMargin">0</property>
-    <property name="rightMargin">0</property>
-    <property name="bottomMargin">0</property>
+    <property name="spacing"><number>0</number></property>
+    <property name="leftMargin"><number>0</number></property>
+    <property name="topMargin"><number>0</number></property>
+    <property name="rightMargin"><number>0</number></property>
+    <property name="bottomMargin"><number>0</number></property>
     <item>
      <widget class="QSplitter" name="mainSplitter">
       <property name="orientation">
@@ -42,11 +42,11 @@
         </size>
        </property>
         <layout class="QVBoxLayout" name="navLayout">
-         <property name="spacing">6</property>
-         <property name="leftMargin">10</property>
-         <property name="topMargin">8</property>
-         <property name="rightMargin">10</property>
-         <property name="bottomMargin">10</property>
+         <property name="spacing"><number>6</number></property>
+         <property name="leftMargin"><number>10</number></property>
+         <property name="topMargin"><number>8</number></property>
+         <property name="rightMargin"><number>10</number></property>
+         <property name="bottomMargin"><number>10</number></property>
          <item>
           <widget class="QTreeWidget" name="navTree">
            <property name="rootIsDecorated">
@@ -68,130 +68,130 @@
         </property>
         <widget class="QWidget" name="pageStt">
          <layout class="QVBoxLayout" name="pageSttLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="sttContentLayout">
-            <property name="spacing">12</property>
+            <property name="spacing"><number>12</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageOcr">
          <layout class="QVBoxLayout" name="pageOcrLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="ocrContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageLlm">
          <layout class="QVBoxLayout" name="pageLlmLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="llmContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageTts">
          <layout class="QVBoxLayout" name="pageTtsLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="ttsContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageApiServer">
          <layout class="QVBoxLayout" name="pageApiServerLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="apiServerContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageShortcut">
          <layout class="QVBoxLayout" name="pageShortcutLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="shortcutContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageAppearance">
          <layout class="QVBoxLayout" name="pageAppearanceLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="appearanceContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="pageHistory">
          <layout class="QVBoxLayout" name="pageHistoryLayout">
-          <property name="spacing">0</property>
-          <property name="leftMargin">12</property>
-          <property name="topMargin">12</property>
-          <property name="rightMargin">12</property>
-          <property name="bottomMargin">12</property>
+          <property name="spacing"><number>0</number></property>
+          <property name="leftMargin"><number>12</number></property>
+          <property name="topMargin"><number>12</number></property>
+          <property name="rightMargin"><number>12</number></property>
+          <property name="bottomMargin"><number>12</number></property>
          </layout>
         </widget>
         <widget class="QWidget" name="pageLog">
          <layout class="QVBoxLayout" name="pageLogLayout">
-          <property name="spacing">0</property>
-          <property name="leftMargin">12</property>
-          <property name="topMargin">12</property>
-          <property name="rightMargin">12</property>
-          <property name="bottomMargin">12</property>
+          <property name="spacing"><number>0</number></property>
+          <property name="leftMargin"><number>12</number></property>
+          <property name="topMargin"><number>12</number></property>
+          <property name="rightMargin"><number>12</number></property>
+          <property name="bottomMargin"><number>12</number></property>
          </layout>
         </widget>
         <widget class="QWidget" name="pageGeneral">
          <layout class="QVBoxLayout" name="pageGeneralLayout">
-          <property name="spacing">10</property>
-          <property name="leftMargin">24</property>
-          <property name="topMargin">20</property>
-          <property name="rightMargin">24</property>
-          <property name="bottomMargin">16</property>
+          <property name="spacing"><number>10</number></property>
+          <property name="leftMargin"><number>24</number></property>
+          <property name="topMargin"><number>20</number></property>
+          <property name="rightMargin"><number>24</number></property>
+          <property name="bottomMargin"><number>16</number></property>
           <item>
            <layout class="QVBoxLayout" name="generalContentLayout">
-            <property name="spacing">0</property>
+            <property name="spacing"><number>0</number></property>
            </layout>
           </item>
          </layout>
