@@ -22,10 +22,10 @@ class HistoryWidget final : public QWidget
     Q_OBJECT
 
 public:
-    explicit HistoryWidget(RecognitionHistory *history,
-                           QWidget *parent = nullptr);
+    explicit HistoryWidget(QWidget *parent = nullptr);
     ~HistoryWidget() override;
 
+    void setHistory(RecognitionHistory *history);
     void refreshHistory();
 
 protected:

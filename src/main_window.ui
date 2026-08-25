@@ -66,136 +66,16 @@
         <property name="currentIndex">
          <number>0</number>
         </property>
-        <widget class="QWidget" name="pageStt">
-         <layout class="QVBoxLayout" name="pageSttLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="sttContentLayout">
-            <property name="spacing"><number>12</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageOcr">
-         <layout class="QVBoxLayout" name="pageOcrLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="ocrContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageLlm">
-         <layout class="QVBoxLayout" name="pageLlmLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="llmContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageTts">
-         <layout class="QVBoxLayout" name="pageTtsLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="ttsContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageApiServer">
-         <layout class="QVBoxLayout" name="pageApiServerLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="apiServerContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageShortcut">
-         <layout class="QVBoxLayout" name="pageShortcutLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="shortcutContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageAppearance">
-         <layout class="QVBoxLayout" name="pageAppearanceLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="appearanceContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageHistory">
-         <layout class="QVBoxLayout" name="pageHistoryLayout">
-          <property name="spacing"><number>0</number></property>
-          <property name="leftMargin"><number>12</number></property>
-          <property name="topMargin"><number>12</number></property>
-          <property name="rightMargin"><number>12</number></property>
-          <property name="bottomMargin"><number>12</number></property>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageLog">
-         <layout class="QVBoxLayout" name="pageLogLayout">
-          <property name="spacing"><number>0</number></property>
-          <property name="leftMargin"><number>12</number></property>
-          <property name="topMargin"><number>12</number></property>
-          <property name="rightMargin"><number>12</number></property>
-          <property name="bottomMargin"><number>12</number></property>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="pageGeneral">
-         <layout class="QVBoxLayout" name="pageGeneralLayout">
-          <property name="spacing"><number>10</number></property>
-          <property name="leftMargin"><number>24</number></property>
-          <property name="topMargin"><number>20</number></property>
-          <property name="rightMargin"><number>24</number></property>
-          <property name="bottomMargin"><number>16</number></property>
-          <item>
-           <layout class="QVBoxLayout" name="generalContentLayout">
-            <property name="spacing"><number>0</number></property>
-           </layout>
-          </item>
-         </layout>
-        </widget>
+        <widget class="talkinput::SttSettingsWidget" name="sttSettingsWidget"/>
+        <widget class="talkinput::OcrSettingsWidget" name="ocrSettingsWidget"/>
+        <widget class="talkinput::LlmSettingsWidget" name="llmSettingsWidget"/>
+        <widget class="talkinput::TtsSettingsWidget" name="ttsSettingsWidget"/>
+        <widget class="talkinput::ApiServerSettingsWidget" name="apiServerSettingsWidget"/>
+        <widget class="talkinput::ShortcutSettingsWidget" name="shortcutSettingsWidget"/>
+        <widget class="talkinput::AppearanceSettingsWidget" name="appearanceSettingsWidget"/>
+        <widget class="talkinput::HistoryWidget" name="historyWidget"/>
+        <widget class="talkinput::LogPanel" name="logPanel"/>
+        <widget class="talkinput::GeneralSettingsWidget" name="generalSettingsWidget"/>
         </widget>
        </widget>
       </item>
@@ -230,5 +110,57 @@
  <resources>
   <include location="../resources/resources.qrc"/>
  </resources>
+ <customwidgets>
+  <customwidget>
+   <class>talkinput::SttSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>stt_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::OcrSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>ocr_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::LlmSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>llm_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::TtsSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>tts_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::ApiServerSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>api_server_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::ShortcutSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>shortcut_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::AppearanceSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>appearance_settings_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::HistoryWidget</class>
+   <extends>QWidget</extends>
+   <header>history_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::LogPanel</class>
+   <extends>QWidget</extends>
+   <header>log_panel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>talkinput::GeneralSettingsWidget</class>
+   <extends>QWidget</extends>
+   <header>general_settings_widget.h</header>
+  </customwidget>
+ </customwidgets>
  <connections/>
 </ui>

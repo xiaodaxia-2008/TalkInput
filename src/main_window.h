@@ -59,7 +59,6 @@ protected:
 
 private:
     void setupUi();
-    void setupSettingsPages();
     void setupTrayIcon();
     void setupNavTree();
     void retranslateNav();

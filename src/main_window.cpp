@@ -107,6 +107,19 @@ void MainWindow::setupUi()
     installStatusBarLogger(statusBar());
     SPDLOG_DEBUG("setupUi: ui setup complete");
 
+    m_sttSettingsWidget = m_ui->sttSettingsWidget;
+    m_ocrSettingsWidget = m_ui->ocrSettingsWidget;
+    m_llmSettingsWidget = m_ui->llmSettingsWidget;
+    m_ttsSettingsWidget = m_ui->ttsSettingsWidget;
+    m_apiServerSettingsWidget = m_ui->apiServerSettingsWidget;
+    m_shortcutSettingsWidget = m_ui->shortcutSettingsWidget;
+    m_appearanceSettingsWidget = m_ui->appearanceSettingsWidget;
+    m_historyWidget = m_ui->historyWidget;
+    m_logPanel = m_ui->logPanel;
+    m_generalSettingsWidget = m_ui->generalSettingsWidget;
+    m_historyWidget->setHistory(&m_history);
+    installLogPanelSink(m_logPanel->textEdit());
+
     m_dark = isDarkTheme(themeModeFromString(appConfig().settings.theme));
 
     // ── VoicePipelineController (ASR + hotkey + overlay + LLM + text
@@ -118,20 +131,8 @@ void MainWindow::setupUi()
     setupNavTree();
 
     // ── Settings pages ─────────────────────────────────────────────
-    setupSettingsPages();
     m_sttSettingsWidget->setRecognitionActions(m_ui->actionStartRecognition,
                                                m_ui->actionRecognizeFile);
-
-    // ── History page ───────────────────────────────────────────────
-    SPDLOG_DEBUG("setupUi: creating HistoryWidget");
-    m_historyWidget = new HistoryWidget(&m_history, m_ui->pageHistory);
-    m_ui->pageHistoryLayout->addWidget(m_historyWidget);
-    SPDLOG_DEBUG("setupUi: HistoryWidget added");
-
-    // ── Log page ───────────────────────────────────────────────────
-    m_logPanel = new LogPanel(m_ui->pageLog);
-    m_ui->pageLogLayout->addWidget(m_logPanel);
-    installLogPanelSink(m_logPanel->textEdit());
 
     connect(m_ui->actionStartRecognition, &QAction::triggered, this,
             &MainWindow::onToggleSpeechRecognition);
@@ -203,39 +204,6 @@ void MainWindow::setupUi()
     onThemeChanged(themeModeFromString(appConfig().settings.theme));
 
     SPDLOG_DEBUG("setupUi: end");
-}
-
-void MainWindow::setupSettingsPages()
-{
-    SPDLOG_DEBUG("setupSettingsPages: begin");
-
-    m_sttSettingsWidget = new SttSettingsWidget(m_ui->pageStt);
-    m_ui->sttContentLayout->addWidget(m_sttSettingsWidget);
-
-    m_ocrSettingsWidget = new OcrSettingsWidget(m_ui->pageOcr);
-    m_ui->ocrContentLayout->addWidget(m_ocrSettingsWidget);
-
-    m_llmSettingsWidget = new LlmSettingsWidget(m_ui->pageLlm);
-    m_ui->llmContentLayout->addWidget(m_llmSettingsWidget);
-
-    m_ttsSettingsWidget = new TtsSettingsWidget(m_ui->pageTts);
-    m_ui->ttsContentLayout->addWidget(m_ttsSettingsWidget);
-
-    m_apiServerSettingsWidget =
-        new ApiServerSettingsWidget(m_ui->pageApiServer);
-    m_ui->apiServerContentLayout->addWidget(m_apiServerSettingsWidget);
-
-    m_shortcutSettingsWidget = new ShortcutSettingsWidget(m_ui->pageShortcut);
-    m_ui->shortcutContentLayout->addWidget(m_shortcutSettingsWidget);
-
-    m_appearanceSettingsWidget =
-        new AppearanceSettingsWidget(m_ui->pageAppearance);
-    m_ui->appearanceContentLayout->addWidget(m_appearanceSettingsWidget);
-
-    m_generalSettingsWidget = new GeneralSettingsWidget(m_ui->pageGeneral);
-    m_ui->generalContentLayout->addWidget(m_generalSettingsWidget);
-
-    SPDLOG_DEBUG("setupSettingsPages: end");
 }
 
 void MainWindow::setupNavTree()

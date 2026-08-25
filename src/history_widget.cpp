@@ -115,15 +115,20 @@ public:
         fetchMore();
     }
 
+    void setHistory(RecognitionHistory *history)
+    {
+        m_history = history;
+        reload();
+    }
+
 private:
     RecognitionHistory *m_history = nullptr;
     QVector<RecognitionHistory::Entry> m_entries;
     bool m_hasMore = true;
 };
 
-HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
-    : QWidget(parent), m_ui(std::make_unique<Ui::HistoryWidget>()),
-      m_history(history)
+HistoryWidget::HistoryWidget(QWidget *parent)
+    : QWidget(parent), m_ui(std::make_unique<Ui::HistoryWidget>())
 {
     SPDLOG_DEBUG("HistoryWidget: constructor begin");
     m_ui->setupUi(this);
@@ -167,6 +172,12 @@ HistoryWidget::HistoryWidget(RecognitionHistory *history, QWidget *parent)
 }
 
 HistoryWidget::~HistoryWidget() = default;
+
+void HistoryWidget::setHistory(RecognitionHistory *history)
+{
+    m_history = history;
+    m_model->setHistory(history);
+}
 
 void HistoryWidget::changeEvent(QEvent *event)
 {
