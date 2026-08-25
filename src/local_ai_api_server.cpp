@@ -1,4 +1,4 @@
-#include "speech_api_server.h"
+#include "local_ai_api_server.h"
 
 #include "app_config.h"
 #include "audio_utils.h"
@@ -7,7 +7,7 @@
 #include "tts/melo_tts_engine.h"
 #include "tts/tts_audio.h"
 #include "tts_engine.h"
-#include "voice_input_controller.h"
+#include "voice_pipeline_controller.h"
 
 #include <QBuffer>
 #include <QCoreApplication>
@@ -277,17 +277,17 @@ QString errorTypeForCode(int code)
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────
-// SpeechApiServer (main-thread facade)
+// LocalAiApiServer (main-thread facade)
 // ─────────────────────────────────────────────────────────────────────────
 
 namespace
 {
 
-static SpeechApiServer *s_instance = nullptr;
+static LocalAiApiServer *s_instance = nullptr;
 
 } // namespace
 
-class SpeechApiServer::Core final : public QObject
+class LocalAiApiServer::Core final : public QObject
 {
     Q_OBJECT
 
@@ -1065,7 +1065,7 @@ private:
                                          int sampleRate, int channels,
                                          QString *error)
     {
-        auto *controller = VoiceInputController::instance();
+        auto *controller = VoicePipelineController::instance();
         if (!controller) {
             *error = QStringLiteral("Voice input controller unavailable.");
             return {};
@@ -1149,7 +1149,7 @@ private:
 
     QString recognizeOcr(const QImage &image, QString *error)
     {
-        auto *controller = VoiceInputController::instance();
+        auto *controller = VoicePipelineController::instance();
         if (!controller) {
             *error = QStringLiteral("Voice input controller unavailable.");
             return {};
@@ -1166,14 +1166,15 @@ private:
 
         const auto state = std::make_shared<OcrRequestState>();
 
-        const QMetaObject::Connection shutdownConnection = connect(
-            qApp, &QCoreApplication::aboutToQuit, qApp, [state]() {
+        const QMetaObject::Connection shutdownConnection =
+            connect(qApp, &QCoreApplication::aboutToQuit, qApp, [state]() {
                 {
                     std::lock_guard lock(state->mutex);
                     if (state->complete) {
                         return;
                     }
-                    state->error = QStringLiteral("Application is shutting down.");
+                    state->error =
+                        QStringLiteral("Application is shutting down.");
                     state->complete = true;
                 }
                 state->condition.notify_one();
@@ -1266,7 +1267,7 @@ private:
     QString m_apiKey;
 };
 
-SpeechApiServer::SpeechApiServer(QObject *parent) : QObject(parent)
+LocalAiApiServer::LocalAiApiServer(QObject *parent) : QObject(parent)
 {
     s_instance = this;
     m_thread = std::make_unique<QThread>();
@@ -1274,18 +1275,18 @@ SpeechApiServer::SpeechApiServer(QObject *parent) : QObject(parent)
     m_core = new Core();
     m_core->moveToThread(m_thread.get());
     connect(m_core, &Core::listeningChanged, this,
-            &SpeechApiServer::listeningChanged);
+            &LocalAiApiServer::listeningChanged);
     connect(m_core, &Core::serverStarted, this,
-            &SpeechApiServer::serverStarted);
+            &LocalAiApiServer::serverStarted);
     connect(m_core, &Core::errorOccurred, this,
-            &SpeechApiServer::errorOccurred);
+            &LocalAiApiServer::errorOccurred);
     connect(m_core, &Core::transcriptionCompleted, this,
-            &SpeechApiServer::transcriptionCompleted);
+            &LocalAiApiServer::transcriptionCompleted);
     connect(m_thread.get(), &QThread::finished, m_core, &QObject::deleteLater);
     m_thread->start();
 }
 
-SpeechApiServer::~SpeechApiServer()
+LocalAiApiServer::~LocalAiApiServer()
 {
     shutdown();
     if (s_instance == this) {
@@ -1293,17 +1294,17 @@ SpeechApiServer::~SpeechApiServer()
     }
 }
 
-SpeechApiServer *SpeechApiServer::instance()
+LocalAiApiServer *LocalAiApiServer::instance()
 {
     return s_instance;
 }
 
-void SpeechApiServer::setTranscriber(ApiTranscriber transcriber)
+void LocalAiApiServer::setTranscriber(ApiTranscriber transcriber)
 {
     m_transcriber = std::move(transcriber);
 }
 
-void SpeechApiServer::applySettings()
+void LocalAiApiServer::applySettings()
 {
     ApiTranscriber transcriber = m_transcriber;
     Core *core = m_core;
@@ -1318,7 +1319,7 @@ void SpeechApiServer::applySettings()
         Qt::QueuedConnection);
 }
 
-void SpeechApiServer::shutdown()
+void LocalAiApiServer::shutdown()
 {
     if (!m_thread || !m_core) {
         return;
@@ -1335,4 +1336,4 @@ void SpeechApiServer::shutdown()
 
 } // namespace talkinput
 
-#include "speech_api_server.moc"
+#include "local_ai_api_server.moc"

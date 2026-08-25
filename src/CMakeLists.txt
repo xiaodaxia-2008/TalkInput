@@ -11,8 +11,8 @@ add_executable(TalkInput WIN32
     main_window.ui
     voice_hotkey.cpp
     voice_hotkey.h
-    voice_input_controller.cpp
-    voice_input_controller.h
+    voice_pipeline_controller.cpp
+    voice_pipeline_controller.h
     voice_overlay.cpp
     voice_overlay.h
     app_config.cpp
@@ -64,8 +64,8 @@ add_executable(TalkInput WIN32
     ppocrv6_ocr_recognizer.h
     speech_recognizer.h
     speech_recognizer.cpp
-    speech_api_server.h
-    speech_api_server.cpp
+    local_ai_api_server.h
+    local_ai_api_server.cpp
     tts_engine.h
     tts/edge_tts_engine.cpp
     tts/edge_tts_engine.h

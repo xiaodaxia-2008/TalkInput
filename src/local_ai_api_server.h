@@ -26,8 +26,7 @@ using ApiTranscriber = std::function<TranscriptionResult(
     const QByteArray &audioData, const QString &fileName,
     QString *errorMessage)>;
 
-/// Exposes the local speech recognition engine through an OpenAI-compatible
-/// HTTP API:
+/// Exposes the local AI services through an OpenAI-compatible HTTP API:
 ///
 ///   POST /v1/audio/transcriptions  (multipart/form-data: file, model)
 ///   POST /v1/ocr                    (multipart/form-data: file)
@@ -37,22 +36,21 @@ using ApiTranscriber = std::function<TranscriptionResult(
 ///   GET  /v1/models
 ///   GET  /health
 ///
-/// The server runs on its own worker thread; transcription requests are
-/// processed one at a time. Audio is transcribed by the shared recognizer
-/// owned by VoiceInputController (the same loaded model used for mic input),
-/// so no second copy of a model is ever loaded. Requests are rejected while a
-/// microphone session is running. TTS is served by the configured backend
-/// ("edge" = Microsoft Edge online, "melo" = offline MeloTTS); both engines
+/// The server runs on its own worker thread. Transcription and OCR requests
+/// are delegated to the shared recognizers owned by VoicePipelineController,
+/// while TTS requests use the configured backend. No second ASR/OCR model copy
+/// is loaded. Requests are rejected while a microphone session is running.
+/// TTS backends ("edge" = Microsoft Edge online, "melo" = offline MeloTTS)
 /// return 24 kHz 16-bit mono PCM.
-class SpeechApiServer final : public QObject
+class LocalAiApiServer final : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit SpeechApiServer(QObject *parent = nullptr);
-    ~SpeechApiServer() override;
+    explicit LocalAiApiServer(QObject *parent = nullptr);
+    ~LocalAiApiServer() override;
 
-    static SpeechApiServer *instance();
+    static LocalAiApiServer *instance();
 
     /// Overrides the transcription implementation (used by tests).
     void setTranscriber(ApiTranscriber transcriber);

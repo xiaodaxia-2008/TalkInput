@@ -6,11 +6,11 @@
 #include "general_settings_widget.h"
 #include "history_widget.h"
 #include "llm_settings_widget.h"
+#include "local_ai_api_server.h"
 #include "log_panel.h"
 #include "logging.h"
 #include "ocr_settings_widget.h"
 #include "shortcut_settings_widget.h"
-#include "speech_api_server.h"
 #include "stt_settings_widget.h"
 #include "tts_settings_widget.h"
 #include "ui_main_window.h"
@@ -93,8 +93,8 @@ void MainWindow::changeEvent(QEvent *event)
 
     m_ui->retranslateUi(this);
     retranslateNav();
-    updateControls(m_voiceInputController &&
-                   m_voiceInputController->isListening());
+    updateControls(m_voicePipelineController &&
+                   m_voicePipelineController->isListening());
 }
 
 void MainWindow::setupUi()
@@ -109,9 +109,10 @@ void MainWindow::setupUi()
 
     m_dark = isDarkTheme(themeModeFromString(appConfig().settings.theme));
 
-    // ── VoiceInputController (ASR + hotkey + overlay + LLM + text injection) ─
-    SPDLOG_DEBUG("setupUi: creating VoiceInputController");
-    m_voiceInputController = new VoiceInputController(this);
+    // ── VoicePipelineController (ASR + hotkey + overlay + LLM + text
+    // injection) ─
+    SPDLOG_DEBUG("setupUi: creating VoicePipelineController");
+    m_voicePipelineController = new VoicePipelineController(this);
 
     // ── Navigation sidebar ─────────────────────────────────────────
     setupNavTree();
@@ -140,20 +141,22 @@ void MainWindow::setupUi()
 
     SPDLOG_INFO("Starting ASR service");
 
-    // resultChanged comes from VoiceInputController → onResult
-    connect(m_voiceInputController, &VoiceInputController::finalTextCommitted,
-            this, [this](const QString &text) {
+    // resultChanged comes from VoicePipelineController → onResult
+    connect(m_voicePipelineController,
+            &VoicePipelineController::finalTextCommitted, this,
+            [this](const QString &text) {
                 recordHistoryEntry(text);
                 m_sttSettingsWidget->setRecognitionResult(text);
             });
-    if (auto *apiServer = SpeechApiServer::instance()) {
-        connect(apiServer, &SpeechApiServer::transcriptionCompleted, this,
+    if (auto *apiServer = LocalAiApiServer::instance()) {
+        connect(apiServer, &LocalAiApiServer::transcriptionCompleted, this,
                 &MainWindow::recordHistoryEntry);
     }
-    connect(m_voiceInputController, &VoiceInputController::listeningChanged,
-            this, [this](bool listening) { updateControls(listening); });
-    connect(m_voiceInputController, &VoiceInputController::modeChanged, this,
-            [this](PipelineMode) {
+    connect(m_voicePipelineController,
+            &VoicePipelineController::listeningChanged, this,
+            [this](bool listening) { updateControls(listening); });
+    connect(m_voicePipelineController, &VoicePipelineController::modeChanged,
+            this, [this](PipelineMode) {
                 if (m_sttSettingsWidget) {
                     m_sttSettingsWidget->updateActiveModeDisplay();
                 }
@@ -454,7 +457,7 @@ void MainWindow::updateControls(bool listening)
             QIcon(":/resources/icons/mic.svg"));
         m_ui->actionStartRecognition->setText(tr("Start recognition"));
         m_ui->actionStartRecognition->setToolTip(tr("Start recognition"));
-        if (!m_voiceInputController->isSpeechRecognitionModelLoaded()) {
+        if (!m_voicePipelineController->isSpeechRecognitionModelLoaded()) {
             STATUSBAR_INFO("{}", tr("No speech recognition model selected"));
         }
         else {
@@ -484,23 +487,23 @@ void MainWindow::onLanguageChanged(const QString &language)
 
 void MainWindow::onToggleSpeechRecognition()
 {
-    if (!m_voiceInputController) {
+    if (!m_voicePipelineController) {
         return;
     }
 
-    if (m_voiceInputController->isListening()) {
-        m_voiceInputController->stopListening();
+    if (m_voicePipelineController->isListening()) {
+        m_voicePipelineController->stopListening();
         return;
     }
 
-    if (!m_voiceInputController->isSpeechRecognitionModelLoaded()) {
+    if (!m_voicePipelineController->isSpeechRecognitionModelLoaded()) {
         QMessageBox::warning(this, tr("Speech recognition"),
                              tr("Speech recognition model is still loading.\n\n"
                                 "Please wait for it to load, then try again."));
         return;
     }
 
-    m_voiceInputController->startListening();
+    m_voicePipelineController->startListening();
 }
 
 void MainWindow::onRecognizeAudioFile()
@@ -526,13 +529,13 @@ void MainWindow::onRecognizeAudioFile()
                 decoded->pcm16.size(), path, decoded->sampleRate,
                 decoded->channels);
 
-    if (m_voiceInputController) {
-        if (!m_voiceInputController->startSpeechRecognitionSession()) {
+    if (m_voicePipelineController) {
+        if (!m_voicePipelineController->startSpeechRecognitionSession()) {
             return;
         }
-        m_voiceInputController->feedSpeechRecognitionAudio(
+        m_voicePipelineController->feedSpeechRecognitionAudio(
             decoded->pcm16, decoded->sampleRate, decoded->channels);
-        m_voiceInputController->finishSpeechRecognitionSession();
+        m_voicePipelineController->finishSpeechRecognitionSession();
     }
     STATUSBAR_INFO("{}", tr("Recognition sent to ASR engine"));
 }

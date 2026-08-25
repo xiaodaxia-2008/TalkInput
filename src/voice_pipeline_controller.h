@@ -69,15 +69,15 @@ PipelineMode pipelineModeFromString(const std::string &s);
 std::string pipelineModeToString(PipelineMode mode);
 QString pipelineModeDisplayName(PipelineMode mode);
 
-class VoiceInputController final : public QObject
+class VoicePipelineController final : public QObject
 {
     Q_OBJECT
 
 public:
-    static VoiceInputController *instance();
+    static VoicePipelineController *instance();
 
-    explicit VoiceInputController(QObject *parent = nullptr);
-    ~VoiceInputController() override;
+    explicit VoicePipelineController(QObject *parent = nullptr);
+    ~VoicePipelineController() override;
 
     bool isListening() const
     {

@@ -663,72 +663,72 @@ Reset configuration to defaults?</source>
 <context>
     <name>talkinput::MainWindow</name>
     <message>
-        <location filename="main_window.cpp" line="592"/>
+        <location filename="main_window.cpp" line="595"/>
         <source>About TalkInput</source>
         <translation>关于 TalkInput</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="593"/>
+        <location filename="main_window.cpp" line="596"/>
         <source>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;Local voice input method.&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Commit&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Date&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
         <translation>&lt;h3&gt;TalkInput %1&lt;/h3&gt;&lt;p&gt;本地语音输入法。&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;提交&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;日期&lt;/td&gt;&lt;td&gt;%3&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="420"/>
+        <location filename="main_window.cpp" line="423"/>
         <source>Show Window</source>
         <translation>显示窗口</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="423"/>
+        <location filename="main_window.cpp" line="426"/>
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="497"/>
+        <location filename="main_window.cpp" line="500"/>
         <source>Speech recognition</source>
         <translation>语音识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="446"/>
-        <location filename="main_window.cpp" line="447"/>
+        <location filename="main_window.cpp" line="449"/>
+        <location filename="main_window.cpp" line="450"/>
         <source>Stop recognition</source>
         <translation>停止识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="289"/>
-        <location filename="main_window.cpp" line="332"/>
+        <location filename="main_window.cpp" line="292"/>
+        <location filename="main_window.cpp" line="335"/>
         <source>Text Recognition (OCR)</source>
         <translation>OCR 文字识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="292"/>
-        <location filename="main_window.cpp" line="333"/>
+        <location filename="main_window.cpp" line="295"/>
+        <location filename="main_window.cpp" line="336"/>
         <source>LLM Configuration</source>
         <translation>LLM 大模型配置</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="295"/>
-        <location filename="main_window.cpp" line="334"/>
+        <location filename="main_window.cpp" line="298"/>
+        <location filename="main_window.cpp" line="337"/>
         <source>Speech Synthesis (TTS)</source>
         <translation>TTS 语音合成</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="449"/>
+        <location filename="main_window.cpp" line="452"/>
         <source>Listening...</source>
         <translation>正在听写...</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="450"/>
+        <location filename="main_window.cpp" line="453"/>
         <source>Listening — %1</source>
         <translation>正在听写 — %1</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="455"/>
-        <location filename="main_window.cpp" line="456"/>
+        <location filename="main_window.cpp" line="458"/>
+        <location filename="main_window.cpp" line="459"/>
         <source>Start recognition</source>
         <translation>开始识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="498"/>
+        <location filename="main_window.cpp" line="501"/>
         <source>Speech recognition model is still loading.
 
 Please wait for it to load, then try again.</source>
@@ -737,97 +737,97 @@ Please wait for it to load, then try again.</source>
 请等待加载完成后重试。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="458"/>
+        <location filename="main_window.cpp" line="461"/>
         <source>No speech recognition model selected</source>
         <translation>未选择语音识别模型</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="286"/>
-        <location filename="main_window.cpp" line="331"/>
+        <location filename="main_window.cpp" line="289"/>
+        <location filename="main_window.cpp" line="334"/>
         <source>Speech Recognition (STT)</source>
         <oldsource>Speech Recognition</oldsource>
         <translation>STT 语音识别</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="285"/>
-        <location filename="main_window.cpp" line="330"/>
+        <location filename="main_window.cpp" line="288"/>
+        <location filename="main_window.cpp" line="333"/>
         <source>Services</source>
         <translation>服务</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="298"/>
-        <location filename="main_window.cpp" line="335"/>
+        <location filename="main_window.cpp" line="301"/>
+        <location filename="main_window.cpp" line="338"/>
         <source>API Server</source>
         <translation>API 服务器</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="302"/>
-        <location filename="main_window.cpp" line="336"/>
+        <location filename="main_window.cpp" line="305"/>
+        <location filename="main_window.cpp" line="339"/>
         <source>Shortcuts</source>
         <translation>快捷键</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="305"/>
-        <location filename="main_window.cpp" line="337"/>
+        <location filename="main_window.cpp" line="308"/>
+        <location filename="main_window.cpp" line="340"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="308"/>
-        <location filename="main_window.cpp" line="338"/>
+        <location filename="main_window.cpp" line="311"/>
+        <location filename="main_window.cpp" line="341"/>
         <source>History</source>
         <translation>历史</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="310"/>
-        <location filename="main_window.cpp" line="339"/>
+        <location filename="main_window.cpp" line="313"/>
+        <location filename="main_window.cpp" line="342"/>
         <source>Log</source>
         <translation>日志</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="312"/>
-        <location filename="main_window.cpp" line="340"/>
+        <location filename="main_window.cpp" line="315"/>
+        <location filename="main_window.cpp" line="343"/>
         <source>General</source>
         <translation>常规</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="461"/>
+        <location filename="main_window.cpp" line="464"/>
         <source>Speech recognition model: %1</source>
         <translation>语音识别模型：%1</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="509"/>
+        <location filename="main_window.cpp" line="512"/>
         <source>Select Audio File</source>
         <translation>选择音频文件</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="510"/>
+        <location filename="main_window.cpp" line="513"/>
         <source>Audio Files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;All Files (*)</source>
         <translation>音频文件 (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.opus);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="516"/>
+        <location filename="main_window.cpp" line="519"/>
         <source>Decoding audio...</source>
         <translation>正在解码音频...</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="521"/>
+        <location filename="main_window.cpp" line="524"/>
         <source>Failed to decode audio file.</source>
         <translation>音频文件解码失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="537"/>
+        <location filename="main_window.cpp" line="540"/>
         <source>Recognition sent to ASR engine</source>
         <translation>已发送到 ASR 引擎</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="557"/>
-        <location filename="main_window.cpp" line="568"/>
+        <location filename="main_window.cpp" line="560"/>
+        <location filename="main_window.cpp" line="571"/>
         <source>Reset Settings</source>
         <translation>重置设置</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="558"/>
+        <location filename="main_window.cpp" line="561"/>
         <source>Reset all user settings in this file to bundled defaults?
 
 %1
@@ -840,12 +840,12 @@ Model downloads and recognition history will not be deleted.</source>
 模型下载和识别历史不会被删除。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="569"/>
+        <location filename="main_window.cpp" line="572"/>
         <source>Failed to reset settings.</source>
         <translation>重置设置失败。</translation>
     </message>
     <message>
-        <location filename="main_window.cpp" line="587"/>
+        <location filename="main_window.cpp" line="590"/>
         <source>Settings reset to defaults</source>
         <translation>设置已重置为默认</translation>
     </message>
@@ -1188,100 +1188,100 @@ Selected:
     </message>
 </context>
 <context>
-    <name>talkinput::VoiceInputController</name>
+    <name>talkinput::VoicePipelineController</name>
     <message>
-        <location filename="voice_input_controller.cpp" line="230"/>
-        <location filename="voice_input_controller.cpp" line="679"/>
-        <source>Speech recognition model not loaded yet. Please wait or select a model.</source>
-        <translation>语音识别模型尚未加载。请等待或选择模型。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="222"/>
-        <location filename="voice_input_controller.cpp" line="420"/>
-        <location filename="voice_input_controller.cpp" line="670"/>
+        <location filename="voice_pipeline_controller.cpp" line="223"/>
+        <location filename="voice_pipeline_controller.cpp" line="421"/>
+        <location filename="voice_pipeline_controller.cpp" line="672"/>
         <source>Recognition is still processing.</source>
-        <translation>识别仍在处理中。</translation>
+        <translation type="unfinished">识别仍在处理中。</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="357"/>
+        <location filename="voice_pipeline_controller.cpp" line="231"/>
+        <location filename="voice_pipeline_controller.cpp" line="681"/>
+        <source>Speech recognition model not loaded yet. Please wait or select a model.</source>
+        <translation type="unfinished">语音识别模型尚未加载。请等待或选择模型。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="358"/>
         <source>Recording...</source>
-        <translation>正在录音...</translation>
+        <translation type="unfinished">正在录音...</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="362"/>
-        <location filename="voice_input_controller.cpp" line="447"/>
+        <location filename="voice_pipeline_controller.cpp" line="363"/>
+        <location filename="voice_pipeline_controller.cpp" line="448"/>
         <source>Recognizing...</source>
-        <translation>识别中...</translation>
+        <translation type="unfinished">识别中...</translation>
     </message>
     <message>
-        <location filename="voice_input_controller.cpp" line="372"/>
-        <source>Post-processing recognition result...</source>
-        <translation>正在后处理识别结果...</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="468"/>
-        <source>No microphone available</source>
-        <translation>没有可用的麦克风</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="483"/>
-        <source>Microphone format not supported.</source>
-        <translation>不支持的麦克风音频格式。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="491"/>
-        <source>Failed to start microphone</source>
-        <translation>无法启动麦克风</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="578"/>
-        <location filename="voice_input_controller.cpp" line="606"/>
-        <source>Speech recognition model load failed: %1</source>
-        <translation>语音识别模型加载失败：%1</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="719"/>
-        <source>ASR engine is busy.</source>
-        <translation>ASR 引擎正忙。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="723"/>
-        <source>Speech recognition model not loaded yet.</source>
-        <translation>语音识别模型尚未加载。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="746"/>
-        <source>Speech recognition model was unloaded.</source>
-        <translation>语音识别模型已被卸载。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="791"/>
-        <location filename="voice_input_controller.cpp" line="807"/>
-        <source>OCR provider was unloaded.</source>
-        <translation>OCR 服务已卸载。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="830"/>
-        <location filename="voice_input_controller.cpp" line="857"/>
-        <source>OCR engine is busy.</source>
-        <translation>OCR 引擎正忙。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="834"/>
-        <location filename="voice_input_controller.cpp" line="861"/>
-        <source>OCR provider is not available.</source>
-        <translation>OCR 服务不可用。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="838"/>
-        <location filename="voice_input_controller.cpp" line="865"/>
-        <source>The image is empty.</source>
-        <translation>图片为空。</translation>
-    </message>
-    <message>
-        <location filename="voice_input_controller.cpp" line="367"/>
+        <location filename="voice_pipeline_controller.cpp" line="368"/>
         <source>Reading focused input context...</source>
-        <translation>正在读取聚焦输入上下文...</translation>
+        <translation type="unfinished">正在读取聚焦输入上下文...</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="373"/>
+        <source>Post-processing recognition result...</source>
+        <translation type="unfinished">正在后处理识别结果...</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="469"/>
+        <source>No microphone available</source>
+        <translation type="unfinished">没有可用的麦克风</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="484"/>
+        <source>Microphone format not supported.</source>
+        <translation type="unfinished">不支持的麦克风音频格式。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="492"/>
+        <source>Failed to start microphone</source>
+        <translation type="unfinished">无法启动麦克风</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="580"/>
+        <location filename="voice_pipeline_controller.cpp" line="608"/>
+        <source>Speech recognition model load failed: %1</source>
+        <translation type="unfinished">语音识别模型加载失败：%1</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="720"/>
+        <source>ASR engine is busy.</source>
+        <translation type="unfinished">ASR 引擎正忙。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="724"/>
+        <source>Speech recognition model not loaded yet.</source>
+        <translation type="unfinished">语音识别模型尚未加载。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="747"/>
+        <source>Speech recognition model was unloaded.</source>
+        <translation type="unfinished">语音识别模型已被卸载。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="792"/>
+        <location filename="voice_pipeline_controller.cpp" line="808"/>
+        <source>OCR provider was unloaded.</source>
+        <translation type="unfinished">OCR 服务已卸载。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="831"/>
+        <location filename="voice_pipeline_controller.cpp" line="858"/>
+        <source>OCR engine is busy.</source>
+        <translation type="unfinished">OCR 引擎正忙。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="835"/>
+        <location filename="voice_pipeline_controller.cpp" line="862"/>
+        <source>OCR provider is not available.</source>
+        <translation type="unfinished">OCR 服务不可用。</translation>
+    </message>
+    <message>
+        <location filename="voice_pipeline_controller.cpp" line="839"/>
+        <location filename="voice_pipeline_controller.cpp" line="866"/>
+        <source>The image is empty.</source>
+        <translation type="unfinished">图片为空。</translation>
     </message>
 </context>
 </TS>

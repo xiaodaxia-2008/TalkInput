@@ -2,7 +2,7 @@
 #include "app_config.h"
 #include "logging.h"
 #include "ocr_recognizer.h"
-#include "voice_input_controller.h"
+#include "voice_pipeline_controller.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -239,7 +239,7 @@ void OcrSettingsWidget::onOcrProviderChanged(int /*index*/)
         m_ui->ocrCombo->currentData().toString().toStdString();
     markConfigDirty();
 
-    if (auto *vc = VoiceInputController::instance()) {
+    if (auto *vc = VoicePipelineController::instance()) {
         vc->reloadOcrRecognizer();
     }
 }
@@ -273,7 +273,7 @@ void OcrSettingsWidget::openImageAndRecognize()
 
 void OcrSettingsWidget::recognizeImage(const QImage &image)
 {
-    auto *controller = VoiceInputController::instance();
+    auto *controller = VoicePipelineController::instance();
     if (!controller) {
         STATUSBAR_INFO("{}", tr("OCR provider is not available."));
         return;

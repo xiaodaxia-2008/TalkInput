@@ -1,8 +1,8 @@
 #include "app_config.h"
+#include "local_ai_api_server.h"
 #include "logging.h"
 #include "main_window.h"
 #include "single_instance.h"
-#include "speech_api_server.h"
 #include "theme.h"
 
 #include <QApplication>
@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
         talkinput::applyTheme(talkinput::themeModeFromString(
             talkinput::appConfig().settings.theme));
 
-        // Owned before MainWindow so VoiceInputController (created inside
+        // Owned before MainWindow so VoicePipelineController (created inside
         // MainWindow) is guaranteed to outlive any in-flight API request.
-        talkinput::SpeechApiServer apiServer;
+        talkinput::LocalAiApiServer apiServer;
         apiServer.applySettings();
 
         const bool startHidden = talkinput::appConfig().settings.startMinimized;

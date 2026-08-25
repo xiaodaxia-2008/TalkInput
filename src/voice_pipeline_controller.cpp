@@ -1,4 +1,4 @@
-#include "voice_input_controller.h"
+#include "voice_pipeline_controller.h"
 #include "app_config.h"
 #include "audio_utils.h"
 #include "llm_post_processor.h"
@@ -75,7 +75,7 @@ void saveAsrAudio(const QByteArray &pcm16, int sampleRate, int channels)
 
 } // namespace
 
-// ── VoiceInputController ─────────────────────────────────────────
+// ── VoicePipelineController ─────────────────────────────────────────
 
 namespace talkinput
 {
@@ -120,28 +120,28 @@ QString pipelineModeDisplayName(PipelineMode mode)
     return {};
 }
 
-static VoiceInputController *s_instance = nullptr;
+static VoicePipelineController *s_instance = nullptr;
 
-VoiceInputController *VoiceInputController::instance()
+VoicePipelineController *VoicePipelineController::instance()
 {
     return s_instance;
 }
 
-void VoiceInputController::reregisterTriggerHotkey()
+void VoicePipelineController::reregisterTriggerHotkey()
 {
     if (m_hotkey) {
         m_hotkey->reregisterTriggerShortcut();
     }
 }
 
-void VoiceInputController::reregisterModeSwitchHotkey()
+void VoicePipelineController::reregisterModeSwitchHotkey()
 {
     if (m_hotkey) {
         m_hotkey->reregisterModeSwitchShortcut();
     }
 }
 
-void VoiceInputController::cyclePipelineMode()
+void VoicePipelineController::cyclePipelineMode()
 {
     switch (m_pipelineMode) {
     case PipelineMode::AsrOnly:
@@ -159,7 +159,8 @@ void VoiceInputController::cyclePipelineMode()
     emit modeChanged(m_pipelineMode);
 }
 
-VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
+VoicePipelineController::VoicePipelineController(QObject *parent)
+    : QObject(parent)
 {
     s_instance = this;
 
@@ -206,7 +207,7 @@ VoiceInputController::VoiceInputController(QObject *parent) : QObject(parent)
     }
 }
 
-VoiceInputController::~VoiceInputController()
+VoicePipelineController::~VoicePipelineController()
 {
     stopListening();
     unloadSpeechRecognitionModel();
@@ -215,7 +216,7 @@ VoiceInputController::~VoiceInputController()
 
 // ── Pipeline ─────────────────────────────────────────────────────
 
-QCoro::Task<void> VoiceInputController::executePipeline()
+QCoro::Task<void> VoicePipelineController::executePipeline()
 {
     const auto &config = appConfig();
     if (m_stage != PipelineStage::Idle) {
@@ -337,7 +338,7 @@ QCoro::Task<void> VoiceInputController::executePipeline()
     setStage(PipelineStage::Idle);
 }
 
-void VoiceInputController::setStage(PipelineStage stage)
+void VoicePipelineController::setStage(PipelineStage stage)
 {
     if (m_stage == stage) {
         return;
@@ -381,7 +382,7 @@ void VoiceInputController::setStage(PipelineStage stage)
 
 // ── Result callback ───────────────────────────────────────────────
 
-void VoiceInputController::onResult(const QString &text, bool isFinal)
+void VoicePipelineController::onResult(const QString &text, bool isFinal)
 {
     // Final/interim results of an HTTP API transcription are handled by the
     // API request flow itself — never commit them as if from a mic session.
@@ -414,7 +415,7 @@ void VoiceInputController::onResult(const QString &text, bool isFinal)
 
 // ── Public API: external control ──────────────────────────────────
 
-bool VoiceInputController::startListening()
+bool VoicePipelineController::startListening()
 {
     if (m_stage != PipelineStage::Idle) {
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
@@ -424,10 +425,10 @@ bool VoiceInputController::startListening()
     return true;
 }
 
-void VoiceInputController::stopListening()
+void VoicePipelineController::stopListening()
 {
     m_stopRequestedAt.start();
-    SPDLOG_INFO("VoiceInputController: stop listening");
+    SPDLOG_INFO("VoicePipelineController: stop listening");
 
     if (!m_recognizer) {
         // No recognizer loaded — resolve empty and go idle
@@ -454,7 +455,7 @@ void VoiceInputController::stopListening()
 
 // ── Audio capture ────────────────────────────────────────────────
 
-std::expected<void, QString> VoiceInputController::startAudioCapture()
+std::expected<void, QString> VoicePipelineController::startAudioCapture()
 {
     if (m_audioSource) {
         return {};
@@ -510,7 +511,7 @@ std::expected<void, QString> VoiceInputController::startAudioCapture()
     return {};
 }
 
-void VoiceInputController::stopAudioCapture()
+void VoicePipelineController::stopAudioCapture()
 {
     if (m_audioSource) {
         m_audioSource->stop();
@@ -519,14 +520,14 @@ void VoiceInputController::stopAudioCapture()
     m_audioSource.reset();
 }
 
-bool VoiceInputController::isAudioCaptureRunning() const
+bool VoicePipelineController::isAudioCaptureRunning() const
 {
     return m_audioSource != nullptr;
 }
 
 // ── Recognizer worker dispatch ───────────────────────────────────
 
-void VoiceInputController::queueRecognizerReset()
+void VoicePipelineController::queueRecognizerReset()
 {
     if (!m_recognizer) {
         return;
@@ -538,8 +539,8 @@ void VoiceInputController::queueRecognizerReset()
         Qt::QueuedConnection);
 }
 
-void VoiceInputController::queueRecognizerAudio(const QByteArray &pcm16,
-                                                int sampleRate, int channels)
+void VoicePipelineController::queueRecognizerAudio(const QByteArray &pcm16,
+                                                   int sampleRate, int channels)
 {
     if (!m_recognizer) {
         return;
@@ -554,7 +555,7 @@ void VoiceInputController::queueRecognizerAudio(const QByteArray &pcm16,
         Qt::QueuedConnection);
 }
 
-void VoiceInputController::queueRecognizerFinish()
+void VoicePipelineController::queueRecognizerFinish()
 {
     if (!m_recognizer) {
         return;
@@ -568,7 +569,8 @@ void VoiceInputController::queueRecognizerFinish()
 
 // ── SpeechRecognizer lifecycle ──────────────────────────────────
 
-void VoiceInputController::loadSpeechRecognitionModel(const AsrPreset &preset)
+void VoicePipelineController::loadSpeechRecognitionModel(
+    const AsrPreset &preset)
 {
     unloadSpeechRecognitionModel();
 
@@ -588,7 +590,7 @@ void VoiceInputController::loadSpeechRecognitionModel(const AsrPreset &preset)
             &QObject::deleteLater);
 
     connect(m_recognizer, &SpeechRecognizer::resultChanged, this,
-            &VoiceInputController::onResult);
+            &VoicePipelineController::onResult);
 
     m_recognizerThread->start();
 
@@ -612,7 +614,7 @@ void VoiceInputController::loadSpeechRecognitionModel(const AsrPreset &preset)
     markConfigDirty();
 }
 
-void VoiceInputController::reloadOcrRecognizer()
+void VoicePipelineController::reloadOcrRecognizer()
 {
     const auto &presets = appConfig().ocrPresets;
     const auto it = presets.find(appConfig().settings.ocrProviderId);
@@ -634,7 +636,7 @@ void VoiceInputController::reloadOcrRecognizer()
     SPDLOG_INFO("OCR provider reloaded: {}", it->second.name);
 }
 
-void VoiceInputController::unloadSpeechRecognitionModel()
+void VoicePipelineController::unloadSpeechRecognitionModel()
 {
     stopAudioCapture();
 
@@ -664,7 +666,7 @@ void VoiceInputController::unloadSpeechRecognitionModel()
     m_loadedPresetId.clear();
 }
 
-bool VoiceInputController::startSpeechRecognitionSession()
+bool VoicePipelineController::startSpeechRecognitionSession()
 {
     if (m_stage != PipelineStage::Idle) {
         STATUSBAR_INFO("{}", tr("Recognition is still processing."));
@@ -686,16 +688,15 @@ bool VoiceInputController::startSpeechRecognitionSession()
     return true;
 }
 
-void VoiceInputController::feedSpeechRecognitionAudio(const QByteArray &pcm16,
-                                                      int sampleRate,
-                                                      int channels)
+void VoicePipelineController::feedSpeechRecognitionAudio(
+    const QByteArray &pcm16, int sampleRate, int channels)
 {
     if (m_recognizer) {
         queueRecognizerAudio(pcm16, sampleRate, channels);
     }
 }
 
-void VoiceInputController::finishSpeechRecognitionSession()
+void VoicePipelineController::finishSpeechRecognitionSession()
 {
     if (!m_recognizer) {
         setStage(PipelineStage::Idle);
@@ -705,7 +706,7 @@ void VoiceInputController::finishSpeechRecognitionSession()
     queueRecognizerFinish();
 }
 
-void VoiceInputController::submitApiTranscription(
+void VoicePipelineController::submitApiTranscription(
     const QByteArray &pcm16, int sampleRate, int channels,
     std::function<void(const ApiTranscriptionResult &)> callback)
 {
@@ -782,7 +783,7 @@ void VoiceInputController::submitApiTranscription(
         Qt::QueuedConnection);
 }
 
-QCoro::Task<void> VoiceInputController::executeApiOcr(
+QCoro::Task<void> VoicePipelineController::executeApiOcr(
     QImage image, QPointer<OcrRecognizer> recognizer,
     std::function<void(const ApiOcrResult &)> callback)
 {
@@ -798,7 +799,7 @@ QCoro::Task<void> VoiceInputController::executeApiOcr(
     callback(result);
 }
 
-QCoro::Task<void> VoiceInputController::executeDetailedOcr(
+QCoro::Task<void> VoicePipelineController::executeDetailedOcr(
     QImage image, QPointer<OcrRecognizer> recognizer,
     std::function<void(const ApiOcrResult &)> callback)
 {
@@ -817,7 +818,7 @@ QCoro::Task<void> VoiceInputController::executeDetailedOcr(
     callback(result);
 }
 
-void VoiceInputController::submitApiOcr(
+void VoicePipelineController::submitApiOcr(
     const QImage &image, std::function<void(const ApiOcrResult &)> callback)
 {
     const auto reject = [&callback](const QString &error) {
@@ -844,7 +845,7 @@ void VoiceInputController::submitApiOcr(
                   std::move(callback));
 }
 
-void VoiceInputController::submitDetailedOcr(
+void VoicePipelineController::submitDetailedOcr(
     const QImage &image, std::function<void(const ApiOcrResult &)> callback)
 {
     const auto reject = [&callback](const QString &error) {
@@ -872,17 +873,17 @@ void VoiceInputController::submitDetailedOcr(
                        std::move(callback));
 }
 
-bool VoiceInputController::isSpeechRecognitionModelLoaded() const
+bool VoicePipelineController::isSpeechRecognitionModelLoaded() const
 {
     return m_recognizer != nullptr;
 }
 
-SpeechRecognizer *VoiceInputController::speechRecognizer() const
+SpeechRecognizer *VoicePipelineController::speechRecognizer() const
 {
     return m_recognizer;
 }
 
-std::string VoiceInputController::loadedPresetId() const
+std::string VoicePipelineController::loadedPresetId() const
 {
     return m_loadedPresetId;
 }

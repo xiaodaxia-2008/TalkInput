@@ -1,6 +1,6 @@
 #include "api_server_settings_widget.h"
 #include "app_config.h"
-#include "speech_api_server.h"
+#include "local_ai_api_server.h"
 #include "ui_api_server_settings_widget.h"
 
 #include <QCheckBox>
@@ -83,7 +83,7 @@ void ApiServerSettingsWidget::refreshFromConfig()
 
 void ApiServerSettingsWidget::applyApiServerSettings()
 {
-    if (auto *server = SpeechApiServer::instance()) {
+    if (auto *server = LocalAiApiServer::instance()) {
         server->applySettings();
     }
 }

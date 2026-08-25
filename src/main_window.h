@@ -2,7 +2,7 @@
 
 #include "recognition_history.h"
 #include "theme.h"
-#include "voice_input_controller.h"
+#include "voice_pipeline_controller.h"
 
 #include <QCloseEvent>
 #include <QMainWindow>
@@ -92,7 +92,7 @@ private:
     GeneralSettingsWidget *m_generalSettingsWidget = nullptr;
     HistoryWidget *m_historyWidget = nullptr;
     LogPanel *m_logPanel = nullptr;
-    VoiceInputController *m_voiceInputController = nullptr;
+    VoicePipelineController *m_voicePipelineController = nullptr;
     RecognitionHistory m_history;
 
     QSystemTrayIcon *m_trayIcon = nullptr;

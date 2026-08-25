@@ -2,7 +2,7 @@
 #include "app_config.h"
 #include "logging.h"
 #include "ui_shortcut_settings_widget.h"
-#include "voice_input_controller.h"
+#include "voice_pipeline_controller.h"
 
 #include <QEvent>
 #include <QKeySequenceEdit>
@@ -48,7 +48,7 @@ void ShortcutSettingsWidget::initShortcuts()
         appConfig().settings.triggerHotkey =
             m_ui->triggerEdit->keySequence().toString().toStdString();
         markConfigDirty();
-        if (auto *ctrl = VoiceInputController::instance()) {
+        if (auto *ctrl = VoicePipelineController::instance()) {
             ctrl->reregisterTriggerHotkey();
         }
         STATUSBAR_INFO("{}", tr("Trigger shortcut applied"));
@@ -57,7 +57,7 @@ void ShortcutSettingsWidget::initShortcuts()
         appConfig().settings.modeSwitchHotkey =
             m_ui->modeSwitchEdit->keySequence().toString().toStdString();
         markConfigDirty();
-        if (auto *ctrl = VoiceInputController::instance()) {
+        if (auto *ctrl = VoicePipelineController::instance()) {
             ctrl->reregisterModeSwitchHotkey();
         }
         STATUSBAR_INFO("{}", tr("Mode switch shortcut applied"));

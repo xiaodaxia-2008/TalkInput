@@ -5,7 +5,7 @@
 #include "model_download.h"
 #include "ui_stt_settings_widget.h"
 #include "utils.h"
-#include "voice_input_controller.h"
+#include "voice_pipeline_controller.h"
 
 #include <QAction>
 #include <QCheckBox>
@@ -217,7 +217,7 @@ void SttSettingsWidget::loadInstalledAsrModel(const QString &providerId)
         return;
     }
 
-    auto *vc = VoiceInputController::instance();
+    auto *vc = VoicePipelineController::instance();
     if (!vc) {
         return;
     }
@@ -315,7 +315,7 @@ void SttSettingsWidget::onUseAsrModel()
 QCoro::Task<void> SttSettingsWidget::useAsrModel(const QString &providerId)
 {
     // Check if this model is already loaded
-    auto *vc = VoiceInputController::instance();
+    auto *vc = VoicePipelineController::instance();
     if (vc && vc->isSpeechRecognitionModelLoaded()) {
         const std::string currentId = vc->loadedPresetId();
         if (!currentId.empty() && currentId == providerId.toStdString()) {

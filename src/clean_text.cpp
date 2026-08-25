@@ -396,7 +396,7 @@ static QList<QPair<QString, QString>> extractTokens(const QString &text)
     }
 
     // 2. Reconstruct broken file names across OCR spaces
-    // e.g., "voice_i nput_controller" -> "voice_input_controller"
+    // e.g., "voice_p ipeline_controller" -> "voice_pipeline_controller"
     {
         static const QRegularExpression re(
             QStringLiteral("[\\w\\-~]+_[\\w\\-~]*\\s+"
