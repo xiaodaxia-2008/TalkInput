@@ -19,7 +19,7 @@
          <property name="horizontalSpacing"><number>12</number></property>
          <property name="verticalSpacing"><number>10</number></property>
          <item row="0" column="0"><widget class="QLabel" name="providerFormLabel"><property name="text"><string>Provider</string></property></widget></item>
-         <item row="0" column="1"><widget class="QComboBox" name="providerCombo"><property name="sizeAdjustPolicy"><enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum></property></widget></item>
+         <item row="0" column="1"><widget class="QComboBox" name="providerCombo"><property name="sizeAdjustPolicy"><enum>QComboBox::AdjustToContents</enum></property></widget></item>
          <item row="1" column="0"><widget class="QLabel" name="endpointFormLabel"><property name="text"><string>Endpoint</string></property></widget></item>
          <item row="1" column="1"><widget class="QLineEdit" name="endpointEdit"><property name="placeholderText"><string>https://api.openai.com</string></property></widget></item>
          <item row="2" column="0"><widget class="QLabel" name="apiKeyFormLabel"><property name="text"><string>API Key</string></property></widget></item>
@@ -28,7 +28,7 @@
          <item row="3" column="1">
           <layout class="QHBoxLayout" name="modelRow">
            <property name="spacing"><number>8</number></property>
-           <item><widget class="QComboBox" name="llmModelCombo"><property name="editable"><bool>true</bool></property><property name="insertPolicy"><enum>QComboBox::InsertPolicy::NoInsert</enum></property><property name="sizeAdjustPolicy"><enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum></property><property name="placeholderText"><string>Model name sent to the LLM service</string></property></widget></item>
+           <item><widget class="QComboBox" name="llmModelCombo"><property name="editable"><bool>true</bool></property><property name="insertPolicy"><enum>QComboBox::NoInsert</enum></property><property name="sizeAdjustPolicy"><enum>QComboBox::AdjustToContents</enum></property><property name="placeholderText"><string>Model name sent to the LLM service</string></property></widget></item>
            <item><widget class="QPushButton" name="refreshModelsButton"><property name="icon"><iconset><normaloff>:/resources/icons/refresh.svg</normaloff>:/resources/icons/refresh.svg</iconset></property><property name="iconSize"><size><width>16</width><height>16</height></size></property><property name="toolTip"><string>Fetch models from the configured endpoint</string></property><property name="sizePolicy"><sizepolicy hsizetype="Maximum" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="text"><string>Refresh models</string></property><property name="flat"><bool>true</bool></property></widget></item>
           </layout>
          </item>
@@ -37,8 +37,8 @@
        <item>
         <layout class="QVBoxLayout" name="promptLayout">
          <property name="spacing"><number>4</number></property>
-         <property name="alignment"><set>Qt::AlignmentFlag::AlignTop</set></property>
-         <item alignment="Qt::AlignTop"><widget class="QLabel" name="promptFormLabel"><property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="margin"><number>0</number></property><property name="textInteractionFlags"><set>Qt::TextInteractionFlag::TextSelectableByMouse</set></property><property name="text"><string>&lt;b&gt;Prompt&lt;/b&gt;&lt;br&gt;&lt;small&gt;Available variables: {{input}}, {{context}}, {{hotwords}}&lt;/small&gt;</string></property></widget></item>
+         <property name="alignment"><set>Qt::AlignTop</set></property>
+         <item alignment="Qt::AlignTop"><widget class="QLabel" name="promptFormLabel"><property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="margin"><number>0</number></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property><property name="text"><string>&lt;b&gt;Prompt&lt;/b&gt;&lt;br&gt;&lt;small&gt;Available variables: {{input}}, {{context}}, {{hotwords}}&lt;/small&gt;</string></property></widget></item>
          <item alignment="Qt::AlignTop"><widget class="QTextEdit" name="promptEdit"><property name="acceptRichText"><bool>false</bool></property><property name="fixedHeight"><number>140</number></property></widget></item>
         </layout>
        </item>
