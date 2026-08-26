@@ -1,3 +1,7 @@
+---
+marp: true
+---
+
 [English](README.en.md) | 简体中文
 
 # Zenny 语音输入法
