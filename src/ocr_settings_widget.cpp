@@ -44,9 +44,7 @@ public:
         setAlignment(Qt::AlignCenter);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         setMinimumSize(320, 220);
-        setFrameShape(QFrame::Box);
-        setFrameShadow(QFrame::Sunken);
-        setLineWidth(1);
+        setFrameShape(QFrame::NoFrame);
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         setBackgroundBrush(palette().base());
@@ -184,6 +182,9 @@ void OcrSettingsWidget::buildUi()
 {
     m_ui = std::make_unique<Ui::OcrSettingsWidget>();
     m_ui->setupUi(this);
+    m_ui->resultImageRow->setStretch(0, 1);
+    m_ui->resultImageRow->setStretch(1, 1);
+    m_ui->resultPanel->layout()->setContentsMargins(0, 0, 0, 0);
     m_ui->copyResultButton->setEnabled(false);
     m_ui->clipboardButton->setProperty("buttonRole", "icon");
     m_ui->openImageButton->setProperty("buttonRole", "icon");

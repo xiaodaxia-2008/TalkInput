@@ -209,6 +209,11 @@ QLabel#hotwordsHintLabel {
     color: #a5a5a5;
 }
 
+QGraphicsView#previewLabel {
+    border: 1px solid #555555;
+    border-radius: 6px;
+}
+
 /* ── Voice overlay ─────────────────────────────────────────────── */
 
 QWidget#voiceOverlay {

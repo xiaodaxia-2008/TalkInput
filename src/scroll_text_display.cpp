@@ -13,6 +13,7 @@ ScrollTextDisplay::ScrollTextDisplay(QWidget *parent) : QWidget(parent)
     layout->setContentsMargins(0, 0, 0, 0);
 
     m_scrollTextArea = new QScrollArea(this);
+    m_scrollTextArea->setObjectName("scrollTextArea");
     m_scrollTextArea->setWidgetResizable(true);
     m_scrollTextArea->setFrameShape(QFrame::NoFrame);
     m_scrollTextArea->setAlignment(Qt::AlignCenter);
@@ -20,6 +21,7 @@ ScrollTextDisplay::ScrollTextDisplay(QWidget *parent) : QWidget(parent)
     m_scrollTextArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     m_scrollTextLabel = new QLabel(tr("Recording..."));
+    m_scrollTextLabel->setObjectName("scrollTextLabel");
     m_scrollTextLabel->setWordWrap(true);
     m_scrollTextLabel->setAlignment(Qt::AlignCenter);
     m_scrollTextArea->setWidget(m_scrollTextLabel);

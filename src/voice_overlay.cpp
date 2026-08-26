@@ -29,11 +29,13 @@ VoiceOverlay::VoiceOverlay(QWidget *parent) : QWidget(parent)
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
     auto *container = new QWidget(this);
+    container->setObjectName("voiceOverlayContainer");
     auto *layout = new QHBoxLayout(container);
     layout->setContentsMargins(14, 6, 8, 6);
     layout->setSpacing(4);
 
     m_modeLabel = new QLabel(QStringLiteral("🎙"), container);
+    m_modeLabel->setObjectName("voiceOverlayMicLabel");
     m_scrollText = new ScrollTextDisplay(container);
     layout->addWidget(m_modeLabel);
     layout->addWidget(m_scrollText);

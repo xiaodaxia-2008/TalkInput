@@ -14,10 +14,10 @@
      <widget class="QWidget" name="content">
       <layout class="QVBoxLayout" name="contentLayout">
        <property name="spacing"><number>12</number></property>
-       <property name="leftMargin"><number>0</number></property>
-       <property name="topMargin"><number>0</number></property>
-       <property name="rightMargin"><number>0</number></property>
-       <property name="bottomMargin"><number>0</number></property>
+       <property name="leftMargin"><number>16</number></property>
+       <property name="topMargin"><number>16</number></property>
+       <property name="rightMargin"><number>16</number></property>
+       <property name="bottomMargin"><number>16</number></property>
        <item>
         <layout class="QGridLayout" name="grid">
          <property name="horizontalSpacing"><number>8</number></property>
