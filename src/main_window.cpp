@@ -127,6 +127,7 @@ void MainWindow::setupUi()
     // injection) ─
     SPDLOG_DEBUG("setupUi: creating VoicePipelineController");
     m_voicePipelineController = new VoicePipelineController(this);
+    m_sttSettingsWidget->refreshFromConfig();
 
     // ── Navigation sidebar ─────────────────────────────────────────
     setupNavTree();

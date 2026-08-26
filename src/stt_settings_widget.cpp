@@ -139,8 +139,8 @@ void SttSettingsWidget::changeEvent(QEvent *event)
 
 void SttSettingsWidget::refreshFromConfig()
 {
-    auto task =
-        useAsrModel(QString::fromStdString(appConfig().settings.asrProviderId));
+    loadInstalledAsrModel(
+        QString::fromStdString(appConfig().settings.asrProviderId));
     updateActiveModeDisplay();
 
     QStringList lines;
@@ -218,6 +218,12 @@ void SttSettingsWidget::loadInstalledAsrModel(const QString &providerId)
 
     auto *vc = VoicePipelineController::instance();
     if (!vc) {
+        return;
+    }
+
+    if (vc->isSpeechRecognitionModelLoaded() &&
+        vc->loadedPresetId() == preset.id)
+    {
         return;
     }
 
