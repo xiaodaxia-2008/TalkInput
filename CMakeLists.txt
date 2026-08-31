@@ -13,7 +13,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-project(Zenny VERSION 0.14.0 DESCRIPTION "Voice input method")
+project(Zenny VERSION 0.15.0 DESCRIPTION "Voice input method")
 
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Core Gui Multimedia Network Svg Sql WebSockets LinguistTools)
 find_package(LibArchive REQUIRED)
